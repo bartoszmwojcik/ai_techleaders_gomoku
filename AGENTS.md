@@ -14,6 +14,46 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 Ten plik jest jedynym źródłem instrukcji dla agentów AI. `CLAUDE.md` tylko go importuje — nie dopisuj tam treści.
 
+## Stack i architektura (obowiązujące założenia)
+
+Gomoku to aplikacja webowa (gra 1:1 online, wymagania: `.ai/specs/product-brief.md`). Poniższe decyzje są wiążące — nie zmieniaj ich ani nie dodawaj alternatyw (inny ORM, inny kontener DI, inna biblioteka UI, inny menedżer pakietów) bez wyraźnej zgody użytkownika. Szczegóły i uzasadnienia: `.ai/specs/implemented/2026-10-18-monorepo-architecture.md`, opis dla ludzi: `README.md`.
+
+| Obszar | Technologia |
+| --- | --- |
+| Framework | Next.js 16 (App Router, Turbopack), React 19, TypeScript (strict) |
+| Baza danych | PostgreSQL + MikroORM 7 (`@mikro-orm/postgresql`) — migracje, pula połączeń |
+| Dependency Injection | Awilix (tryb `PROXY`, `strict`) |
+| Style — frontend | Tailwind CSS 4, bez shadcn/ui |
+| Style — backend | shadcn/ui (na Tailwind CSS 4) z pakietu `@gomoku/ui` |
+| Monorepo | npm workspaces (`packages/*`), jeden `package-lock.json` w roocie |
+
+### Pakiety
+
+| Pakiet | Katalog | Odpowiedzialność |
+| --- | --- | --- |
+| `@gomoku/app` | `packages/app` | Aplikacja Next.js: routing, strony, route handlery, server actions, kompozycja kontenera DI (`src/server/container.ts`). |
+| `@gomoku/core` | `packages/core` | Części wielokrotnego użytku bez zależności od Next.js, Reacta i ORM: logika domenowa (zasady gry), typy, helpery DI (`createAppContainer`). |
+| `@gomoku/db` | `packages/db` | Zarządzanie danymi: konfiguracja MikroORM, encje, migracje, CLI, fabryka ORM (`createOrm`). |
+| `@gomoku/ui` | `packages/ui` | Komponenty UI wielokrotnego użytku: shadcn/ui, motyw (`globals.css`), hooki UI. |
+
+Dozwolony kierunek zależności (bez cykli): `app → core, db, ui`; `db → core`; `core` i `ui` nie zależą od innych pakietów workspace. `core` nie importuje `next`, `react` ani `@mikro-orm/*`; `ui` nie importuje `db` ani kodu serwerowego. Nowe pakiety dodawaj w `packages/` z nazwą `@gomoku/<nazwa>` i aktualizuj tę tabelę. `packages/app/AGENTS.md` to tylko odsyłacz do tego pliku (utrzymuje go `next dev`) — nie dopisuj tam zasad.
+
+### Konwencje
+
+- **Pakiety biblioteczne** eksportują źródła TS przez `exports` w `package.json` (bez kroku build); Turbopack transpiluje je sam. Każdy pakiet ma `tsconfig.json` rozszerzający `tsconfig.base.json` i skrypt `typecheck`. Wszystkie pakiety są ESM (`"type": "module"`).
+- **Zależności** instaluj do konkretnego pakietu: `npm install <pkg> -w @gomoku/<pakiet>`. Zależności między pakietami workspace deklaruj jako `"@gomoku/<pakiet>": "*"`.
+- **Route groups w `packages/app/src/app`:** `(frontend)` — strony dla graczy, własny root layout i `frontend.css` (czysty Tailwind, motyw gry w `@theme`); `(backend)` — panel pod `/backend`, root layout importuje `@gomoku/ui/globals.css` i używa komponentów `@gomoku/ui/components/*`. Nie importuj shadcn/ui na stronach frontendowych ani `frontend.css` w backendzie. Przejście między grupami to pełne przeładowanie strony (osobne root layouty) — to zamierzone.
+- **shadcn/ui:** komponenty dodawaj z katalogu `packages/ui` (`npx shadcn@latest add <komponent>`), trafiają do `packages/ui/src/components`. Aktualny rejestr shadcn używa pakietu `cn` (utrzymywany przez shadcn) zamiast `clsx` + `tailwind-merge` — to oczekiwane, nie poprawiaj tego.
+- **DI (Awilix):** kontener składa się tylko w `packages/app/src/server/container.ts` (`server-only`). Rejestruj zależności jawnie (`asClass`/`asFunction`/`asValue`), bez `loadModules`/globów — nie działają w bundlu. Serwisy przyjmują zależności przez destrukturyzację obiektu w konstruktorze (`constructor({ orm }: Deps)`). W route handlerach, server actions i server components używaj `withRequestScope(({ cradle }) => …)` — scope dostaje własny `em` (fork EntityManagera); nigdy nie używaj globalnego `orm.em` do zapytań.
+- **MikroORM:** encje definiuj przez `defineEntity` (bez dekoratorów) i dopisuj jawnie do `packages/db/src/entities/index.ts`. Zmiany schematu tylko przez migracje (`npm run db:migration:create`, przegląd wygenerowanego pliku, `npm run db:migration:up`); nie używaj `schema:update` ani `ensureDatabase` w aplikacji. Migracje to pliki generowane — nie edytuj już zastosowanych. ORM łączy się leniwie (przy pierwszym zapytaniu); `orm.checkConnection()` zwraca „not established”, zanim padnie pierwsze zapytanie — do sprawdzania dostępności bazy wykonuj zapytanie. Pakiety `@mikro-orm/*` i `kysely` muszą zostać w `serverExternalPackages` w `next.config.ts`.
+- **ORM/pula połączeń** jest singletonem procesu (cache obietnicy na `globalThis`, odporny na HMR). Nie inicjalizuj ORM na poziomie modułu — `next build` ewaluuje moduły tras. Strony i handlery czytające bazę muszą być dynamiczne (`await connection()` z `next/server` przed zapytaniem).
+- **Konfiguracja** przez zmienne środowiskowe z plików `.env*` w roocie monorepo (ładuje je `next.config.ts` i CLI MikroORM przez `@next/env`); lista zmiennych w `.env.example`. Sekretów nie commituj.
+- **Język:** kod, identyfikatory i komentarze po angielsku; teksty UI i dokumentacja projektu po polsku.
+
+### Komendy (z roota)
+
+`npm run dev` · `npm run build` · `npm run start` · `npm run lint` · `npm run typecheck` · `npm run smoke` · `npm run check` · `npm run db:migration:create|up|down|list`
+
 ## Struktura `.ai/`
 
 Wszystkie nowe pliki w `specs/`, `runs/` i `lessons/` muszą mieć nazwę `YYYY-MM-DD-slug.md` (data utworzenia, slug kebab-case). Zachowuj oryginalną datę przy przenoszeniu plików.
@@ -34,7 +74,7 @@ Nie modyfikuj istniejących plików spoza tej struktury (np. `.ai/specs/product-
 1. **Kontekst na start.** Przeczytaj `.ai/lessons.md` i specyfikacje w `.ai/specs/` dotyczące zadania. Specyfikacja jest źródłem prawdy dla wymagań.
 2. **Planuj złożone zadania.** Zadanie wieloetapowe, dotykające kilku plików lub z kilkoma możliwymi podejściami zaczynaj od planu (plan mode / specyfikacja w `.ai/specs/`), nie od kodu. Dopracuj plan tak, by implementacja mogła przejść za jednym razem; przy większych zmianach poproś drugiego agenta o krytyczny przegląd planu.
 3. **Gdy coś idzie źle — wróć do planowania.** Nie forsuj implementacji, która się rozjeżdża. Zatrzymaj się, zaktualizuj plan/specyfikację i dopiero wtedy kontynuuj.
-4. **Weryfikuj każdą zmianę, zanim uznasz ją za gotową.** Minimum: `npm run lint` i `npm run build` (sprawdza też typy). Zmiany UI sprawdź w działającej aplikacji (`npm run dev`), łącznie z przypadkami brzegowymi. Odhacz kryteria akceptacji ze specyfikacji. Jeśli czegoś nie dało się zweryfikować — napisz to wprost.
+4. **Weryfikuj każdą zmianę, zanim uznasz ją za gotową.** Minimum: `npm run check` (`lint` → `typecheck` wszystkich pakietów → `build` → `smoke`; smoke wymaga działającej bazy z `DATABASE_URL`). Zmiany w `packages/db` sprawdź na prawdziwym PostgreSQL (migracje w górę i w dół). Zmiany UI sprawdź w działającej aplikacji (`npm run dev`), łącznie z przypadkami brzegowymi. Odhacz kryteria akceptacji ze specyfikacji. Jeśli czegoś nie dało się zweryfikować — napisz to wprost.
 5. **Po poprawce użytkownika zapisz lekcję.** Każda korekta (zła decyzja, błąd, zignorowana konwencja) kończy się wpisem w `.ai/lessons/YYYY-MM-DD-slug.md` z konkretną regułą, która zapobiegnie powtórce, oraz linią w `.ai/lessons.md`. To samo po naprawieniu nietrywialnego błędu. Jeśli reguła dotyczy wszystkich zadań, dopisz ją też do tego pliku.
 6. **Naprawiaj błędy samodzielnie.** Mając raport błędu, nieprzechodzący test lub logi — znajdź przyczynę i napraw ją bez dopytywania o podejście. Pytaj tylko o decyzje, które naprawdę należą do użytkownika.
 7. **Wybieraj eleganckie rozwiązanie.** Jeśli poprawka wyszła prowizoryczna, odrzuć ją i zaimplementuj czyste rozwiązanie z wykorzystaniem tego, czego się nauczyłeś — zamiast nakładać kolejne łatki.

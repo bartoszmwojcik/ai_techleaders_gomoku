@@ -1,0 +1,33 @@
+{
+  "name": "@gomoku/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "mikro-orm": "mikro-orm",
+    "migration:create": "mikro-orm migration:create",
+    "migration:up": "mikro-orm migration:up",
+    "migration:down": "mikro-orm migration:down",
+    "migration:list": "mikro-orm migration:list"
+  },
+  "mikro-orm": {
+    "configPaths": [
+      "./src/mikro-orm.config.ts"
+    ]
+  },
+  "dependencies": {
+    "@gomoku/core": "*",
+    "@mikro-orm/core": "^7.2.5",
+    "@mikro-orm/migrations": "^7.2.5",
+    "@mikro-orm/postgresql": "^7.2.5"
+  },
+  "devDependencies": {
+    "@mikro-orm/cli": "^7.2.5",
+    "@next/env": "16.3.4",
+    "tsx": "^4.23.15"
+  }
+}
