@@ -48,7 +48,8 @@ Dozwolony kierunek zależności (bez cykli): `app → core, db, ui`; `db → cor
 - **MikroORM:** encje definiuj przez `defineEntity` (bez dekoratorów) i dopisuj jawnie do `packages/db/src/entities/index.ts`. Zmiany schematu tylko przez migracje (`npm run db:migration:create`, przegląd wygenerowanego pliku, `npm run db:migration:up`); nie używaj `schema:update` ani `ensureDatabase` w aplikacji. Migracje to pliki generowane — nie edytuj już zastosowanych. ORM łączy się leniwie (przy pierwszym zapytaniu); `orm.checkConnection()` zwraca „not established”, zanim padnie pierwsze zapytanie — do sprawdzania dostępności bazy wykonuj zapytanie. Pakiety `@mikro-orm/*` i `kysely` muszą zostać w `serverExternalPackages` w `next.config.ts`.
 - **ORM/pula połączeń** jest singletonem procesu (cache obietnicy na `globalThis`, odporny na HMR). Nie inicjalizuj ORM na poziomie modułu — `next build` ewaluuje moduły tras. Strony i handlery czytające bazę muszą być dynamiczne (`await connection()` z `next/server` przed zapytaniem).
 - **Konfiguracja** przez zmienne środowiskowe z plików `.env*` w roocie monorepo (ładuje je `next.config.ts` i CLI MikroORM przez `@next/env`); lista zmiennych w `.env.example`. Sekretów nie commituj.
-- **Język:** kod, identyfikatory i komentarze po angielsku; teksty UI i dokumentacja projektu po polsku.
+- **Język:** kod, identyfikatory i komentarze po angielsku; teksty UI i dokumentacja projektu po polsku (wyjątek: dokumenty w `.ai/docs/` mogą być po angielsku).
+- **Standardy inżynierskie** (nazewnictwo, rozmieszczenie kodu, wspólne warstwy API/UI, reguły domeny gry, checklista review): `.ai/docs/2026-09-01-engineering-standards.md`. Czytaj przed dodaniem nowej funkcji domenowej; przy sprzeczności z tym plikiem wygrywa `AGENTS.md`.
 
 ### Komendy (z roota)
 
@@ -56,13 +57,14 @@ Dozwolony kierunek zależności (bez cykli): `app → core, db, ui`; `db → cor
 
 ## Struktura `.ai/`
 
-Wszystkie nowe pliki w `specs/`, `runs/` i `lessons/` muszą mieć nazwę `YYYY-MM-DD-slug.md` (data utworzenia, slug kebab-case). Zachowuj oryginalną datę przy przenoszeniu plików.
+Wszystkie nowe pliki w `specs/`, `docs/`, `runs/` i `lessons/` muszą mieć nazwę `YYYY-MM-DD-slug.md` (data utworzenia, slug kebab-case). Zachowuj oryginalną datę przy przenoszeniu plików.
 
 | Ścieżka | Przeznaczenie |
 | --- | --- |
 | `.ai/specs/` | Aktywne specyfikacje SDD (cel, wymagania, kryteria akceptacji, notatki techniczne, status). |
 | `.ai/specs/implemented/` | Specyfikacje wdrożone — przenieś tu po spełnieniu kryteriów akceptacji. |
 | `.ai/specs/archive/` | Specyfikacje anulowane lub nieaktualne. |
+| `.ai/docs/` | Dokumenty referencyjne obowiązujące przy implementacji (np. standardy inżynierskie). |
 | `.ai/runs/` | Log każdego autonomicznego przebiegu (`/loop`, workflow, cron, długa praca bez nadzoru): cel, kroki z rezultatami, zmiany, błędy, status. |
 | `.ai/lessons/` | Pojedyncze lekcje: problem, kontekst, wniosek/reguła, powiązane spec/run. |
 | `.ai/lessons.md` | Indeks lekcji — jedna linia na wpis z linkiem do `lessons/…`. Czytany na starcie każdej sesji. |
