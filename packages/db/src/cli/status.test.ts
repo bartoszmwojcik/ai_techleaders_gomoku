@@ -69,6 +69,19 @@ describe("classifyError", () => {
     expect(classifyError(Object.assign(new Error("x"), { code }))).toMatchObject({ kind });
   });
 
+  it("explains an AggregateError (dual-stack host) by its inner errors", () => {
+    const error = Object.assign(
+      new AggregateError([new Error("connect ECONNREFUSED ::1:5432"), "connect ECONNREFUSED 127.0.0.1:5432"], ""),
+      { code: "ECONNREFUSED" },
+    );
+
+    expect(classifyError(error)).toEqual({
+      kind: "unreachable",
+      message: "connect ECONNREFUSED ::1:5432; connect ECONNREFUSED 127.0.0.1:5432",
+    });
+    expect(classifyError(new AggregateError([], "all failed")).message).toBe("all failed");
+  });
+
   it("handles errors without a code and non-Error values", () => {
     expect(classifyError(new Error("boom"))).toEqual({ kind: "other", message: "boom" });
     expect(classifyError({ code: 5 })).toEqual({ kind: "other", message: "[object Object]" });
@@ -86,5 +99,6 @@ describe("maskSecrets", () => {
   it("masks every URL password and leaves URLs without one alone", () => {
     expect(maskSecrets("a postgres://u:p@h/d and postgresql://x:y@z/w")).toBe("a postgres://u:***@h/d and postgresql://x:***@z/w");
     expect(maskSecrets("postgresql://localhost:5432/gomoku")).toBe("postgresql://localhost:5432/gomoku");
+    expect(maskSecrets("postgresql://u:p@ss@h/db?password=x")).toBe("postgresql://u:***@h/db?password=***");
   });
 });

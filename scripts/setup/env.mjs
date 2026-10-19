@@ -8,9 +8,14 @@ export const DEFAULT_SOURCE = "domyślny z packages/db/src/config.ts";
 
 const SILENT = { info() {}, error() {} };
 
-/** Replaces the password in any connection URL inside `text` with `***`. */
+/**
+ * Hides passwords in connection strings inside `text`: the userinfo password of any URL
+ * (greedy up to the last `@` of the authority, so an unencoded `@` in the password does
+ * not leak the rest; an empty user name is covered too) and `password=` query parameters.
+ * Kept identical to maskSecrets in packages/db/src/cli/status.ts (a test compares them).
+ */
 export function maskSecrets(/** @type {string} */ text) {
-  return text.replace(/(\w+:\/\/[^:/@\s]+:)[^@\s]+@/g, "$1***@");
+  return text.replace(/(\w+:\/\/[^:/@\s]*:)[^\s/]*@/g, "$1***@").replace(/([?&]password=)[^&\s]+/gi, "$1***");
 }
 
 /**
@@ -31,7 +36,11 @@ export function maskSecrets(/** @type {string} */ text) {
  */
 export function resolveDatabaseTarget({ root, env, loadEnvConfig }) {
   const fromProcess = env.DATABASE_URL;
-  const nodeEnv = env.NODE_ENV;
+  // loadEnvConfig copies every variable from the files into the environment (and sets
+  // __NEXT_PROCESSED_ENV, which makes later loads in child processes a no-op), so the
+  // environment is restored exactly afterwards: commands the installer runs must load
+  // their own .env files as usual.
+  const snapshot = { ...env };
   // Hide the process value while reading the files: @next/env never lets a file
   // override (or even report) a variable that is already set in the environment.
   // NODE_ENV=test would switch @next/env to test mode, which skips .env.local;
@@ -42,8 +51,7 @@ export function resolveDatabaseTarget({ root, env, loadEnvConfig }) {
   try {
     files = loadEnvConfig(root, true, SILENT, true).loadedEnvFiles;
   } finally {
-    restore(env, "DATABASE_URL", fromProcess);
-    restore(env, "NODE_ENV", nodeEnv);
+    restoreExactly(env, snapshot);
   }
 
   const file = files.find((candidate) => candidate.env.DATABASE_URL !== undefined);
@@ -58,10 +66,9 @@ export function resolveDatabaseTarget({ root, env, loadEnvConfig }) {
 
 /**
  * @param {NodeJS.ProcessEnv} env
- * @param {string} name
- * @param {string | undefined} value
+ * @param {NodeJS.ProcessEnv} snapshot
  */
-function restore(env, name, value) {
-  if (value === undefined) delete env[name];
-  else env[name] = value;
+function restoreExactly(env, snapshot) {
+  for (const name of Object.keys(env)) if (!Object.hasOwn(snapshot, name)) delete env[name];
+  Object.assign(env, snapshot);
 }

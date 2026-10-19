@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { loadEnvConfig } from "@next/env";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { maskSecrets as dbMaskSecrets } from "../../packages/db/src/cli/status";
 import { createOrmConfig } from "../../packages/db/src/config";
 import { DEFAULT_DATABASE_URL, DEFAULT_SOURCE, maskSecrets, resolveDatabaseTarget } from "./env.mjs";
 
@@ -77,6 +78,18 @@ describe("resolveDatabaseTarget", () => {
     expect(env).toEqual({ DATABASE_URL: "postgresql://sandbox/open-mercato" });
   });
 
+  it("restores the environment exactly: no variables from the files leak to child processes", () => {
+    const env: NodeJS.ProcessEnv = { PATH: "/bin", DATABASE_URL: "postgresql://a" };
+    const loader = vi.fn(() => {
+      Object.assign(env, { DATABASE_POOL_MAX: "5", __NEXT_PROCESSED_ENV: "true" });
+      return { loadedEnvFiles: [{ path: ".env.local", contents: "", env: { DATABASE_URL: "postgresql://a" } }] };
+    }) as unknown as LoadEnvConfig;
+
+    resolveDatabaseTarget({ root: "/r", env, loadEnvConfig: loader });
+
+    expect(env).toEqual({ PATH: "/bin", DATABASE_URL: "postgresql://a" });
+  });
+
   it("restores NODE_ENV", () => {
     const env: NodeJS.ProcessEnv = { NODE_ENV: "test" };
 
@@ -126,9 +139,22 @@ describe("DEFAULT_DATABASE_URL", () => {
   });
 });
 
+const MASK_CASES: [string, string][] = [
+  ["postgresql://gomoku:gomoku@localhost:5432/gomoku", "postgresql://gomoku:***@localhost:5432/gomoku"],
+  ["postgresql://u:p@ss@h/db", "postgresql://u:***@h/db"],
+  ["postgresql://:secret@h/db", "postgresql://:***@h/db"],
+  ["postgresql://u@h/db?sslmode=require&password=s3cret", "postgresql://u@h/db?sslmode=require&password=***"],
+  ["a postgres://u:p@h/d and postgresql://x:y@z/w", "a postgres://u:***@h/d and postgresql://x:***@z/w"],
+  ["postgresql://localhost:5432/gomoku", "postgresql://localhost:5432/gomoku"],
+  ["postgresql://u@h:5432/db", "postgresql://u@h:5432/db"],
+];
+
 describe("maskSecrets", () => {
-  it("hides passwords in connection URLs", () => {
-    expect(maskSecrets("postgresql://gomoku:gomoku@localhost:5432/gomoku")).toBe("postgresql://gomoku:***@localhost:5432/gomoku");
-    expect(maskSecrets("postgresql://localhost/gomoku")).toBe("postgresql://localhost/gomoku");
+  it.each(MASK_CASES)("%s → %s", (input, expected) => {
+    expect(maskSecrets(input)).toBe(expected);
+  });
+
+  it("matches the copy in packages/db/src/cli/status.ts", () => {
+    for (const [input] of MASK_CASES) expect(dbMaskSecrets(input)).toBe(maskSecrets(input));
   });
 });

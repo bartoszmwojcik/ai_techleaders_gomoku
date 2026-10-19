@@ -4,6 +4,8 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 
+import { maskSecrets } from "../env.mjs";
+
 export const MARKER = "node_modules/.gomoku-setup.json";
 const NPM_CI_TIMEOUT_MS = 15 * 60_000;
 
@@ -25,7 +27,7 @@ export const dependencies = {
         status: "failed",
         detail: result.timedOut ? "npm ci przekroczyło limit czasu" : `npm ci zakończone błędem (kod ${result.code})`,
         hint: [
-          lastLines(result.stderr),
+          maskSecrets(lastLines(result.stderr)),
           "Na Windows zatrzymaj działające `npm run dev` (zablokowane pliki w node_modules) i uruchom ponownie.",
         ]
           .filter(Boolean)

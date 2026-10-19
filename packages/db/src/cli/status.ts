@@ -1,5 +1,6 @@
 // `npm run db:status` — can the configured database be reached, and how many migrations
 // are pending? Prints one JSON line; the setup installer (scripts/setup) consumes it.
+// Side effect: creates the empty `mikro_orm_migrations` table when missing (see below).
 import { createOrm as defaultCreateOrm, type Orm } from "../orm";
 import { migrationsConfig } from "../migrations-config";
 
@@ -24,16 +25,26 @@ const ERROR_KINDS: Record<string, DatabaseErrorKind> = {
   "3D000": "database-missing", // invalid_catalog_name
 };
 
-/** Replaces the password in any connection URL inside `text` with `***`. */
+/**
+ * Hides passwords in connection strings inside `text`: the userinfo password of any URL
+ * (greedy up to the last `@` of the authority, so an unencoded `@` in the password does
+ * not leak the rest; an empty user name is covered too) and `password=` query parameters.
+ * Kept identical to maskSecrets in scripts/setup/env.mjs (a test compares them).
+ */
 export function maskSecrets(text: string): string {
-  return text.replace(/(\w+:\/\/[^:/@\s]+:)[^@\s]+@/g, "$1***@");
+  return text.replace(/(\w+:\/\/[^:/@\s]*:)[^\s/]*@/g, "$1***@").replace(/([?&]password=)[^&\s]+/gi, "$1***");
 }
 
 export function classifyError(error: unknown): { kind: DatabaseErrorKind; message: string } {
   const code = (error as { code?: unknown } | null)?.code;
   const kind = (typeof code === "string" && ERROR_KINDS[code]) || "other";
-  const message = error instanceof Error ? error.message : String(error);
-  return { kind, message: maskSecrets(message) };
+  return { kind, message: maskSecrets(describe(error)) };
+}
+
+function describe(error: unknown): string {
+  // A host resolving to IPv4 and IPv6 fails with an AggregateError whose own message is empty.
+  if (error instanceof AggregateError && !error.message) return error.errors.map(describe).join("; ");
+  return error instanceof Error ? error.message : String(error);
 }
 
 export async function getDatabaseStatus(
@@ -44,6 +55,10 @@ export async function getDatabaseStatus(
     // ensureDatabase: false — a probe must never create the database (MikroORM 7
     // defaults it to true and would silently create a missing one on connect).
     orm = await createOrm({ ...migrationsConfig, ensureDatabase: false, pool: { min: 0, max: 1 } });
+    // `select 1` writes nothing. Counting pending migrations initializes the migrator,
+    // which creates the `mikro_orm_migrations` table when it is missing — the same table
+    // `db:migration:up` creates. The setup installer calls this only for the database it
+    // has confirmed as the target (step "Cel bazy").
     await orm.em.getConnection().execute("select 1");
     const pending = await orm.migrator.getPending();
     return { ok: true, pending: pending.length };

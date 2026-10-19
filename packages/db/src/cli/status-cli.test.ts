@@ -1,4 +1,5 @@
-import { resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import { expect, it, vi } from "vitest";
 
@@ -12,7 +13,9 @@ it("loads the development .env files and prints the status as one JSON line", as
 
   await import("./status-cli");
 
-  expect(loadEnvConfig).toHaveBeenCalledWith(resolve(import.meta.dirname, "../../../.."), true);
+  const [root, dev] = loadEnvConfig.mock.calls[0]!;
+  expect(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).name).toBe("gomoku");
+  expect(dev).toBe(true);
   expect(write).toHaveBeenCalledWith('{"ok":true,"pending":1}\n');
   write.mockRestore();
 });

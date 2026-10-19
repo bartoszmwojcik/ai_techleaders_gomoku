@@ -1,5 +1,6 @@
 // Step 7 (opt-in, --with-browser): Chrome for agent-browser, needed by the integration
 // tests. `agent-browser install` itself does not download Chrome again when present.
+import { maskSecrets } from "../env.mjs";
 import { lastLines } from "./dependencies.mjs";
 
 const INSTALL_TIMEOUT_MS = 10 * 60_000;
@@ -19,7 +20,7 @@ export const browser = {
       return {
         status: "failed",
         detail: "agent-browser install zakończone błędem",
-        hint: [lastLines(result.stderr), "Na Linuksie brakujące biblioteki doinstaluje: npx agent-browser install --with-deps"]
+        hint: [maskSecrets(lastLines(result.stderr)), "Na Linuksie brakujące biblioteki doinstaluje: npx agent-browser install --with-deps"]
           .filter(Boolean)
           .join("\n"),
       };
