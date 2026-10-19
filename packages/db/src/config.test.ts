@@ -15,6 +15,7 @@ describe("createOrmConfig", () => {
       entities: [],
       discovery: { warnWhenNoEntities: false },
       debug: false,
+      ensureDatabase: false,
     });
   });
 
@@ -38,9 +39,10 @@ describe("createOrmConfig", () => {
   });
 
   it("lets callers override any option", () => {
-    expect(createOrmConfig({ debug: true, dbName: "other" })).toMatchObject({
+    expect(createOrmConfig({ debug: true, dbName: "other", ensureDatabase: true })).toMatchObject({
       debug: true,
       dbName: "other",
+      ensureDatabase: true,
     });
   });
 });
