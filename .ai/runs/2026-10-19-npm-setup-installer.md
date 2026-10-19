@@ -56,7 +56,7 @@ Engine: om-auto-create-pr (steps: 10, --loop: no)
 - [x] 1.3 Krok 2 (zależności) — 1fb849a
 - [x] 1.4 Krok 3 (.env.local) — 044f7f4
 - [x] 1.5 Sonda db:status w @gomoku/db — d29d147
-- [ ] 1.6 Krok 4 (cel bazy)
+- [x] 1.6 Krok 4 (cel bazy) — 87c4513
 - [ ] 1.7 Kroki 5–7 (baza, migracje, przeglądarka)
 
 ### Phase 2: CI, dokumentacja, weryfikacja
