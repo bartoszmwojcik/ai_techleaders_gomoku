@@ -28,8 +28,8 @@ export function createOrmConfig(overrides: Partial<OrmConfig> = {}): OrmConfig {
     debug: process.env.DATABASE_DEBUG === "true",
     // MikroORM 7 defaults to true and would run CREATE DATABASE on the first connection
     // when DATABASE_URL names a missing database (a typo gives a new, empty database
-    // instead of an error). Databases are created by compose.yaml / Testcontainers.
-    // Note: the Migrator (migration CLI) calls ensureDatabase() regardless of this option.
+    // instead of an error). Databases come from compose.yaml / Testcontainers; note the
+    // Migrator (migration CLI) still calls ensureDatabase() and will create a missing one.
     ensureDatabase: false,
     ...overrides,
   });

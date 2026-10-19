@@ -11,6 +11,8 @@ describe("createOrm", () => {
       expect(orm).toBeInstanceOf(MikroORM);
       expect(orm.config.get("clientUrl")).toBe("postgresql://nobody:nothing@127.0.0.1:1/none");
       expect(orm.config.get("pool")).toMatchObject({ min: 0, max: 10 });
+      // The effective value after MikroORM merges its own default (true) — #9.
+      expect(orm.config.get("ensureDatabase")).toBe(false);
     } finally {
       await orm.close();
     }
