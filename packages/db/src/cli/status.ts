@@ -19,6 +19,7 @@ const ERROR_KINDS: Record<string, DatabaseErrorKind> = {
   ETIMEDOUT: "unreachable",
   EHOSTUNREACH: "unreachable",
   ENETUNREACH: "unreachable",
+  "57P01": "unreachable", // admin_shutdown: e.g. the temporary init server stopping
   "57P03": "unreachable", // cannot_connect_now: the server is starting up
   "28P01": "auth", // invalid_password
   "28000": "auth", // invalid_authorization_specification
@@ -37,10 +38,16 @@ export function maskSecrets(text: string): string {
   return text.replace(/(\w+:\/\/[^:/@\s]*:)[^\s/]*@/g, "$1***@").replace(/([?&]password=)[^&\s]+/gi, "$1***");
 }
 
+// `pg` raises these without a code. Right after `docker compose up`, Docker's port proxy
+// accepts the TCP connection and closes it while PostgreSQL inside is still starting —
+// a transient state the setup installer must wait out, not a configuration error.
+const UNREACHABLE_MESSAGE = /^Connection terminated (unexpectedly|due to connection timeout)/;
+
 export function classifyError(error: unknown): { kind: DatabaseErrorKind; message: string } {
   const code = (error as { code?: unknown } | null)?.code;
-  const kind = (typeof code === "string" && ERROR_KINDS[code]) || "other";
-  return { kind, message: maskSecrets(describe(error)) };
+  const message = describe(error);
+  const kind = (typeof code === "string" && ERROR_KINDS[code]) || (UNREACHABLE_MESSAGE.test(message) ? "unreachable" : "other");
+  return { kind, message: maskSecrets(message) };
 }
 
 function describe(error: unknown): string {
