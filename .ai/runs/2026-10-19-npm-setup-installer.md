@@ -47,6 +47,8 @@ Engine: om-auto-create-pr (steps: 10, --loop: no)
 
 ## Progress
 
+PR: #8
+
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles.
 
 ### Phase 1: Instalator i sonda bazy
@@ -63,4 +65,13 @@ Engine: om-auto-create-pr (steps: 10, --loop: no)
 
 - [x] 2.1 Job CI setup — 3e26a16
 - [x] 2.2 Dokumentacja — 05a21f7
-- [ ] 2.3 Weryfikacja ręczna i pełna bramka
+- [x] 2.3 Weryfikacja ręczna i pełna bramka — weryfikacja bez zmian w kodzie
+
+## Wyniki weryfikacji (2026-10-19)
+
+- `npm run check` w worktree: lint, typecheck, 136 testów jednostkowych (100% statements/branches/functions/lines, 29 plików), build, 4 testy integracyjne — exit 0.
+- Świeży klon gałęzi w katalogu o innej nazwie: 1. `npm run setup` — `npm ci` + `.env.local`, baza współdzielona z kontenerem głównego klonu (przypięta nazwa projektu compose); 2. uruchomienie — wyłącznie „pominięto”, kod 0; edytowany `.env.local` nietknięty; `npm run dev` → `/backend` pokazuje „Połączono”.
+- Zatrzymany kontener → instalator uruchomił go (`docker compose up -d`) i doczekał na sondę (3,7 s).
+- `DATABASE_URL` obcej bazy w otoczeniu → blokada przed jakimkolwiek połączeniem (hasło zamaskowane); równy plikom → akceptowany.
+- `db:status` na prawdziwej bazie: `ok/pending`, `auth`, `database-missing`, `unreachable`; bez tworzenia baz.
+- Znalezione i naprawione w trakcie: `import()` CommonJS `@next/env` w natywnym ESM (d021db7), tryb `NODE_ENV=test` w `@next/env` pomijający `.env.local` (87c4513), `ensureDatabase: true` w MikroORM 7 (sonda wyłącza; lekcje w `.ai/lessons/`).
