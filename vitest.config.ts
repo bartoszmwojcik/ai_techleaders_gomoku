@@ -15,24 +15,31 @@ const packages = readdirSync("packages", { withFileTypes: true })
 export default defineConfig({
   resolve: { tsconfigPaths: true },
   test: {
-    projects: packages.map((name) => ({
-      // Inherit the root options (resolve.tsconfigPaths, unstubEnvs, …).
-      extends: true,
-      test: {
-        name,
-        root: `packages/${name}`,
-        include: ["src/**/*.test.{ts,tsx}", "*.test.ts"],
-        environment: "node",
-        // Optional per-package setup, e.g. stubbing `server-only` in packages/app.
-        setupFiles: existsSync(`packages/${name}/vitest.setup.ts`) ? ["vitest.setup.ts"] : [],
+    projects: [
+      ...packages.map((name) => ({
+        // Inherit the root options (resolve.tsconfigPaths, unstubEnvs, …).
+        extends: true,
+        test: {
+          name,
+          root: `packages/${name}`,
+          include: ["src/**/*.test.{ts,tsx}", "*.test.ts"],
+          environment: "node",
+          // Optional per-package setup, e.g. stubbing `server-only` in packages/app.
+          setupFiles: existsSync(`packages/${name}/vitest.setup.ts`) ? ["vitest.setup.ts"] : [],
+        },
+      })),
+      // Repository tooling outside the packages (the `npm run setup` installer).
+      {
+        extends: true,
+        test: { name: "scripts", include: ["scripts/**/*.test.ts"], environment: "node" },
       },
-    })),
+    ],
     // Tests stub process.env (`vi.stubEnv`) explicitly; restore it after every test so the
     // developer's environment (DATABASE_URL, NODE_ENV) never leaks between tests.
     unstubEnvs: true,
     coverage: {
       provider: "v8",
-      include: ["packages/*/src/**/*.{ts,tsx}", "packages/app/next.config.ts"],
+      include: ["packages/*/src/**/*.{ts,tsx}", "packages/app/next.config.ts", "scripts/setup/**/*.mjs"],
       exclude: [
         "**/*.test.{ts,tsx}",
         "**/*.d.ts",

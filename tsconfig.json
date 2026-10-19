@@ -1,5 +1,10 @@
 {
-  // Root-level TypeScript outside the packages: test configs and integration tests.
+  // Root-level TypeScript outside the packages: test configs, integration tests and the
+  // `npm run setup` installer (plain ESM JavaScript, type-checked through JSDoc).
   "extends": "./tsconfig.base.json",
-  "include": ["vitest.config.ts", "vitest.integration.config.ts", "tests"]
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true
+  },
+  "include": ["vitest.config.ts", "vitest.integration.config.ts", "tests", "scripts/setup"]
 }
