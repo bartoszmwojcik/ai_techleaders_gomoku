@@ -127,8 +127,16 @@ describe("database step", () => {
   it("fails with a hint when the Docker daemon is not running", async () => {
     const { ctx, run } = setup(LOCAL, { probes: [UNREACHABLE], info: failure(1, "Cannot connect to the Docker daemon") });
 
-    await expect(database.run(ctx)).resolves.toMatchObject({ status: "failed", detail: "baza nieosiągalna, a Docker nie działa" });
+    const result = await database.run(ctx);
+    expect(result).toMatchObject({ status: "failed", detail: "baza nieosiągalna, a Docker nie działa lub jest niedostępny" });
+    expect(result.hint).toMatch(/^Cannot connect to the Docker daemon\n/);
     expect(run).toHaveBeenCalledWith("docker", ["info"], { cwd: ROOT, env: { PATH: "/bin" }, timeoutMs: 30_000 });
+  });
+
+  it("explains a failing docker info without stderr", async () => {
+    const { ctx } = setup(LOCAL, { probes: [UNREACHABLE], info: failure(1) });
+
+    expect((await database.run(ctx)).hint).toMatch(/^Uruchom Dockera/);
   });
 
   it("refuses to start a second PostgreSQL when another one holds the port", async () => {

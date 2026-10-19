@@ -107,8 +107,14 @@ export const database = {
     if (daemon.code !== 0) {
       return {
         status: "failed",
-        detail: "baza nieosiągalna, a Docker nie działa",
-        hint: `Uruchom Dockera (Docker Desktop lub usługę docker) i uruchom ponownie albo: ${manualHint}`,
+        detail: "baza nieosiągalna, a Docker nie działa lub jest niedostępny",
+        hint: [
+          maskSecrets(lastLines(daemon.stderr, 3)),
+          "Uruchom Dockera (Docker Desktop lub usługę docker); na Linuksie sprawdź też dostęp do gniazda (grupa docker).",
+          `Albo: ${manualHint}`,
+        ]
+          .filter(Boolean)
+          .join("\n"),
       };
     }
     const running = await compose(ctx, ["ps", "--status", "running", "--services"]);

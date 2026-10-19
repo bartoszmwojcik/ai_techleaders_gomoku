@@ -30,6 +30,8 @@ const ERROR_KINDS: Record<string, DatabaseErrorKind> = {
  * (greedy up to the last `@` of the authority, so an unencoded `@` in the password does
  * not leak the rest; an empty user name is covered too) and `password=` query parameters.
  * Kept identical to maskSecrets in scripts/setup/env.mjs (a test compares them).
+ * Known limit: a password containing an unencoded "/" is not a valid URL (WHATWG `URL`
+ * rejects it) and is not masked.
  */
 export function maskSecrets(text: string): string {
   return text.replace(/(\w+:\/\/[^:/@\s]*:)[^\s/]*@/g, "$1***@").replace(/([?&]password=)[^&\s]+/gi, "$1***");

@@ -116,7 +116,7 @@ describe("run", () => {
       await vi.advanceTimersByTimeAsync(5);
 
       await expect(result).resolves.toMatchObject({ timedOut: true });
-      expect(spawn).toHaveBeenLastCalledWith("taskkill", ["/PID", "4242", "/T", "/F"]);
+      expect(spawn).toHaveBeenLastCalledWith("taskkill", ["/PID", "4242", "/T", "/F"], { windowsHide: true });
       expect(child.kill).not.toHaveBeenCalled();
       taskkill.emit("error", new Error("taskkill missing")); // must not throw
 

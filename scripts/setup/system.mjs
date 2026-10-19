@@ -83,7 +83,7 @@ export function run(command, args, { cwd, env, timeoutMs, platform = process.pla
 function terminate(child, platform) {
   if (platform === "win32") {
     // `kill()` would stop only cmd.exe; taskkill /T takes npm, node and docker with it.
-    if (child.pid !== undefined) spawn("taskkill", ["/PID", String(child.pid), "/T", "/F"]).on("error", () => {});
+    if (child.pid !== undefined) spawn("taskkill", ["/PID", String(child.pid), "/T", "/F"], { windowsHide: true }).on("error", () => {});
     return;
   }
   child.kill("SIGTERM");
