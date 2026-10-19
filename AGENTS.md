@@ -82,6 +82,11 @@ Wszystkie nowe pliki w `specs/`, `docs/`, `runs/` i `lessons/` muszą mieć nazw
 | `.ai/runs/` | Log każdego autonomicznego przebiegu (`/loop`, workflow, cron, długa praca bez nadzoru): cel, kroki z rezultatami, zmiany, błędy, status. |
 | `.ai/lessons/` | Pojedyncze lekcje: problem, kontekst, wniosek/reguła, powiązane spec/run. |
 | `.ai/lessons.md` | Indeks lekcji — jedna linia na wpis z linkiem do `lessons/…`. Czytany na starcie każdej sesji. |
+| `.ai/agentic.config.json` | Konfiguracja pipeline'u skilli `om-*` (bramka walidacyjna, tracker, etykiety, QA gate). Zmieniaj razem z `SDLC.md`; generuje ją `om-setup-agent-pipeline`. |
+| `.ai/trackers/`, `.ai/browsers/` | Deskryptory operacji trackera (GitHub) i przeglądarki (agent-browser) używane przez skille `om-*` — repozytoryjna kopia jest nadrzędna. |
+| `.ai/analysis/`, `.ai/scripts/`, `.ai/qa/` | Raporty skilli, skrypty środowiska testowego, stan i artefakty QA (`artifacts_*`, `test-env.*` są ignorowane przez git). |
+
+Proces dostarczania zmian (etapy, etykiety, bramka QA, protokół przejęcia) opisuje `SDLC.md`, zasady review — `CODE_REVIEW.md`, chronione kontrakty — `BACKWARD_COMPATIBILITY.md`. Skille `om-*` (instalowane w `.agents/skills/`, linki w `.claude/skills/`, wersje w `skills-lock.json`) czytają te pliki; nie edytuj zainstalowanych skilli — odstępstwa zapisuj w `.ai/skills/<skill>/SKILL.md`.
 
 Nie modyfikuj istniejących plików spoza tej struktury (np. `.ai/specs/product-brief.md`, `.ai/specs/research/`, `.ai/cezar/`) bez wyraźnej prośby.
 
