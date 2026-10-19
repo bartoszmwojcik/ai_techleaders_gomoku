@@ -1,24 +1,33 @@
 {
-  "name": "workspace-app",
+  "name": "gomoku",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.17"
   },
-  "dependencies": {
-    "next": "16.3.4",
-    "react": "19.2.8",
-    "react-dom": "19.2.8"
+  "scripts": {
+    "dev": "npm run dev -w @gomoku/app --",
+    "build": "npm run build -w @gomoku/app",
+    "start": "npm run start -w @gomoku/app --",
+    "lint": "eslint",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:migration:create": "npm run migration:create -w @gomoku/db --",
+    "db:migration:up": "npm run migration:up -w @gomoku/db",
+    "db:migration:down": "npm run migration:down -w @gomoku/db",
+    "db:migration:list": "npm run migration:list -w @gomoku/db",
+    "smoke": "node scripts/smoke.mjs",
+    "check": "npm run lint && npm run typecheck && npm run build && npm run smoke"
   },
   "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.3.4",
-    "typescript": "^5"
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.4",
+    "typescript": "^5.9.3"
   }
 }

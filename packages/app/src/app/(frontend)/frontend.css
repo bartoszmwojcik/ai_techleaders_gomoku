@@ -1,0 +1,9 @@
+/* Player-facing pages: plain Tailwind with the game's own theme, no shadcn/ui tokens. */
+@import "tailwindcss";
+
+@theme {
+  --color-board: #dcb35c;
+  --color-board-line: #6b4a1b;
+  --color-stone-black: #1c1917;
+  --color-stone-white: #fafaf9;
+}
