@@ -75,3 +75,10 @@ PR: #8
 - `DATABASE_URL` obcej bazy w otoczeniu → blokada przed jakimkolwiek połączeniem (hasło zamaskowane); równy plikom → akceptowany.
 - `db:status` na prawdziwej bazie: `ok/pending`, `auth`, `database-missing`, `unreachable`; bez tworzenia baz.
 - Znalezione i naprawione w trakcie: `import()` CommonJS `@next/env` w natywnym ESM (d021db7), tryb `NODE_ENV=test` w `@next/env` pomijający `.env.local` (87c4513), `ensureDatabase: true` w MikroORM 7 (sonda wyłącza; lekcje w `.ai/lessons/`).
+
+## Review (om-auto-review-pr --autofix)
+
+- Pierwsze review (niezależny agent): REQUEST CHANGES — 2 major, 5 minor, 5 nit (komentarz w PR #8).
+- Poprawki: c3303a5 (timeout bez czekania na drzewo procesów, root przez import.meta.url), f890e3f (60 s jako czas ścienny, docker info, podpowiedź o starym projekcie), e685da9 (maskowanie haseł, dokładne przywracanie env, AggregateError, maskowanie wyjść), poprawki nitów z re-review.
+- Re-review: APPROVE — wszystkie 12 uwag rozwiązane; 3 nity z re-review: 2 poprawione, 1 (hasło z nieescapowanym „/”) udokumentowany jako ograniczenie.
+- Bramka po poprawkach: lint, typecheck, 150 testów (100%), build, 4 testy integracyjne — PASS; `npm run setup` na prawdziwej bazie (także z zatrzymanym kontenerem) — OK.
