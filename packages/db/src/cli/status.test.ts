@@ -60,6 +60,7 @@ describe("classifyError", () => {
     ["ECONNREFUSED", "unreachable"],
     ["ENOTFOUND", "unreachable"],
     ["ETIMEDOUT", "unreachable"],
+    ["57P01", "unreachable"],
     ["57P03", "unreachable"],
     ["28P01", "auth"],
     ["28000", "auth"],
@@ -67,6 +68,19 @@ describe("classifyError", () => {
     ["42P01", "other"],
   ])("maps %s to %s", (code, kind) => {
     expect(classifyError(Object.assign(new Error("x"), { code }))).toMatchObject({ kind });
+  });
+
+  // Regression: CI run 39308725508 — right after `docker compose up` the port proxy
+  // accepted and closed the connection; the installer stopped instead of waiting.
+  it.each(["Connection terminated unexpectedly", "Connection terminated due to connection timeout"])(
+    "treats the code-less pg error %j as unreachable",
+    (message) => {
+      expect(classifyError(new Error(message))).toEqual({ kind: "unreachable", message });
+    },
+  );
+
+  it("does not treat other code-less errors as unreachable", () => {
+    expect(classifyError(new Error("Connection refused by policy")).kind).toBe("other");
   });
 
   it("explains an AggregateError (dual-stack host) by its inner errors", () => {
