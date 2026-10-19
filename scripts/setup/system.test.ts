@@ -14,7 +14,7 @@ vi.mock("node:net", async (importOriginal) => {
   return { ...original, createConnection: net.createConnection };
 });
 
-const { defaultDeps, isPortInUse, run } = await import("./system.mjs");
+const { defaultDeps, isPortInUse, KILL_GRACE_MS, run } = await import("./system.mjs");
 
 type FakeChild = EventEmitter & {
   stdout?: EventEmitter;
@@ -22,13 +22,21 @@ type FakeChild = EventEmitter & {
   kill: ReturnType<typeof vi.fn>;
 };
 
-function fakeChild({ withStreams = true } = {}): FakeChild {
+type FakeStream = EventEmitter & { destroy: ReturnType<typeof vi.fn> };
+
+const fakeStream = () => Object.assign(new EventEmitter(), { destroy: vi.fn() }) as FakeStream;
+
+/** A child that never closes on its own — like a grandchild holding the pipes open. */
+function fakeChild({ withStreams = true } = {}): FakeChild & { pid?: number } {
   const child = Object.assign(new EventEmitter(), {
-    kill: vi.fn(() => child.emit("close", null)),
-  }) as FakeChild;
+    pid: 4242 as number | undefined,
+    exitCode: null as number | null,
+    signalCode: null as string | null,
+    kill: vi.fn(),
+  }) as FakeChild & { stdout?: FakeStream; stderr?: FakeStream };
   if (withStreams) {
-    child.stdout = new EventEmitter();
-    child.stderr = new EventEmitter();
+    child.stdout = fakeStream();
+    child.stderr = fakeStream();
   }
   spawn.mockReturnValueOnce(child);
   return child;
@@ -59,12 +67,68 @@ describe("run", () => {
     expect(spawn).toHaveBeenCalledWith("docker compose up -d", { cwd: undefined, env: undefined, shell: true });
   });
 
-  it("kills the process and reports a timeout", async () => {
-    const child = fakeChild();
-    const result = await run("npm", ["run", "db:status"], { timeoutMs: 5 });
+  it("resolves on timeout without waiting for close, then escalates to SIGKILL", async () => {
+    vi.useFakeTimers();
+    try {
+      const child = fakeChild();
+      const result = run("npm", ["run", "db:status"], { timeoutMs: 5, platform: "linux" });
+      child.stdout?.emit("data", "partial");
+      await vi.advanceTimersByTimeAsync(5);
 
-    expect(child.kill).toHaveBeenCalledWith("SIGTERM");
-    expect(result).toMatchObject({ code: null, timedOut: true });
+      await expect(result).resolves.toEqual({ code: null, stdout: "partial", stderr: "", timedOut: true });
+      expect(child.kill).toHaveBeenCalledWith("SIGTERM");
+      expect((child.stdout as FakeStream).destroy).toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(KILL_GRACE_MS);
+      expect(child.kill).toHaveBeenLastCalledWith("SIGKILL");
+
+      // A late close does not change the settled result.
+      child.emit("close", 0);
+      await expect(result).resolves.toMatchObject({ timedOut: true });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not SIGKILL a process that exited during the grace period", async () => {
+    vi.useFakeTimers();
+    try {
+      const child = fakeChild({ withStreams: false }) as FakeChild & { exitCode: number | null };
+      const result = run("npm", ["ci"], { timeoutMs: 5, platform: "linux" });
+      await vi.advanceTimersByTimeAsync(5);
+      await result;
+      child.exitCode = 143;
+      await vi.advanceTimersByTimeAsync(KILL_GRACE_MS);
+
+      expect(child.kill).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("terminates the whole process tree with taskkill on Windows", async () => {
+    vi.useFakeTimers();
+    try {
+      const child = fakeChild();
+      const taskkill = Object.assign(new EventEmitter(), {});
+      spawn.mockReturnValueOnce(taskkill);
+      const result = run("npm", ["ci"], { timeoutMs: 5, platform: "win32" });
+      await vi.advanceTimersByTimeAsync(5);
+
+      await expect(result).resolves.toMatchObject({ timedOut: true });
+      expect(spawn).toHaveBeenLastCalledWith("taskkill", ["/PID", "4242", "/T", "/F"]);
+      expect(child.kill).not.toHaveBeenCalled();
+      taskkill.emit("error", new Error("taskkill missing")); // must not throw
+
+      const notStarted = fakeChild();
+      notStarted.pid = undefined;
+      const noPid = run("npm", ["ci"], { timeoutMs: 5, platform: "win32" });
+      await vi.advanceTimersByTimeAsync(5);
+      await expect(noPid).resolves.toMatchObject({ timedOut: true });
+      expect(spawn).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("reports a command that cannot be started", async () => {
@@ -126,6 +190,7 @@ describe("defaultDeps", () => {
     expect(defaultDeps).toMatchObject({ run, isPortInUse, env: process.env, nodeVersion: process.versions.node });
     expect(defaultDeps.fs.existsSync).toBe(existsSync);
     await expect(defaultDeps.sleep(0)).resolves.toBeUndefined();
+    expect(Math.abs(defaultDeps.now() - Date.now())).toBeLessThan(1_000);
     await expect(defaultDeps.loadNextEnv()).resolves.toMatchObject({ loadEnvConfig: expect.any(Function) });
   });
 

@@ -5,8 +5,8 @@ import { spawn } from "node:child_process";
 import * as fs from "node:fs";
 import { createRequire } from "node:module";
 import { createConnection } from "node:net";
-import { resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
 
 /**
  * @typedef {object} RunOptions
@@ -25,6 +25,9 @@ import { setTimeout as delay } from "node:timers/promises";
  * @property {string} [error] Spawn error code, e.g. `ENOENT` when the command is not installed.
  */
 
+/** Grace period between SIGTERM and SIGKILL for a timed-out command (POSIX). */
+export const KILL_GRACE_MS = 2_000;
+
 /**
  * Runs a command with fixed arguments and collects its output.
  *
@@ -32,6 +35,11 @@ import { setTimeout as delay } from "node:timers/promises";
  * then passed as a single string (passing an argument array together with
  * `shell: true` is deprecated, DEP0190). Arguments are constants defined by the
  * installer, never user input, and secrets travel only through `env`.
+ *
+ * The timeout is a hard limit: the result resolves as soon as it fires, without
+ * waiting for `close` — a grandchild that keeps the pipes open must not hang the
+ * installer. The process tree is then terminated (Windows: `taskkill /T /F`; POSIX:
+ * SIGTERM, which npm forwards to its children, then SIGKILL after a grace period).
  *
  * @param {string} command
  * @param {string[]} args
@@ -46,22 +54,42 @@ export function run(command, args, { cwd, env, timeoutMs, platform = process.pla
         : spawn(command, args, { cwd, env });
     let stdout = "";
     let stderr = "";
-    let timedOut = false;
+    let settled = false;
+    const finish = (/** @type {RunResult} */ result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolveRun(result);
+    };
     child.stdout?.on("data", (chunk) => (stdout += chunk));
     child.stderr?.on("data", (chunk) => (stderr += chunk));
     const timer = setTimeout(() => {
-      timedOut = true;
-      child.kill("SIGTERM");
+      terminate(child, platform);
+      child.stdout?.destroy();
+      child.stderr?.destroy();
+      finish({ code: null, stdout, stderr, timedOut: true });
     }, timeoutMs);
-    child.on("error", (/** @type {NodeJS.ErrnoException} */ error) => {
-      clearTimeout(timer);
-      resolveRun({ code: null, stdout, stderr, timedOut: false, error: error.code ?? error.message });
-    });
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      resolveRun({ code: timedOut ? null : code, stdout, stderr, timedOut });
-    });
+    child.on("error", (/** @type {NodeJS.ErrnoException} */ error) =>
+      finish({ code: null, stdout, stderr, timedOut: false, error: error.code ?? error.message }),
+    );
+    child.on("close", (code) => finish({ code, stdout, stderr, timedOut: false }));
   });
+}
+
+/**
+ * @param {import("node:child_process").ChildProcess} child
+ * @param {NodeJS.Platform} platform
+ */
+function terminate(child, platform) {
+  if (platform === "win32") {
+    // `kill()` would stop only cmd.exe; taskkill /T takes npm, node and docker with it.
+    if (child.pid !== undefined) spawn("taskkill", ["/PID", String(child.pid), "/T", "/F"]).on("error", () => {});
+    return;
+  }
+  child.kill("SIGTERM");
+  setTimeout(() => {
+    if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+  }, KILL_GRACE_MS).unref();
 }
 
 /**
@@ -104,6 +132,7 @@ function canConnect(host, port, timeoutMs) {
  * @property {Pick<typeof fs, "existsSync" | "readFileSync" | "writeFileSync" | "copyFileSync">} fs
  * @property {(ms: number) => Promise<unknown>} sleep
  * @property {(line: string) => void} log
+ * @property {() => number} now Milliseconds, like `Date.now()`.
  * @property {NodeJS.ProcessEnv} env Process environment (the real `process.env`).
  * @property {string} nodeVersion
  * @property {() => Promise<typeof import("@next/env")>} loadNextEnv
@@ -111,12 +140,15 @@ function canConnect(host, port, timeoutMs) {
 
 /** @type {Deps} */
 export const defaultDeps = {
-  root: resolve(import.meta.dirname, "../.."),
+  // import.meta.url (not import.meta.dirname, Node >= 20.11): on an old Node the
+  // requirements step must still run and explain the version, not crash on import.
+  root: fileURLToPath(new URL("../..", import.meta.url)),
   run,
   isPortInUse,
   fs,
   sleep: delay,
   log: (line) => console.log(line),
+  now: () => Date.now(),
   env: process.env,
   nodeVersion: process.versions.node,
   // Available only after the dependencies step (`npm ci`), hence the lazy load. @next/env
