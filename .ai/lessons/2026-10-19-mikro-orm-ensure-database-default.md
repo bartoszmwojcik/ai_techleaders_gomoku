@@ -7,6 +7,7 @@
 **Rule.**
 - Any code that only checks the database (probes, healthchecks, tools) passes `ensureDatabase: false`, as `packages/db/src/cli/status.ts` does.
 - Experiments with connection URLs run only against databases whose creation you can roll back; check `pg_database` afterwards and drop any databases you created.
-- The app config (`createOrmConfig`) still needs a decision — follow-up issue.
+- `createOrmConfig` (`packages/db/src/config.ts`) sets `ensureDatabase: false` (#9). Don't remove it; to create a database, use `compose.yaml`/Testcontainers or create it by hand.
+- Caveat: the MikroORM `Migrator` (`npm run db:migration:*`) calls `ensureDatabase()` regardless of this option (`@mikro-orm/migrations/Migrator.js`), so the migration CLI will still create a missing database. Check `DATABASE_URL` before running migrations.
 
 Related: `.ai/specs/2026-10-19-npm-setup-installer.md`.
