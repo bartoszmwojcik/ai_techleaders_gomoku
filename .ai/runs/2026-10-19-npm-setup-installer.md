@@ -61,6 +61,6 @@ Engine: om-auto-create-pr (steps: 10, --loop: no)
 
 ### Phase 2: CI, dokumentacja, weryfikacja
 
-- [ ] 2.1 Job CI setup
+- [x] 2.1 Job CI setup — 3e26a16
 - [ ] 2.2 Dokumentacja
 - [ ] 2.3 Weryfikacja ręczna i pełna bramka
