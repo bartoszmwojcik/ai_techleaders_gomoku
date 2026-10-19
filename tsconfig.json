@@ -1,0 +1,5 @@
+{
+  // Root-level TypeScript outside the packages: test configs and integration tests.
+  "extends": "./tsconfig.base.json",
+  "include": ["vitest.config.ts", "vitest.integration.config.ts", "tests"]
+}

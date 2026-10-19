@@ -31,6 +31,7 @@ export default function HomePage() {
 
       <div
         aria-hidden="true"
+        data-testid="board"
         className="grid aspect-square w-full max-w-md rounded-md bg-board p-3 shadow-2xl"
         style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, minmax(0, 1fr))` }}
       >

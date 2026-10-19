@@ -121,12 +121,31 @@ Uruchamiane z katalogu głównego:
 | `npm run dev` | Serwer deweloperski Next.js |
 | `npm run build` / `npm run start` | Build produkcyjny i jego uruchomienie |
 | `npm run lint` | ESLint dla całego monorepo |
-| `npm run typecheck` | Sprawdzenie typów we wszystkich pakietach |
+| `npm run typecheck` | Sprawdzenie typów we wszystkich pakietach i w testach integracyjnych |
+| `npm test` | Testy jednostkowe (Vitest) z raportem pokrycia w `coverage/`; próg 100% dla każdego pliku |
+| `npm run test:watch` | Testy jednostkowe w trybie watch |
+| `npm run test:integration` | Testy integracyjne zbudowanej aplikacji (Docker, wcześniej `npm run build`) |
 | `npm run smoke` | Uruchamia zbudowaną aplikację i sprawdza `/`, `/backend`, `/api/health` (z bazą) i 404; port: `SMOKE_PORT` (domyślnie 3100) |
-| `npm run check` | Pełna weryfikacja: `lint` → `typecheck` → `build` → `smoke` |
+| `npm run check` | Pełna weryfikacja: `lint` → `typecheck` → `test` → `build` → `test:integration` |
 | `npm run db:migration:create` | Nowa migracja na podstawie różnic między encjami a schematem (`-- --blank`: pusta) |
 | `npm run db:migration:up` / `db:migration:down` | Zastosowanie / cofnięcie migracji |
 | `npm run db:migration:list` | Lista wykonanych migracji |
+
+## Testy i CI
+
+**Testy jednostkowe** (Vitest 5) leżą obok kodu jako `*.test.ts(x)`. Każdy pakiet z `packages/*` to osobny projekt Vitest. Próg pokrycia wynosi 100% (instrukcje, gałęzie, funkcje, linie) dla każdego pliku. Poza progiem są tylko komponenty shadcn/ui (lista `SHADCN_COMPONENTS` w `vitest.config.ts`) i wygenerowane migracje.
+
+**Testy integracyjne** (`tests/integration`) uruchamiają produkcyjny build aplikacji na tymczasowym PostgreSQL w kontenerze ([Testcontainers](https://testcontainers.com/)) i sprawdzają strony w prawdziwej przeglądarce przez [agent-browser](https://agent-browser.dev). Wymagają Dockera i jednorazowej instalacji Chrome:
+
+```bash
+npx agent-browser install        # Chrome for Testing (raz)
+npm run build
+npm run test:integration
+```
+
+Log serwera z ostatniego przebiegu: `tests/integration/server.log`.
+
+**CI** (GitHub Actions, `.github/workflows/ci.yml`) na każdym pull requeście i pushu na `main` uruchamia równolegle: lint, typecheck, testy jednostkowe z progiem pokrycia, build i testy integracyjne.
 
 ## Praca z agentami AI
 

@@ -14,20 +14,28 @@
     "build": "npm run build -w @gomoku/app",
     "start": "npm run start -w @gomoku/app --",
     "lint": "eslint",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "tsc -p tsconfig.json --noEmit && npm run typecheck --workspaces --if-present",
     "db:migration:create": "npm run migration:create -w @gomoku/db --",
     "db:migration:up": "npm run migration:up -w @gomoku/db",
     "db:migration:down": "npm run migration:down -w @gomoku/db",
     "db:migration:list": "npm run migration:list -w @gomoku/db",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "smoke": "node scripts/smoke.mjs",
-    "check": "npm run lint && npm run typecheck && npm run build && npm run smoke"
+    "check": "npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration"
   },
   "devDependencies": {
+    "@testcontainers/postgresql": "^12.2.1",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@vitest/coverage-v8": "^5.0.5",
+    "agent-browser": "^0.39.1",
     "eslint": "^9.39.5",
-    "eslint-config-next": "^16.4.2",
-    "typescript": "^5.9.3"
+    "eslint-config-next": "^16.3.4",
+    "testcontainers": "^12.2.1",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.5"
   }
 }
