@@ -36,13 +36,18 @@ export function fakeContext({
     writeFileSync: vi.fn((path: string, content: string) => void store.set(path, content)),
     copyFileSync: vi.fn((from: string, to: string) => void store.set(to, store.get(from)!)),
   };
+  // A virtual clock: sleeping advances it, so deadline loops run instantly in tests.
+  const clock = { now: 1_000_000 };
   const ctx: Context = {
     deps: {
       root: ROOT,
       run: vi.fn(),
       isPortInUse: vi.fn().mockResolvedValue(false),
       fs: fs as unknown as Deps["fs"],
-      sleep: vi.fn().mockResolvedValue(undefined),
+      sleep: vi.fn(async (ms: number) => {
+        clock.now += ms;
+      }),
+      now: () => clock.now,
       log: vi.fn(),
       env,
       nodeVersion: "22.23.3",
@@ -53,5 +58,5 @@ export function fakeContext({
     state: {},
   };
   const file = (path: string) => store.get(`${ROOT}/${path}`);
-  return { ctx, fs, file, run: ctx.deps.run as ReturnType<typeof vi.fn> };
+  return { ctx, fs, file, clock, run: ctx.deps.run as ReturnType<typeof vi.fn> };
 }

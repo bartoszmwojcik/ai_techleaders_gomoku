@@ -23,15 +23,18 @@ const POSTGRES_PORT = 5432;
  * Runs `npm run db:status` (packages/db/src/cli/status.ts) against the target database.
  *
  * @param {Context} ctx
+ * @param {number} [timeoutMs]
  * @returns {Promise<DatabaseStatus>}
  */
-export async function probeDatabase({ deps, state }) {
+export async function probeDatabase({ deps, state }, timeoutMs = PROBE_TIMEOUT_MS) {
   const result = await deps.run("npm", ["run", "db:status", "--silent"], {
     cwd: deps.root,
     env: { ...deps.env, DATABASE_URL: state.databaseUrl },
-    timeoutMs: PROBE_TIMEOUT_MS,
+    timeoutMs,
   });
-  if (result.timedOut) return { ok: false, kind: "unreachable", message: "brak odpowiedzi w 30 s" };
+  if (result.timedOut) {
+    return { ok: false, kind: "unreachable", message: `brak odpowiedzi w ${Math.round(timeoutMs / 1_000)} s` };
+  }
   try {
     // The status is the last line; anything before it is npm noise.
     const status = JSON.parse(result.stdout.trim().replace(/^[\s\S]*\n/, ""));
@@ -96,7 +99,16 @@ export const database = {
       return {
         status: "failed",
         detail: "baza nieosiągalna, a docker compose jest niedostępny",
-        hint: `Zainstaluj i uruchom Dockera (docker compose) albo: ${manualHint}`,
+        hint: `Zainstaluj Dockera z docker compose albo: ${manualHint}`,
+      };
+    }
+    // `docker compose version` checks only the client; the daemon may be stopped.
+    const daemon = await ctx.deps.run("docker", ["info"], { cwd: ctx.deps.root, env: ctx.deps.env, timeoutMs: PROBE_TIMEOUT_MS });
+    if (daemon.code !== 0) {
+      return {
+        status: "failed",
+        detail: "baza nieosiągalna, a Docker nie działa",
+        hint: `Uruchom Dockera (Docker Desktop lub usługę docker) i uruchom ponownie albo: ${manualHint}`,
       };
     }
     const running = await compose(ctx, ["ps", "--status", "running", "--services"]);
@@ -105,7 +117,11 @@ export const database = {
       return {
         status: "failed",
         detail: `port ${POSTGRES_PORT} zajmuje inna instancja PostgreSQL niż kontener z compose.yaml`,
-        hint: "Ustaw DATABASE_URL (.env.local) na tę instancję albo zwolnij port i uruchom ponownie. Instalator nie startuje drugiej bazy.",
+        hint: [
+          "Ustaw DATABASE_URL (.env.local) na tę instancję albo zwolnij port i uruchom ponownie. Instalator nie startuje drugiej bazy.",
+          "Jeśli to kontener tego repozytorium uruchomiony w innym katalogu przed przypięciem nazwy projektu w compose.yaml,",
+          "zatrzymaj go: docker compose -p <nazwa-tamtego-katalogu> down  (dane w jego wolumenie zostają).",
+        ].join("\n"),
       };
     }
 
@@ -113,9 +129,13 @@ export const database = {
     if (up.code !== 0) {
       return { status: "failed", detail: "docker compose up -d zakończone błędem", hint: maskSecrets(lastLines(up.stderr)) };
     }
-    for (let waited = 0; waited < READY_TIMEOUT_MS; waited += POLL_INTERVAL_MS) {
+    // A deadline, not an iteration count: each probe itself takes seconds.
+    const deadline = ctx.deps.now() + READY_TIMEOUT_MS;
+    while (ctx.deps.now() < deadline) {
       await ctx.deps.sleep(POLL_INTERVAL_MS);
-      status = await probeDatabase(ctx);
+      const remaining = deadline - ctx.deps.now();
+      if (remaining <= 0) break;
+      status = await probeDatabase(ctx, Math.min(PROBE_TIMEOUT_MS, remaining));
       if (status.ok) {
         ctx.state.pendingMigrations = status.pending;
         return { status: "done", detail: "uruchomiono PostgreSQL (docker compose up -d)" };
