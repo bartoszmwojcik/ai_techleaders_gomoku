@@ -1,4 +1,8 @@
-# Local PostgreSQL for development: `docker compose up -d`
+# Local PostgreSQL for development: `docker compose up -d` (or `npm run setup`).
+# The project name is pinned so worktrees and clones in other directories share one
+# container and volume instead of starting a second, empty database.
+name: ai_techleaders_gomoku
+
 services:
   postgres:
     image: postgres:17
