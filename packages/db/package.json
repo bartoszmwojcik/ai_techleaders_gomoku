@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "@mikro-orm/cli": "^7.2.5",
-    "@next/env": "16.3.4",
+    "@next/env": "16.4.2",
     "tsx": "^4.23.15"
   }
 }
