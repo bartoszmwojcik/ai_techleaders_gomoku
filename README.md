@@ -93,7 +93,23 @@ cd packages/ui && npx shadcn@latest add dialog
 
 ## Uruchomienie
 
-Wymagania: Node.js ≥ 22.17 i PostgreSQL 17 (np. przez Dockera).
+Wymagania: Node.js ≥ 22.17 i PostgreSQL 17 (najprościej Docker z `docker compose`).
+
+```bash
+npm run setup                    # przygotowuje repozytorium (można powtarzać)
+npm run dev                      # http://localhost:3000
+```
+
+`npm run setup` wykonuje po kolei wszystkie kroki instalacji ręcznej (niżej): sprawdza wersję Node.js, instaluje zależności (`npm ci`), tworzy `.env.local` z `.env.example`, uruchamia PostgreSQL w Dockerze, jeśli baza nie odpowiada, i stosuje migracje. Każdy krok najpierw sprawdza, czy jest już wykonany, więc kolejne uruchomienia pomijają gotowe kroki i dokańczają tylko braki. Instalator:
+
+- nigdy nie nadpisuje istniejącego `.env.local`;
+- łączy się z tą samą bazą co `npm run dev` (pliki `.env*` jak w trybie deweloperskim) i wypisuje ją z ukrytym hasłem;
+- odmawia użycia `DATABASE_URL` ze zmiennych środowiskowych, gdy różni się od plików `.env*` — świadomie: `npm run setup -- --db-from-env`;
+- nie uruchamia drugiego PostgreSQL, gdy port 5432 zajmuje już inna instancja.
+
+Opcja `npm run setup -- --with-browser` dodatkowo instaluje Chrome dla testów integracyjnych, a `npm run setup -- --help` pokazuje wszystkie opcje.
+
+### Instalacja ręczna
 
 ```bash
 npm install
@@ -118,6 +134,7 @@ Uruchamiane z katalogu głównego:
 
 | Komenda | Opis |
 | --- | --- |
+| `npm run setup` | Idempotentna instalacja: zależności, `.env.local`, PostgreSQL, migracje (`-- --with-browser`, `-- --db-from-env`, `-- --help`) |
 | `npm run dev` | Serwer deweloperski Next.js |
 | `npm run build` / `npm run start` | Build produkcyjny i jego uruchomienie |
 | `npm run lint` | ESLint dla całego monorepo |
@@ -130,6 +147,7 @@ Uruchamiane z katalogu głównego:
 | `npm run db:migration:create` | Nowa migracja na podstawie różnic między encjami a schematem (`-- --blank`: pusta) |
 | `npm run db:migration:up` / `db:migration:down` | Zastosowanie / cofnięcie migracji |
 | `npm run db:migration:list` | Lista wykonanych migracji |
+| `npm run db:status` | Czy baza z `DATABASE_URL` odpowiada i ile migracji czeka (JSON) |
 
 ## Testy i CI
 
@@ -138,14 +156,14 @@ Uruchamiane z katalogu głównego:
 **Testy integracyjne** (`tests/integration`) uruchamiają produkcyjny build aplikacji na tymczasowym PostgreSQL w kontenerze ([Testcontainers](https://testcontainers.com/)) i sprawdzają strony w prawdziwej przeglądarce przez [agent-browser](https://agent-browser.dev). Wymagają Dockera i jednorazowej instalacji Chrome:
 
 ```bash
-npx agent-browser install        # Chrome for Testing (raz)
+npx agent-browser install        # Chrome for Testing (raz; albo npm run setup -- --with-browser)
 npm run build
 npm run test:integration
 ```
 
 Log serwera z ostatniego przebiegu: `tests/integration/server.log`.
 
-**CI** (GitHub Actions, `.github/workflows/ci.yml`) na każdym pull requeście i pushu na `main` uruchamia równolegle: lint, typecheck, testy jednostkowe z progiem pokrycia, build i testy integracyjne.
+**CI** (GitHub Actions, `.github/workflows/ci.yml`) na każdym pull requeście i pushu na `main` uruchamia równolegle: lint, typecheck, testy jednostkowe z progiem pokrycia, build, testy integracyjne oraz dwukrotne `npm run setup` na świeżym checkoucie (drugie uruchomienie musi pominąć wszystkie kroki).
 
 ## Praca z agentami AI
 

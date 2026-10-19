@@ -62,12 +62,12 @@ Dozwolony kierunek zależności (bez cykli): `app → core, db, ui`; `db → cor
 - **Granice mockuj, logikę testuj naprawdę:** `next/server` (`connection`), `@/server/container` (w stronach i handlerach — podstaw `cradle` z fałszywymi serwisami), `@gomoku/db`/ORM (w serwisach — fałszywy `orm`/`em`), `@next/env` (konfiguracje). `server-only` jest zaślepiony w `packages/app/vitest.setup.ts`. Środowisko ustawiaj przez `vi.stubEnv` (przywracane automatycznie) — nie zakładaj wartości `NODE_ENV`/`DATABASE_URL` z otoczenia. Moduły ze stanem lub efektami na poziomie modułu ładuj w teście przez `vi.resetModules()` + `await import()`.
 - **Komponenty React** testuj przez `renderToStaticMarkup` z `react-dom/server` (async server component: `renderToStaticMarkup(await Page())`). Komponenty klienckie z interakcją: dodaj `jsdom` + `@testing-library/react` do projektu, który ich potrzebuje.
 - **Testy integracyjne** (`tests/integration/*.test.ts`, `vitest.integration.config.ts`) sprawdzają zbudowaną aplikację end-to-end: `global-setup.ts` startuje PostgreSQL w Testcontainers, wykonuje migracje i `next start` z `DATABASE_URL` kontenera; przeglądarką steruje `agent-browser` przez helper `tests/integration/browser.ts`, a kody HTTP i API sprawdzaj przez `fetch`. Nowa strona, przepływ użytkownika lub endpoint dostaje scenariusz integracyjny. Do selekcji elementów bez roli/tekstu używaj `data-testid`. Log serwera: `tests/integration/server.log`.
-- **Wymagania lokalne:** Docker (Testcontainers) i jednorazowo `npx agent-browser install` (Chrome). Testy integracyjne używają builda — po zmianie kodu lub zależności uruchom `npm run build` przed `npm run test:integration`.
-- **CI** (`.github/workflows/ci.yml`) uruchamia na każdym PR i pushu na `main` joby `lint`, `typecheck`, `unit`, `build`, `integration`. Wszystkie muszą być zielone przed merge.
+- **Wymagania lokalne:** Docker (Testcontainers) i jednorazowo `npx agent-browser install` (Chrome) — albo `npm run setup -- --with-browser`. Testy integracyjne używają builda — po zmianie kodu lub zależności uruchom `npm run build` przed `npm run test:integration`.
+- **CI** (`.github/workflows/ci.yml`) uruchamia na każdym PR i pushu na `main` joby `lint`, `typecheck`, `unit`, `build`, `integration`, `setup` (dwukrotne `npm run setup` na świeżym checkoucie). Wszystkie muszą być zielone przed merge.
 
 ### Komendy (z roota)
 
-`npm run dev` · `npm run build` · `npm run start` · `npm run lint` · `npm run typecheck` · `npm test` · `npm run test:watch` · `npm run test:integration` · `npm run smoke` · `npm run check` · `npm run db:migration:create|up|down|list`
+`npm run setup` · `npm run dev` · `npm run build` · `npm run start` · `npm run lint` · `npm run typecheck` · `npm test` · `npm run test:watch` · `npm run test:integration` · `npm run smoke` · `npm run check` · `npm run db:migration:create|up|down|list` · `npm run db:status`
 
 ## Struktura `.ai/`
 

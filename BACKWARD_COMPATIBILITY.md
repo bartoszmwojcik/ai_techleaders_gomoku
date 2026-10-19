@@ -66,7 +66,7 @@ Zmienne z `.env.example`: `DATABASE_URL`, `DATABASE_POOL_MIN`, `DATABASE_POOL_MA
 
 ### 7. Komendy npm
 
-Skrypty w głównym `package.json` (`dev`, `build`, `start`, `lint`, `typecheck`, `test`, `test:watch`, `test:integration`, `smoke`, `check`, `db:migration:*`). Konsumenci: CI (`.github/workflows/ci.yml`), bramka walidacyjna skilli (`.ai/agentic.config.json`), `AGENTS.md`, `README.md`, `SDLC.md`.
+Skrypty w głównym `package.json` (`setup`, `dev`, `build`, `start`, `lint`, `typecheck`, `test`, `test:watch`, `test:integration`, `smoke`, `check`, `db:migration:*`, `db:status`). Format JSON `db:status` jest wewnętrznym kontraktem z instalatorem (`scripts/setup`) — zmieniaj obie strony w tym samym PR. Konsumenci: CI (`.github/workflows/ci.yml`), bramka walidacyjna skilli (`.ai/agentic.config.json`), `AGENTS.md`, `README.md`, `SDLC.md`.
 
 **Łamiące:** zmiana nazwy lub usunięcie skryptu, zmiana tego, co sprawdza `check`.
 **Ścieżka:** zaktualizuj w tym samym PR wszystkich wymienionych konsumentów.

@@ -10,6 +10,7 @@
     "node": ">=22.17"
   },
   "scripts": {
+    "setup": "node scripts/setup/cli.mjs",
     "dev": "npm run dev -w @gomoku/app --",
     "build": "npm run build -w @gomoku/app",
     "start": "npm run start -w @gomoku/app --",
@@ -19,6 +20,7 @@
     "db:migration:up": "npm run migration:up -w @gomoku/db",
     "db:migration:down": "npm run migration:down -w @gomoku/db",
     "db:migration:list": "npm run migration:list -w @gomoku/db",
+    "db:status": "npm run status -w @gomoku/db --silent",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.ts",
