@@ -53,7 +53,7 @@ Engine: om-auto-create-pr (steps: 10, --loop: no)
 
 - [x] 1.1 Szkielet, skrypt setup, projekt Vitest scripts i pokrycie — c83482b
 - [x] 1.2 Krok 1 (wymagania) i podsumowanie — e8d5b05
-- [ ] 1.3 Krok 2 (zależności)
+- [x] 1.3 Krok 2 (zależności) — 1fb849a
 - [ ] 1.4 Krok 3 (.env.local)
 - [ ] 1.5 Sonda db:status w @gomoku/db
 - [ ] 1.6 Krok 4 (cel bazy)
