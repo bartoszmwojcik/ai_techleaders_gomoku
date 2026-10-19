@@ -106,7 +106,8 @@ pokrywające go w 100%.
   (`config.ts`: 50% linii).
 - [x] `npm run test:integration` przechodzi lokalnie: kontener PostgreSQL, migracje, `next start`, agent-browser
   (4 testy).
-- [ ] Workflow CI ma joby `lint`, `typecheck`, `unit`, `build`, `integration` i wszystkie przechodzą na PR.
+- [x] Workflow CI ma joby `lint`, `typecheck`, `unit`, `build`, `integration` i wszystkie przechodzą na PR
+  (PR #3, 2026-10-19: wszystkie zielone; integracja 1m36s).
 - [x] `AGENTS.md` zawiera regułę 100% pokrycia dla nowych funkcji i konwencje testów; README opisuje testy i CI.
 - [x] `npm run lint`, `npm run typecheck`, `npm run build` przechodzą (`npm run check` w całości: exit 0).
 
@@ -134,4 +135,4 @@ pokrywające go w 100%.
   kody HTTP przez `fetch`, czekanie na wyjście serwera, Chrome runnera w CI, blokada `v8 ignore`, concurrency.
   Odrzucone: łączenie jobów `build` i `integration` (użytkownik chce osobnego statusu buildu), wspólny helper
   startu serwera ze `smoke.mjs` (poza zakresem).
-- 2026-10-19 — implementacja; `npm run check` przechodzi lokalnie. Czeka na zielone CI w PR.
+- 2026-10-19 — implementacja; `npm run check` przechodzi lokalnie, CI na PR #3 zielone. Po merge przenieść do `implemented/`.
