@@ -8,4 +8,4 @@
 - Instaluj zależności npm dołączonym do Node 22, nie `npx npm@11`. Ostrzeżenia `install-scripts` oznaczają, że pakiety mogą nie działać.
 - Usunięcie pól `libc` przez npm to oczekiwany szum. Nie przywracaj ich ręcznie i nie zmieniaj przez to wersji npm bez zgody użytkownika.
 
-Powiązane: `.ai/specs/2026-10-19-ci-and-testing.md`.
+Powiązane: `.ai/specs/implemented/2026-10-19-ci-and-testing.md`.
