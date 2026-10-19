@@ -8,4 +8,4 @@
 - Po zmianie gałęzi, zależności lub kodu uruchom `npm run build` przed `npm run test:integration` (`npm run check` robi to sam).
 - Przy 500 w testach integracyjnych najpierw czytaj `tests/integration/server.log` (w CI: artefakt `integration-server-log`).
 
-Powiązane: `.ai/specs/2026-10-19-ci-and-testing.md`.
+Powiązane: `.ai/specs/implemented/2026-10-19-ci-and-testing.md`.

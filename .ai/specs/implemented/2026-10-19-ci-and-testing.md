@@ -1,6 +1,6 @@
 # CI (GitHub Actions), testy jednostkowe i integracyjne
 
-**Status:** w realizacji (2026-10-19)
+**Status:** wdrożona (2026-10-19, PR #3)
 
 ## Cel
 
@@ -135,4 +135,5 @@ pokrywające go w 100%.
   kody HTTP przez `fetch`, czekanie na wyjście serwera, Chrome runnera w CI, blokada `v8 ignore`, concurrency.
   Odrzucone: łączenie jobów `build` i `integration` (użytkownik chce osobnego statusu buildu), wspólny helper
   startu serwera ze `smoke.mjs` (poza zakresem).
-- 2026-10-19 — implementacja; `npm run check` przechodzi lokalnie, CI na PR #3 zielone. Po merge przenieść do `implemented/`.
+- 2026-10-19 — implementacja; `npm run check` przechodzi lokalnie, CI na PR #3 zielone.
+- 2026-10-19 — PR #3 zmergowany (`e43f9b8`); specyfikacja przeniesiona do `implemented/`.
