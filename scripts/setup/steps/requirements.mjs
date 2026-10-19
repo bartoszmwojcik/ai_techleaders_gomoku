@@ -48,6 +48,6 @@ export const requirements = {
         hint: `Zainstaluj Node.js w wersji ${range} (np. przez nvm) i uruchom ponownie.`,
       };
     }
-    return { status: "done", detail: `Node ${deps.nodeVersion} (wymagane ${range})` };
+    return { status: "info", detail: `Node ${deps.nodeVersion} (wymagane ${range})` };
   },
 };

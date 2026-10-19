@@ -79,6 +79,17 @@ describe("main", () => {
     expect(lines).toHaveLength(2);
   });
 
+  it("reports a step that throws as a failure, with secrets masked", async () => {
+    const { deps, lines } = fakeDeps();
+    const throwing: Step = { label: "Cel bazy", run: vi.fn().mockRejectedValue(new Error("bad postgresql://u:pw@h/d")) };
+    const throwingValue: Step = { label: "Inny", run: vi.fn().mockRejectedValue("plain") };
+
+    await expect(main([], deps, [throwing])).resolves.toBe(1);
+    await expect(main([], deps, [throwingValue])).resolves.toBe(1);
+    expect(lines).toContain("✗ Cel bazy — nieoczekiwany błąd: bad postgresql://u:***@h/d");
+    expect(lines).toContain("✗ Inny — nieoczekiwany błąd: plain");
+  });
+
   it("prints usage for --help and for an unknown option", async () => {
     const { deps, lines } = fakeDeps();
 

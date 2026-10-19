@@ -2,6 +2,7 @@
 // checks whether its effect already exists and only then acts. The first failure stops
 // the run with a hint; completed steps are never rolled back (each is safe to repeat).
 // Spec: .ai/specs/2026-10-19-npm-setup-installer.md
+import { maskSecrets } from "./env.mjs";
 import { STEPS } from "./steps/index.mjs";
 import { defaultDeps } from "./system.mjs";
 
@@ -72,7 +73,7 @@ export async function main(argv, deps = defaultDeps, steps = STEPS) {
   /** @type {Context} */
   const ctx = { deps, options: parsed.options, state: {} };
   for (const step of steps) {
-    const result = await step.run(ctx);
+    const result = await runStep(step, ctx);
     deps.log(formatLine(step.label, result));
     if (result.status === "failed") {
       if (result.hint) deps.log(`\n${result.hint}`);
@@ -82,4 +83,21 @@ export async function main(argv, deps = defaultDeps, steps = STEPS) {
   }
   deps.log("\nGotowe. Uruchom aplikację: npm run dev  (http://localhost:3000)");
   return 0;
+}
+
+/**
+ * A step reports expected failures as results; anything thrown is a bug or an
+ * environment problem, reported the same way instead of crashing with a stack trace.
+ *
+ * @param {Step} step
+ * @param {Context} ctx
+ * @returns {Promise<StepResult>}
+ */
+async function runStep(step, ctx) {
+  try {
+    return await step.run(ctx);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { status: "failed", detail: `nieoczekiwany błąd: ${maskSecrets(message)}` };
+  }
 }

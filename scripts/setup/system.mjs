@@ -3,6 +3,7 @@
 // Docker or touch the network. Only Node built-ins: the installer runs before `npm ci`.
 import { spawn } from "node:child_process";
 import * as fs from "node:fs";
+import { createRequire } from "node:module";
 import { createConnection } from "node:net";
 import { resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -118,6 +119,8 @@ export const defaultDeps = {
   log: (line) => console.log(line),
   env: process.env,
   nodeVersion: process.versions.node,
-  // Available only after the dependencies step (`npm ci`), hence the lazy import.
-  loadNextEnv: () => import("@next/env"),
+  // Available only after the dependencies step (`npm ci`), hence the lazy load. @next/env
+  // is a bundled CommonJS module: a native ESM `import()` exposes only its `default`, so
+  // it is loaded with `require` (which behaves the same under Node and Vitest).
+  loadNextEnv: async () => /** @type {typeof import("@next/env")} */ (createRequire(import.meta.url)("@next/env")),
 };

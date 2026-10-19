@@ -31,7 +31,7 @@ describe("satisfies", () => {
 describe("requirements step", () => {
   it("passes on a supported Node version", async () => {
     await expect(requirements.run(withEngines(">=22.17"))).resolves.toEqual({
-      status: "done",
+      status: "info",
       detail: "Node 22.23.3 (wymagane >=22.17)",
     });
   });
