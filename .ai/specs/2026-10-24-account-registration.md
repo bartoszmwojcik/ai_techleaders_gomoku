@@ -30,6 +30,7 @@ Po wdrożeniu (zachowanie przyszłe) gość na stronie `/register` podaje e-mail
 | G6 Unikalność nazwy (przesłuchanie, 2026-10-24) | Klucz unikalności = ta sama normalizacja co G4 (`normalizeDisplayName`: małe litery, polskie znaki → łacińskie, bez `_` i `-`). `Łukasz` blokuje `Lukasz`, `ala_7` blokuje `ala-7` i `ala7`. Wyświetlana nazwa zostaje w brzmieniu użytkownika. |
 | G7 Gra gościa z zaproszenia (przesłuchanie, 2026-10-24) | Brief: BR-22, BR-23, BR-24, D-23 (nadpisują BR-15, BR-08, D-02). Zaproszony może grać bez konta; implementacja należy do #21. **W tej specyfikacji:** generowanie i hashowanie losowego tokenu wydzielone do wspólnego `opaque-token.ts` (użyje go sesja i token gościa z #21/#29); tabela `sessions` pozostaje tylko dla kont. |
 | G8 Powrót po rejestracji (przesłuchanie, 2026-10-24) | `/register?next=<ścieżka>` — po sukcesie przekierowanie na `next`, jeśli `safeNextPath` je przepuści (ścieżka względna zaczynająca się od `/`, nie od `//` ani `/\`, bez schematu); inaczej `/`. Konsumenci: #19, #20 (logowanie), #21 (zaproszenie), #34 (potwierdzenie e-maila). |
+| G9 „Pokaż hasło” (z przesłuchania #20, 2026-10-24) | Pole hasła na `/register` używa wspólnego `PasswordField` z przyciskiem „Pokaż hasło” (domyślnie ukryte) i `autocomplete="new-password"`; e-mail `autocomplete="email"`. Specyfikacja #20, H2. |
 | Q8 Podział (z przeglądu) | **Dwa PR-y:** A = Faza 1 (API, migracja, warstwa serwerowa; `risk-high`, `Refs #19`, `Closes #28`), B = Faza 2 (formularz i strony; `Closes #19`). |
 
 ## 📝 Problem Statement
@@ -80,7 +81,7 @@ Wymagają natomiast jednej definicji: błędów, koperty, wrappera route'ów, kl
 | 7b | `createOpaqueToken()` / `hashOpaqueToken()` — 32 bajty z CSPRNG (base64url) i SHA-256 do zapisu (G7) | `app/src/server/http/opaque-token.ts` | sesja (#19); token gościa (#21), tokeny potwierdzenia e-maila (#34) i resetu (#35) |
 | 7c | `safeNextPath(value)` — walidacja ścieżki powrotu przeciw otwartym przekierowaniom (G8) | `core/src/http/safe-next-path.ts` | `/register` (#19); `/login` (#20), zaproszenie (#21), potwierdzenie e-maila (#34) |
 | 8 | `apiCall<T>()` — jedyny `fetch` do `/api/*`, nagłówek CSRF, defensywne parsowanie koperty (nie-JSON → błąd `network`; odpowiedzi `/api/*` zawsze mają kopertę JSON, także przy braku danych: `{ ok: true, data: null }`) | `app/src/lib/api-client.ts` | formularz rejestracji; każdy ekran gracza |
-| 9 | `FormField`, `SubmitButton` (stan wysyłania), `ErrorMessage` — czysty Tailwind, motyw z `frontend.css` | `app/src/components/forms/`, `app/src/components/feedback/` | `/register`; `/login` (#20), zaproszenie (#21) |
+| 9 | `FormField`, `PasswordField` (przycisk „Pokaż hasło”, G9), `SubmitButton` (stan wysyłania), `ErrorMessage` — czysty Tailwind, motyw z `frontend.css` | `app/src/components/forms/`, `app/src/components/feedback/` | `/register`; `/login` (#20), zaproszenie (#21) |
 
 **Świadomie nie teraz:**
 - szyna zdarzeń `core/src/events` — pierwsze zdarzenie pojawi się przy partii;
