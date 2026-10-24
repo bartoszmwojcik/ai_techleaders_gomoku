@@ -61,6 +61,20 @@ pokrywała się z rekomendacją agenta.
 | Gość zakłada konto po partii | „a” — bez przejęcia partii | tak |
 | `?next=` po rejestracji/logowaniu | „a” — `safeNextPath` we wspólnej warstwie | tak |
 
+## Potwierdzenie założeń specyfikacji #34, #35, #37, #38 (2026-10-24)
+
+Właściciel odpowiedział „a” na pytanie, czy potwierdza wszystkie założenia oznaczone ⚠ w PR-ach #42, #43, #45, #46 tak, jak zostały zaproponowane przez agenta:
+
+| Specyfikacja | Założenie potwierdzone |
+| --- | --- |
+| #34 Q1 | Produkcja bez skonfigurowanego dostawcy poczty działa; potwierdzanie e-maila zwraca `502`. |
+| #34 Q9, #35 Q1 | Reset hasła działa także dla niepotwierdzonego e-maila i go potwierdza → BR-25 (nadpisuje propozycję BR-19). |
+| #37 Q1 | Uczestnik partii (#29): `user_id` NULL-owalne, `on delete set null`, wyświetlane jako „Usunięty gracz”. |
+| #37 Q3 | Usunięcie konta natychmiastowe i nieodwracalne, bez karencji. |
+| #38 Q1, Q2, Q5 | Konto Gmail gry przez SMTP (hasło aplikacji), zależność `nodemailer`; najpierw spike, czy mikr.us przepuszcza wychodzące SMTP. |
+
+Wszystkie te założenia zaproponował agent (rekomendacje); potwierdzenie zbiorcze nie zmienia ich statusu dowodowego.
+
 ## Decyzje ze specyfikacji rejestracji (bramka pytań, 2026-10-24)
 
 | Pytanie | Odpowiedź | Rekomendacja agenta? |
