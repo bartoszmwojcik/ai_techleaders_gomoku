@@ -60,3 +60,11 @@ Jedna faza, jeden PR (`Closes #39`), po #19 (tabele `sessions`, `rate_limit_buck
 2. `cleanup-cli.ts` + skrypt `db:cleanup`; test jak `status-cli` (kody wyjścia, JSON).
 3. Test w `tests/integration/` (ta sama baza z `global-setup.ts`): wiersze tuż przed i tuż za każdym progiem, uruchomienie `cleanupExpired` bezpośrednio na bazie kontenera testowego.
 4. README: wpis `cron` dla mikr.us (`0 * * * * docker exec <kontener> npm run db:cleanup`), opis wyniku i sygnału błędu.
+
+## 📝 Ustalenia z przesłuchania (grill-me, 2026-10-24)
+
+Potwierdzone przez właściciela — Bartosza Wójcika.
+
+- **Test strażnik (Q4):** test jednostkowy po metadanych encji — każda encja z kolumną `expiresAt` musi mieć regułę w `cleanup/rules.ts` albo jawny wyjątek. Plany #34 i #35 dostają krok „dodaj regułę sprzątania”.
+- **Konta niepotwierdzone:** reguła dla `users`: `email_verified_at IS NULL` i `created_at < now() − 7 dni`; kaskada usuwa sesje i tokeny. Takie konto nie mogło grać (BR-23), więc nie ma partii. Reguła dochodzi razem z #34 (kolumna `emailVerifiedAt` z #19); JSON CLI dostaje klucz `unverifiedUsers`.
+- **Kontrakt CLI:** wynik `db:cleanup` rozszerzony o `unverifiedUsers: n | null`.

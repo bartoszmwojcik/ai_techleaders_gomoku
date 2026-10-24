@@ -94,8 +94,8 @@ Oba route'y przez `apiHandler` (nagłówki CSRF z #19: `X-Gomoku-Request: 1`, `O
 
 | Wynik | Status | Treść |
 |---|---|---|
-| Potwierdzono (także gdy konto było już potwierdzone tym tokenem) | `200` | `{ ok: true, data: { next: "<bezpieczna ścieżka>" } }` |
-| Token nieznany, użyty, wygasły lub unieważniony | `400` | `code: "INVALID_TOKEN"`, jednolity komunikat „Link wygasł lub został już użyty.” |
+| Potwierdzono | `200` | `{ ok: true, data: { next: "<bezpieczna ścieżka>" } }` |
+| Token nieznany, użyty (także drugie żądanie z tym samym tokenem), wygasły lub unieważniony | `400` | `code: "INVALID_TOKEN"`, jednolity komunikat „Link wygasł lub został już użyty.” |
 | Zły kształt | `400` | `code: "VALIDATION"` |
 | CSRF | `403` | `code: "FORBIDDEN"` |
 
@@ -125,7 +125,7 @@ Mockupy: pominięte — repozytorium nie ma deskryptora środowiska testowego `o
 | Sytuacja | Co widzi użytkownik |
 |---|---|
 | Skaner poczty otworzył link | Nic się nie dzieje (GET nie zmienia stanu, Q3); gracz potwierdza przyciskiem. |
-| Dwa kliknięcia „Potwierdź” / dwie karty | Potwierdzenie atomowe; drugie żądanie z tym samym tokenem dostaje `200`, jeśli konto jest potwierdzone tym tokenem, inaczej `INVALID_TOKEN`. |
+| Dwa kliknięcia „Potwierdź” / dwie karty | Potwierdzenie atomowe; drugie żądanie z tym samym tokenem dostaje `INVALID_TOKEN` (Q11); UI po sukcesie blokuje przycisk. Zalogowany z już potwierdzonym kontem widzi „Adres jest już potwierdzony”. |
 | Ponowne wysłanie, potem kliknięcie starego linku | `INVALID_TOKEN` (Q7) — komunikat i przycisk nowego linku. |
 | Link po 24 h | `INVALID_TOKEN` (Q2). |
 | Link otwarty na telefonie bez sesji | Potwierdzenie działa (Q5); gracz pozostaje niezalogowany, `next` prowadzi np. do logowania. |
@@ -172,3 +172,16 @@ Jeden PR implementacji (`Closes #34`), po #19 (PR A i B) i #20; produkcyjny adap
 6. **`resend` i route `…/resend`** z limitami Q4. Testy: `200`, `409 ALREADY_VERIFIED`, `401`, `429` (konto i adres), `502` przy błędzie wysyłki, stary link po ponownym wysłaniu nieważny.
 7. **`VerifyEmailBanner`** na `/` i `/account`. Testy komponentów (stany; `jsdom` + `@testing-library/react` w `@gomoku/app`, jeśli #19 ich jeszcze nie dodał); test integracyjny agent-browser: baner po rejestracji → „Wyślij ponownie” → „Wysłano” → potwierdzenie → baner znika; układ na szerokości telefonu.
 8. **Dokumentacja:** README (zmienne `EMAIL_TRANSPORT`, `EMAIL_FROM`, wdrożenie wymaga #38); komentarz w #38 o porcie `EmailSender`.
+
+## 📝 Ustalenia z przesłuchania (grill-me, 2026-10-24)
+
+Potwierdzone przez właściciela — Bartosza Wójcika.
+
+| # | Ustalenie |
+|---|---|
+| Q11 | Zużyty token zawsze daje `400 INVALID_TOKEN` (bez wyjątku „potwierdzone tym tokenem”). Na stronie błędu zostaje „Wyślij nowy link”; zalogowany z potwierdzonym kontem widzi „Adres jest już potwierdzony”. |
+| Q12 | Dzienny limit wysyłek (Q10) ma osobne liczniki: weryfikacja e-maila zużywa najwyżej 70% `EMAIL_DAILY_LIMIT`, reset hasła (#35) może użyć całości — rejestracja jest kanałem nadużyć, reset dotyczy istniejących graczy. |
+| Q13 | Kolejność wdrożenia: #38 (spike SMTP) → #30 (spike adresu klienta) → #34 i #35 razem. Bez dostawcy poczty rejestracja kont jest wyłączona (warunek w README); Q1 nie zmienia startu aplikacji, ale produkcji bez dostawcy się nie wdraża. |
+| Q14 | Konta z `emailVerifiedAt IS NULL` starsze niż 7 dni są usuwane przez #39; baner: „Niepotwierdzone konto zostanie usunięte po 7 dniach”. |
+| Q15 | Limity „na adres klienta” działają tylko przy wiarygodnie ustalonym adresie (spike #30); bez niego zostają limity na konto. |
+| Q16 | Plan implementacji dostaje krok: reguła sprzątania `email_verification_tokens` w `packages/db/src/cleanup/rules.ts` (#39). |

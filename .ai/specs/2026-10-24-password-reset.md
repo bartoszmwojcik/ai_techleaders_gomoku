@@ -101,3 +101,15 @@ Jedna faza, jeden PR (`Closes #35`), po #19, #20 i #34.
 4. Route'y `…/request` (z `after()`; testy jednostkowe mockują `after` z `next/server`) i `…/confirm`. Testy integracyjne: link z pliku-skrzynki (`EMAIL_TRANSPORT=file`, #34) czytany helperem odpytującym plik do skutku (wysyłka kończy się po odpowiedzi) → nowe hasło → stare nie działa → logowanie nowym; identyczna odpowiedź dla nieznanego e-maila; wygasły token (bezpośredni `UPDATE expires_at`); `429`; `403`.
 5. Strony `/forgot-password`, `/reset-password`, link na `/login`. Test agent-browser całego przepływu na szerokości telefonu.
 6. README (reset, limity).
+
+## 📝 Ustalenia z przesłuchania (grill-me, 2026-10-24)
+
+Potwierdzone przez właściciela — Bartosza Wójcika.
+
+| # | Ustalenie |
+|---|---|
+| Q7 | Limit 3/h na `sha256(e-mail)` liczy wysyłki. Po jego przekroczeniu nie wysyłamy nowej wiadomości, a poprzedni link zostaje ważny do końca 1 h; odpowiedź dla klienta jest identyczna (`200`) — atakujący nie może zablokować cudzego resetu ani poznać stanu konta. |
+| Q8 | Dzienny limit wysyłek ma osobną pulę dla resetu: weryfikacja e-maila (#34) zużywa najwyżej 70%, reset może użyć całości. |
+| Q9 | Sesje są unieważniane także w trakcie partii (Q6 bez wyjątku G5). |
+| Q10 | Kolejność wdrożenia: #38 → #30 → #34 i #35 razem. Limity „na adres klienta” działają tylko przy wiarygodnie ustalonym adresie (spike #30); limity na konto i e-mail zostają zawsze. |
+| Q11 | Plan implementacji dostaje krok: reguła sprzątania `password_reset_tokens` w `packages/db/src/cleanup/rules.ts` (#39). |

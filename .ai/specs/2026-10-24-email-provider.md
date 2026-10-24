@@ -61,3 +61,11 @@ Potwierdzenie e-maila (#34) i reset hasła (#35) potrzebują wysyłki poczty; dz
 4. Po wdrożeniu: ręczny test wysyłki na konto zewnętrzne (inbox vs spam) — wynik w komentarzu #38; zamknięcie Q-02 w briefie za zgodą właściciela.
 
 Źródła: [Brevo — free SMTP](https://www.brevo.com/en/free-smtp-server/), [Resend — new free tier](https://resend.com/blog/new-free-tier), [Resend Review 2026](https://wpmailsmtp.com/resend-review/), [Resend free tier 2026](https://automationatlas.io/answers/resend-free-tier-explained-2026/), [Achromatic — Resend test domain](https://www.achromatic.dev/docs/starter-kits/pro-nextjs-prisma/email/configuration), [GoSMTP — Brevo](https://gosmtp.net/docs/gosmtp-mailers/brevo-formerly-sendinblue).
+
+## 📝 Ustalenia z przesłuchania (grill-me, 2026-10-24)
+
+Potwierdzone przez właściciela — Bartosza Wójcika.
+
+- **Stop przy zablokowanych portach (Q5):** jeśli spike pokaże, że mikr.us blokuje SMTP, nie budujemy automatycznie adaptera Brevo/Resend. Wracamy do właściciela z decyzją „kupić domenę (koszt vs D-20/D-19) albo grać tylko jako gość”.
+- **Kolejność wdrożenia:** #38 → #30 → #34 i #35 razem; bez skonfigurowanego dostawcy rejestracja kont jest wyłączona (README).
+- **Pula limitu:** weryfikacja e-maila zużywa najwyżej 70% `EMAIL_DAILY_LIMIT`, reset hasła całość (wartość limitu z planu dostawcy).
