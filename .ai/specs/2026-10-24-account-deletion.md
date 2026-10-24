@@ -1,6 +1,6 @@
 # Usunięcie konta z anonimizacją partii (E01-S06, #37)
 
-> Status: **szkic autonomiczny** (`om-auto-write-spec`, 2026-10-24) — założenia ⚠ wymagają potwierdzenia właściciela przed merge'em. Źródło: issue #37, `.ai/specs/product-brief.md` (D-16, BR-17, BR-21, BR-24), `.ai/specs/2026-10-24-login-logout.md` (`/account`, `requireSession`, `activeGameCheck`, H1). Zależy od #20 i od modelu partii (#29).
+> Status: **zatwierdzona** (`om-auto-write-spec`, 2026-10-24; założenia potwierdzone przez właściciela — Bartosz Wójcik, „a” — 2026-10-24).
 
 ## 📝 TLDR
 
@@ -10,9 +10,9 @@ Dziś (po #20) nie da się usunąć konta. Po wdrożeniu (zachowanie przyszłe):
 
 | # | Pytanie | Zastosowane założenie | Dlaczego | Potwierdzenie |
 |---|---|---|---|---|
-| Q1 | Jak zachować partie po usunięciu konta? | Usuwamy wiersz `users` (twarde usunięcie); uczestnik partii (#29) ma `user_id` **NULL-owalne z `on delete set null`**, a historia wyświetla NULL jako „Usunięty gracz”. Wymaga tego kształtu w migracji #29. | Dane osobowe znikają naprawdę (BR-17), bez „zombie” konta; historia przeciwnika zostaje (BR-24). | ⚠ NEEDS HUMAN CONFIRMATION — narzuca kształt schematu #29 |
+| Q1 | Jak zachować partie po usunięciu konta? | Usuwamy wiersz `users` (twarde usunięcie); uczestnik partii (#29) ma `user_id` **NULL-owalne z `on delete set null`**, a historia wyświetla NULL jako „Usunięty gracz”. Wymaga tego kształtu w migracji #29. | Dane osobowe znikają naprawdę (BR-17), bez „zombie” konta; historia przeciwnika zostaje (BR-24). | ✅ potwierdzone przez właściciela 2026-10-24 — narzuca kształt schematu #29 |
 | Q2 | Potwierdzenie usunięcia | Ponowne podanie hasła + zaznaczenie „Rozumiem, że tego nie da się cofnąć”; limit 10 nieudanych prób na konto w 15 min (wzorzec H1). | Nieodwracalne działanie; skradziona sesja nie usunie konta bez hasła. | odwracalne |
-| Q3 | Okres karencji / przywrócenie konta | Brak — usunięcie natychmiastowe i nieodwracalne. | BR-17 („kasuje od razu”); karencja to przechowywanie danych, którego brief nie przewiduje. | ⚠ NEEDS HUMAN CONFIRMATION — nieodwracalność |
+| Q3 | Okres karencji / przywrócenie konta | Brak — usunięcie natychmiastowe i nieodwracalne. | BR-17 („kasuje od razu”); karencja to przechowywanie danych, którego brief nie przewiduje. | ✅ potwierdzone przez właściciela 2026-10-24 — nieodwracalność |
 | Q4 | Ponowna rejestracja tym samym e-mailem / nazwą | Dozwolona od razu (wiersz zniknął, unikalne indeksy wolne). | Brak powodu blokowania; stare partie wskazują „Usunięty gracz”, nie nazwę. | odwracalne |
 
 ## 📝 Problem Statement
