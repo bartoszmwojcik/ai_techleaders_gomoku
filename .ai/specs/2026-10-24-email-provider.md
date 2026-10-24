@@ -1,6 +1,6 @@
 # Dostawca wysyłki poczty (E01-S03-T01, #38)
 
-> Status: **szkic autonomiczny** (`om-auto-write-spec`, 2026-10-24) — wybór dostawcy i nowa zależność czekają na potwierdzenie właściciela (⚠). Źródło: issue #38, `.ai/specs/product-brief.md` (D-20 tylko darmowy plan, Q-02, G1 brak własnej domeny w specyfikacji #19), `.ai/specs/2026-10-24-email-verification.md` (port `EmailSender`). Po potwierdzeniu: zamknięcie Q-02 w briefie (osobną, wyraźnie zleconą zmianą briefu).
+> Status: **zatwierdzona** (`om-auto-write-spec`, 2026-10-24; założenia potwierdzone przez właściciela — Bartosz Wójcik, „a” — 2026-10-24).
 
 ## 📝 TLDR
 
@@ -10,10 +10,10 @@ Potwierdzenie e-maila (#34) i reset hasła (#35) potrzebują wysyłki poczty; dz
 
 | # | Pytanie | Zastosowane założenie | Dlaczego | Potwierdzenie |
 |---|---|---|---|---|
-| Q1 | Który dostawca na start? | Konto Gmail (dedykowane dla gry, np. `gomoku.…@gmail.com`) przez SMTP `smtp.gmail.com:465` z hasłem aplikacji. | Bez własnej domeny tylko wiadomość wysłana **przez serwery właściciela adresu** przechodzi uwierzytelnienie nadawcy (SPF/DKIM/DMARC) — Gmail podpisuje własne wiadomości; serwis zewnętrzny wysyłający „jako @gmail.com” tego nie zapewni. Koszt 0 zł (D-20). | ⚠ NEEDS HUMAN CONFIRMATION — wybór dostawcy i konto pocztowe właściciela |
-| Q2 | Jak wysyłać technicznie? | Jeden adapter SMTP przez bibliotekę `nodemailer` (nowa zależność w `@gomoku/app`); dostawca to tylko konfiguracja (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM`). | Gmail, Brevo i prawie każdy dostawca obsługują SMTP — zmiana dostawcy bez zmiany kodu; własny klient SMTP to kod bezpieczeństwa (TLS, uwierzytelnianie) do utrzymania. | ⚠ NEEDS HUMAN CONFIRMATION — nowa zależność (`AGENTS.md`, OD-3) |
+| Q1 | Który dostawca na start? | Konto Gmail (dedykowane dla gry, np. `gomoku.…@gmail.com`) przez SMTP `smtp.gmail.com:465` z hasłem aplikacji. | Bez własnej domeny tylko wiadomość wysłana **przez serwery właściciela adresu** przechodzi uwierzytelnienie nadawcy (SPF/DKIM/DMARC) — Gmail podpisuje własne wiadomości; serwis zewnętrzny wysyłający „jako @gmail.com” tego nie zapewni. Koszt 0 zł (D-20). | ✅ potwierdzone przez właściciela 2026-10-24 — wybór dostawcy i konto pocztowe właściciela |
+| Q2 | Jak wysyłać technicznie? | Jeden adapter SMTP przez bibliotekę `nodemailer` (nowa zależność w `@gomoku/app`); dostawca to tylko konfiguracja (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM`). | Gmail, Brevo i prawie każdy dostawca obsługują SMTP — zmiana dostawcy bez zmiany kodu; własny klient SMTP to kod bezpieczeństwa (TLS, uwierzytelnianie) do utrzymania. | ✅ potwierdzone przez właściciela 2026-10-24 — nowa zależność (`AGENTS.md`, OD-3) |
 | Q3 | Dzienny limit (`EMAIL_DAILY_LIMIT`, #34 Q10) | Ustawiany poniżej limitu wybranego planu; wartość wpisywana przy konfiguracji wdrożenia, nie w kodzie. | Limity planów się zmieniają; nie zgadujemy liczby. | odwracalne |
-| Q5 | Czy mikr.us przepuszcza wychodzące SMTP (465/587)? | Nieznane — wielu dostawców VPS blokuje te porty. Przed potwierdzeniem Q1 spike: połączenie `openssl s_client -connect smtp.gmail.com:465` z VPS. Gdy porty są zablokowane: adapter HTTP API (Brevo lub Resend) za tym samym portem `EmailSender`. | Bez tego wybór SMTP może być niewykonalny. | ⚠ NEEDS HUMAN CONFIRMATION — wynik spike'a przed wyborem |
+| Q5 | Czy mikr.us przepuszcza wychodzące SMTP (465/587)? | Nieznane — wielu dostawców VPS blokuje te porty. Przed potwierdzeniem Q1 spike: połączenie `openssl s_client -connect smtp.gmail.com:465` z VPS. Gdy porty są zablokowane: adapter HTTP API (Brevo lub Resend) za tym samym portem `EmailSender`. | Bez tego wybór SMTP może być niewykonalny. | ✅ potwierdzone przez właściciela 2026-10-24 — wynik spike'a przed wyborem |
 | Q4 | Sekrety | `SMTP_PASSWORD` tylko w env serwera (mikr.us), nigdy w repo; `.env.example` bez wartości. | Standardy §Secrets. | odwracalne |
 
 ## 📝 Porównanie (sprawdzone 2026-10-24, źródła na dole)
