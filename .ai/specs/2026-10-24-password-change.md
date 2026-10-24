@@ -73,3 +73,9 @@ Jedna faza, jeden PR (`Closes #36`), po #20; jeśli #35 jeszcze nie wydzielił `
 2. `requireSession` z bieżącą sesją, `UserService.changePassword` (warunkowy `UPDATE`) i `SessionService.revokeOthers` + unieważnienie tokenów resetu w jednej transakcji. Testy jednostkowe, w tym 0 zaktualizowanych wierszy.
 3. Route `api/auth/password/route.ts`. Testy integracyjne: zmiana → stare hasło nie loguje, nowe loguje; druga sesja unieważniona, bieżąca działa; `400`/`401`/`403`/`429`.
 4. Formularz na `/account`. Testy komponentu; agent-browser: zmiana hasła na szerokości telefonu.
+
+## 📝 Ustalenia z przesłuchania (grill-me, 2026-10-24)
+
+Potwierdzone przez właściciela — Bartosza Wójcika.
+
+- **Q4 bez wyjątku G5:** sesje innych urządzeń są unieważniane także w trakcie partii (zegar biegnie, BR-06). Formularz „Zmień hasło” pokazuje ostrzeżenie: „Inne urządzenia zostaną wylogowane, także w trakcie partii”.

@@ -10,3 +10,4 @@ Indeks lekcji. Jedna linia na wpis: `- [Tytuł](lessons/YYYY-MM-DD-slug.md) — 
 - [Mocks hid the ESM/CJS interop](lessons/2026-10-19-mocked-tests-hide-esm-cjs-interop.md) — load CJS packages in `.mjs` through `createRequire`; run a new script end to end, not just to 100% coverage.
 - [Docker przyjmuje połączenia przed PostgreSQL](lessons/2026-10-19-docker-proxy-accepts-before-postgres.md) — przejściowe błędy startu bazy (`Connection terminated…`, `57P0x`, `ECONN*`) to „czekaj”; stany startu testuj w pętli na świeżym kontenerze.
 - [Commit po merge'u PR nie trafia do `main`](lessons/2026-10-24-push-to-already-merged-pr.md) — przed dopisaniem commita sprawdź `gh pr view --json state`; przed usunięciem brancha porównaj `headRefOid` z `HEAD`.
+- [Spójność specyfikacji auth](lessons/2026-10-24-grill-me-auth-specs-consistency.md) — sprawdzaj sprzeczności API/edge cases, osobne pule limitów dla resetu, blokowanie ofiary limitem, reguły cleanup, kolejność spike’ów.

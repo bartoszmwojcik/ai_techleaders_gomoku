@@ -78,3 +78,10 @@ Jedna faza, jeden PR (`Closes #37`), **po #20, #29 i prawdziwej implementacji `a
 3. Route `api/account/delete/route.ts` (`POST`). Testy integracyjne: po usunięciu brak wierszy w `users`, `sessions` i tabelach tokenów; partia przeciwnika z `user_id` NULL wyświetlana jako „Usunięty gracz”; logowanie się nie udaje; ponowna rejestracja tym e-mailem działa; `409` przy aktywnej partii (fałszywa partia w bazie testowej); `400`/`401`/`403`/`429`.
 4. Sekcja na `/account`. Testy komponentu (przycisk nieaktywny bez potwierdzenia); agent-browser na szerokości telefonu.
 5. Komentarz w #29 o wymaganiu `set null` i rozróżnieniu `account`/`guest`.
+
+## 📝 Ustalenia z przesłuchania (grill-me, 2026-10-24)
+
+Potwierdzone przez właściciela — Bartosza Wójcika.
+
+- **Definicja „aktywnej partii” (BR-21):** blokuje tylko partia **w toku** (obaj gracze, zegar biegnie). Partia oczekująca na przeciwnika i wpis w lobby nie blokują — są usuwane kaskadą razem z kontem. Dokładny status zapisujemy jako wymaganie wobec #26/#29 (`activeGameCheck`).
+- **Limity per adres klienta** działają tylko przy wiarygodnie ustalonym adresie (spike #30); limit 10 prób na konto zostaje zawsze.
