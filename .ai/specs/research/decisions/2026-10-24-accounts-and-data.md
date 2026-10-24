@@ -46,6 +46,21 @@ pokrywała się z rekomendacją agenta.
 | Q-06 Kryteria rezygnacji | „przed realnym produktem będę próbował innych gier i technologii” (dosłownie) | nie dotyczy |
 | Q-07 Kanał promocji | „nie wiem” | nie dotyczy |
 
+## Przesłuchanie specyfikacji rejestracji (`grill-me`, 2026-10-24)
+
+| Pytanie | Odpowiedź | Rekomendacja agenta? |
+| --- | --- | --- |
+| G1 Hosting | VPS mikr.us; „a” — ruch przez darmową subdomenę mikr.us; brak własnej domeny | tak |
+| G2 Wzmocnienia sesji i CSRF (`__Host-`, obowiązkowy `Origin` = `APP_ORIGIN`, fail closed) | „tak, wszystkie trzy” | tak |
+| G3 Hasło | „hasło przynajmniej 16 znaków, bez dodatkowych wymagań” (reguła właściciela) | nie; agent rekomendował listę popularnych haseł |
+| G4 Zastrzeżone nazwy gracza | „a” — lista zastrzeżonych rdzeni | tak |
+| G5 Czas życia sesji | „b lecz z wariantem że sesja nie wygasa w trakcie aktywnej partii” — 30 dni + wyjątek dla trwającej partii | częściowo (agent rekomendował 30 dni bez wyjątku) |
+| G6 Unikalność nazwy | „a” — klucz po normalizacji (polskie znaki, `_`, `-`) | tak |
+| Gra gościa z zaproszenia | właściciel: „z zaproszenia można grać bez rejestracji … nie ma się konta, nazwy, oraz własnej historii partii. u zapraszającego historia zostaje ale partner to »zaproszony przez link«”; granice „wg rekomendacji”: gość tylko dołącza z zaproszenia, zapraszający ma konto z potwierdzonym e-mailem, lobby tylko dla kont, zalogowany zaproszony gra jako on sam | inicjatywa właściciela; granice — tak |
+| Tożsamość gościa | „a” — ciasteczko z tokenem jednej partii (do końca partii + 1 h), tylko ta sama przeglądarka | tak |
+| Gość zakłada konto po partii | „a” — bez przejęcia partii | tak |
+| `?next=` po rejestracji/logowaniu | „a” — `safeNextPath` we wspólnej warstwie | tak |
+
 ## Decyzje ze specyfikacji rejestracji (bramka pytań, 2026-10-24)
 
 | Pytanie | Odpowiedź | Rekomendacja agenta? |
