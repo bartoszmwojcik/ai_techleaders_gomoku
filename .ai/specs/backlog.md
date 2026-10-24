@@ -2,7 +2,7 @@
 
 ## .ai/specs/product-brief.md
 Backlog source: .ai/specs/product-brief.md
-Last filed: 2026-10-20
+Last filed: 2026-10-24
 
 | Id | Issue | Title | Epic | Depends on | Adopted |
 |---|---|---|---|---|---|
@@ -10,6 +10,12 @@ Last filed: 2026-10-20
 | E01-S01 | #19 | Użytkownik może założyć konto i widzi, że jest zalogowany | #15 | — | no |
 | E01-S01-T01 | #28 | Migracja: tabela użytkowników | #19 | — | no |
 | E01-S02 | #20 | Użytkownik może się zalogować i wylogować | #15 | E01-S01 (#19) | no |
+| E01-S02-T01 | #39 | Sprzątanie wygasłych sesji i liczników limitu | #20 | E01-S02 (#20) | no |
+| E01-S03 | #34 | Zalogowany użytkownik potwierdza e-mail linkiem i może grać | #15 | E01-S01 (#19), E01-S03-T01 (#38) | no |
+| E01-S03-T01 | #38 | Decyzja: dostawca wysyłki poczty i jego koszt | #34 | — | no |
+| E01-S04 | #35 | Użytkownik, który zapomniał hasła, ustawia nowe przez link z e-maila | #15 | E01-S03 (#34) | no |
+| E01-S05 | #36 | Zalogowany użytkownik zmienia hasło | #15 | E01-S02 (#20) | no |
+| E01-S06 | #37 | Zalogowany użytkownik usuwa konto, a jego partie zostają u przeciwników jako „Usunięty gracz” | #15 | E01-S02 (#20), E02-S01-T01 (#29) | no |
 | E02 | #16 | Partia z zaproszenia | — | — | no |
 | E02-S01 | #21 | Zalogowany użytkownik tworzy partię i wysyła link lub kod, a zaproszona osoba dołącza | #16 | E01-S02 (#20) | no |
 | E02-S01-T01 | #29 | Migracja: partia, uczestnik, zaproszenie, ruch | #21 | E01-S01-T01 (#28) | no |
@@ -23,3 +29,4 @@ Last filed: 2026-10-20
 | E03-S02 | #26 | Zalogowany użytkownik przegląda lobby, wybiera przeciwnika i obaj trafiają do nowej partii | #17 | E03-S01 (#25) | no |
 | E04 | #18 | Historia partii | — | — | no |
 | E04-S01 | #27 | Użytkownik widzi listę swoich zakończonych partii z przeciwnikiem, wynikiem, datą i sposobem zakończenia | #18 | E02-S03 (#23) | no |
+| E05 | #33 | Later | — | — | no |
