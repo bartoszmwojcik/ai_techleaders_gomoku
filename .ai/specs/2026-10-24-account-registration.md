@@ -76,10 +76,10 @@ Wymagają natomiast jednej definicji: błędów, koperty, wrappera route'ów, kl
 | 5 | `SessionService` (`create`, `findValid`) + `getCurrentUser()` + zapis i odczyt ciasteczka. `revoke` i `requireSession()` (nazwa ze standardów) powstają w #20 — tu nie mają konsumenta | `app/src/server/services/auth/session-service.ts`, `app/src/server/http/auth.ts` | rejestracja (`create`), strona `/` i `/register` (`getCurrentUser`); #20 dokłada `revoke`/`requireSession` |
 | 6 | `PasswordHasher` (`hash`; `verify` jest tu potrzebny tylko testom, konsument produkcyjny w #20) z kosztem wstrzykiwanym przez DI: 12 w aplikacji, 4 w testach | `app/src/server/services/auth/password-hasher.ts` | rejestracja; logowanie (#20) |
 | 7 | `RateLimiter.consume(key, limit, windowMs)` → `TooManyRequestsError`; licznik zapisywany **we własnej transakcji**, zanim ruszy walidacja i hashowanie | `app/src/server/services/rate-limit/rate-limiter.ts` | rejestracja; logowanie (#20), dołączanie kodem (#21) |
-| 7a | `clientKey(request)` — adres klienta z nagłówka `CLIENT_IP_HEADER` (`x-forwarded-for` domyślnie; także `x-real-ip`, `cf-connecting-ip`) według `TRUST_PROXY_HOPS` | `app/src/server/http/client-address.ts` | rejestracja; logowanie (#20), zaproszenie (#21) |
+| 7a | `clientKey(request)` — adres klienta z nagłówka `CLIENT_IP_HEADER` (`x-forwarded-for` domyślnie; także `x-real-ip`, `cf-connecting-ip`) według `TRUST_PROXY_HOPS`; adres IPv6 skracany do prefiksu /64 (jeden host IPv6 ma całą /64), IPv4 bez zmian | `app/src/server/http/client-address.ts` | rejestracja; logowanie (#20), zaproszenie (#21) |
 | 7b | `createOpaqueToken()` / `hashOpaqueToken()` — 32 bajty z CSPRNG (base64url) i SHA-256 do zapisu (G7) | `app/src/server/http/opaque-token.ts` | sesja (#19); token gościa (#21), tokeny potwierdzenia e-maila (#34) i resetu (#35) |
 | 7c | `safeNextPath(value)` — walidacja ścieżki powrotu przeciw otwartym przekierowaniom (G8) | `core/src/http/safe-next-path.ts` | `/register` (#19); `/login` (#20), zaproszenie (#21), potwierdzenie e-maila (#34) |
-| 8 | `apiCall<T>()` — jedyny `fetch` do `/api/*`, nagłówek CSRF, defensywne parsowanie koperty (nie-JSON → błąd `network`) | `app/src/lib/api-client.ts` | formularz rejestracji; każdy ekran gracza |
+| 8 | `apiCall<T>()` — jedyny `fetch` do `/api/*`, nagłówek CSRF, defensywne parsowanie koperty (nie-JSON → błąd `network`; odpowiedzi `/api/*` zawsze mają kopertę JSON, także przy braku danych: `{ ok: true, data: null }`) | `app/src/lib/api-client.ts` | formularz rejestracji; każdy ekran gracza |
 | 9 | `FormField`, `SubmitButton` (stan wysyłania), `ErrorMessage` — czysty Tailwind, motyw z `frontend.css` | `app/src/components/forms/`, `app/src/components/feedback/` | `/register`; `/login` (#20), zaproszenie (#21) |
 
 **Świadomie nie teraz:**
@@ -188,7 +188,7 @@ Kontrakt jest addytywny, a `/api/health` się nie zmienia (`BACKWARD_COMPATIBILI
 - po wygaśnięciu `getCurrentUser()` zwraca `null`, a rekord sesji zostaje do czasu sprzątania (CP-2, poza zakresem).
 
 **Limit prób:**
-- 5 udanych lub nieudanych żądań rejestracji na godzinę na klucz `register:ip:<ip>`;
+- 5 udanych lub nieudanych żądań rejestracji na godzinę na klucz `register:ip:<sha256(adres)>` — klucze limitu nie przechowują danych osobowych wprost i mieszczą się w `varchar(200)` niezależnie od wejścia;
 - okno stałe, licznik zwiększany atomowo (`insert … on conflict … do update`) przez query builder MikroORM, z parametrami, bez interpolacji wejścia;
 - licznik jest zwiększany **przed** walidacją i hashowaniem, we własnej, od razu zatwierdzonej transakcji, więc wycofanie zapisu użytkownika (np. `409`) go nie cofa;
 - adres klienta pochodzi z nagłówka wskazanego przez `CLIENT_IP_HEADER` (domyślnie `x-forwarded-for`), liczony **od prawej**: przy `TRUST_PROXY_HOPS=n` bierzemy n-ty wpis od końca (dodany przez nasze proxy), a wpisów ustawionych przez klienta nie ufamy; dla nagłówków jednowartościowych (`x-real-ip`, `cf-connecting-ip`) bierzemy wartość wprost;
