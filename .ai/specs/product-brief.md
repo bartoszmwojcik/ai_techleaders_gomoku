@@ -9,7 +9,7 @@
 - Źródła: `research/decisions/2026-10-13-reconciliation.md`, `research/decisions/2026-10-24-accounts-and-data.md`, `research/2026-10-20-stakeholders.md`, `research/2026-10-20-journey-current-state.md`, `research/2026-10-20-benchmark-{playok,papergames,donkeycat-gomoku}.md`, `2026-10-24-account-registration.md`
 
 > Wersja z 2026-10-13 powstała z pogodzenia dwóch sesji discovery (`research/decisions/2026-10-13-reconciliation.md`).
-> Odświeżenie z 2026-10-24 dodaje decyzje o kontach i danych (D-12…D-23, BR-14…BR-24), interesariuszy,
+> Odświeżenie z 2026-10-24 dodaje decyzje o kontach i danych (D-12…D-23, BR-14…BR-25), interesariuszy,
 > benchmark, mapę ścieżki i ryzykowne założenia. Stare ID zachowane; zmienione decyzje mają wiersze
 > nadpisujące.
 
@@ -151,7 +151,8 @@ Właściciel wszystkich: Bartosz Wójcik; zmiana wymaga nowego wpisu zatwierdzon
 | BR-23 | Zalogowany użytkownik bez potwierdzonego e-maila nie może tworzyć partii, wchodzić do lobby ani dołączać do zaproszenia jako on sam; widzi „Potwierdź e-mail, aby grać”, a przy linku zaproszenia może zagrać jako gość (BR-22). Nadpisuje BR-15. | Decyzja właściciela 2026-10-24 („5b”, „7a”, gra gościa) `[DOCUMENT]` `research/decisions/2026-10-24-accounts-and-data.md` |
 | BR-24 | Partie są zapisywane w historii kont uczestników. Gość nie ma historii; u zapraszającego przeciwnikiem jest „Zaproszony przez link”. Nadpisuje BR-08. | Decyzja właściciela 2026-10-24 `[DOCUMENT]` `research/decisions/2026-10-24-accounts-and-data.md` |
 | BR-21 | Usunięcie konta jest odrzucane, dopóki użytkownik ma aktywną partię; komunikat: „Najpierw dokończ albo poddaj partię”. | Decyzja właściciela 2026-10-24 („B a”) `[DOCUMENT]` tamże |
-| BR-19 | Reset hasła odbywa się przez jednorazowy link wysłany na potwierdzony e-mail konta. | Decyzja właściciela 2026-10-24 („3a”); jednorazowość linku i wymóg potwierdzonego adresu to propozycja agenta wynikająca z D-17 — `proposal` do potwierdzenia w specyfikacji resetu |
+| BR-19 | ~~Reset hasła odbywa się przez jednorazowy link wysłany na potwierdzony e-mail konta.~~ **Nadpisane przez BR-25.** | Superseded 2026-10-24 |
+| BR-25 | Reset hasła odbywa się przez jednorazowy link (ważny 1 h) wysłany na e-mail konta — także niepotwierdzony; ustawienie nowego hasła z linku potwierdza e-mail i unieważnia wszystkie sesje konta. Dzięki temu właściciel adresu odzyska konto założone na jego e-mail przez kogoś innego. Nadpisuje BR-19. | Decyzja właściciela 2026-10-24 (potwierdzenie założeń specyfikacji #35 Q1 i #34 Q9, „a”) `[DOCUMENT]` `research/decisions/2026-10-24-accounts-and-data.md` |
 
 Właściciel wszystkich reguł: Bartosz Wójcik. Zmiana reguły: nowy wiersz nadpisujący, zatwierdzony przez właściciela. Termin przeglądu: nieustalony (unknown).
 

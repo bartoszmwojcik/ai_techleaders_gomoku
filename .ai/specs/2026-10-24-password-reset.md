@@ -1,6 +1,6 @@
 # Reset hasła przez e-mail (E01-S04, #35)
 
-> Status: **szkic autonomiczny** (`om-auto-write-spec`, 2026-10-24) — założenia ⚠ wymagają potwierdzenia właściciela przed merge'em. Źródło: issue #35, `.ai/specs/product-brief.md` (D-15, BR-19 *proposal*, BR-16), `.ai/specs/2026-10-24-account-registration.md` (G3 hasło, G7 `opaque-token`, G8 `safeNextPath`), `.ai/specs/2026-10-24-login-logout.md` (`RateLimiter.hit`, `PasswordField`), `.ai/specs/2026-10-24-email-verification.md` (spec PR #42: `EmailSender`, Q9). Zależy od #19, #20, #34 i #38.
+> Status: **zatwierdzona** (`om-auto-write-spec`, 2026-10-24; założenia potwierdzone przez właściciela — Bartosz Wójcik, „a” — 2026-10-24).
 
 ## 📝 TLDR
 
@@ -10,7 +10,7 @@ Dziś (po #19/#20) osoba, która zapomni hasła, traci konto. Po wdrożeniu (zac
 
 | # | Pytanie | Zastosowane założenie | Dlaczego | Potwierdzenie |
 |---|---|---|---|---|
-| Q1 | Reset dla niepotwierdzonego adresu (BR-19 proponuje „tylko potwierdzony”) | **Dozwolony**; ustawienie hasła z linku potwierdza e-mail. Przyjęcie zmienia propozycję BR-19 — wymaga nowego wiersza w briefie za zgodą właściciela. | Jedyna droga właściciela adresu do konta założonego na jego e-mail przez kogoś innego (spec #34, Q9); link na adres jest dowodem dostępu do skrzynki. | ⚠ NEEDS HUMAN CONFIRMATION |
+| Q1 | Reset dla niepotwierdzonego adresu (BR-19 proponuje „tylko potwierdzony”) | **Dozwolony**; ustawienie hasła z linku potwierdza e-mail. Przyjęcie zmienia propozycję BR-19 — wymaga nowego wiersza w briefie za zgodą właściciela. | Jedyna droga właściciela adresu do konta założonego na jego e-mail przez kogoś innego (spec #34, Q9); link na adres jest dowodem dostępu do skrzynki. | ✅ potwierdzone przez właściciela 2026-10-24 |
 | Q2 | Ważność linku | 1 godzina, jednorazowy; nowa prośba unieważnia poprzednie tokeny dopiero po udanej wysyłce. | Reset daje pełny dostęp do konta — krótsze okno niż potwierdzenie e-maila (24 h). | odwracalne |
 | Q3 | Jak nie zdradzić istnienia konta? | `POST …/request` po walidacji i limitach od razu odpowiada `200` z tym samym komunikatem; **cała** praca zależna od konta (wyszukanie, zapis tokenu, wysyłka, unieważnienie starszych) dzieje się w `after()` z `next/server` we **własnym** `withRequestScope` (scope żądania nie jest gwarantowany po odpowiedzi), więc czas odpowiedzi nie zależy od istnienia konta. | Standardy §1 (komunikaty auth nie zdradzają kont), BR-16. | odwracalne |
 | Q4 | Limity | Prośby: 3/h na `sha256(e-mail)`, 10/h na adres klienta; potwierdzenie z tokenem: 10/15 min na adres; dzienny limit wysyłek wspólny z #34 (`EMAIL_DAILY_LIMIT`). | Chroni skrzynki ofiar i darmowy plan (D-20). | odwracalne |
