@@ -15,8 +15,11 @@ Po wdrożeniu #20 (zachowanie przyszłe): strona `/login` (e-mail + hasło, powr
 | Pytanie | Decyzja |
 |---|---|
 | Q1 Zakres | Jedna specyfikacja i jedno zgłoszenie (#20), dwie fazy, **jeden PR** (mniejszy niż #19; `risk-high`). |
-| Q2 Zgadywanie hasła | Limit prób **bez blokady konta**: 10 nieudanych prób na e-mail w 15 min oraz 30 prób (dowolnych) na adres klienta w godzinę → `429` + `Retry-After`. |
+| Q2 Zgadywanie hasła | Limit prób **bez blokady konta** → `429` + `Retry-After`; wartości po doprecyzowaniu w H1. |
 | Q3 Zakres wylogowania | Tylko bieżąca sesja. Unieważnienie wszystkich sesji robią zmiana hasła (#36) i reset (#35). |
+| H1 Limit na e-mail (przesłuchanie, 2026-10-24) | Q2 doprecyzowane: limit na sam e-mail pozwalałby każdemu, kto zna e-mail, trwale odciąć właściciela (10 prób co 15 min z jednego komputera). Zamiast niego: **10 nieudanych na parę e-mail + adres w 15 min** oraz **100 nieudanych na sam e-mail w godzinę** (przeciw atakowi rozproszonemu); 30 prób na adres w godzinę bez zmian. |
+| H2 „Pokaż hasło” (przesłuchanie, 2026-10-24) | Przycisk „Pokaż hasło” (ikona oka z etykietą dostępności) w polu hasła na `/login` i `/register` (także #19), domyślnie ukryte, po wysłaniu znów ukryte. Wspólna kontrolka `PasswordField` w `app/src/components/forms/` — użyją jej #35 i #36. Pola mają `autocomplete` (`email`, `current-password`, `new-password`). |
+| H3 Język adresów (przesłuchanie, 2026-10-24) | Adresy stron i API po angielsku (`/login`, `/account`, `/register`, `/invite/…`), teksty interfejsu po polsku — bez zmian w dokumentach. |
 | Q4 Wylogowanie w trakcie partii | Potwierdzenie „Trwa partia — po wylogowaniu zegar biegnie dalej. Wylogować?”. W #20 partii nie ma — strona `/account` podaje do `LogoutButton` prop `hasActiveGame` z wstrzykiwanej funkcji `activeGameCheck.hasActiveGame(userId)` (tu zawsze `false`; to inna funkcja niż w G5, która pyta o partię trwającą od przed `expiresAt`). |
 
 ## 📝 Problem Statement
@@ -56,14 +59,14 @@ flowchart LR
 
 - **`auth.ts` (rozszerzony):** `requireSession()` → aktualny użytkownik albo `UnauthorizedError` (route'y, `401`); `requirePageSession(path)` → aktualny użytkownik albo `redirect("/login?next=" + encodeURIComponent(path))` z `next/navigation` (strony). Obie oparte na `getCurrentUser()` z #19, więc dziedziczą fail closed i wyjątek G5. `redirect()` w Next 16 działa przez rzucenie wyjątku — wywołujemy go **poza** `try/catch` w `getCurrentUser` (`node_modules/next/dist/docs/01-app/03-api-reference/04-functions/redirect.md`). Server component nie zna własnej ścieżki — strona podaje ją jawnie (`requirePageSession("/account")`). Strony czytające sesję wołają najpierw `await connection()`.
 - **`activeGameCheck`** (nowy wpis w kontenerze, scoped): `hasActiveGame(userId)` → `false` do czasu modelu partii (#21/#22), które podmienią implementację.
-- **`RateLimiter` (rozszerzony):** `hit(key, limit, windowMs)` atomowo zwiększa licznik (jeden upsert we własnej, od razu zatwierdzonej transakcji) i zwraca `{ count, retryAfterSec }`; powyżej limitu rzuca `TooManyRequestsError` z `retryAfterSec` (dla `Retry-After`). `reset(key)` usuwa licznik. Istniejące `consume` z #19 = `hit`. **Limit na e-mail liczy tylko nieudane próby** (Q2) przez kompensację: licznik rośnie **przed** weryfikacją hasła (atomowo — równoległe żądania nie przejdą razem przez sprawdzenie w trakcie ~0,25 s bcrypt), a udane logowanie robi `reset` klucza e-maila.
+- **`RateLimiter` (rozszerzony):** `hit(key, limit, windowMs)` atomowo zwiększa licznik (jeden upsert we własnej, od razu zatwierdzonej transakcji) i zwraca `{ count, retryAfterSec }`; powyżej limitu rzuca `TooManyRequestsError` z `retryAfterSec` (dla `Retry-After`). `reset(key)` usuwa licznik. Istniejące `consume` z #19 = `hit`. **Limity e-mailowe liczą tylko nieudane próby** (Q2, H1) przez kompensację: liczniki rosną **przed** weryfikacją hasła (atomowo — równoległe żądania nie przejdą razem przez sprawdzenie w trakcie ~0,25 s bcrypt), a udane logowanie robi `reset` obu kluczy e-mailowych.
 - **`PasswordHasher` (rozszerzony):** atrapowy hash liczony raz przy tworzeniu singletonu (losowy ciąg, ten sam koszt) do porównania przy nieznanym e-mailu — czas odpowiedzi nie zdradza istnienia konta, także przy pierwszym takim żądaniu.
 - **`UserService.authenticate(email, password)`** → użytkownik albo `null`; nigdy nie rozróżnia nieznanego e-maila od złego hasła na zewnątrz. Normalizacja e-maila ta sama co w rejestracji (`normalizeEmail` z `core/src/validators/auth/`, wydzielona z `registerSchema`).
 - **Kontener:** bez nowych wpisów poza tym, co już jest z #19 (`userService`, `sessionService`, `rateLimiter`, `passwordHasher`); funkcja aktywnej partii (G5) ta sama.
 
 ## 📝 Data Model
 
-Brak nowych encji i migracji. Używane z #19: `users`, `sessions` (wylogowanie usuwa wiersz sesji), `rate_limit_buckets` (nowe klucze `login:email:<sha256(e-mail po normalizacji)>` i `login:ip:<sha256(adres)>` — jak w #19: bez danych osobowych wprost, zawsze w `varchar(200)`). Diagram modelu danych pominięty (brak zmian encji).
+Brak nowych encji i migracji. Używane z #19: `users`, `sessions` (wylogowanie usuwa wiersz sesji), `rate_limit_buckets` (nowe klucze `login:email-ip:<sha256(e-mail po normalizacji + adres)>`, `login:email:<sha256(e-mail po normalizacji)>` i `login:ip:<sha256(adres)>` — jak w #19: bez danych osobowych wprost, zawsze w `varchar(200)`). Diagram modelu danych pominięty (brak zmian encji).
 
 ## 📝 API Contracts
 
@@ -83,7 +86,7 @@ Brak nowych encji i migracji. Używane z #19: `users`, `sessions` (wylogowanie u
 | Limit na e-mail lub adres | `429` | `code: "RATE_LIMITED"` + `Retry-After` — ten sam komunikat dla obu limitów |
 | Nieoczekiwany błąd | `500` | `code: "INTERNAL"` |
 
-Kolejność w route: `hit(login:ip, 30, 1 h)` → sprawdzenie ważnej sesji (`409`) → parse → `hit(login:email, 10, 15 min)` → `authenticate` → przy porażce `401`; przy sukcesie `reset(login:email)` i nowa sesja. Ciasteczko z nieważną/wygasłą sesją nie blokuje logowania i jest nadpisywane (nowy token przy każdym logowaniu — brak session fixation).
+Kolejność w route: `hit(login:ip, 30, 1 h)` → sprawdzenie ważnej sesji (`409`) → parse → `hit(login:email-ip, 10, 15 min)` → `hit(login:email, 100, 1 h)` → `authenticate` → przy porażce `401`; przy sukcesie `reset` obu kluczy e-mailowych i nowa sesja. Ciasteczko z nieważną/wygasłą sesją nie blokuje logowania i jest nadpisywane (nowy token przy każdym logowaniu — brak session fixation).
 
 `POST /api/auth/logout` (te same nagłówki CSRF)
 
@@ -100,7 +103,7 @@ Kontrakty są addytywne (`BACKWARD_COMPATIBILITY.md` §2). Nowe adresy stron `/l
 ## 📝 UI/UX
 
 **`/login`** (`(frontend)`, czysty Tailwind, komponenty z #19, teksty po polsku):
-- pola „E-mail”, „Hasło”, przycisk „Zaloguj się”; link „Nie masz konta? Załóż konto” → `/register?next=<to samo next>`;
+- pola „E-mail” (`autocomplete="email"`) i „Hasło” (`PasswordField`, `autocomplete="current-password"`, przycisk „Pokaż hasło”, H2), przycisk „Zaloguj się”; link „Nie pamiętasz hasła?” pojawi się z resetem (#35); link „Nie masz konta? Załóż konto” → `/register?next=<to samo next>`;
 - stany jak w #19: przycisk zablokowany podczas wysyłania, błąd ogólny w `role="alert"` nad formularzem (także dla `401` — bez wskazywania pola), błędy kształtu przy polach, fokus na komunikat błędu;
 - `next` czytany z `searchParams` (w Next 16 to `Promise` — `await props.searchParams`) i przekazywany do formularza;
 - sukces → `router.replace(safeNextPath(next))`; zalogowany wchodzący na `/login` → przekierowanie na `safeNextPath(next)`;
@@ -118,8 +121,9 @@ Kontrakty są addytywne (`BACKWARD_COMPATIBILITY.md` §2). Nowe adresy stron `/l
 |---|---|
 | E-mail z inną wielkością liter / spacjami | Normalizacja jak przy rejestracji → logowanie działa. |
 | Nieznany e-mail | „Nieprawidłowy e-mail lub hasło.” — ta sama treść i czas co przy złym haśle (atrapowy hash). |
-| 10 nieudanych prób na jeden e-mail w 15 min | `429` „Zbyt wiele prób. Spróbuj ponownie za {n} min.” — także dla właściciela konta z poprawnym hasłem do końca okna (świadomy koszt braku blokady konta; okno krótkie). |
-| Atak rozproszony na jeden e-mail z wielu adresów | Zatrzymuje go limit na e-mail (niezależny od adresu). |
+| 10 nieudanych prób na jeden e-mail z jednego adresu w 15 min | Ten adres dostaje `429` „Zbyt wiele prób. Spróbuj ponownie za {n} min.”; właściciel konta z innego adresu loguje się normalnie (H1). |
+| 100 nieudanych prób na jeden e-mail w godzinę (wiele adresów) | `429` dla wszystkich adresów do końca okna — zablokowanie właściciela wymaga ataku rozproszonego (akceptowany koszt, H1). |
+| Atak rozproszony na jeden e-mail z wielu adresów | Zatrzymuje go limit 100/h na sam e-mail. |
 | Jeden adres próbuje wielu e-maili | Zatrzymuje go limit na adres (30/h). |
 | Konto bez potwierdzonego e-maila | Logowanie się udaje; `/` i `/account` pokazują „Potwierdź e-mail, aby grać” (BR-23). |
 | Wylogowanie na jednym urządzeniu | Inne urządzenia pozostają zalogowane (Q3). |
@@ -135,7 +139,7 @@ Kontrakty są addytywne (`BACKWARD_COMPATIBILITY.md` §2). Nowe adresy stron `/l
 
 - **`risk-high`** (logowanie i sesje, `SDLC.md`): PR wymaga integracyjnych dowodów — odmowa bez nagłówków CSRF, `401` bez rozróżnienia nieznanego e-maila, `429` dla obu limitów, brak dostępu do `/account` po wylogowaniu; review drugiej osoby; QA bez self-QA.
 - **Enumeracja przez czas odpowiedzi.** Atrapowy hash wyrównuje koszt bcrypt; pozostałe różnice (zapytanie do bazy) są małe wobec ~0,2–0,3 s bcrypt. Test sprawdza, że przy nieznanym e-mailu `verify` jest wywołany z atrapowym hashem.
-- **Limit na e-mail może na chwilę zablokować prawowitego właściciela** (Q2, akceptowany koszt; okno 15 min).
+- **Zablokowanie właściciela konta** wymaga teraz ataku z wielu adresów (≥ 100 nieudanych prób na godzinę, H1) — akceptowany koszt; „zaufane urządzenie” omijające limit to możliwe rozszerzenie, jeśli taki atak się zdarzy.
 - **Klucze limitu** są hashami (SHA-256) — bez e-maili i adresów wprost. Tabela rośnie o jeden wiersz na e-mail z nieudaną próbą do sprzątania (#39). SHA-256 bez soli da się odwrócić słownikiem dla znanych e-maili — akceptowalne, bo tabela jest techniczna i krótkotrwała.
 - **Kontrakty trudne do cofnięcia:** adresy `/login` i `/account`, kod błędu `INVALID_CREDENTIALS`.
 - **Rollback:** brak migracji — revert PR wystarcza; istniejące sesje zostają ważne.
@@ -161,8 +165,8 @@ Jeden PR (Q1), `Closes #20`. Każdy krok zostawia działającą aplikację z zie
 1. **`RateLimiter.hit` (atomowy, z `retryAfterSec`) i `reset`** (+ `consume` = `hit`). Testy jednostkowe: granice okna, `hit` we własnej transakcji, `retryAfterSec`, `reset`; testy z #19 przechodzą bez zmian.
 2. **`normalizeEmail` i `loginSchema`** w `core/src/validators/auth/` (`registerSchema` korzysta z tej samej `normalizeEmail`). Testy: normalizacja, brak reguł hasła z rejestracji, granica 1024 znaków, kształt.
 3. **Atrapowy hash i `UserService.authenticate`.** Testy: poprawne dane, złe hasło, nieznany e-mail (wywołanie `verify` z atrapą), atrapa liczona raz przy tworzeniu.
-4. **Route `api/auth/login/route.ts`.** Testy integracyjne (`fetch`): `200` z ciasteczkiem; `401` z identyczną treścią dla nieznanego e-maila i złego hasła; `400`; `403` bez `X-Gomoku-Request` i z obcym `Origin`; `409` przy ważnej sesji; `429` po 10 nieudanych na e-mail (także z różnych `X-Forwarded-For`) i po 30 na adres; udane logowanie zeruje licznik e-maila; równoległe próby na jeden e-mail nie przekraczają limitu. Każdy scenariusz używa unikalnego e-maila i `X-Forwarded-For` (wspólna baza testów integracyjnych).
-5. **Strona `/login` + `LoginForm`.** Testy komponentów (`next/navigation` zamockowane); test integracyjny agent-browser: rejestracja → nowy kontekst przeglądarki bez ciasteczek → logowanie z `?next=/` → powrót na `/`; błąd ogólny przy złym haśle; układ na szerokości telefonu.
+4. **Route `api/auth/login/route.ts`.** Testy integracyjne (`fetch`): `200` z ciasteczkiem; `401` z identyczną treścią dla nieznanego e-maila i złego hasła; `400`; `403` bez `X-Gomoku-Request` i z obcym `Origin`; `409` przy ważnej sesji; `429` po 10 nieudanych na parę e-mail + adres (inny adres dla tego samego e-maila przechodzi), po 100 nieudanych na sam e-mail z różnych `X-Forwarded-For` i po 30 na adres; udane logowanie zeruje licznik e-maila; równoległe próby na jeden e-mail nie przekraczają limitu. Każdy scenariusz używa unikalnego e-maila i `X-Forwarded-For` (wspólna baza testów integracyjnych).
+5. **`PasswordField` (H2), strona `/login` + `LoginForm`.** Testy komponentów (`next/navigation` zamockowane; przełączanie widoczności, powrót do ukrytego po wysłaniu, etykieta dostępności); test integracyjny agent-browser: rejestracja → nowy kontekst przeglądarki bez ciasteczek → logowanie z `?next=/` → powrót na `/`; błąd ogólny przy złym haśle; układ na szerokości telefonu.
 
 ### Faza 2 — Wylogowanie i strażnik
 
