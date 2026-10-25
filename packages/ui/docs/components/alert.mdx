@@ -1,0 +1,107 @@
+import { ArgTypes, Canvas, Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { Alert } from "@gomoku/ui/game/alert";
+import { DoDont } from "../../.storybook/blocks";
+import * as Stories from "./alert.stories";
+
+<Meta of={Stories} />
+
+# Alert
+
+## 1. Do czego służy
+
+Pokazuje graczowi komunikat ważny dla całej strony lub formularza, razem z tym, co ma zrobić dalej.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Kiedy używać
+
+- **Baner potwierdzenia e-maila:** „Potwierdź e-mail, aby grać” z linkiem „Wyślij ponownie” (specyfikacja email-verification, BR-23).
+- **Ostrzeżenie dla gościa:** „Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii” (game-invitations, BR-22).
+- **Błąd, który wymaga działania:** „Zbyt wiele prób — spróbuj za chwilę”, „To zaproszenie jest już nieważne”. Błąd wymagający działania jest alertem, nigdy chwilowym komunikatem.
+- **Potwierdzenie wyniku:** „Hasło zmienione. Inne urządzenia zostały wylogowane.”
+
+## 3. Kiedy nie używać
+
+- **Błąd jednego pola:** [Pole formularza](?path=/docs/prymitywy-pole-formularza--docs) (komunikat przy polu).
+- **Decyzja „tak/nie”:** dialog potwierdzenia (jeszcze nie ma, etap 2, następna partia).
+- **Informacja niezbędna do działania w podpowiedzi lub najechaniu:** pokaż ją w Alercie albo w treści strony.
+- **Chwilowe powiadomienie typu toast:** system go nie ma; specyfikacje używają `role="status"`.
+
+## 4. Anatomia
+
+1. **Obramowanie w kolorze stanu**.
+2. **Ikona stanu** (wymagana, dekoracyjna).
+3. **Tytuł** (wymagany): słowo, które nazywa stan i sedno komunikatu.
+4. **Szczegóły** (opcjonalne): co się stało i co zrobić dalej.
+
+## 5. Warianty
+
+| Stan | Kiedy wybrać | Rola dla czytnika | Źródło |
+|---|---|---|---|
+| `info` (domyślny) | Informacja bez pilności: baner e-maila | `status` | propozycja (Q4) |
+| `success` | Akcja zakończona: „Hasło zmienione” | `status` | propozycja (Q4) |
+| `warning` | Coś może pójść źle: gość zmienia przeglądarkę | `alert` | propozycja (Q4) |
+| `danger` | Coś się nie udało i wymaga reakcji | `alert` | propozycja (Q4) |
+
+<Canvas of={Stories.Stany} />
+
+## 6. Stany
+
+Alert nie ma stanów interakcji (najechanie, fokus, wciśnięcie, zablokowany, ładowanie): to komunikat, nie kontrolka. Stan oznacza wariant (info, powodzenie, uwaga, błąd). Akcje wewnątrz alertu (np. przycisk „Wyślij ponownie”) mają własne stany.
+
+## 7. Zachowanie i dostępność
+
+- **Rola:** `status` (czeka grzecznie) dla info i sukcesu, `alert` (przerywa) dla uwagi i błędu. Źródło: WAI-ARIA `alert` i `status`, WCAG 4.1.3.
+- **Czytnik ekranu:** ogłasza tytuł i szczegóły, gdy alert pojawia się na stronie; ikona jest ukryta (`aria-hidden`).
+- **Stan nie opiera się na kolorze:** ikona, obramowanie i **tytuł** (słowo) niosą znaczenie (WCAG 1.4.1).
+- **Klawiatura:** alert sam nie przyjmuje fokusu; linki i przyciski w środku tak (kolejność z dokumentu).
+- **Kontrast:** kolory stanów mają co najmniej 4,5:1 na tle panelu w obu motywach (strona Kolor).
+
+## 8. Treść
+
+- **Tytuł:** krótkie zdanie lub fraza: „Potwierdź e-mail, aby grać”, „Zbyt wiele prób”. Max ok. 8 słów.
+- **Szczegóły:** co się stało i co zrobić: „Spróbuj za chwilę.” Bez żargonu i bez kodów błędów.
+- **Bez obietnic, których nie znamy:** „Link wysyłamy na…” zamiast „Wysłaliśmy” (email-verification, Q6).
+- Komponent nie ma wbudowanych tekstów; tytuł i treść przychodzą z propsów.
+
+## 9. Responsywność
+
+Treść zawija się, ikona zostaje przy pierwszej linii; przy 320 px nic nie wychodzi poza ekran.
+
+<Canvas of={Stories.DlugaTrescNaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={Alert} />
+
+## 11. Kod
+
+```tsx
+import { Alert } from "@gomoku/ui/game/alert";
+
+<Alert title="Potwierdź e-mail, aby grać">Link wysyłamy na ala@example.com — sprawdź też folder spam.</Alert>;
+```
+
+Błąd wymagający działania (limit prób):
+
+```tsx
+<Alert status="danger" title="Zbyt wiele prób">
+  Spróbuj za chwilę.
+</Alert>
+```
+
+## 12. Dobrze i źle
+
+<Unstyled>
+  <DoDont
+    good={<Alert status="danger" title="Zbyt wiele prób">Spróbuj za chwilę.</Alert>}
+    goodNote="tytuł nazywa problem, szczegóły mówią, co zrobić."
+    bad={<Alert status="danger" title="Błąd" />}
+    badNote="sam „Błąd” nie mówi, co się stało ani co zrobić."
+  />
+</Unstyled>
+
+## 13. Powiązane
+
+- **Mylony z:** komunikatem przy polu (Pole formularza) i toastem (system go nie ma).
+- **Występuje we wzorcach:** formularz (błąd serwera), stan zależny od uprawnień (e-mail niepotwierdzony, gość), zaproszenie przez link lub kod.

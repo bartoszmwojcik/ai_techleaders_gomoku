@@ -1,0 +1,90 @@
+import { ArgTypes, Canvas, Meta } from "@storybook/addon-docs/blocks";
+import { ErrorState } from "@gomoku/ui/game/error-state";
+import * as Stories from "./error-state.stories";
+
+<Meta of={Stories} />
+
+# Stan błędu
+
+## 1. Do czego służy
+
+Zastępuje treść, której nie udało się wczytać: mówi, co się stało, co gracz może zrobić, i pozwala spróbować ponownie.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Kiedy używać
+
+- **Lista, która się nie wczytała:** lobby, historia partii (E03, E04).
+- **Widok partii lub zaproszenia, którego nie da się pokazać:** „To zaproszenie jest już nieważne” (game-invitations, Q12).
+- **Brak sieci przy odświeżaniu:** „Brak połączenia z internetem” z akcją „Wróć do partii” (BR-06).
+
+## 3. Kiedy nie używać
+
+- **Błąd jednego pola formularza:** [Pole formularza](?path=/docs/prymitywy-pole-formularza--docs).
+- **Komunikat obok działającej treści (np. nieudane wysłanie formularza):** [Alert](?path=/docs/prymitywy-alert--docs).
+- **Pusto, bo nic nie ma:** [Pusty stan](?path=/docs/prymitywy-pusty-stan--docs).
+- **Treść się jeszcze ładuje:** [Szkielet ładowania](?path=/docs/prymitywy-szkielet-ładowania--docs).
+
+## 4. Anatomia
+
+1. **Ikona błędu** (dekoracyjna).
+2. **Co się stało** (wymagane): wyróżnione, w kolorze błędu.
+3. **Co zrobić** (opcjonalne): jedno zdanie.
+4. **Akcja** (opcjonalna): ponowienie lub inne wyjście.
+
+## 5. Warianty
+
+Brak wariantów wyglądu. Rodzaj błędu to treść: „brak sieci”, „nie udało się wczytać”, „nieważne zaproszenie”. Jeden wygląd zapewnia spójność (R01.2).
+
+<Canvas of={Stories.BrakSieci} />
+
+## 6. Stany
+
+Stan błędu jest statyczny: nie ma najechania, fokusu, wciśnięcia, zablokowania ani ładowania (nie dotyczy; akcja w środku ma własne stany, w tym `loading` podczas ponawiania).
+
+## 7. Zachowanie i dostępność
+
+- **Czytnik ekranu:** `role="alert"` ogłasza błąd od razu, gdy pojawia się na stronie. Źródło: WAI-ARIA `alert`, WCAG 4.1.3.
+- **Błąd nie opiera się na kolorze:** ikona i słowa niosą znaczenie (WCAG 1.4.1).
+- **Klawiatura:** `Tab` trafia na akcję ponowienia. Po ponowieniu przenieś fokus tam, gdzie pojawi się treść (lub zostaw na przycisku, jeśli błąd wraca).
+- **Kontrast:** kolor błędu ma co najmniej 4,5:1 na tle strony i panelu w obu motywach.
+
+## 8. Treść
+
+- **Co się stało:** konkretnie, bez kodów: „Nie udało się wczytać listy partii”, nie „Błąd 500”.
+- **Co zrobić:** jedno zdanie: „Sprawdź połączenie z internetem i spróbuj ponownie.”
+- **Akcja:** czasownik: „Spróbuj ponownie”, „Wróć do partii”.
+- **Nie obwiniaj gracza** i nie obiecuj tego, czego nie wiemy (np. „Wysłaliśmy”, gdy wysyłka mogła się nie udać).
+- Komponent nie ma wbudowanych tekstów.
+
+## 9. Responsywność
+
+Tekst zawija się, także długie nazwy bez spacji; ikona zostaje przy pierwszej linii.
+
+<Canvas of={Stories.DlugaTrescNaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={ErrorState} />
+
+## 11. Kod
+
+```tsx
+import { Button } from "@gomoku/ui/game/button";
+import { ErrorState } from "@gomoku/ui/game/error-state";
+
+<ErrorState title="Nie udało się wczytać listy partii" action={<Button variant="secondary" onClick={retry}>Spróbuj ponownie</Button>}>
+  Sprawdź połączenie z internetem i spróbuj ponownie.
+</ErrorState>;
+```
+
+## 12. Dobrze i źle
+
+**Dobrze:** konkretny opis („Nie udało się wczytać listy partii”), jedno zdanie o tym, co zrobić, i przycisk ponowienia. **Źle:** samo „Błąd”, kod serwera albo błąd, który znika po chwili jak chwilowy komunikat (błąd wymagający działania zostaje na ekranie).
+
+<Canvas of={Stories.OglaszaBladIPozwalaPonowic} />
+
+## 13. Powiązane
+
+- **Mylony z:** Alertem (komunikat obok treści) i Pustym stanem (nic nie ma, bez błędu).
+- **Występuje we wzorcach:** lista z filtrami (błąd wczytania), widok szczegółów („nie istnieje albo brak dostępu”), formularz (błąd serwera obok formularza to Alert).

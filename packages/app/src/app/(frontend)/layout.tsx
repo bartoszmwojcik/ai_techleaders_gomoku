@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function FrontendLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="pl">
-      <body className="min-h-svh bg-stone-900 text-stone-100 antialiased">{children}</body>
+      <body className="min-h-svh bg-surface-page text-text-primary antialiased">{children}</body>
     </html>
   );
 }

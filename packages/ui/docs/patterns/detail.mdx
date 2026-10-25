@@ -1,0 +1,39 @@
+import { Canvas, Meta } from "@storybook/addon-docs/blocks";
+import * as Stories from "./detail.stories";
+
+<Meta of={Stories} />
+
+# Widok szczegółów
+
+Wzorzec dla strony jednego obiektu. W produkcie to partia `/games/{id}`: plansza, zegary, status tury i główna akcja.
+
+<Canvas of={Stories.TwojRuchGlownaAkcjaWidoczna} />
+
+## Kiedy używać
+
+- Strona jednego obiektu z identyfikatorem w adresie (partia).
+- Nie używaj go do list ani formularzy.
+
+## Zasady
+
+1. **Najważniejsza informacja i główna akcja są widoczne bez przewijania** (status tury, plansza, „Postaw kamień”). Źródło: prompt systemu.
+2. **Stan „nie istnieje albo brak dostępu” to jeden komunikat** bez rozróżniania przyczyny, z drogą powrotną. Źródło: game-invitations (obcy gracz dostaje `404`), BR-22.
+3. **Ładowanie jest szkieletem w kształcie treści** z jednym opisem dla czytnika.
+4. **Stan z serwera, nie z klienta:** odświeżenie, drugi widok i powrót po rozłączeniu pokazują ten sam stan (BR-06).
+5. **Zakończony obiekt jest tylko do odczytu** i mówi, jak się skończył ([Baner wyniku](?path=/docs/produkt-partia-baner-wyniku--docs)).
+
+## Stany
+
+| Stan | Story |
+|---|---|
+| ładowanie | [Ładowanie](?path=/story/wzorce-widok-szczegółów--ladowanie) |
+| nie istnieje albo brak dostępu | [Nie istnieje](?path=/story/wzorce-widok-szczegółów--nie-istnieje-albo-brak-dostepu) |
+| twórca czeka | [Twórca czeka](?path=/story/wzorce-widok-szczegółów--tworca-czeka) |
+| w trakcie, główna akcja widoczna | [Twój ruch](?path=/story/wzorce-widok-szczegółów--twoj-ruch-glowna-akcja-widoczna) |
+| zakończony | [Zakończona](?path=/story/wzorce-widok-szczegółów--zakonczona) |
+
+Pełna mapa stanów partii: [Partia z zaproszenia](?path=/docs/design-system-partia-z-zaproszenia--docs).
+
+## Powiązane
+
+[Plansza](?path=/docs/produkt-partia-plansza--docs), [Zegar gracza](?path=/docs/produkt-partia-zegar-gracza--docs), [Stan błędu](?path=/docs/prymitywy-stan-błędu--docs), [Szkielet ładowania](?path=/docs/prymitywy-szkielet-ładowania--docs).

@@ -1,0 +1,97 @@
+import { ArgTypes, Canvas, Meta } from "@storybook/addon-docs/blocks";
+import { EmptyState } from "@gomoku/ui/game/empty-state";
+import * as Stories from "./empty-state.stories";
+
+<Meta of={Stories} />
+
+# Pusty stan
+
+## 1. Do czego służy
+
+Mówi, dlaczego w miejscu listy nic nie ma i co gracz może zrobić dalej.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Kiedy używać
+
+- **Lobby bez graczy:** „Nikt teraz nie szuka gry” z akcją „Szukam przeciwnika” (E03).
+- **Historia bez partii:** „Nie rozegrałeś jeszcze żadnej partii” z akcją „Utwórz zaproszenie” (E04).
+- **Brak wyników po zastosowaniu filtrów:** „Brak partii z tym przeciwnikiem” z akcją „Wyczyść filtry”.
+
+## 3. Kiedy nie używać
+
+- **Treść się jeszcze ładuje:** [Szkielet ładowania](?path=/docs/prymitywy-szkielet-ładowania--docs).
+- **Coś się nie udało:** stan błędu (z powodem i próbą ponowienia), nie pusty stan.
+- **Brak dostępu do strony:** osobna strona „nie istnieje albo brak dostępu”.
+
+## 4. Anatomia
+
+1. **Powód** (wymagany): jedno krótkie zdanie, wyróżnione.
+2. **Wyjaśnienie** (opcjonalne): zdanie o następnym kroku.
+3. **Akcja** (opcjonalna): przycisk lub link z następnym krokiem.
+
+Układ jest wyrównany do lewej, bez ilustracji i bez ikon na kolorowym tle (A02, A03).
+
+## 5. Warianty
+
+Brak wariantów wyglądu. Dwa rodzaje to dwa zestawy treści:
+
+| Rodzaj | Kiedy | Akcja |
+|---|---|---|
+| „Jeszcze nic tu nie ma” | Lista jest pusta, bo nic nie powstało | Utwórz (np. zaproszenie) |
+| „Brak wyników dla filtrów” | Filtry nic nie zwracają | Wyczyść filtry |
+
+<Canvas of={Stories.NikogoWLobby} />
+
+## 6. Stany
+
+Pusty stan jest statyczny: nie ma najechania, fokusu, wciśnięcia, zablokowania ani ładowania (nie dotyczy); fokus i najechanie obsługuje akcja w środku.
+
+## 7. Zachowanie i dostępność
+
+- **Czytnik ekranu:** czyta powód, wyjaśnienie i akcję w kolejności dokumentu. Nie jest ogłaszany na żywo; gdy lista staje się pusta po filtrowaniu, ogłoś to osobnym `role="status"` (wzorzec „Lista z filtrami”).
+- **Klawiatura:** `Tab` trafia na akcję.
+- **Kontrast:** tekst ma co najmniej 4,5:1 w obu motywach.
+- **Cel kliknięcia:** akcja ma co najmniej 44 px (Przycisk, Link `standalone`).
+
+## 8. Treść
+
+- **Powód:** dlaczego jest pusto, nie „Brak danych”: „Nie rozegrałeś jeszcze żadnej partii”.
+- **Następny krok:** czasownik i obiekt: „Utwórz zaproszenie”, „Wyczyść filtry”.
+- **Długość:** powód do ok. 8 słów; wyjaśnienie do dwóch zdań i około 65 znaków w linii.
+- Komponent nie ma wbudowanych tekstów.
+
+## 9. Responsywność
+
+Tekst zawija się, wyjaśnienie ma ograniczoną miarę (`measure-text`, ok. 65 znaków).
+
+<Canvas of={Stories.DlugaTrescNaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={EmptyState} />
+
+## 11. Kod
+
+```tsx
+import { Button } from "@gomoku/ui/game/button";
+import { EmptyState } from "@gomoku/ui/game/empty-state";
+
+<EmptyState
+  title="Nie rozegrałeś jeszcze żadnej partii"
+  action={<Button>Utwórz zaproszenie</Button>}
+>
+  Zagraj ze znajomym albo wybierz przeciwnika w lobby.
+</EmptyState>;
+```
+
+## 12. Dobrze i źle
+
+**Dobrze:** powód („Nie rozegrałeś jeszcze żadnej partii”) i następny krok („Utwórz zaproszenie”). **Źle:** samo „Brak danych”, pusty stan bez akcji tam, gdzie jest sensowna akcja, albo pusty stan w miejscu, gdzie dane się jeszcze ładują.
+
+<Canvas of={Stories.PowodINastepnyKrok} />
+
+## 13. Powiązane
+
+- **Mylony z:** Szkieletem ładowania i stanem błędu.
+- **Występuje we wzorcach:** lista z filtrami (dwa rodzaje), widok szczegółów, historia partii.

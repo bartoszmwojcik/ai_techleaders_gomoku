@@ -1,0 +1,109 @@
+import { ArgTypes, Canvas, Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { TextLink } from "@gomoku/ui/game/text-link";
+import { DoDont } from "../../.storybook/blocks";
+import * as Stories from "./text-link.stories";
+
+<Meta of={Stories} />
+
+# Link tekstowy
+
+## 1. Do czego służy
+
+Prowadzi gracza na inną stronę lub w inne miejsce strony, w zdaniu albo jako osobna akcja nawigacyjna.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Kiedy używać
+
+- **Odnośnik w zdaniu:** „Zaproszony może zagrać bez konta. Jak to działa” (specyfikacje account-registration, game-invitations).
+- **Nawigacja poboczna:** „Nie pamiętasz hasła?”, „Nie masz konta? Załóż konto”, „Konto” w nagłówku (login-logout).
+- **Powrót lub zmiana kontekstu:** „Zaloguj się, aby wysłać nowy link” (email-verification).
+
+## 3. Kiedy nie używać
+
+- **Akcja, która zmienia stan na serwerze** (wysłanie, usunięcie): użyj [Przycisku](?path=/docs/prymitywy-przycisk--docs).
+- **Główna akcja widoku:** użyj Przycisku `primary`; link jest za mało widoczny.
+- **Pusty `href="#"` do uruchomienia skryptu:** użyj przycisku.
+
+## 4. Anatomia
+
+1. **Tekst linku** (wymagany), zawsze podkreślony.
+2. **Adres** (`href`, wymagany).
+
+## 5. Warianty
+
+| Rozmieszczenie | Kiedy wybrać | Źródło |
+|---|---|---|
+| `inline` (domyślne) | Link w środku zdania | WCAG 2.5.8 (link w zdaniu jest wyjątkiem od celu 24 px) |
+| `standalone` | Link jako osobny element, np. w nagłówku lub pod formularzem; ma cel dotykowy 44 px | `target-min`, BR-20 |
+
+<Canvas of={Stories.Rozmieszczenie} />
+
+## 6. Stany
+
+Domyślny, najechanie i fokus. Zablokowanego linku nie ma: jeśli przejście jest niedostępne, nie pokazuj linku wcale, tylko tekst z powodem.
+
+<Canvas of={Stories.Stany} />
+
+Ładowania, wybranego i błędu link nie ma (nie dotyczy: link nie wykonuje akcji na serwerze).
+
+## 7. Zachowanie i dostępność
+
+- **Klawiatura:** `Tab` ustawia fokus, `Enter` otwiera link. Źródło: WAI-ARIA Authoring Practices.
+- **Fokus:** obrys 2 px `focus-ring` z odstępem 2 px (R01.8).
+- **Rola:** natywny `<a href>`; link bez `href` nie jest linkiem.
+- **Czytnik ekranu:** czyta tekst i „link”. Tekst musi mieć sens poza kontekstem zdania.
+- **Kolor nie jest jedynym nośnikiem:** link jest zawsze podkreślony (WCAG 1.4.1) i ma kolor akcji tylko dlatego, że jest interaktywny (Z1).
+- **Cel kliknięcia:** `standalone` ma co najmniej 44 px wysokości; `inline` mieści się w wyjątku WCAG 2.5.8 dla linków w tekście.
+
+## 8. Treść
+
+- Tekst linku nazywa miejsce docelowe: „Jak to działa”, „Konto”, nie „kliknij tutaj”.
+- Bez kropek i strzałek w tekście; do 5 słów.
+- Komponent nie ma wbudowanych tekstów; tekst przychodzi z propsów i zawija się w razie potrzeby.
+
+## 9. Responsywność
+
+Link zawija się do kilku linii. `standalone` zachowuje 44 px wysokości (sprawdzone przy 320 px).
+
+<Canvas of={Stories.DlugaTrescNaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={TextLink} />
+
+Dodatkowo: wszystkie atrybuty natywnego `<a>`. `asChild` pozwala użyć `next/link` ze stylami linku.
+
+## 11. Kod
+
+```tsx
+import { TextLink } from "@gomoku/ui/game/text-link";
+
+<TextLink href="/help">Jak to działa</TextLink>;
+```
+
+Z `next/link` (przejście do konta):
+
+```tsx
+import Link from "next/link";
+
+<TextLink asChild placement="standalone">
+  <Link href="/account">Konto</Link>
+</TextLink>;
+```
+
+## 12. Dobrze i źle
+
+<Unstyled>
+  <DoDont
+    good={<TextLink href="#">Jak to działa</TextLink>}
+    goodNote="tekst nazywa miejsce docelowe."
+    bad={<TextLink href="#">Kliknij tutaj</TextLink>}
+    badNote="tekst nic nie mówi poza kontekstem zdania."
+  />
+</Unstyled>
+
+## 13. Powiązane
+
+- **Mylony z:** Przyciskiem (akcja) i `Button asChild` (przejście wyglądające jak przycisk).
+- **Występuje we wzorcach:** formularz (linki pod polami), zaproszenie przez link lub kod, stan zależny od uprawnień (logowanie, rejestracja).

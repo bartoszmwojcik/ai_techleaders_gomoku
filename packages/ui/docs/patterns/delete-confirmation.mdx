@@ -1,0 +1,44 @@
+import { Canvas, Meta } from "@storybook/addon-docs/blocks";
+import * as Stories from "./delete-confirmation.stories";
+
+<Meta of={Stories} />
+
+# Potwierdzenie usunięcia
+
+Wzorzec dla akcji, których nie da się cofnąć albo które mają poważny skutek: usunięcie konta, anulowanie własnej oczekującej partii przy dołączaniu, wylogowanie w trakcie partii.
+
+<Canvas of={Stories.PytanieZNazwaObiektu} />
+
+## Kiedy używać
+
+- Skutek jest nieodwracalny albo dotyka czegoś ważnego (konto, trwająca partia).
+- Nie używaj go przy zwykłych, odwracalnych akcjach: wykonaj je od razu i pokaż wynik.
+
+## Zasady
+
+1. **Nazwa obiektu jest w pytaniu:** „Usunąć konto Ala_7?”, nie „Czy na pewno?”. Źródło: prompt systemu.
+2. **Przycisk potwierdzenia ma czasownik i obiekt:** „Usuń konto na zawsze”, nie „OK”. Źródło: prompt systemu.
+3. **Przycisk rezygnacji jest łatwy do znalezienia:** pierwszy w kolejności fokusu, z nazwą mówiącą, co zostaje („Zostaw konto”). Fokus startuje na rezygnacji.
+4. **Skutek opisany jednym zdaniem** przed potwierdzeniem („Twoje zakończone partie zostaną u przeciwników jako „Usunięty gracz””). Źródło: account-deletion, BR-17.
+5. **Akcję można poprzedzić zgodą** ([Pole wyboru](?path=/docs/prymitywy-pole-wyboru--docs)); przycisk jest wtedy zablokowany **z powodem napisanym obok** („Zaznacz potwierdzenie, aby usunąć konto”). Źródło: account-deletion.
+6. **Dialog zostaje otwarty do odpowiedzi serwera:** przycisk jest zajęty (`confirming`), a błąd pokazuje się w dialogu z instrukcją. Sukces dopiero po potwierdzeniu z serwera.
+7. **Odmowa serwera mówi, co zrobić:** „Najpierw dokończ albo poddaj partię” (BR-21).
+
+## Stany
+
+| Stan | Story |
+|---|---|
+| przycisk zablokowany z powodem | [Przycisk zablokowany z powodem](?path=/story/wzorce-potwierdzenie-usunięcia--przycisk-zablokowany-z-powodem) |
+| zgoda zaznaczona, przycisk aktywny | [Potwierdzenie zaznaczone](?path=/story/wzorce-potwierdzenie-usunięcia--potwierdzenie-zaznaczone) |
+| pytanie z nazwą obiektu | [Pytanie z nazwą obiektu](?path=/story/wzorce-potwierdzenie-usunięcia--pytanie-z-nazwa-obiektu) |
+| usuwanie trwa | [Usuwanie trwa](?path=/story/wzorce-potwierdzenie-usunięcia--usuwanie-trwa) |
+| błąd serwera, dialog zostaje otwarty | [Błąd serwera](?path=/story/wzorce-potwierdzenie-usunięcia--blad-serwera-dialog-zostaje-otwarty) |
+| od zgody do dialogu | [Od checkboxa do dialogu](?path=/story/wzorce-potwierdzenie-usunięcia--od-checkboxa-do-dialogu) |
+| anulowanie własnej partii przy dołączaniu | [Anulowanie własnej partii](?path=/story/wzorce-potwierdzenie-usunięcia--anulowanie-wlasnej-partii-przy-dolaczaniu) |
+| wylogowanie w trakcie partii | [Wylogowanie w trakcie partii](?path=/story/wzorce-potwierdzenie-usunięcia--wylogowanie-w-trakcie-partii) |
+
+<Canvas of={Stories.OdCheckboxaDoDialogu} />
+
+## Powiązane
+
+[Dialog potwierdzenia](?path=/docs/prymitywy-dialog-potwierdzenia--docs), [Pole wyboru](?path=/docs/prymitywy-pole-wyboru--docs), [Przycisk](?path=/docs/prymitywy-przycisk--docs), [Alert](?path=/docs/prymitywy-alert--docs).

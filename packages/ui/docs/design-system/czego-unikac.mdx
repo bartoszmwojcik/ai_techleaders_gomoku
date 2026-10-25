@@ -1,0 +1,56 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Design system/Czego unikać" />
+
+# Czego unikać
+
+Przy każdym punkcie: jak go rozpoznać w kodzie i na ekranie, dlaczego to problem, czym zastąpić. Skrypt `npm run check:tokens -w @gomoku/ui` wyłapuje część z nich (oznaczone „skrypt”).
+
+## 1. Antywzorce naszego produktu
+
+Źródło: antyreferencje w `lekcja-06/referencje.md`.
+
+| Czego unikać | Jak rozpoznać | Dlaczego | Czym zastąpić |
+|---|---|---|---|
+| Niski kontrast menu i tekstu pomocniczego (A01.1) | tekst pomocniczy ciemniejszy niż `text-muted`; para poniżej 4,5:1 na stronie [Kolor](?path=/docs/fundamenty-kolor--docs) | gracz nie czyta; antycharakter „niskokontrastowy” | tokeny `text-*` z tabeli kontrastu |
+| Niebieski jako kolor tekstu (A01.2) | `text-blue-*`, niebieski hex; linki nie w `text-accent` (skrypt) | obce naszej palecie, kolor akcji to pomarańcz | `text-text-accent` dla linków |
+| Font imitujący niską rozdzielczość (A01.3) | `font-family` pikselowy, własne `@font-face` w nagłówkach | antycharakter „retro-pikselowy” | `font-family-base` |
+| Bloki kodu i układ dokumentacji technicznej (A01.4) | `<pre>`, monospace w interfejsie gracza, menu boczne z kolumną tekstu | antycharakter „techniczny” | zwykły tekst, kod zaproszenia krojem bazowym z rozstrzeleniem |
+| Pstrokaty układ, różowy i czerwony jako akcja (A03) | więcej niż jeden nasycony kolor naraz, zdjęcia, kolorowe kafle | gracz ma patrzeć na planszę | jeden akcent (pomarańcz), kolor tylko z planszy i stanów |
+| Ukryte czekanie (A05) | spinner „Szukamy…” bez licznika, status lobby bez czasu | gracz rezygnuje, gdy nie widzi końca (A-02) | [Status szukania gry](?path=/docs/produkt-lobby-status-szukania-gry--docs) z czasem na wierszach i przy statusie |
+
+## 2. Generyczny wygląd AI
+
+Źródło: A02 i `lekcja-06/audyt.md`. Pojedynczy element nie musi być błędem; problemem jest wiele naraz.
+
+| Czego unikać | Jak rozpoznać w kodzie | Dlaczego | Czym zastąpić |
+|---|---|---|---|
+| Gradient w tle, tekście, na przycisku | `bg-gradient-*`, `from-`, `via-`, `to-`, `linear-gradient(` poza `board-texture` (skrypt na klasy palety) | styl bez uzasadnienia w produkcie | płaskie tło z tokenów; jedyny wyjątek to słoje planszy |
+| Szkło i rozmycie, półprzezroczyste panele | `backdrop-blur-*`, `bg-white/10`, `bg-*/50` na panelach | rozmywa tekst, antycharakter „generyczny” | `surface-raised` i cienka linia `border-default` |
+| Poświata | `shadow-[0_0_...]`, `drop-shadow` z kolorem, `ring` jako ozdoba | cień poza planszą i kamieniami jest zakazany | brak cienia (A02) |
+| Emoji zamiast ikon | emoji w JSX, w etykietach i tytułach | niespójne, zależne od systemu | `lucide-react` (rozmiary tokenów) |
+| Iskierki jako symbol AI | ikona `Sparkles`, ✨ | produkt nie ma funkcji AI | nic |
+| Trzy identyczne karty z ikoną | trzy `<Panel>` w rzędzie z ikoną i tytułem | wzorzec z internetu bez treści | lista lub jedna sekcja z treścią |
+| Wszystko w pigułkach | `rounded-full` poza kamieniami (skrypt), `rounded-3xl` (skrypt) | A02: bez pigułek | `rounded-base`; `rounded-piece` tylko kamienie |
+| Karta w karcie | `<Panel>` wewnątrz `<Panel>` | ginie hierarchia | nagłówek niższego poziomu i `space-stack` |
+| Cień jako jedyny sposób oddzielenia | `shadow-md`/`shadow-lg` na kartach (skrypt) | A02 | `surface-raised` + `border-default` |
+| Wszystko wyśrodkowane | `text-center` na całych ekranach, `items-center` bez powodu | trudniej czytać i skanować | wyrównanie do lewej; środek tylko dla planszy i nagłówka strony |
+| Indygo lub fiolet jako kolor akcji | `indigo-*`, `violet-*` (skrypt), `#4f46e5` | brak uzasadnienia w marce | `action-primary-bg` (pomarańcz) |
+| Wymyślone liczby, opinie, klienci | liczby w tekście bez źródła w specyfikacji | fałszywy dowód popytu (A-01) | dane z briefu lub oznaczone „przykład” |
+
+## 3. Błędy implementacji
+
+| Czego unikać | Jak rozpoznać w kodzie | Dlaczego | Czym zastąpić |
+|---|---|---|---|
+| Wartość spoza tokenów | `#...`, `rgb(`, `p-5`, `p-[13px]`, `bg-zinc-900` (skrypt `check:tokens`) | łamie spójność i motywy | token znaczeniowy |
+| Wariant dodany przy okazji | nowy `variant` lub prop w komponencie bez drugiego użycia | system puchnie bez powodu | najpierw [Jak zmieniać system](?path=/docs/design-system-jak-zmieniać-system--docs) |
+| `div` zamiast przycisku | `<div onClick>`, `role="button"` na `div` | brak klawiatury i semantyki | [Przycisk](?path=/docs/prymitywy-przycisk--docs) lub `asChild` z `<a>` |
+| Placeholder zamiast etykiety | `<input placeholder=...>` bez `<label>` lub `Field` | znika po wpisaniu, brak nazwy dla czytnika | [Pole formularza](?path=/docs/prymitywy-pole-formularza--docs) |
+| Status oznaczony tylko kolorem | kolorowa kropka bez słowa, zielone/czerwone tło bez tekstu | WCAG 1.4.1 | [Znacznik statusu](?path=/docs/prymitywy-znacznik-statusu--docs), [Alert](?path=/docs/prymitywy-alert--docs) |
+| Zablokowany przycisk bez wyjaśnienia | `disabled` bez tekstu powodu obok | gracz nie wie, co zrobić | powód tekstem i `aria-describedby` |
+| Toast z błędem, który wymaga działania | chwilowe powiadomienie z błędem | znika, zanim gracz zareaguje | [Alert](?path=/docs/prymitywy-alert--docs) lub [Stan błędu](?path=/docs/prymitywy-stan-błędu--docs) |
+| Podpowiedź z informacją niezbędną do działania | tekst tylko w tooltipie lub `title` | niedostępne z klawiatury i dotyku | zwykły tekst na stronie |
+| Plansza z `aria-hidden` w grze | `aria-hidden` na gridzie | czytnik nie widzi gry | `role="grid"` z nazwami pól |
+| Ukrywanie elementu siatki przez `display: none` | `hidden` na elemencie, który zajmuje kolumnę | przesuwa pozostałe komórki | `w-0 h-0 overflow-hidden` |
+| Scalanie klas gołym `cn` | import `cn` z `"cn"` w komponentach `game` | gubi `text-body` obok koloru tekstu | `import { cn } from "./cn"` |
+| Czas liczony w kliencie | odliczanie bez czasu z serwera | klient może zmienić wynik | czas z serwera, komponent tylko wyświetla |

@@ -1,0 +1,47 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Design system/Jak zmieniać system" />
+
+# Jak zmieniać system
+
+## Kiedy dodać komponent, wariant, a kiedy nic
+
+| Sytuacja | Decyzja |
+|---|---|
+| Ta sama potrzeba w co najmniej dwóch miejscach, a żaden komponent jej nie pokrywa | dodaj komponent |
+| Istniejący komponent ma wyglądać albo zachowywać się inaczej w jednej, powtarzalnej sytuacji | dodaj wariant (z opisem, kiedy go wybrać) |
+| Potrzeba występuje raz | nic: złóż ekran z istniejących komponentów; wpisz do [Czego brakuje](?path=/docs/design-system-czego-brakuje--docs) tylko, jeśli to luka |
+| Wartość, której nie ma w tokenach | nie hardcoduj: zapytaj właściciela i dodaj token (poniżej) |
+
+Nie dodawaj komponentów, wariantów ani zależności „przy okazji”.
+
+## Co musi mieć dokumentacja nowego komponentu
+
+1. Komponent w `packages/ui/src/game/<nazwa>.tsx`, bez wbudowanych tekstów, ze wszystkimi wartościami z tokenów.
+2. Test jednostkowy obok (`<nazwa>.test.tsx`) ze 100% pokryciem; interakcje w jsdom.
+3. Stories w `packages/ui/docs/`: Playground, każdy wariant, macierz stanów (najechanie i fokus jako zamrożony podgląd), długa treść i wąski ekran 320 px, test interakcji w `play`.
+4. Strona MDX z 13 sekcjami (do czego służy, kiedy używać, kiedy nie, anatomia, warianty, stany, zachowanie i dostępność, treść, responsywność, API, kod, dobrze i źle, powiązane); każda reguła ze źródłem.
+5. Wpis w [Komponenty](?path=/docs/design-system-komponenty--docs), [Start](?path=/docs/design-system-start--docs) i [Jak wybrać komponent](?path=/docs/design-system-jak-wybrać-komponent--docs), oraz w `docs/design-system.md` (plik dla agentów).
+6. Zrzut ekranu przy 320 px w obu motywach.
+
+## Co sprawdzić przy zmianie tokenu
+
+1. Przelicz kontrast każdej pary, której dotyczy zmiana, w **obu** motywach (strona [Kolor](?path=/docs/fundamenty-kolor--docs) liczy je na żywo).
+2. Pary poniżej 4,5:1 (tekst) lub 3:1 (elementy) są błędem; rozwiązanie zatwierdza właściciel.
+3. Zaktualizuj źródło przy tokenie w `game-tokens.css` i `lekcja-06/tokeny.md`.
+4. Uruchom stories w obu motywach i `check:tokens`.
+
+## Kto zatwierdza
+
+Właściciel produktu (Bartosz Wójcik). Zmiana reguły albo tokenu to osobna decyzja z numerem źródła (R, A, Z lub propozycja), zapisana w `lekcja-06/referencje.md` albo `lekcja-06/tokeny.md`. Agent proponuje i oznacza propozycje; nie przyjmuje ich sam.
+
+## Komendy
+
+| Komenda | Do czego |
+|---|---|
+| `npm run storybook -w @gomoku/ui` | Storybook na `localhost:6006` |
+| `npm run build-storybook -w @gomoku/ui` | statyczny build |
+| `npm run test:stories -w @gomoku/ui` | stories jako testy w obu motywach, z dostępnością |
+| `npm run check:tokens -w @gomoku/ui` | wartości spoza tokenów w `src/game` |
+| `npm test` | testy jednostkowe ze 100% pokryciem |
+| `npm run typecheck`, `npm run lint` | typy i lint |

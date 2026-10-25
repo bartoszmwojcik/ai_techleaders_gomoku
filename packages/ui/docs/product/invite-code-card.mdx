@@ -1,0 +1,101 @@
+import { ArgTypes, Canvas, Meta } from "@storybook/addon-docs/blocks";
+import { InviteCodeCard } from "@gomoku/ui/game/invite-code-card";
+import * as Stories from "./invite-code-card.stories";
+
+<Meta of={Stories} />
+
+# Karta kodu zaproszenia
+
+## 1. Do czego służy
+
+Daje twórcy partii link i kod zaproszenia jednej konkretnej osoby oraz sposób, żeby je skopiować, udostępnić lub anulować.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Kiedy używać
+
+- **Strona oczekującej partii `/games/{id}`:** twórca czeka na przeciwnika (game-invitations, BR-11).
+- **Gdy zaproszenie ma jeden link i jeden kod** (Q1: jeden sekret).
+
+## 3. Kiedy nie używać
+
+- **Wpisywanie kodu przez zaproszonego:** [Pole formularza](?path=/docs/prymitywy-pole-formularza--docs) na `/join`.
+- **Trwała lista znajomych:** poza zakresem (N-03); zaproszenie jest jednorazowe.
+- **Zaproszony widzi inną stronę** (`/invite/{kod}`), nie tę kartę.
+
+## 4. Anatomia
+
+1. **Panel z tytułem.**
+2. **Link** i **kod** pod nazwanymi liniami; kod dużą czcionką, bo bywa czytany na głos i przepisywany.
+3. **„Ważne do …”** (opcjonalne).
+4. **Przyciski:** kopiuj, udostępnij (tylko gdy przeglądarka potrafi), anuluj (gdy podano).
+
+## 5. Warianty
+
+Brak wariantów wyglądu. Zmienia się zawartość: z przyciskiem udostępniania lub bez, po skopiowaniu.
+
+<Canvas of={Stories.BezUdostepniania} />
+
+## 6. Stany
+
+Domyślny, skopiowano, bez udostępniania. Przyciski w środku mają własne stany (najechanie, fokus, wciśnięty, zablokowany). Ładowania ani błędu karta nie ma: o błędach kopiowania informuje strona Alertem.
+
+<Canvas of={Stories.Skopiowano} />
+
+## 7. Zachowanie i dostępność
+
+- **Region z nazwą:** panel z tytułem; link i kod w liście opisów (`dl`).
+- **Kopiowanie:** zrobi to strona (Clipboard API z awaryjnym zaznaczeniem tekstu); komponent dostaje `copied`. Ogłoszenie „Skopiowano” trafia do `role="status"`. Źródło: game-invitations.
+- **Udostępnianie:** przycisk jest ukryty, gdy nie ma `navigator.share`.
+- **Zaznaczanie:** link i kod mają `select-all`, więc jedno dotknięcie zaznacza całość.
+- **Klawiatura i cel kliknięcia:** przyciski mają co najmniej 44 px.
+
+## 8. Treść
+
+- **Linie:** „Link do zaproszenia”, „Kod do wpisania na stronie „Mam kod””.
+- **Przyciski:** „Kopiuj link”, „Skopiowano”, „Udostępnij”, „Anuluj zaproszenie”; czasownik i obiekt.
+- **Ważność:** „Ważne do 18:40” (godzina, nie „za 3 godziny”).
+- Komponent nie ma wbudowanych tekstów.
+
+## 9. Responsywność
+
+Link zawija się w dowolnym miejscu; przyciski układają się w kilku wierszach (sprawdzone przy 320 px).
+
+<Canvas of={Stories.DlugiLinkNaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={InviteCodeCard} />
+
+## 11. Kod
+
+```tsx
+import { InviteCodeCard } from "@gomoku/ui/game/invite-code-card";
+
+<InviteCodeCard
+  title="Zaproś znajomego"
+  link={invitation.url}
+  code={invitation.code}
+  linkLabel="Link do zaproszenia"
+  codeLabel="Kod do wpisania na stronie „Mam kod”"
+  copyLabel="Kopiuj link"
+  copiedLabel="Skopiowano"
+  copied={copied}
+  onCopy={copyLink}
+  onShare={canShare ? shareLink : undefined}
+  shareLabel="Udostępnij"
+  onCancel={cancelInvitation}
+  cancelLabel="Anuluj zaproszenie"
+/>;
+```
+
+## 12. Dobrze i źle
+
+**Dobrze:** link i kod razem, kod czytelny, udostępnianie tylko gdy działa. **Źle:** dwa różne sekrety (link i kod osobno), przycisk „Udostępnij”, który nic nie robi w przeglądarce bez tej funkcji.
+
+<Canvas of={Stories.KopiujUdostepnijAnuluj} />
+
+## 13. Powiązane
+
+- **Mylony z:** polem do wpisania kodu (`/join`) i ekranem zaproszonego (`/invite/{kod}`).
+- **Występuje we wzorcach:** zaproszenie przez link lub kod.

@@ -1,0 +1,26 @@
+import { Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { TypeSpecimen } from "../../.storybook/blocks";
+
+<Meta title="Fundamenty/Typografia" />
+
+# Typografia
+
+Krój to domyślny stos systemowy bezszeryfowy (`font-family-base`), wąsko-średni (R01.7). To świadoma decyzja właściciela,
+żeby go zachować, ale nie jest to wybrana rodzina: wygląd zależy od systemu czytelnika. Pliki fontów nie są potrzebne,
+więc nic nie jest ładowane z zewnątrz.
+
+## Role
+
+Wybierasz rolę, nie rozmiar. Rozmiary: 14, 16, 18, 20, 28 i 48 px (R01.2, reszta to propozycja z Q5).
+
+<Unstyled>
+  <TypeSpecimen />
+</Unstyled>
+
+## Zasady
+
+- **Tekst ciągły ma najwyżej około 65 znaków w linii** (`--measure-text`). Źródło: zasady Storybooka z tego projektu.
+- **Najwyżej trzy poziomy tekstu na ekranie startowym:** tytuł, opis i linia metadanych (R01.2, Z6).
+- **Bez fontów pikselowych i bez monospace** w nagłówkach i nawigacji; kod zaproszenia jest pisany krojem bazowym, pogrubionym i rozstrzelonym (A01.3, A01.4).
+- **Liczby w zegarze i licznikach** mają `tabular-nums`, żeby cyfry nie skakały (propozycja).
+- Dostępne są tylko pogrubienia `font-regular` (400) i `font-strong` (700).

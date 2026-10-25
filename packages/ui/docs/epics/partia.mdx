@@ -1,0 +1,71 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Design system/Partia z zaproszenia" />
+
+# Epik E02: Partia z zaproszenia
+
+Utworzenie partii i zaproszenie, dołączenie, ruchy i wygrana, zegary, powrót po rozłączeniu. Źródła: `.ai/specs/product-brief.md` (BR-04…BR-07, BR-09…BR-11, BR-22), `.ai/specs/2026-10-24-game-invitations.md`, `.ai/specs/2026-10-25-game-moves-win-detection.md`, zgłoszenia #23 i #24.
+
+## Przepływ
+
+1. Zalogowany gracz z potwierdzonym e-mailem tworzy partię i dostaje link oraz kod (`/games/{id}`, status „czeka”).
+2. Zaproszony otwiera link (`/invite/{kod}`) albo wpisuje kod (`/join`) i dołącza jako zalogowany albo jako gość.
+3. Gracze wykonują naprzemienne ruchy; każdy ma zegar 10 minut (czas liczy serwer).
+4. Partia kończy się pięcioma w linii, remisem albo końcem czasu; po powrocie z rozłączenia gracz widzi stan z serwera.
+
+## Komponenty
+
+[Plansza](?path=/docs/produkt-partia-plansza--docs), [Zegar gracza](?path=/docs/produkt-partia-zegar-gracza--docs), [Status tury](?path=/docs/produkt-partia-status-tury--docs), [Baner wyniku](?path=/docs/produkt-partia-baner-wyniku--docs), [Karta kodu zaproszenia](?path=/docs/produkt-partia-karta-kodu-zaproszenia--docs), [Alert](?path=/docs/prymitywy-alert--docs), [Stan błędu](?path=/docs/prymitywy-stan-błędu--docs), [Szkielet ładowania](?path=/docs/prymitywy-szkielet-ładowania--docs). Wzorce: [Zaproszenie przez link lub kod](?path=/docs/wzorce-zaproszenie-przez-link-lub-kod--docs), [Widok szczegółów](?path=/docs/wzorce-widok-szczegółów--docs).
+
+## Mapa stanów ekranów
+
+### `/invite/{kod}` (dwa dalsze stany tylko przekierowują do partii: „już uczestnik” i „własne zaproszenie”)
+
+| Stan | Story |
+|---|---|
+| niezalogowany: Zaloguj się, Załóż konto, Graj jako gość | [Zaproszenie: niezalogowany](?path=/story/ekrany-partia--zaproszenie-niezalogowany) |
+| zalogowany z potwierdzonym e-mailem | [Zaproszenie: potwierdzony](?path=/story/ekrany-partia--zaproszenie-zalogowany-potwierdzony) |
+| zalogowany bez potwierdzenia (może zagrać jako gość) | [Zaproszenie: bez potwierdzenia](?path=/story/ekrany-partia--zaproszenie-zalogowany-bez-potwierdzenia) |
+| ostrzeżenie dla gościa przed dołączeniem | [Zaproszenie: ostrzeżenie dla gościa](?path=/story/ekrany-partia--zaproszenie-ostrzezenie-dla-goscia) |
+| ma inną partię w toku | [Zaproszenie: ma inną partię](?path=/story/ekrany-partia--zaproszenie-ma-inna-partie) |
+| ma własną oczekującą partię | [Zaproszenie: ma oczekującą partię](?path=/story/ekrany-partia--zaproszenie-ma-oczekujaca-partie) |
+| limit prób | [Zaproszenie: limit prób](?path=/story/ekrany-partia--zaproszenie-limit-prob) |
+| zaproszenie nieważne | [Zaproszenie: nieważne](?path=/story/ekrany-partia--zaproszenie-niewazne) |
+
+### `/join`
+
+| Stan | Story |
+|---|---|
+| pole kodu | [Kod: pusty](?path=/story/ekrany-partia--kod-pusty) |
+| kod ma zły kształt | [Kod: za krótki](?path=/story/ekrany-partia--kod-za-krotki) |
+
+### `/games/{id}`
+
+| Stan | Story |
+|---|---|
+| ładowanie | [Partia: ładowanie](?path=/story/ekrany-partia--partia-ladowanie) |
+| nie istnieje albo brak dostępu | [Partia: nie istnieje](?path=/story/ekrany-partia--partia-nie-istnieje-albo-brak-dostepu) |
+| twórca czeka na przeciwnika (karta zaproszenia) | [Partia: twórca czeka](?path=/story/ekrany-partia--partia-tworca-czeka-na-przeciwnika) |
+| czekamy, aż przeciwnik otworzy stronę (do 15 min) | [Partia: czekamy na otwarcie](?path=/story/ekrany-partia--partia-czekamy-az-przeciwnik-otworzy-strone) |
+| Twój ruch | [Partia: Twój ruch](?path=/story/ekrany-partia--partia-twoj-ruch) |
+| ruch przeciwnika | [Partia: ruch przeciwnika](?path=/story/ekrany-partia--partia-ruch-przeciwnika) |
+| mało czasu | [Partia: mało czasu](?path=/story/ekrany-partia--partia-malo-czasu) |
+| powrót po rozłączeniu | [Partia: powrót po rozłączeniu](?path=/story/ekrany-partia--partia-powrot-po-rozlaczeniu) |
+| koniec: wygrana (linia wygrywająca) | [Partia: wygrana](?path=/story/ekrany-partia--partia-wygrana) |
+| koniec: przegrana | [Partia: przegrana](?path=/story/ekrany-partia--partia-przegrana) |
+| koniec: przegrana na czas | [Partia: przegrana na czas](?path=/story/ekrany-partia--partia-przegrana-na-czas) |
+| koniec: remis | [Partia: remis](?path=/story/ekrany-partia--partia-remis) |
+| gość w trakcie partii (stałe ostrzeżenie) | [Partia: gość](?path=/story/ekrany-partia--partia-gosc-w-trakcie) |
+
+## Pliki źródłowe
+
+- Komponenty: `src/game/board.tsx`, `player-clock.tsx`, `turn-status.tsx`, `game-result-banner.tsx`, `invite-code-card.tsx`, `format-clock.ts`.
+- Stories ekranów: `docs/screens/partia.stories.tsx`, `game-screen.tsx`, `invite-screens.tsx`, `home-screen.tsx`; wzorce: `docs/patterns/invitation.stories.tsx`, `detail.stories.tsx`, `permissions.stories.tsx`.
+- Specyfikacje: `.ai/specs/2026-10-24-game-invitations.md`, `2026-10-25-game-moves-win-detection.md`.
+- Zgłoszenia: epik #16, #21, #22, #23, #24 (spike #30).
+
+## Co jeszcze zostaje w produkcie
+
+- Strony, odpytywanie, wysyłanie ruchów i zegar po stronie serwera to praca implementacyjna (#21, #22, #23, #24); czas rzeczywisty zależy od spike’u #30 (Q-01).
+- Komponent Zegar dostaje czas z serwera; odliczanie w kliencie to osobny hook w aplikacji.
+- Odtwarzanie partii ruch po ruchu jest poza zakresem.

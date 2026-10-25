@@ -1,0 +1,55 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Design system/Konta" />
+
+# Epik E01: Konta użytkowników
+
+Rejestracja, logowanie, potwierdzenie e-maila, reset i zmiana hasła, usunięcie konta. Źródła: `.ai/specs/product-brief.md` (BR-14…BR-25, D-12…D-18), `.ai/specs/2026-10-24-account-registration.md`, `login-logout.md`, `email-verification.md`, `password-reset.md`, `password-change.md`, `account-deletion.md`.
+
+## Przepływ
+
+1. Gość zakłada konto (`/register`) i jest od razu zalogowany.
+2. Do gry potrzebuje potwierdzić e-mail (`/verify-email`); baner przypomina o tym na `/` i `/account` (BR-23).
+3. Loguje się (`/login`); zapomniane hasło ustawia przez e-mail (`/forgot-password`, `/reset-password`).
+4. Na `/account` zmienia hasło albo usuwa konto (nie w trakcie partii, BR-21).
+
+## Komponenty
+
+[Pole formularza](?path=/docs/prymitywy-pole-formularza--docs), [Pole hasła](?path=/docs/produkt-konta-pole-hasła--docs), [Baner potwierdzenia e-maila](?path=/docs/produkt-konta-baner-potwierdzenia-e-maila--docs), [Przycisk](?path=/docs/prymitywy-przycisk--docs), [Alert](?path=/docs/prymitywy-alert--docs), [Panel](?path=/docs/prymitywy-panel--docs), [Pole wyboru](?path=/docs/prymitywy-pole-wyboru--docs), [Dialog potwierdzenia](?path=/docs/prymitywy-dialog-potwierdzenia--docs). Wzorce: [Formularz](?path=/docs/wzorce-formularz--docs), [Potwierdzenie usunięcia](?path=/docs/wzorce-potwierdzenie-usunięcia--docs), [Stan zależny od uprawnień](?path=/docs/wzorce-stan-zależny-od-uprawnień--docs).
+
+## Mapa stanów ekranów
+
+| Ekran | Stan | Story |
+|---|---|---|
+| `/register` | pusty formularz | [Rejestracja: pusta](?path=/story/ekrany-konta--rejestracja-pusta) |
+| `/register` | nazwa gracza zajęta (błąd pola) | [Rejestracja: nazwa zajęta](?path=/story/ekrany-konta--rejestracja-nazwa-zajeta) |
+| `/register` | limit prób | [Rejestracja: limit prób](?path=/story/ekrany-konta--rejestracja-limit-prob) |
+| `/login` | pusty formularz | [Logowanie: puste](?path=/story/ekrany-konta--logowanie-puste) |
+| `/login` | błędne dane (jeden komunikat dla nieznanego e-maila i złego hasła) | [Logowanie: błędne dane](?path=/story/ekrany-konta--logowanie-bledne-dane) |
+| `/login` | limit prób | [Logowanie: limit prób](?path=/story/ekrany-konta--logowanie-limit-prob) |
+| `/account` | e-mail potwierdzony | [Konto: potwierdzony](?path=/story/ekrany-konta--konto-email-potwierdzony) |
+| `/account` | e-mail niepotwierdzony (baner) | [Konto: niepotwierdzony](?path=/story/ekrany-konta--konto-email-niepotwierdzony) |
+| `/account` | hasło zmienione | [Konto: hasło zmienione](?path=/story/ekrany-konta--konto-haslo-zmienione) |
+| `/account` | usunięcie odrzucone (aktywna partia, BR-21) | [Konto: usuwanie z aktywną partią](?path=/story/ekrany-konta--konto-usuwanie-z-aktywna-partia) |
+| `/verify-email` | przed kliknięciem (GET niczego nie zmienia) | [Potwierdzenie: przed kliknięciem](?path=/story/ekrany-konta--potwierdzenie-emaila-przed-kliknieciem) |
+| `/verify-email` | sukces | [Potwierdzenie: sukces](?path=/story/ekrany-konta--potwierdzenie-emaila-sukces) |
+| `/verify-email` | link nieważny, gracz zalogowany | [Potwierdzenie: błąd, zalogowany](?path=/story/ekrany-konta--potwierdzenie-emaila-blad-tokena-zalogowany) |
+| `/verify-email` | link nieważny, niezalogowany | [Potwierdzenie: błąd, niezalogowany](?path=/story/ekrany-konta--potwierdzenie-emaila-blad-tokena-niezalogowany) |
+| `/forgot-password` | formularz | [Zapomniałem hasła: formularz](?path=/story/ekrany-konta--zapomnialem-hasla-formularz) |
+| `/forgot-password` | wysłano (zawsze ta sama odpowiedź, BR-16) | [Zapomniałem hasła: wysłano](?path=/story/ekrany-konta--zapomnialem-hasla-wyslano) |
+| `/reset-password` | formularz | [Reset hasła: formularz](?path=/story/ekrany-konta--reset-hasla-formularz) |
+| `/reset-password` | link nieważny | [Reset hasła: błąd tokenu](?path=/story/ekrany-konta--reset-hasla-blad-tokenu) |
+
+## Pliki źródłowe
+
+- Komponenty: `src/game/field.tsx`, `password-field.tsx`, `verify-email-banner.tsx`, `alert.tsx`, `checkbox.tsx`, `confirm-dialog.tsx`, `panel.tsx`, `button.tsx`.
+- Stories ekranów: `docs/screens/konta.stories.tsx`, `docs/screens/screen.tsx`; wzorzec Formularz: `docs/patterns/login-form.tsx`, `form.stories.tsx`.
+- Specyfikacje: `.ai/specs/2026-10-24-account-registration.md`, `login-logout.md`, `email-verification.md`, `password-reset.md`, `password-change.md`, `account-deletion.md`.
+- Zgłoszenia: epik #15, #19, #20, #34, #35, #36, #37.
+
+## Co jeszcze zostaje w produkcie
+
+- Strony i logika to praca implementacyjna (#19, #20, #34, #35, #36, #37): design system dostarcza komponenty, stany i zasady.
+- Zmiana e-maila i nazwy gracza jest później (E05, D-18).
+- Strona o przetwarzaniu danych powstanie przed udostępnieniem gry osobom z zewnątrz (D-22).
+- Stany odpowiedzi API formularza pokazuje wzorzec [Formularz](?path=/docs/wzorce-formularz--docs).

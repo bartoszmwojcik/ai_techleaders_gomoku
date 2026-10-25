@@ -1,0 +1,6 @@
+## R03
+Źródło: https://data-star.dev/guide/getting_started
+Podoba mi się: Panele z kodem źródłowym - w gomoku nie widzę zastosowania.
+Nie podoba mi się: Menu górne i lewe - kolor za mały kontrast. Niebieski jako kolr fontów. Font imitujący niską rozdzielczość.
+Dlaczego to pasuje do naszego produktu: Mało pasuje.
+Jak bardzo: jako inspiracja czego nie robić

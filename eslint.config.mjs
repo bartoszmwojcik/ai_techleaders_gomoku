@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "**/.next/**",
     "**/out/**",
     "**/build/**",
+    // Static Storybook build of the design system.
+    "**/storybook-static/**",
     "**/next-env.d.ts",
     // Coverage report (HTML + JS) written by `npm test`.
     "coverage/**",

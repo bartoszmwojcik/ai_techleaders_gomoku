@@ -1,0 +1,89 @@
+import { ArgTypes, Canvas, Meta } from "@storybook/addon-docs/blocks";
+import { SeekingStatus } from "@gomoku/ui/game/seeking-status";
+import * as Stories from "./seeking-status.stories";
+
+<Meta of={Stories} />
+
+# Status szukania gry
+
+## 1. Do czego służy
+
+Pokazuje graczowi, że jest na liście szukających, ile czasu zostało do wygaśnięcia statusu, i pozwala się wycofać.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Kiedy używać
+
+- **Po oznaczeniu się jako „szukający gry”:** status trwa 5 minut bez wyboru (BR-12, D-09, E03-S01).
+- **Zawsze z widocznym czasem:** oczekiwanie nigdy nie jest ukryte (A05).
+
+## 3. Kiedy nie używać
+
+- **Zegar w partii:** [Zegar gracza](?path=/docs/produkt-partia-zegar-gracza--docs).
+- **Lista innych graczy:** [Lista graczy](?path=/docs/produkt-lobby-lista-graczy--docs).
+- **Gdy gracz ma aktywną partię:** nie może się oznaczyć (BR-13); pokaż Alert z powodem.
+
+## 4. Anatomia
+
+1. **Tytuł** („Szukasz gry”).
+2. **Czas do wygaśnięcia** ze słowami („Status wygasa za 4:32”).
+3. **Przycisk „Wycofaj”.**
+
+## 5. Warianty
+
+Brak wariantów wyglądu; zmienia się czas. Gdy zostało mało, nic się nie zmienia kolorem: liczba i słowa wystarczą.
+
+<Canvas of={Stories.StatusZaChwileWygasnie} />
+
+## 6. Stany
+
+Szukasz gry (z czasem). Po wygaśnięciu lub wycofaniu komponent znika, a ekran pokazuje przycisk „Szukam przeciwnika”. Najechanie, fokus i wciśnięcie ma przycisk. Ładowania wycofania pokazuje przycisk (`loading`), gdy rodzic doda je do akcji.
+
+## 7. Zachowanie i dostępność
+
+- **Rola:** `status` (info). Czas nie jest ogłaszany co sekundę; wygaśnięcie ogłasza osobny `status` na ekranie.
+- **Czas:** cyfry tabelaryczne, żeby nie skakały.
+- **Klawiatura:** `Tab` na „Wycofaj”.
+- **Kontrast:** tekst i obramowanie spełniają 4,5:1 i 3:1 w obu motywach.
+
+## 8. Treść
+
+- **Tytuł:** „Szukasz gry”.
+- **Czas:** „Status wygasa za 4:32” albo „Jeśli nikt Cię nie wybierze, status wygasa za 4:32”.
+- **Przycisk:** „Wycofaj”.
+- Komponent nie ma wbudowanych tekstów.
+
+## 9. Responsywność
+
+Treść zawija się; przycisk pod tekstem.
+
+<Canvas of={Stories.DlugiTekstNaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={SeekingStatus} />
+
+## 11. Kod
+
+```tsx
+import { SeekingStatus } from "@gomoku/ui/game/seeking-status";
+
+<SeekingStatus
+  title="Szukasz gry"
+  expiresLabel="Status wygasa za"
+  expiresInMs={seeking.expiresInMs}
+  withdrawLabel="Wycofaj"
+  onWithdraw={withdraw}
+/>;
+```
+
+## 12. Dobrze i źle
+
+**Dobrze:** czas zawsze widoczny, wycofanie jednym przyciskiem, czas z serwera. **Źle:** sam spinner „Szukamy…” bez czasu (A05), brak wycofania, status bez końca.
+
+<Canvas of={Stories.CzasWidocznyIWycofanie} />
+
+## 13. Powiązane
+
+- **Mylony z:** Zegarem gracza (czas w partii) i Listą graczy (inni szukający).
+- **Występuje we wzorcach:** lista (lobby).

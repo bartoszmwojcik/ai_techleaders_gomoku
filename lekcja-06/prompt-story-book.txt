@@ -1,0 +1,293 @@
+# Zadanie
+
+Zbuduj design system mojego produktu z dokumentacją w Storybooku. Storybook ma być
+instrukcją obsługi, nie galerią. Czytają go trzy osoby: developer, który buduje
+ekran, agent AI, który buduje ekran, i designer, który sprawdza, czy ekran jest
+zgodny z systemem.
+
+Gotowe znaczy: developer albo agent buduje z tej dokumentacji nowy ekran bez
+zgadywania. Wie, którego komponentu użyć i dlaczego, jak go złożyć z innymi,
+jakich tokenów użyć, jak zachowa się każdy stan i czego nie robić.
+
+# Moje materiały (uzupełnij)
+
+- Produkt i użytkownicy: gomoku i gracze
+- Brief i badania: .ai/specs/product-brief
+- Backlog i specyfikacje: .ai/specs/
+- Plik referencji z ćwiczenia 2: lekcja-06/referencje.md
+- Tokeny z ćwiczenia 2: lekcja-06/tokeny.md
+- Plik pokazujący design i zatwierdzony jako "bardzo się podoba": lekcja-06/przyklad-tokeny.html
+- Raport z audytu z ćwiczenia 1: lekcja-06/audyt.md
+- Baza komponentów: zaproponuj
+- Gdzie ma powstać design system: packages/ui
+- Gdzie ma powstać Storybook: packages/ui/.storybook
+- Język interfejsu produktu: multi: polski i angielski z opcją na dodanie nowych. 
+- Język dokumentacji: polski
+
+# Jak pracujesz
+
+Pracujesz etapami od 0 do 5. Po każdym etapie zatrzymaj się, pokaż, co zrobiłeś
+i co sprawdziłeś, i poczekaj na moje „dalej”. Nie przechodź do kolejnego etapu sam.
+
+Prowadź plik POSTEP.md w katalogu design systemu: zakończone etapy, decyzje, które
+zatwierdziłem, otwarte pytania i następny krok. Jeśli zaczynasz w nowej sesji,
+najpierw przeczytaj POSTEP.md i kontynuuj od miejsca, w którym skończyłeś.
+
+# Zasady, których nie wolno złamać
+
+1. Styl produktu wynika z moich materiałów: referencji, tokenów, briefu
+   i specyfikacji. Nie wymyślaj go. Jeśli czegoś brakuje, zapytaj. Jeśli
+   proponujesz coś od siebie, oznacz to jako propozycję.
+2. Wygląd bazy (np. shadcn) nie jest stylem produktu. Sama zmiana palety nie
+   wystarczy: kształt, typografia, odstępy, gęstość i stany też mają wynikać
+   z moich decyzji. Po etapie 2 komponenty nie mogą wyglądać jak domyślna biblioteka.
+3. Każda wartość w komponentach pochodzi z tokenu. Żadnych kolorów w hex, rgb,
+   hsl ani oklch poza plikiem tokenów, żadnych klas palety Tailwinda w stylu
+   bg-zinc-900 czy text-white i żadnych arbitralnych wartości w stylu p-[13px].
+4. Każda reguła w dokumentacji ma przy sobie źródło: numer referencji (np. R01.2),
+   antyreferencję (np. A01), decyzję z briefu lub specyfikacji, WCAG albo WAI-ARIA.
+   Regułę bez źródła oznacz jako propozycję i wypisz w raporcie do mojej decyzji.
+5. Stories używają prawdziwych komponentów z pakietu. Żadnych kopii w HTML
+   ani komponentów zrobionych tylko na potrzeby Storybooka. Wyjątek: pomocnicze
+   bloki dokumentacji (np. próbka koloru, tabela tokenów) wolno trzymać
+   w katalogu Storybooka, bez eksportu z pakietu.
+6. Nie dodawaj komponentów, wariantów ani zależności spoza zatwierdzonego planu.
+   Jeśli czegoś brakuje, wpisz to na stronę „Czego brakuje”. Po każdej komendzie
+   CLI (np. shadcn) sprawdź package.json i usuń zależności, których nie ma w planie.
+7. Dane w przykładach są zmyślone, ale realistyczne i wzięte z briefu i specyfikacji.
+   Żadnego lorem ipsum. Żadnych wymyślonych liczb klientów, ocen ani opinii,
+   których nie ma w materiałach.
+8. Tabele w plikach MDX: jeśli nie ma pluginu remark-gfm, tabele w Markdownie
+   wyświetlą się jako surowy tekst z kreskami. Dodaj plugin albo użyj tabel w JSX.
+   Każdą stronę sprawdź w zbudowanym Storybooku.
+9. Przełącznik motywu ustawia motyw na elemencie głównym dokumentu, żeby dialogi,
+   menu i popovery, które renderują się poza story, też go dostały.
+10. W interfejsie Storybooka widać tylko nazwę mojego produktu. Pochodzenie bazy
+    zapisz w notatce technicznej. Wyłącz checklistę startową Storybooka
+    i komunikaty o nowej wersji.
+11. Nie zmieniaj kodu aplikacji poza katalogiem design systemu, z wyjątkiem
+    podłączenia skryptów i konfiguracji. Niczego nie wysyłaj do repozytorium
+    zdalnego i niczego nie publikuj.
+12. Jeśli w repozytorium jest już design system, Storybook albo tokeny, niczego
+    z nich nie usuwaj i nie przepisuj bez mojej zgody: motywów, palet, tokenów,
+    komponentów ani stron. Zaproponuj zmianę z uzasadnieniem i poczekaj na decyzję.
+
+# Docelowy układ Storybooka
+
+Design system
+  Start here: jak zbudować ekran
+  Components: katalog wszystkich komponentów z podglądem i linkiem
+  How to choose: jak wybrać komponent
+  Usage and accessibility: zasady użycia i dostępności
+  Content: treść i komunikaty
+  What to avoid: czego unikać
+  What is missing: czego brakuje
+  Contributing: jak zmieniać system
+  jedna strona na każdy epik z backlogu: przepływ, ekrany i ich stany
+Foundations: kolor, typografia, odstępy i układ, kształt i głębia, ruch, ikony, motywy
+Primitives: komponenty bazowe
+Product: komponenty produktu, pogrupowane według epików
+Patterns: formularz, lista z filtrami, widok szczegółów, potwierdzenie usunięcia
+  i kluczowe wzorce z backlogu
+
+Nazwy w menu dopasuj do języka dokumentacji.
+
+# Etap 0. Inwentaryzacja i plan
+
+Przeczytaj wszystkie moje materiały i sprawdź repozytorium: menedżer pakietów,
+framework, wersję Tailwinda, istniejące style i komponenty. Na razie zapisz tylko
+POSTEP.md. Pokaż mi:
+
+1. Moje decyzje w dziesięciu linijkach: słowa charakteru, antycharakter,
+   najważniejsze cechy z kolumny „Bierzemy”, antyreferencje i rozstrzygnięte
+   konflikty, z numerami.
+2. Czego brakuje w materiałach, najwyżej pięć pytań naraz.
+3. Bazę komponentów i uzasadnienie, jeśli jej nie podałem.
+4. Plan techniczny: gdzie powstaje pakiet, wersja Storybooka, dodatki (dokumentacja,
+   dostępność, testy interakcji, symulowanie API, jeśli aplikacja rozmawia z API)
+   i skrypty.
+5. Listę komponentów bazowych, komponentów produktu i wzorców, wyprowadzoną
+   z ekranów w specyfikacjach. Przy każdym podaj, który ekran go potrzebuje.
+6. Drzewo menu Storybooka i przybliżoną liczbę stories.
+7. Jeśli design system już istnieje: co zostawiasz bez zmian, co chcesz zmienić
+   i co usunąć, każdą pozycję z uzasadnieniem, do mojej decyzji.
+
+# Etap 1. Fundamenty
+
+1. Zainstaluj i skonfiguruj Storybook dla stacku projektu: dokumentacja, dodatek
+   dostępności, testy interakcji, obsługa tabel w MDX, skrypty storybook
+   i build-storybook. Testy dostępności mają kończyć się błędem: ustaw
+   a11y: { test: 'error' } w preview, uruchamiaj stories jako testy (np. dodatkiem
+   Vitest do Storybooka) i dodaj skrypt, który uruchamia je w obu motywach,
+   jeśli produkt ma ciemny motyw.
+2. Zapisz tokeny w kodzie, w trzech warstwach: surowe wartości, znaczenia nazwane
+   według przeznaczenia (np. action-primary, text-muted, space-section, nigdy
+   blue-500) i tokeny komponentów tylko tam, gdzie są potrzebne. Weź je z tokeny.md.
+   Przy każdym tokenie znaczeniowym zapisz w komentarzu jego źródło. Jeśli produkt
+   ma ciemny motyw, zdefiniuj oba. Zanim zapiszesz, policz kontrast jeszcze raz
+   dla wartości, które faktycznie zapisujesz. Jeśli jakaś para spadła poniżej
+   progu, zatrzymaj się i zapytaj.
+3. Podłącz tokeny do Tailwinda albo systemu stylów projektu, tak żeby klasy
+   korzystały z tokenów. Fonty dołącz do projektu, nie ładuj ich z zewnętrznego CDN.
+4. Dodaj przełącznik motywu (zasada 9).
+5. Zbuduj strony Foundations, które renderują prawdziwe zmienne CSS. Podglądy
+   w plikach MDX owiń w blok Unstyled Storybooka, bo inaczej style dokumentacji
+   przebijają style komponentów:
+   - kolor: role i tabela kontrastu każdej pary tekst i tło w obu motywach,
+     zmierzona. Pary poniżej 4,5 : 1 dla tekstu i 3 : 1 dla elementów interfejsu
+     oznacz i zaproponuj poprawkę. Kolor nigdy nie jest jedynym nośnikiem znaczenia;
+   - typografia: role (nagłówek strony, sekcji, tekst, etykieta, metadane, liczby,
+     kod), nie tylko rozmiary. Tekst ciągły ma najwyżej około 65 znaków w linii;
+   - odstępy: reguła relacji (w grupie, między grupami, wewnątrz panelu, między
+     sekcjami) z konkretnym tokenem dla każdego poziomu;
+   - kształt i głębia: promienie, obramowania, cienie i kiedy wolno ich użyć;
+   - ruch: czasy i zachowanie przy prefers-reduced-motion;
+   - ikony: biblioteka, rozmiary, kiedy ikona potrzebuje podpisu;
+   - układ: szerokości 320, 768 i 1440 px, maksymalna szerokość treści.
+6. Dodaj skrypt, który znajduje kolory spoza pliku tokenów, klasy palety Tailwinda
+   i arbitralne wartości Tailwinda i kończy się błędem, żeby dało się go dodać do CI.
+
+# Etap 2. Komponenty bazowe
+
+Dodaj komponenty bazowe z bazy (np. przez CLI shadcn) i dostosuj je do tokenów
+i moich decyzji. Pracuj partiami po około sześć komponentów i zatrzymuj się
+po każdej partii.
+
+Przed pierwszą partią wypisz, czym kształt, gęstość i stany mają się różnić
+od domyślnej bazy: wysokość kontrolek, promienie, obramowania, odstępy wewnętrzne,
+wygląd fokusu. Przy każdej różnicy podaj decyzję, z której wynika. Jeśli moje
+materiały o czymś milczą, zapytaj, zamiast zostawiać wartości domyślne bazy.
+
+Minimalny zestaw, który dopasujesz do planu z etapu 0: przycisk, akcja tekstowa
+i link, pole tekstowe, pole wielowierszowe, select, checkbox, grupa radio,
+przełącznik, etykieta i pole formularza (etykieta, podpowiedź, błąd, wymagane
+lub opcjonalne), karta lub panel, znacznik statusu, awatar, alert, dialog,
+dialog potwierdzenia, menu, popover, podpowiedź, zakładki, szkielet ładowania,
+pusty stan, stan błędu, powiadomienie typu toast, jeśli produkt go potrzebuje.
+
+Każdy komponent dostaje stronę dokumentacji o tej samej budowie. Nie pomijaj
+sekcji, a jeśli któraś nie dotyczy komponentu, napisz dlaczego:
+1. Do czego służy: jedno zdanie o problemie użytkownika.
+2. Kiedy używać: konkretne sytuacje z mojego produktu.
+3. Kiedy nie używać i czego użyć zamiast.
+4. Anatomia: części i które są opcjonalne.
+5. Warianty: każdy z opisem, kiedy go wybrać.
+6. Stany: domyślny, najechanie, fokus, wciśnięty, zablokowany, ładowanie, wybrany
+   i błąd, jeśli dotyczą. Przy zablokowanym napisz, jak użytkownik dowie się,
+   dlaczego akcja jest niedostępna.
+7. Zachowanie i dostępność: klawiatura, kolejność fokusu, role i atrybuty ARIA,
+   co ogłasza czytnik ekranu, cel kliknięcia co najmniej 24 × 24 px.
+8. Treść: jak pisać etykiety, maksymalna długość, długi tekst, liczby,
+   tłumaczenie na dłuższy język.
+9. Responsywność: 320, 768 i 1440 px.
+10. API: propsy z typami, wartościami domyślnymi i opisem.
+11. Kod: minimalny przykład i typowy przykład z mojego produktu.
+12. Dobrze i źle: pary obok siebie, każda z jednym zdaniem wyjaśnienia.
+13. Powiązane: z czym się go myli i w jakich wzorcach występuje.
+
+Stories każdego komponentu:
+- Playground z kontrolkami,
+- każdy wariant i rozmiar,
+- macierz stanów: najechanie i fokus pokaż jako zamrożony podgląd, czyli te same
+  deklaracje co w :hover i :focus-visible komponentu, podpięte w CSS Storybooka
+  pod atrybut, np. data-preview-state (tylko do dokumentacji),
+- długa treść i wąski ekran,
+- test interakcji w play function dla głównego zachowania: kliknięcie,
+  klawiatura, walidacja.
+
+Każda story przechodzi sprawdzenie dostępności bez naruszeń albo ma opisany wyjątek.
+
+# Etap 3. Komponenty produktu, wzorce i ekrany
+
+1. Dla każdego epiku z backlogu zbuduj komponenty produktu z komponentów bazowych,
+   np. kartę głównego obiektu, wiersz listy, status. Każdy ma stany danych:
+   ładowanie, pusto, błąd, częściowe dane, dużo danych i długie teksty.
+2. Wzorce, każdy ze wszystkimi stanami jako osobnymi stories:
+   - formularz: etykieta zawsze widoczna (placeholder to przykład, nie nazwa pola),
+     walidacja po opuszczeniu pola i przy wysłaniu, po nieudanym wysłaniu fokus
+     na pierwszym błędzie, wpisane dane zostają, blokada podwójnego wysłania,
+     sukces dopiero po potwierdzeniu z serwera. Odpowiedzi API symuluj w Storybooku:
+     sukces, oczekiwanie, błąd pola, błąd serwera, brak sieci;
+   - lista z filtrami: licznik wyników, aktywne filtry widoczne i łatwe do usunięcia,
+     osobny stan „brak wyników dla filtrów” (z akcją wyczyść filtry) i osobny
+     „jeszcze nic tu nie ma” (z akcją utwórz);
+   - widok szczegółów: najważniejsza informacja i główna akcja widoczne bez
+     przewijania, stan „nie istnieje albo brak dostępu”;
+   - potwierdzenie usunięcia: nazwa obiektu w pytaniu, przycisk rezygnacji łatwy
+     do znalezienia, przycisk usuwania opisany czasownikiem („Usuń profil”), a nie „OK”;
+   - kluczowe wzorce z mojego backlogu.
+3. Kluczowe ekrany każdego epiku jako stories na pełny ekran, z mapą stanów:
+   który stan ekranu pokazuje która story.
+
+# Etap 4. Strony, które uczą
+
+- Start here: charakter produktu w trzech zdaniach i słowa charakteru, pięć kroków
+  budowy ekranu (znajdź wzorzec, wybierz komponenty według „How to choose”, użyj
+  tokenów znaczeniowych, zaprojektuj stany danych, sprawdź „What to avoid”) i tabela
+  wszystkich komponentów: nazwa, import, kiedy używać, kiedy nie.
+- Components: katalog z małym działającym podglądem, grupą, jednym zdaniem opisu
+  i linkiem do dokumentacji każdego komponentu.
+- How to choose: tabele „jeśli… to użyj…” z przykładem z produktu dla:
+  przycisk, link, przycisk z ikoną i menu akcji; radio, select i pole z wyszukiwaniem;
+  przełącznik i checkbox; dialog, dialog potwierdzenia, panel boczny, osobna strona,
+  popover i podpowiedź; błąd przy polu, alert i toast (błąd, który wymaga działania,
+  nigdy nie jest toastem); szkielet i wskaźnik ładowania; tabela, lista i karty;
+  zakładki i osobne strony.
+- Usage and accessibility: klawiatura i fokus, formularze i komunikaty, kolor,
+  ruch i treść, układ na różnych szerokościach i reguły produktu, które pilnuje
+  interfejs. Każda reguła ze źródłem.
+- Content: ton z referencji z trzema zdaniami, które produkt mówi, i trzema, których
+  nie mówi; przyciski (czasownik i obiekt); błędy (co się stało i co zrobić); puste
+  stany (dlaczego pusto i jaki następny krok); formaty dat, godzin, walut i liczb.
+- What to avoid: trzy części, przy każdym punkcie jak go rozpoznać także w kodzie,
+  dlaczego to problem i czym zastąpić:
+  1. antywzorce mojego produktu z referencji,
+  2. generyczny wygląd AI: gradienty w tle, tekście i na przyciskach, szkło
+     i rozmycie, poświata, emoji zamiast ikon, iskierki jako symbol AI, trzy
+     identyczne karty z ikoną, wszystko w pigułkach, karta w karcie, cień jako
+     jedyny sposób oddzielenia treści, wszystko wyśrodkowane,
+  3. błędy implementacji: wartość spoza tokenów, wariant dodany przy okazji,
+     div zamiast przycisku, placeholder zamiast etykiety, status oznaczony tylko
+     kolorem, zablokowany przycisk bez wyjaśnienia, toast z błędem, który wymaga
+     działania, podpowiedź z informacją niezbędną do działania.
+- What is missing: tabela z tym, co jest gotowe, i pokryciem backlogu: pozycja
+  z backlogu, komponent lub ekran, stan, priorytet.
+- Contributing: kiedy dodać komponent (ta sama potrzeba w co najmniej dwóch
+  miejscach), kiedy wariant, a kiedy nic; co musi mieć dokumentacja nowego
+  komponentu; co sprawdzić przy zmianie tokenu; kto zatwierdza; komendy.
+- Strona każdego epiku: kroki przepływu, ekrany i stories, stany, pliki źródłowe
+  i praca, która jeszcze zostaje w produkcie.
+
+Plik dla agentów: zapisz skrót design systemu (np. docs/design-system.md) i dodaj
+do niego odwołanie w AGENTS.md. Zawiera: charakter produktu, tabelę komponentów
+z kolumnami import, kiedy i kiedy nie, tokeny znaczeniowe z przeznaczeniem,
+przewodniki „jeśli… to użyj…”, listę „czego unikać” i komendy Storybooka.
+Agent budujący ekran czyta ten plik jako pierwszy.
+
+# Etap 5. Sprawdzenie i raport
+
+1. Zbuduj Storybook i uruchom typecheck i lint.
+2. Uruchom skrypt z etapu 1 i wypisz każdą wartość spoza tokenów z plikiem i linią.
+3. Sprawdź dostępność wszystkich stories i wypisz naruszenia.
+4. Sprawdź w przeglądarce szerokości 320, 768 i 1440 px, oba motywy,
+   obsługę klawiaturą i nakładki.
+5. Test agentem przygotuj, ale nie rób go w tej sesji, bo z tej rozmowy znasz
+   odpowiedzi, których nie ma w plikach. Wybierz jeden nowy ekran z backlogu, którego
+   nie ma jeszcze w Storybooku, i zapisz jego opis w POSTEP.md. Test zrobię w nowej
+   sesji osobnym promptem. Każde miejsce, w którym agent testowy zgadywał, uzupełnisz
+   potem w dokumentacji albo wpiszesz do „What is missing”.
+6. Policz strony dokumentacji, komponenty, stories i testy interakcji.
+
+Raport: co zbudowałeś, co sprawdziłeś, czego nie sprawdziłeś, propozycje do mojej
+decyzji i lista braków. Nie opisuj niczego jako gotowego, jeśli tego nie sprawdziłeś.
+
+# Kiedy design system jest gotowy
+
+- Każdy komponent ma stronę z 13 sekcjami i macierz stanów.
+- Każdy wzorzec ma wszystkie stany danych, a formularz także stany odpowiedzi API.
+- Każdy kluczowy ekran z backlogu ma story i mapę stanów.
+- Skrypt nie znajduje żadnej wartości spoza tokenów.
+- Nie ma naruszeń dostępności albo każde jest opisane.
+- Oba motywy działają, także w dialogach i menu.
+- Agent zbudował nowy ekran z dokumentacji, a każde miejsce, w którym zgadywał,
+  jest uzupełnione albo wpisane do „What is missing”.

@@ -1,0 +1,51 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Design system/Start" />
+
+# Start: jak zbudować ekran
+
+## Charakter produktu
+
+Gomoku to gra planszowa dla dwóch osób online: ciemna strona, drewniana plansza, jeden pomarańczowy akcent i tekst, który mówi wprost. Wszystko jest oszczędne i czytelne, a o stanie gry gracz dowiaduje się ze słów, ikon i kształtu, nie z samego koloru. Wygląd wynika z decyzji właściciela zapisanych w referencjach (R01–R02) i antyreferencjach (A01–A06), a nie z domyślnych ustawień biblioteki.
+
+**Charakter:** oszczędny, czytelny, ciepły (drewniany), spokojny, rzeczowy.
+**Antycharakter:** pstrokaty, niskokontrastowy, retro-pikselowy, techniczny (dokumentacyjny), generyczny.
+
+## Pięć kroków budowy ekranu
+
+1. **Znajdź wzorzec.** Czy to formularz, lista, widok szczegółów, potwierdzenie usunięcia, zaproszenie, ekran zależny od uprawnień? Wzorce: [Formularz](?path=/docs/wzorce-formularz--docs), [Lista](?path=/docs/wzorce-lista--docs), [Widok szczegółów](?path=/docs/wzorce-widok-szczegółów--docs), [Potwierdzenie usunięcia](?path=/docs/wzorce-potwierdzenie-usunięcia--docs), [Zaproszenie przez link lub kod](?path=/docs/wzorce-zaproszenie-przez-link-lub-kod--docs), [Stan zależny od uprawnień](?path=/docs/wzorce-stan-zależny-od-uprawnień--docs). Ekran epiku może już istnieć: sprawdź strony epików ([Konta](?path=/docs/design-system-konta--docs), [Partia z zaproszenia](?path=/docs/design-system-partia-z-zaproszenia--docs), [Otwarte lobby](?path=/docs/design-system-otwarte-lobby--docs), [Historia partii](?path=/docs/design-system-historia-partii--docs)).
+2. **Wybierz komponenty** według [Jak wybrać komponent](?path=/docs/design-system-jak-wybrać-komponent--docs). Jeśli komponentu nie ma, zajrzyj do [Czego brakuje](?path=/docs/design-system-czego-brakuje--docs), zanim cokolwiek dorobisz.
+3. **Użyj tokenów znaczeniowych** (`bg-surface-page`, `text-text-muted`, `bg-action-primary-bg`, `gap-stack`), nigdy kolorów ani odstępów z palety. Lista: [Kolor](?path=/docs/fundamenty-kolor--docs), [Odstępy i układ](?path=/docs/fundamenty-odstępy-i-układ--docs), [Typografia](?path=/docs/fundamenty-typografia--docs).
+4. **Zaprojektuj stany danych:** ładowanie ([Szkielet](?path=/docs/prymitywy-szkielet-ładowania--docs)), pusto ([Pusty stan](?path=/docs/prymitywy-pusty-stan--docs)), błąd ([Stan błędu](?path=/docs/prymitywy-stan-błędu--docs)), dane częściowe, dużo danych, długie teksty, szerokość 320 px i oba motywy.
+5. **Sprawdź [Czego unikać](?path=/docs/design-system-czego-unikać--docs)**, uruchom `npm run check:tokens -w @gomoku/ui` i `npm run test:stories -w @gomoku/ui`.
+
+## Wszystkie komponenty
+
+| Komponent | Import | Kiedy używać | Kiedy nie |
+|---|---|---|---|
+| [Przycisk](?path=/docs/prymitywy-przycisk--docs) | `@gomoku/ui/game/button` | wysłanie formularza, „Załóż konto”, „Dołącz do partii”, akcja destrukcyjna (wariant danger) | przejście na inną stronę (Link tekstowy), wybór opcji (Pole wyboru) |
+| [Link tekstowy](?path=/docs/prymitywy-link-tekstowy--docs) | `@gomoku/ui/game/text-link` | odnośnik w zdaniu, „Nie pamiętasz hasła?”, „Konto” w nagłówku | akcja zmieniająca stan na serwerze (Przycisk) |
+| [Pole tekstowe](?path=/docs/prymitywy-pole-tekstowe--docs) | `@gomoku/ui/game/text-input` | zawsze wewnątrz Pola formularza | samodzielnie bez etykiety; długi tekst; wybór z listy |
+| [Pole formularza](?path=/docs/prymitywy-pole-formularza--docs) | `@gomoku/ui/game/field` | każde pole formularza | pole wyboru (ma własną etykietę); błąd całego formularza (Alert) |
+| [Pole wyboru](?path=/docs/prymitywy-pole-wyboru--docs) | `@gomoku/ui/game/checkbox` | zgoda przed nieodwracalną akcją, niezależna opcja tak/nie | wybór jednej z wielu opcji, natychmiastowe włączenie czegoś |
+| [Alert](?path=/docs/prymitywy-alert--docs) | `@gomoku/ui/game/alert` | baner e-maila, ostrzeżenie dla gościa, błąd serwera, powodzenie | błąd jednego pola, decyzja tak/nie, chwilowe powiadomienie |
+| [Panel](?path=/docs/prymitywy-panel--docs) | `@gomoku/ui/game/panel` | sekcje konta, lobby, historia | panel w panelu, cała strona w jednym panelu |
+| [Znacznik statusu](?path=/docs/prymitywy-znacznik-statusu--docs) | `@gomoku/ui/game/status-badge` | wynik w historii, status partii | komunikat z instrukcją (Alert), akcja (Przycisk) |
+| [Dialog](?path=/docs/prymitywy-dialog--docs) | `@gomoku/ui/game/dialog` | krótka czynność w kontekście, np. wpisanie kodu | potwierdzenie nieodwracalnej akcji, długi formularz, błąd |
+| [Dialog potwierdzenia](?path=/docs/prymitywy-dialog-potwierdzenia--docs) | `@gomoku/ui/game/confirm-dialog` | usunięcie konta, anulowanie własnej partii, wylogowanie w trakcie partii | akcja odwracalna, zebranie informacji |
+| [Szkielet ładowania](?path=/docs/prymitywy-szkielet-ładowania--docs) | `@gomoku/ui/game/skeleton` | lista lub widok o znanym kształcie | akcja po kliknięciu (loading przycisku), nieznany kształt |
+| [Pusty stan](?path=/docs/prymitywy-pusty-stan--docs) | `@gomoku/ui/game/empty-state` | lobby bez graczy, historia bez partii | ładowanie, błąd |
+| [Stan błędu](?path=/docs/prymitywy-stan-błędu--docs) | `@gomoku/ui/game/error-state` | lista, która się nie wczytała, partia, której nie ma | błąd pola, komunikat obok działającej treści (Alert) |
+| [Nagłówek strony](?path=/docs/prymitywy-nagłówek-strony--docs) | `@gomoku/ui/game/page-header` | każda strona gracza | nagłówek sekcji (Panel) |
+| [Plansza](?path=/docs/produkt-partia-plansza--docs) | `@gomoku/ui/game/board` | ekran partii, podgląd na stronie głównej (z podpisem) | odtwarzanie ruch po ruchu, inne rozmiary |
+| [Zegar gracza](?path=/docs/produkt-partia-zegar-gracza--docs) | `@gomoku/ui/game/player-clock` | nad i pod planszą w partii | odliczanie statusu w lobby, odmierzanie czasu w komponencie |
+| [Status tury](?path=/docs/produkt-partia-status-tury--docs) | `@gomoku/ui/game/turn-status` | nad planszą w trakcie partii | wynik partii (Baner wyniku), czas (Zegar) |
+| [Baner wyniku](?path=/docs/produkt-partia-baner-wyniku--docs) | `@gomoku/ui/game/game-result-banner` | po zakończeniu partii | w trakcie partii, lista historii (Znacznik statusu) |
+| [Karta kodu zaproszenia](?path=/docs/produkt-partia-karta-kodu-zaproszenia--docs) | `@gomoku/ui/game/invite-code-card` | strona oczekującej partii | wpisywanie kodu przez zaproszonego (Pole formularza) |
+| [Pole hasła](?path=/docs/produkt-konta-pole-hasła--docs) | `@gomoku/ui/game/password-field` | każde pole hasła (logowanie, rejestracja, reset, zmiana) | inne dane wrażliwe |
+| [Baner potwierdzenia e-maila](?path=/docs/produkt-konta-baner-potwierdzenia-e-maila--docs) | `@gomoku/ui/game/verify-email-banner` | `/` i `/account` przy niepotwierdzonym e-mailu | po potwierdzeniu, dla gościa |
+| [Status szukania gry](?path=/docs/produkt-lobby-status-szukania-gry--docs) | `@gomoku/ui/game/seeking-status` | po oznaczeniu się jako szukający | zegar w partii, lista innych graczy |
+| [Lista graczy](?path=/docs/produkt-lobby-lista-graczy--docs) | `@gomoku/ui/game/lobby-list` | strona lobby | historia partii |
+| [Lista partii](?path=/docs/produkt-historia-lista-partii--docs) | `@gomoku/ui/game/history-list` | strona historii | lobby, trwające partie |
+
+Menu: [Komponenty](?path=/docs/design-system-komponenty--docs) pokazuje każdy z podglądem.

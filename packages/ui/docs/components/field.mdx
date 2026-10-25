@@ -1,0 +1,124 @@
+import { ArgTypes, Canvas, Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { Field } from "@gomoku/ui/game/field";
+import { TextInput } from "@gomoku/ui/game/text-input";
+import { DoDont } from "../../.storybook/blocks";
+import * as Stories from "./field.stories";
+
+<Meta of={Stories} />
+
+# Pole formularza
+
+## 1. Do czego służy
+
+Daje polu formularza widoczną nazwę, podpowiedź, komunikat błędu i oznaczenie wymagane lub opcjonalne, i łączy je z polem dla czytnika ekranu.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Kiedy używać
+
+- **Każde pole formularza:** „E-mail”, „Hasło”, „Kod zaproszenia”, „Aktualne hasło” (specyfikacje #19, #20, #21, #36).
+- **Gdy pole potrzebuje podpowiedzi** („Co najmniej 16 znaków”) lub komunikatu błędu po stronie serwera.
+
+## 3. Kiedy nie używać
+
+- **Pole wyboru (checkbox):** ma własną etykietę wokół kontrolki; użyj [Pola wyboru](?path=/docs/prymitywy-pole-wyboru--docs).
+- **Komunikat dotyczący całego formularza** (np. „Nie udało się wysłać”): użyj [Alertu](?path=/docs/prymitywy-alert--docs).
+
+## 4. Anatomia
+
+1. **Etykieta** (wymagana, zawsze widoczna).
+2. **Znacznik wymaganego lub opcjonalnego** (opcjonalny, tekst przekazany z zewnątrz).
+3. **Kontrolka** (wymagana, np. Pole tekstowe).
+4. **Podpowiedź** (opcjonalna).
+5. **Błąd** (opcjonalny; ikona i tekst, co zrobić).
+
+## 5. Warianty
+
+Brak wariantów. Stany zmieniają zawartość (podpowiedź, błąd, znacznik), nie wygląd. Jeden wygląd zapewnia spójność formularzy (R01.2).
+
+<Canvas of={Stories.Wymagane} />
+<Canvas of={Stories.Opcjonalne} />
+
+## 6. Stany
+
+Domyślny, z podpowiedzią, wymagany, opcjonalny, błąd i zablokowany. Najechania, wciśnięcia i ładowania pole formularza nie ma (nie dotyczy; interakcję obsługuje kontrolka).
+
+<Canvas of={Stories.Blad} />
+<Canvas of={Stories.Zablokowane} />
+
+- **Błąd:** ikona **i** tekst („Sprawdź adres e-mail: brakuje znaku @.”), nie sam kolor. Tekst mówi, co się stało i co zrobić. Źródło: WCAG 1.4.1, 3.3.1, 3.3.3.
+- **Zablokowany:** powód zablokowania wpisz w podpowiedzi, bo zablokowana kontrolka nie przyjmuje fokusu.
+
+## 7. Zachowanie i dostępność
+
+- **Etykieta:** `<label for>` połączona z `id` kontrolki; kliknięcie etykiety ustawia fokus w polu. Źródło: WCAG 1.3.1, 3.3.2.
+- **Opis:** podpowiedź i błąd są w `aria-describedby`; czytnik czyta je po nazwie pola. Źródło: WAI-ARIA.
+- **Błąd:** `aria-invalid="true"` na kontrolce. Wymagane: `aria-required="true"`.
+- **Po nieudanym wysłaniu** fokus ma trafić na pierwsze pole z błędem (zasada wzorca „Formularz”, etap 3).
+- **Klawiatura i cel kliknięcia:** dziedziczone z kontrolki (44 px).
+
+## 8. Treść
+
+- **Etykieta:** rzeczownik, max ok. 4 słowa: „Kod zaproszenia”. Nie pytanie i nie zdanie.
+- **Znacznik:** komponent nie wstawia słów „wymagane” i „opcjonalne”: przekaż je w propsie `requirement` (np. „(opcjonalne)”). Samej gwiazdki nie używaj, bo kolor ani symbol nie wystarcza.
+- **Błąd:** co się stało i co zrobić: „Kod jest za krótki: wpisz 8 znaków.” Nie „Błąd” i nie „Niepoprawna wartość”.
+- **Długa etykieta:** zawija się; dłuższy język nie łamie układu.
+
+## 9. Responsywność
+
+Pole formularza zajmuje szerokość kontenera; etykieta, podpowiedź i błąd zawijają się przy 320 px.
+
+<Canvas of={Stories.DlugaTrescNaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={Field} />
+
+`children` to funkcja, która dostaje atrybuty do przekazania kontrolce (`id`, `aria-describedby`, `aria-invalid`, `aria-required`).
+
+## 11. Kod
+
+Minimalny przykład:
+
+```tsx
+<Field label="Kod zaproszenia">
+  {(control) => <TextInput autoComplete="off" {...control} />}
+</Field>
+```
+
+Typowy przykład (hasło, wymagane, z podpowiedzią i błędem):
+
+```tsx
+<Field
+  label="Hasło"
+  hint="Co najmniej 16 znaków"
+  error={fieldErrors.password}
+  required
+>
+  {(control) => <TextInput type="password" autoComplete="new-password" {...control} />}
+</Field>
+```
+
+## 12. Dobrze i źle
+
+<Unstyled>
+  <DoDont
+    good={
+      <Field label="E-mail" error="Sprawdź adres e-mail: brakuje znaku @.">
+        {(control) => <TextInput type="email" defaultValue="alaexample.com" {...control} />}
+      </Field>
+    }
+    goodNote="błąd mówi, co się stało i co zrobić, i ma ikonę."
+    bad={
+      <Field label="E-mail" error="Błąd">
+        {(control) => <TextInput type="email" defaultValue="alaexample.com" {...control} />}
+      </Field>
+    }
+    badNote="„Błąd” nie mówi, co zrobić."
+  />
+</Unstyled>
+
+## 13. Powiązane
+
+- **Mylony z:** Polem wyboru (własna etykieta) i Alertem (komunikat dla całego formularza).
+- **Występuje we wzorcach:** formularz, dołączenie kodem (`/join`), zmiana i reset hasła.

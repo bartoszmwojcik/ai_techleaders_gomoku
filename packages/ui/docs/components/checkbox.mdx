@@ -1,0 +1,105 @@
+import { ArgTypes, Canvas, Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { Checkbox } from "@gomoku/ui/game/checkbox";
+import { DoDont } from "../../.storybook/blocks";
+import * as Stories from "./checkbox.stories";
+
+<Meta of={Stories} />
+
+# Pole wyboru
+
+## 1. Do czego służy
+
+Pozwala graczowi potwierdzić świadomy wybór „tak lub nie”, np. że rozumie skutki usunięcia konta.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Kiedy używać
+
+- **Potwierdzenie przed nieodwracalną akcją:** „Rozumiem, że konta nie da się odzyskać” przy usunięciu konta; przycisk „Usuń konto na zawsze” jest nieaktywny bez zaznaczenia (specyfikacja account-deletion).
+- **Niezależna opcja tak/nie**, która nie wykonuje akcji od razu.
+
+## 3. Kiedy nie używać
+
+- **Wybór jednej z kilku opcji:** grupa radio (jeszcze nie ma, patrz „Czego brakuje”).
+- **Natychmiastowe włączenie lub wyłączenie czegoś:** przełącznik (jeszcze nie ma).
+- **Tekst do wpisania:** [Pole tekstowe](?path=/docs/prymitywy-pole-tekstowe--docs).
+
+## 4. Anatomia
+
+1. **Pole** (24 px, obramowanie 3:1).
+2. **Znacznik zaznaczenia** (tylko po zaznaczeniu): wypełnienie i ptaszek.
+3. **Etykieta** (wymagana).
+4. **Podpowiedź** (opcjonalna).
+
+## 5. Warianty
+
+Brak wariantów. Jeden wygląd; stan wyznacza zaznaczenie. Źródło: R01.2.
+
+<Canvas of={Stories.ZPodpowiedzia} />
+
+## 6. Stany
+
+Niezaznaczony, zaznaczony, najechanie, fokus i zablokowany. Ładowania i błędu pole wyboru nie ma (błąd pokazuje formularz).
+
+<Canvas of={Stories.Stany} />
+
+- **Zaznaczony:** wypełnienie koloru akcji **i ptaszek**; stan nie opiera się tylko na kolorze (WCAG 1.4.1).
+- **Zablokowany:** przygaszone, kursor „niedostępne”; powód wpisz w podpowiedzi lub obok.
+
+## 7. Zachowanie i dostępność
+
+- **Klawiatura:** `Tab` ustawia fokus, `Spacja` przełącza. Źródło: WAI-ARIA Authoring Practices (Checkbox).
+- **Rola i atrybuty:** `role="checkbox"` z `aria-checked`; etykieta w `<label>`, podpowiedź w `aria-describedby`.
+- **Czytnik ekranu:** czyta etykietę, „pole wyboru” i stan („zaznaczone”, „niezaznaczone”).
+- **Cel kliknięcia:** cały wiersz (etykieta) jest celem, co najmniej 44 px wysokości (`target-min`); samo pole ma 24 px.
+
+## 8. Treść
+
+- **Etykieta:** pełne zdanie opisujące zgodę, w pierwszej osobie: „Rozumiem, że konta nie da się odzyskać”.
+- **Długość:** zawija się; sprawdzone przy 320 px.
+- Komponent nie ma wbudowanych tekstów; etykieta przychodzi z propsów.
+
+## 9. Responsywność
+
+Etykieta zawija się do kilku linii, pole zostaje przy pierwszej linii. Cel dotykowy 44 px przy każdej szerokości.
+
+<Canvas of={Stories.DlugaTrescNaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={Checkbox} />
+
+Dodatkowo: wszystkie właściwości Radix `Checkbox.Root` (`checked`, `defaultChecked`, `onCheckedChange`, `disabled`, `name`, `value`).
+
+## 11. Kod
+
+```tsx
+import { Checkbox } from "@gomoku/ui/game/checkbox";
+
+<Checkbox label="Rozumiem, że konta nie da się odzyskać" onCheckedChange={setConfirmed} />;
+```
+
+Z podpowiedzią (usunięcie konta):
+
+```tsx
+<Checkbox
+  label="Rozumiem, że konta nie da się odzyskać"
+  hint="Twoje zakończone partie zostaną u przeciwników jako „Usunięty gracz”."
+/>
+```
+
+## 12. Dobrze i źle
+
+<Unstyled>
+  <DoDont
+    good={<Checkbox label="Rozumiem, że konta nie da się odzyskać" />}
+    goodNote="etykieta jest zdaniem opisującym zgodę, cały wiersz jest celem."
+    bad={<Checkbox label="OK" />}
+    badNote="„OK” nie mówi, na co gracz się zgadza."
+  />
+</Unstyled>
+
+## 13. Powiązane
+
+- **Mylony z:** przełącznikiem (działa od razu) i grupą radio (jedna z wielu).
+- **Występuje we wzorcach:** potwierdzenie usunięcia (zgoda przed akcją), formularz.

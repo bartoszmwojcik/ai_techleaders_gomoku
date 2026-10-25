@@ -1,0 +1,110 @@
+import { ArgTypes, Canvas, Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { TextInput } from "@gomoku/ui/game/text-input";
+import { Field } from "@gomoku/ui/game/field";
+import { DoDont } from "../../.storybook/blocks";
+import * as Stories from "./text-input.stories";
+
+<Meta of={Stories} />
+
+# Pole tekstowe
+
+## 1. Do czego służy
+
+Pozwala graczowi wpisać krótki tekst: e-mail, hasło, kod zaproszenia.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Kiedy używać
+
+- **Zawsze wewnątrz [Pola formularza](?path=/docs/prymitywy-pole-formularza--docs):** e-mail, hasło, kod zaproszenia (`/join`), nazwa gracza (specyfikacje #19, #20, #21).
+- **Jednowierszowy wpis**, którego format znasz (`type="email"`, `type="password"`).
+
+## 3. Kiedy nie używać
+
+- **Samodzielnie, bez etykiety:** pole bez widocznej etykiety jest błędem; użyj Pola formularza. Wyjątek: pole z `aria-label` tam, gdzie widoczny napis stoi obok (np. wyszukiwarka z przyciskiem „Szukaj”).
+- **Wybór z listy:** pole wyboru, radio lub lista (jeszcze nie ma, patrz „Czego brakuje”).
+- **Długi, wielowierszowy tekst:** pole wielowierszowe (jeszcze nie ma).
+
+## 4. Anatomia
+
+1. **Obramowanie** (3:1 względem tła, `border-control`).
+2. **Wartość** lub **tekst przykładowy** (placeholder, tylko przykład, nie nazwa pola).
+
+## 5. Warianty
+
+Brak wariantów wyglądu; typ wyboru atrybutem `type` (`text`, `email`, `password`, `search`). Jeden wygląd zapewnia spójność formularzy. Źródło: R01.2 (oszczędność).
+
+<Canvas of={Stories.Typy} />
+
+## 6. Stany
+
+Domyślny, najechanie, fokus, zablokowany i błąd. Ładowania i „wybranego” pole nie ma (nie dotyczy).
+
+<Canvas of={Stories.Stany} />
+
+- **Błąd:** `aria-invalid="true"` zmienia kolor obramowania na `status-danger`, ale **sam kolor nie wystarcza**: tekst błędu z ikoną pokazuje Pole formularza (WCAG 1.4.1, 3.3.1).
+- **Zablokowany:** pole ma przygaszony tekst i tło panelu. Powód zablokowania opisz w podpowiedzi pola, bo użytkownik nie może wejść w pole fokusem.
+
+## 7. Zachowanie i dostępność
+
+- **Klawiatura:** `Tab` wchodzi w pole, standardowa edycja tekstu. Kolejność fokusu = kolejność w dokumencie.
+- **Rola i atrybuty:** natywny `<input>`; etykieta i opis przychodzą z Pola formularza (`id`, `aria-describedby`, `aria-invalid`, `aria-required`). `autocomplete` zawsze ustawiaj (`email`, `current-password`, `new-password`, `off`). Źródło: WCAG 1.3.5.
+- **Czytnik ekranu:** czyta etykietę, rolę, wartość, opis i „nieprawidłowe”.
+- **Cel kliknięcia:** wysokość co najmniej 44 px (`target-min`).
+
+## 8. Treść
+
+- Placeholder to przykład wartości („ABCD-EFGH”), a **nie nazwa pola** i nie instrukcja (znika po wpisaniu).
+- Maksymalna długość tekstu zależy od pola; długa wartość przewija się w poziomie wewnątrz pola, bez łamania układu.
+- Nie wpisuj wartości domyślnych, które gracz musiałby kasować.
+
+## 9. Responsywność
+
+Pole zajmuje szerokość kontenera (`w-full`). Przy 320 px długa wartość przewija się w polu.
+
+<Canvas of={Stories.DlugaTrescNaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={TextInput} />
+
+Dodatkowo: wszystkie atrybuty natywnego `<input>`.
+
+## 11. Kod
+
+```tsx
+import { Field } from "@gomoku/ui/game/field";
+import { TextInput } from "@gomoku/ui/game/text-input";
+
+<Field label="Kod zaproszenia">
+  {(control) => <TextInput autoComplete="off" {...control} />}
+</Field>;
+```
+
+Pole e-mail z błędem po stronie serwera:
+
+```tsx
+<Field label="E-mail" error="Sprawdź adres e-mail: brakuje znaku @.">
+  {(control) => <TextInput type="email" autoComplete="email" {...control} />}
+</Field>
+```
+
+## 12. Dobrze i źle
+
+<Unstyled>
+  <DoDont
+    good={
+      <Field label="Kod zaproszenia">
+        {(control) => <TextInput placeholder="ABCD-EFGH" autoComplete="off" {...control} />}
+      </Field>
+    }
+    goodNote="widoczna etykieta, placeholder jako przykład."
+    bad={<TextInput placeholder="Kod zaproszenia" aria-label="Kod zaproszenia" />}
+    badNote="placeholder zamiast etykiety znika po wpisaniu pierwszego znaku."
+  />
+</Unstyled>
+
+## 13. Powiązane
+
+- **Mylony z:** polem wielowierszowym i wyszukiwarką (jeszcze nie ma).
+- **Występuje we wzorcach:** formularz (logowanie, rejestracja, reset i zmiana hasła, dołączenie kodem).

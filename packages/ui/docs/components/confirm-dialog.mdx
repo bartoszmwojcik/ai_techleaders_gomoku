@@ -1,0 +1,104 @@
+import { ArgTypes, Canvas, Meta } from "@storybook/addon-docs/blocks";
+import { ConfirmDialog } from "@gomoku/ui/game/confirm-dialog";
+import * as Stories from "./confirm-dialog.stories";
+
+<Meta of={Stories} />
+
+# Dialog potwierdzenia
+
+## 1. Do czego służy
+
+Zatrzymuje gracza tuż przed akcją, której nie da się cofnąć, nazywa jej skutek i daje łatwe wyjście.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Kiedy używać
+
+- **Usunięcie konta:** „Usunąć konto Ala_7?” z potwierdzeniem „Usuń konto na zawsze” (account-deletion).
+- **Anulowanie oczekującej partii przy dołączaniu:** „Anuluj moją partię i dołącz” (game-invitations, Q18).
+- **Wylogowanie w trakcie partii:** „Trwa partia — po wylogowaniu zegar biegnie dalej. Wylogować?” (login-logout, Q4).
+
+## 3. Kiedy nie używać
+
+- **Akcja, którą da się cofnąć lub która jest niegroźna:** wykonaj ją od razu i pokaż [Alert](?path=/docs/prymitywy-alert--docs) z wynikiem.
+- **Zebranie informacji od gracza:** [Dialog](?path=/docs/prymitywy-dialog--docs).
+- **Potwierdzenie przy każdej akcji:** dialog traci znaczenie, gdy pojawia się za często.
+
+## 4. Anatomia
+
+1. **Tytuł z nazwą obiektu** (wymagany): pytanie.
+2. **Opis skutku** (opcjonalny): jedno zdanie.
+3. **Przycisk rezygnacji** (wymagany), po lewej i pierwszy w kolejności fokusu.
+4. **Przycisk potwierdzenia** (wymagany), opisany czasownikiem.
+
+## 5. Warianty
+
+| `tone` | Kiedy wybrać | Źródło |
+|---|---|---|
+| `danger` (domyślny) | Skutek nieodwracalny: usunięcie konta | propozycja (Q4) |
+| `primary` | Pytanie bez utraty danych, ale ze skutkiem: anulowanie własnej partii przy dołączaniu | R02.3 |
+
+<Canvas of={Stories.PytanieZGlownymPrzyciskiem} />
+
+## 6. Stany
+
+Zamknięty, otwarty i ładowanie (potwierdzenie wysłane, czekamy na serwer). Najechanie, fokus i wciśnięcie dotyczą przycisków w środku. Zablokowanego dialogu nie ma.
+
+<Canvas of={Stories.Ladowanie} />
+
+- **Ładowanie:** przycisk potwierdzenia jest zajęty (`confirming`): spinner, `aria-busy`, blokada drugiego kliknięcia. Dialog zostaje otwarty, dopóki rodzic go nie zamknie po odpowiedzi serwera; „sukces dopiero po potwierdzeniu z serwera”.
+
+## 7. Zachowanie i dostępność
+
+- **Rola:** `alertdialog`: czytnik ogłasza pytanie od razu. Źródło: WAI-ARIA Authoring Practices (Alert Dialog).
+- **Fokus:** po otwarciu zaczyna się na **przycisku rezygnacji** (bezpieczny wybór), jest uwięziony w dialogu; `Escape` zamyka jako rezygnację; po zamknięciu wraca na element otwierający. Źródło: WAI-ARIA, WCAG 2.4.3.
+- **Czytnik ekranu:** czyta pytanie, opis i przyciski opisane czasownikami.
+- **Cel kliknięcia:** przyciski mają co najmniej 44 px wysokości.
+- **Motyw:** portal poza stroną; motyw na elemencie głównym dokumentu, jak w Dialogu.
+
+## 8. Treść
+
+- **Tytuł:** pytanie z nazwą obiektu: „Usunąć konto Ala_7?”, nie „Czy na pewno?”.
+- **Opis:** jedno zdanie o skutku: „Twoje zakończone partie zostaną u przeciwników jako „Usunięty gracz”. Tego nie da się cofnąć.”
+- **Potwierdzenie:** czasownik i obiekt: „Usuń konto na zawsze”, nie „OK” i nie „Tak”.
+- **Rezygnacja:** nazwij, co zostaje: „Zostaw konto”, „Wróć”, nie „Anuluj” bez kontekstu.
+- Komponent nie ma wbudowanych tekstów.
+
+## 9. Responsywność
+
+Przy 320 px przyciski układają się jeden pod drugim (rezygnacja pierwsza); od 768 px w jednym rzędzie, wyrównane do prawej. Długie etykiety zawijają się.
+
+<Canvas of={Stories.DlugaTrescNaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={ConfirmDialog} />
+
+## 11. Kod
+
+```tsx
+import { Button } from "@gomoku/ui/game/button";
+import { ConfirmDialog } from "@gomoku/ui/game/confirm-dialog";
+
+<ConfirmDialog
+  open={open}
+  onOpenChange={setOpen}
+  title={`Usunąć konto ${displayName}?`}
+  description="Twoje zakończone partie zostaną u przeciwników jako „Usunięty gracz”."
+  confirmLabel="Usuń konto na zawsze"
+  cancelLabel="Zostaw konto"
+  confirming={isDeleting}
+  onConfirm={deleteAccount}
+/>;
+```
+
+## 12. Dobrze i źle
+
+**Dobrze:** pytanie z nazwą obiektu, przycisk potwierdzenia opisany czasownikiem („Usuń konto na zawsze”), rezygnacja nazwana i pierwsza w kolejności fokusu. **Źle:** „Czy na pewno?” z przyciskami „OK” i „Anuluj”, albo dialog, który zamyka się przed odpowiedzią serwera. Przykłady „na żywo” w stories (dialog otwiera się w ramce).
+
+<Canvas of={Stories.UsuniecieKonta} />
+
+## 13. Powiązane
+
+- **Mylony z:** Dialogiem (zebranie informacji) i Alertem (komunikat na stronie).
+- **Występuje we wzorcach:** potwierdzenie usunięcia, zaproszenie przez link lub kod (anulowanie własnej partii), wylogowanie w trakcie partii.

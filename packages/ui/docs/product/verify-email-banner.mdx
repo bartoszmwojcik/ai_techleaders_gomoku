@@ -1,0 +1,102 @@
+import { ArgTypes, Canvas, Meta } from "@storybook/addon-docs/blocks";
+import { VerifyEmailBanner } from "@gomoku/ui/game/verify-email-banner";
+import * as Stories from "./verify-email-banner.stories";
+
+<Meta of={Stories} />
+
+# Baner potwierdzenia e-maila
+
+## 1. Do czego służy
+
+Przypomina zalogowanemu graczowi, że musi potwierdzić e-mail, aby grać, i pozwala wysłać link ponownie.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Kiedy używać
+
+- **Na `/` i `/account`, dopóki `emailVerifiedAt` jest puste** (email-verification, BR-23).
+- **Zawsze z przyciskiem „Wyślij ponownie”** i jego stanami.
+
+## 3. Kiedy nie używać
+
+- **Po potwierdzeniu e-maila:** baner znika; potwierdzenie pokazuje strona `/verify-email` ([Alert](?path=/docs/prymitywy-alert--docs) z sukcesem).
+- **Dla gościa:** gość nie ma konta, więc nie ma e-maila do potwierdzenia.
+- **Błąd potwierdzenia na `/verify-email`:** osobny komunikat z przyciskiem „Wyślij nowy link”.
+
+## 4. Anatomia
+
+1. **Tytuł** („Potwierdź e-mail, aby grać”).
+2. **Treść:** gdzie link trafia i przypomnienie o folderze spam. Nie twierdzi, że wysłano, bo wysyłka mogła się nie udać (Q6).
+3. **Przycisk ponownego wysłania.**
+4. **Wynik** pod przyciskiem (po wysłaniu, limit lub błąd).
+
+## 5. Warianty
+
+Brak wariantów wyglądu. Stan wysyłania wyznacza `state`:
+
+| `state` | Co widać | Rola komunikatu |
+|---|---|---|
+| `idle` | sam przycisk | brak |
+| `sending` | przycisk zajęty, bez drugiego kliknięcia | brak |
+| `sent` | „Wysłano…” | `status` |
+| `limited` | „Spróbuj za …”, przycisk zablokowany z powodem | `alert` |
+| `failed` | co zrobić, przycisk aktywny | `alert` |
+
+<Canvas of={Stories.Limit} />
+
+## 6. Stany
+
+Domyślny, wysyłanie, wysłano, limit, błąd wysyłki (stories). Przycisk ma własne najechanie, fokus i wciśnięcie. Przy limicie powód zablokowania jest tekstem pod przyciskiem.
+
+<Canvas of={Stories.Wysylanie} />
+
+## 7. Zachowanie i dostępność
+
+- **Rola:** baner to `status` (info); wynik „wysłano” to `status`, „limit” i „błąd” to `alert`. Źródło: WAI-ARIA, WCAG 4.1.3.
+- **Klawiatura:** `Tab` trafia na przycisk.
+- **Zablokowany przycisk ma wyjaśnienie** („Za wiele prób…”), czytane z treści.
+- **Adres e-mail** pokazujemy tylko właścicielowi konta.
+
+## 8. Treść
+
+- **Tytuł:** „Potwierdź e-mail, aby grać” (tekst ze specyfikacji).
+- **Treść:** „Link wysyłamy na {adres} — sprawdź też folder spam.”
+- **Wynik:** „Wysłano.”, „Za wiele prób. Spróbuj ponownie za 2 minuty.”, „Nie udało się wysłać wiadomości. Spróbuj ponownie za chwilę.”
+- Komponent nie ma wbudowanych tekstów.
+
+## 9. Responsywność
+
+Przycisk i wynik układają się pod treścią; długi adres e-mail zawija się w dowolnym miejscu.
+
+<Canvas of={Stories.DlugiAdresNaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={VerifyEmailBanner} />
+
+## 11. Kod
+
+```tsx
+import { VerifyEmailBanner } from "@gomoku/ui/game/verify-email-banner";
+
+<VerifyEmailBanner
+  title="Potwierdź e-mail, aby grać"
+  resendLabel="Wyślij ponownie"
+  state={resendState}
+  feedback={resendMessage}
+  onResend={resend}
+>
+  Link wysyłamy na {email} — sprawdź też folder spam.
+</VerifyEmailBanner>;
+```
+
+## 12. Dobrze i źle
+
+**Dobrze:** „Link wysyłamy na…” i jasny wynik pod przyciskiem, limit z czasem i zablokowanym przyciskiem. **Źle:** „Wysłaliśmy link”, gdy wysyłka mogła się nie udać; zablokowany przycisk bez wyjaśnienia; błąd wysyłki w toaście.
+
+<Canvas of={Stories.PonowneWyslanie} />
+
+## 13. Powiązane
+
+- **Mylony z:** Alertem (ogólny komunikat) i potwierdzeniem na `/verify-email` (inna strona).
+- **Występuje we wzorcach:** stan zależny od uprawnień (e-mail niepotwierdzony).

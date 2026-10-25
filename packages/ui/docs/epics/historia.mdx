@@ -1,0 +1,39 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Design system/Historia partii" />
+
+# Epik E04: Historia partii
+
+Lista zakończonych partii gracza: przeciwnik, wynik, data, sposób zakończenia. Źródła: `.ai/specs/product-brief.md` (BR-17, BR-24, D-04), zgłoszenie #27.
+
+## Przepływ
+
+1. Gracz otwiera historię.
+2. Widzi tylko własne, zakończone partie; przeciwnik, który usunął konto, to „Usunięty gracz” (BR-17), gość to „Zaproszony przez link” (BR-24).
+
+## Komponenty
+
+[Lista partii](?path=/docs/produkt-historia-lista-partii--docs), [Znacznik statusu](?path=/docs/prymitywy-znacznik-statusu--docs), [Panel](?path=/docs/prymitywy-panel--docs), [Pusty stan](?path=/docs/prymitywy-pusty-stan--docs), [Stan błędu](?path=/docs/prymitywy-stan-błędu--docs), [Szkielet ładowania](?path=/docs/prymitywy-szkielet-ładowania--docs). Wzorzec: [Lista](?path=/docs/wzorce-lista--docs).
+
+## Mapa stanów ekranu
+
+| Stan | Story |
+|---|---|
+| lista z partiami (w tym „Usunięty gracz” i „Zaproszony przez link”) | [Historia: z partiami](?path=/story/ekrany-historia--historia-z-partiami) |
+| dużo partii | [Historia: dużo partii](?path=/story/ekrany-historia--historia-duzo-partii) |
+| ładowanie | [Historia: ładowanie](?path=/story/ekrany-historia--historia-ladowanie) |
+| brak partii | [Historia: pusta](?path=/story/ekrany-historia--historia-pusta) |
+| błąd wczytania | [Historia: błąd](?path=/story/ekrany-historia--historia-blad-wczytania) |
+
+## Pliki źródłowe
+
+- Komponenty: `src/game/history-list.tsx`, `status-badge.tsx`, `panel.tsx`, `empty-state.tsx`, `error-state.tsx`, `skeleton.tsx`.
+- Stories ekranu: `docs/screens/historia.stories.tsx`; wzorzec Lista: `docs/patterns/list.stories.tsx`.
+- Specyfikacje: brak osobnej (autorytet: `.ai/specs/product-brief.md`, zgłoszenie #27).
+- Zgłoszenia: epik #18, #27.
+
+## Co jeszcze zostaje w produkcie
+
+- Serwis, zapytanie i strona (#27); migracje partii (#29).
+- Strona główna `/` ma własne stany w [Strona główna](?path=/story/ekrany-strona-główna--niezalogowany).
+- Odtwarzanie partii ruch po ruchu i statystyki są poza zakresem.

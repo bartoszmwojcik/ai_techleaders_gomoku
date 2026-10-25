@@ -1,0 +1,86 @@
+import { ArgTypes, Canvas, Meta } from "@storybook/addon-docs/blocks";
+import { PlayerClock } from "@gomoku/ui/game/player-clock";
+import * as Stories from "./player-clock.stories";
+
+<Meta of={Stories} />
+
+# Zegar gracza
+
+## 1. Do czego służy
+
+Pokazuje graczowi, ile czasu zostało jemu i przeciwnikowi, i czyj zegar biegnie.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Kiedy używać
+
+- **Nad i pod planszą w partii:** dwa zegary, każdy z 10 minutami na start (BR-04, E02-S03).
+- **Po powrocie z rozłączenia:** zegar pokazuje czas pomniejszony o nieobecność (BR-06, E02-S04).
+
+## 3. Kiedy nie używać
+
+- **Odliczanie do wygaśnięcia statusu w lobby:** [Status szukania gry](?path=/docs/produkt-lobby-status-szukania-gry--docs).
+- **Odmierzanie czasu w komponencie:** komponent tylko wyświetla czas, który dostaje. Czas liczy serwer (BR-05, D-05).
+- **Animowany pasek postępu:** zegar nie animuje się (A04).
+
+## 4. Anatomia
+
+1. **Nazwa gracza** (wymagana).
+2. **Słowo aktywności** (np. „Twój ruch”), tylko gdy zegar biegnie.
+3. **Znacznik niskiego czasu** (opcjonalny).
+4. **Czas** `m:ss`, duże cyfry tabelaryczne.
+
+## 5. Warianty
+
+Brak wariantów wyglądu. Stan zależy od danych: biegnie lub stoi, dużo lub mało czasu.
+
+<Canvas of={Stories.Stany} />
+
+## 6. Stany
+
+Start partii (10:00), zegar biegnie, mało czasu, czas się skończył (0:00). Zegar nie ma najechania, fokusu, wciśnięcia ani zablokowania (nie dotyczy, nie jest kontrolką).
+
+- **Zegar biegnie:** mocny obrys (`text-primary`) i słowo („Twój ruch”): nie sam kolor. Źródło: WCAG 1.4.1.
+- **Mało czasu:** poniżej minuty pojawia się znacznik ostrzeżenia z ikoną (próg do zmiany w `lowThresholdMs`). Źródło: propozycja (zegar, Q1).
+
+## 7. Zachowanie i dostępność
+
+- **Rola:** `role="timer"` na elemencie `<time>` z czasem w formacie ISO; `timer` domyślnie nie ogłasza zmian co sekundę, więc czytnik nie jest zasypywany. Źródło: WAI-ARIA `timer`.
+- **Aktywny zegar:** `aria-current="true"`.
+- **Ważne zmiany** (np. „Mało czasu”, koniec czasu) ogłasza osobny `role="status"` na ekranie, nie ten komponent.
+- **Kontrast:** tekst ma co najmniej 4,5:1 w obu motywach.
+
+## 8. Treść
+
+- **Format czasu:** `m:ss` (np. `9:41`, `0:05`); część sekundy zaokrąglamy w górę, żeby zegar nie pokazał `0:00`, gdy czas jeszcze jest.
+- **Nazwa:** nazwa gracza lub „Ty”; długa nazwa zawija się.
+- **Słowa** („Twój ruch”, „Mało czasu”) przychodzą z propsów.
+
+## 9. Responsywność
+
+Zegar zawija się: nazwa nad czasem, znacznik obok czasu. Długa nazwa bez spacji zawija się w dowolnym miejscu (sprawdzone przy 320 px).
+
+<Canvas of={Stories.DlugaNazwaNaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={PlayerClock} />
+
+## 11. Kod
+
+```tsx
+import { PlayerClock } from "@gomoku/ui/game/player-clock";
+
+<PlayerClock name="Ala_7" remainingMs={game.you.remainingMs} active={game.turnSeat === you} activeLabel="Twój ruch" lowLabel="Mało czasu" />;
+```
+
+## 12. Dobrze i źle
+
+**Dobrze:** czas z serwera, aktywny zegar z obrysem i słowem, mało czasu z ikoną. **Źle:** czas liczony tylko w kliencie, aktywność oznaczona samym kolorem, płynnie animowany pasek zamiast cyfr.
+
+<Canvas of={Stories.CzasZegarIOgloszenie} />
+
+## 13. Powiązane
+
+- **Mylony z:** Statusem tury (kto się rusza, w słowach) i Statusem szukania gry (odliczanie w lobby).
+- **Występuje we wzorcach:** widok szczegółów (partia).

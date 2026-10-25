@@ -1,0 +1,70 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Design system/Użycie i dostępność" />
+
+# Użycie i dostępność
+
+Każda reguła ma źródło: numer referencji (R, A), zasadę z `tokeny.md` (Z), specyfikację, WCAG albo WAI-ARIA. Reguły oznaczone „propozycja” czekają na decyzję właściciela.
+
+## Klawiatura i fokus
+
+| Reguła | Źródło |
+|---|---|
+| Wszystko, co klikalne, działa z klawiatury; kolejność fokusu = kolejność w dokumencie. | WCAG 2.1.1, 2.4.3 |
+| Fokus jest zawsze widoczny: obrys 2 px z odstępem 2 px w `focus-ring`; na planszy ciemny obrys wewnątrz pola (pomarańcz ma tam za mały kontrast). | R01.8, WCAG 2.4.7 |
+| Plansza ma jeden punkt `Tab`, strzałki przesuwają fokus, `Enter` wybiera pole. | game-moves, WAI-ARIA Grid |
+| Dialog więzi fokus, `Escape` zamyka, fokus wraca na element otwierający; dialog potwierdzenia zaczyna na rezygnacji. | WAI-ARIA Dialog i Alert Dialog |
+| Cel kliknięcia ma co najmniej 44 px (`target-min`); wyjątek: pola planszy na wąskim telefonie (ok. 17 px, dwa kroki zatwierdzania). | BR-20, WCAG 2.5.8, game-moves Q7 |
+
+## Formularze i komunikaty
+
+| Reguła | Źródło |
+|---|---|
+| Etykieta jest zawsze widoczna; placeholder to przykład wartości. | WCAG 3.3.2, wzorzec Formularz |
+| Błąd przy polu ma ikonę i tekst: co jest nie tak i co zrobić; nie sam kolor. | WCAG 1.4.1, 3.3.1, 3.3.3 |
+| Po nieudanym wysłaniu fokus trafia na pierwsze pole z błędem; wpisane dane zostają. | WCAG 3.3.1, wzorzec Formularz |
+| Pole ma `autocomplete` (`email`, `current-password`, `new-password`, `off`). | WCAG 1.3.5 |
+| Komunikaty: `status` (grzecznie) dla info i sukcesu, `alert` (przerywa) dla uwagi i błędu; wynik partii zawsze `status`. | WAI-ARIA, WCAG 4.1.3, game-moves |
+| Zablokowany przycisk ma powód napisany obok i podpięty `aria-describedby`. | WCAG 3.3.1, propozycja |
+| Rejestracja, logowanie i reset nie ujawniają, czy e-mail istnieje. | BR-16, login-logout |
+
+## Kolor
+
+| Reguła | Źródło |
+|---|---|
+| Tekst 4,5:1, elementy interfejsu 3:1, w obu motywach; tabela na stronie [Kolor](?path=/docs/fundamenty-kolor--docs). | R01.8, WCAG 1.4.3, 1.4.11 |
+| Kolor nigdy nie jest jedynym nośnikiem: stan ma słowo i ikonę, link jest podkreślony, zaznaczone pole ma ptaszek. | WCAG 1.4.1 |
+| Pomarańcz tylko na elementach interaktywnych (przyciski, linki, fokus). | Z1 |
+| Biały kamień ma obrys; ostatni ruch i linia wygrywająca mają `board-marker` (4,06:1 na planszy). | R01.8 |
+| Dwa motywy; ciemny domyślny; motyw na elemencie głównym dokumentu (dialogi też go dostają). | Z3 |
+
+## Ruch i treść
+
+| Reguła | Źródło |
+|---|---|
+| Czasy 150 ms i 200 ms; przy `prefers-reduced-motion` ruch jest wyłączony w jednym miejscu (tokeny). | Q5, WCAG 2.3.3 |
+| Zegar i odliczanie zmieniają cyfry co sekundę, bez animacji; `role="timer"` nie ogłasza każdej sekundy. | zegar (Q1), WAI-ARIA |
+| Komponenty nie mają wbudowanych tekstów; etykiety i nazwy dla czytnika przychodzą z propsów. | Q3 |
+| Tekst ciągły ma najwyżej ok. 65 znaków w linii. | zasady systemu |
+| Długie nazwy bez spacji zawijają się w dowolnym miejscu. | BR-20, BR-14 |
+
+## Układ na różnych szerokościach
+
+| Reguła | Źródło |
+|---|---|
+| Strony działają przy 320, 768 i 1440 px bez przewijania w poziomie. | BR-20 |
+| Układ komponentów zależy od szerokości kontenera (zapytania o kontener), nie okna; tabele zastępuje lista. | lekcja z `.ai/lessons/` |
+| Treść do 1040 px (`layout-width-content`), wyśrodkowana, margines `space-panel`. | przyklad-tokeny.html |
+| Odstępy według relacji: w grupie 8, między grupami 16, w panelu 24, między sekcjami 48 px. | tokeny.md |
+
+## Reguły produktu, które pilnuje interfejs
+
+| Reguła | Jak ją pilnuje interfejs | Źródło |
+|---|---|---|
+| E-mail niepotwierdzony nie gra | akcje zablokowane z powodem obok, baner z „Wyślij ponownie” | BR-23 |
+| Gość gra tylko z zaproszenia | ostrzeżenie przed dołączeniem i trwałe nad partią; brak lobby i historii | BR-22 |
+| Jedna aktywna partia | komunikat „Masz już partię” z linkiem do niej | BR-13 |
+| Status „szukam gry” wygasa po 5 minutach | czas zawsze widoczny przy statusie i wierszach lobby | BR-12 |
+| Rozłączenie nie zatrzymuje zegara | po powrocie baner „Wróciłeś do partii” i aktualny czas | BR-06 |
+| Konto nie znika w trakcie partii | „Najpierw dokończ albo poddaj partię” | BR-21 |
+| Usunięty przeciwnik i gość w historii | „Usunięty gracz”, „Zaproszony przez link” | BR-17, BR-24 |

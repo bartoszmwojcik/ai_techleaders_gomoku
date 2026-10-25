@@ -1,0 +1,48 @@
+import { Canvas, Meta } from "@storybook/addon-docs/blocks";
+import * as Stories from "./form.stories";
+
+<Meta of={Stories} />
+
+# Formularz
+
+Wzorzec dla każdego formularza gracza: logowanie, rejestracja, reset i zmiana hasła, dołączenie kodem. Przykład działa na prawdziwych komponentach; odpowiedzi API są symulowane funkcją przekazaną do formularza (sukces, oczekiwanie, błąd pola, błąd serwera, brak sieci).
+
+<Canvas of={Stories.Pusty} />
+
+## Kiedy używać
+
+- Każde zbieranie danych od gracza i wysłanie ich na serwer (specyfikacje #19, #20, #34, #35, #36, #37, #21).
+- Nie używaj go do jednej szybkiej akcji bez pól (przycisk z `loading`) ani do potwierdzenia (wzorzec Potwierdzenie usunięcia).
+
+## Zasady
+
+1. **Etykieta zawsze widoczna.** Placeholder to przykład, nie nazwa pola ([Pole formularza](?path=/docs/prymitywy-pole-formularza--docs)). Źródło: WCAG 3.3.2.
+2. **Walidacja po opuszczeniu pola i przy wysłaniu.** Pole z błędem pokazuje ikonę i tekst: co jest nie tak i co zrobić. Źródło: WCAG 3.3.1, 3.3.3.
+3. **Po nieudanym wysłaniu fokus trafia na pierwsze pole z błędem.** Źródło: WCAG 3.3.1, prompt systemu.
+4. **Wpisane dane zostają**, także po błędzie serwera i braku sieci. Wyjątek: hasło jest znów ukryte po wysłaniu ([Pole hasła](?path=/docs/produkt-konta-pole-hasła--docs), login-logout H2).
+5. **Blokada podwójnego wysłania:** przycisk wysłania ma `loading` (zajęty, wyłączony, `aria-busy`). Źródło: prompt systemu, game-moves Q4.
+6. **Sukces dopiero po potwierdzeniu z serwera.** Nigdy wcześniej.
+7. **Błąd dotyczący całego formularza** (serwer, sieć) to [Alert](?path=/docs/prymitywy-alert--docs) nad polami; błąd pola stoi przy polu.
+8. **Bez wyliczania istniejących kont:** komunikaty rejestracji, logowania i resetu nie ujawniają, czy e-mail istnieje (BR-16). Źródło: account-registration, login-logout.
+
+## Stany
+
+| Stan | Co widać | Story |
+|---|---|---|
+| pusty | pola z etykietami, przycisk | [Pusty](?path=/story/wzorce-formularz--pusty) |
+| oczekiwanie na odpowiedź | przycisk zajęty i niedostępny | [Oczekiwanie](?path=/story/wzorce-formularz--oczekiwanie-na-odpowiedz) |
+| sukces | Alert z powodzeniem | [Sukces](?path=/story/wzorce-formularz--sukces) |
+| błąd pola | tekst przy polu, fokus na polu, dane zostają | [Błąd pola](?path=/story/wzorce-formularz--blad-pola-wraca-fokus-i-zostaja-dane) |
+| błąd serwera | Alert z powodem, dane zostają | [Błąd serwera](?path=/story/wzorce-formularz--blad-serwera) |
+| brak sieci | Alert z instrukcją, przycisk znów aktywny | [Brak sieci](?path=/story/wzorce-formularz--brak-sieci) |
+| walidacja po opuszczeniu pola i przy wysłaniu | błąd przy polu, fokus na pierwszym błędzie | [Walidacja](?path=/story/wzorce-formularz--walidacja-po-opuszczeniu-pola-i-przy-wyslaniu) |
+
+<Canvas of={Stories.BladPolaWracaFokusIZostajaDane} />
+
+## Kod
+
+Formularz z przykładu (`docs/patterns/login-form.tsx`) pokazuje cały układ: `Field` z `TextInput`, `PasswordField`, `Button` z `loading`, `Alert` na błędy serwera i sieci. Odpowiedź API (sukces, błąd pola, błąd serwera) jest obiektem zwracanym przez funkcję `submit`; brak sieci to wyjątek.
+
+## Powiązane
+
+[Pole formularza](?path=/docs/prymitywy-pole-formularza--docs), [Pole hasła](?path=/docs/produkt-konta-pole-hasła--docs), [Przycisk](?path=/docs/prymitywy-przycisk--docs), [Alert](?path=/docs/prymitywy-alert--docs).
