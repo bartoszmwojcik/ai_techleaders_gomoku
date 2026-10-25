@@ -1,0 +1,40 @@
+import { Canvas, Meta } from "@storybook/addon-docs/blocks";
+import * as Stories from "./invitation.stories";
+
+<Meta of={Stories} />
+
+# Zaproszenie przez link lub kod
+
+Wzorzec drogi od zaproszenia do partii: twórca czeka z kartą zaproszenia, zaproszony otwiera link albo wpisuje kod, a gość jest ostrzeżony, zanim dołączy (BR-09, BR-11, BR-22).
+
+<Canvas of={Stories.TworcaCzekaZKartaZaproszenia} />
+
+## Kiedy używać
+
+- Ścieżka (a) z briefu: zaproszenie konkretnej osoby. Lobby to osobna ścieżka (E03).
+
+## Zasady
+
+1. **Jeden link i jeden kod jednego zaproszenia.** Twórca widzi je razem na [Karcie kodu zaproszenia](?path=/docs/produkt-partia-karta-kodu-zaproszenia--docs); kod jest duży, bo bywa przepisywany. Źródło: game-invitations Q1.
+2. **Otwarcie linku niczego nie zużywa:** dołączenie to osobny przycisk (komunikatory i skanery otwierają linki). Źródło: game-invitations Q12.
+3. **Ostrzeżenie dla gościa jest wyraźne i trwałe:** przed dołączeniem i nad partią („Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii”). Źródło: BR-22.
+4. **Zaproszenie nieważne to jeden komunikat** bez rozróżniania przyczyny (użyte, wygasłe, anulowane). Źródło: game-invitations Q12.
+5. **Błędny kod mówi, co zrobić:** „Sprawdź kod: ma 8 znaków.” Wielkość liter i myślnik nie mają znaczenia.
+6. **Udostępnianie tylko tam, gdzie działa:** przycisk „Udostępnij” jest ukryty bez wsparcia przeglądarki.
+
+## Stany
+
+| Stan | Story |
+|---|---|
+| twórca czeka z kartą zaproszenia | [Twórca czeka](?path=/story/wzorce-zaproszenie-przez-link-lub-kod--tworca-czeka-z-karta-zaproszenia) |
+| zaproszony otwiera link | [Zaproszony otwiera link](?path=/story/wzorce-zaproszenie-przez-link-lub-kod--zaproszony-otwiera-link) |
+| zaproszony wpisuje kod | [Zaproszony wpisuje kod](?path=/story/wzorce-zaproszenie-przez-link-lub-kod--zaproszony-wpisuje-kod) |
+| błędny kod | [Błędny kod](?path=/story/wzorce-zaproszenie-przez-link-lub-kod--bledny-kod) |
+| gość jest ostrzeżony | [Gość ostrzeżony](?path=/story/wzorce-zaproszenie-przez-link-lub-kod--gosc-jest-ostrzezony-przed-dolaczeniem) |
+| zaproszenie nieważne | [Zaproszenie nieważne](?path=/story/wzorce-zaproszenie-przez-link-lub-kod--zaproszenie-niewazne) |
+
+Wszystkie osiem stanów strony `/invite/{kod}` są na stronie epiku [Partia z zaproszenia](?path=/docs/design-system-partia-z-zaproszenia--docs).
+
+## Powiązane
+
+[Karta kodu zaproszenia](?path=/docs/produkt-partia-karta-kodu-zaproszenia--docs), [Alert](?path=/docs/prymitywy-alert--docs), [Pole formularza](?path=/docs/prymitywy-pole-formularza--docs).

@@ -1,0 +1,110 @@
+import { ArgTypes, Canvas, Meta } from "@storybook/addon-docs/blocks";
+import { Board } from "@gomoku/ui/game/board";
+import * as Stories from "./board.stories";
+
+<Meta of={Stories} />
+
+# Plansza
+
+## 1. Do czego służy
+
+Pokazuje stan partii 15×15 i pozwala graczowi wskazać pole na następny kamień.
+
+<Canvas of={Stories.TrwaPartiaZOstatnimRuchem} />
+
+## 2. Kiedy używać
+
+- **Ekran partii `/games/{id}`:** w trakcie gry i po jej zakończeniu (game-moves, BR-10, BR-20).
+- **Odtworzenie stanu po odświeżeniu lub powrocie z rozłączenia:** plansza dostaje kamienie z serwera (BR-06).
+- **Strona główna jako podgląd:** z oznaczeniem „Przykładowa pozycja” (R01.3).
+
+## 3. Kiedy nie używać
+
+- **Odtwarzanie partii ruch po ruchu:** poza zakresem (spec #27); plansza pokazuje jeden stan.
+- **Ozdoba bez znaczenia:** pozycja pokazowa musi być oznaczona jako przykład, a plansza ma opis dla czytnika, nie `aria-hidden`.
+- **Inny rozmiar niż 15×15:** inne warianty gry są poza zakresem (N-08).
+
+## 4. Anatomia
+
+1. **Plansza** z drewnianym tłem i słojami rysowanymi w kodzie (R01.4, R01.5).
+2. **Siatka** cienkich linii 15×15.
+3. **Kamienie** czarne i białe, z obrysem 1 px (R01.8).
+4. **Znacznik ostatniego ruchu** i **linia wygrywająca** (obrys w kolorze `board-marker`).
+5. **Podgląd zaznaczonego pola** (kamień z przerywanym obrysem).
+6. **Współrzędne** A–O i 1–15 widoczne, gdy plansza ma co najmniej 448 px szerokości (zapytanie o kontener; ukryte dla czytnika, bo pola mają pełne nazwy).
+
+## 5. Warianty
+
+Brak wariantów wyglądu. Zmienia się zawartość i tryby:
+
+| Tryb | Kiedy | Źródło |
+|---|---|---|
+| Zwykły | Twoja tura: pola można wybierać | game-moves |
+| `readOnly` | Ruch przeciwnika albo koniec partii | game-moves („plansza tylko do odczytu”) |
+| `selected` | Ekran dotykowy: pole zaznaczone, czeka na „Postaw kamień” | game-moves Q7 |
+
+<Canvas of={Stories.KoniecZLiniaWygrywajaca} />
+
+## 6. Stany
+
+Pusta, trwająca partia, ostatni ruch, wybrane pole, tylko do odczytu i linia wygrywająca (stories). Pole ma fokus (ciemny obrys wewnątrz pola, bo kolor akcji ma za mały kontrast na drewnie); najechania i wciśnięcia nie zaznaczamy (gracz dostaje odpowiedź przez podgląd lub ruch). Ładowania i błędu plansza nie pokazuje: to robi ekran (Szkielet, Stan błędu).
+
+<Canvas of={Stories.WybranePoleNaTelefonie} />
+
+- **Ostatni ruch:** cienki obrys w kolorze `board-marker` (4,06:1 na planszy). Źródło: propozycja (kolor akcji ma ok. 2,5:1 na drewnie).
+- **Linia wygrywająca:** gruby obrys tym samym kolorem na pięciu (lub więcej) kamieniach; kamienie nadal różnią się obrysem i wypełnieniem.
+
+## 7. Zachowanie i dostępność
+
+- **Struktura:** `role="grid"` > `role="row"` (15) > `role="gridcell"` > `button`; każde pole ma nazwę (np. „Kolumna C, rząd 7, puste”) z `cellLabel`. Źródło: WAI-ARIA Authoring Practices (Grid), game-moves.
+- **Klawiatura:** jeden punkt `Tab` (pole z fokusem), strzałki przesuwają fokus (ruchomy `tabindex`), `Enter` lub `Spacja` wybiera puste pole. Na krawędzi fokus zostaje.
+- **Dotyk:** dwa kroki: dotknięcie zaznacza (podgląd), osobny przycisk „Postaw kamień” zatwierdza. Pola mają na wąskim telefonie około 17 px, mniej niż cel 24 × 24 px z WCAG 2.5.8: wyjątek świadomie przyjęty w specyfikacji (Q7), złagodzony przez dwa kroki.
+- **Zajęte pole:** `aria-disabled`, nic nie robi.
+- **Czytnik ekranu:** czyta nazwę planszy, a przy każdym polu jego nazwę i stan. Status tury ogłasza osobny komponent.
+- **Kontrast:** linie siatki 4,06:1, czarne kamienie 8,87:1, białe kamienie mają obrys (8,87:1), znacznik ostatniego ruchu 4,06:1.
+
+## 8. Treść
+
+- **`label` i `cellLabel`** przychodzą z propsów: komponent nie ma wbudowanych tekstów. Nazwy pól: kolumna (litera), rząd (liczba), stan (puste, czarny kamień, biały kamień).
+- **Współrzędne:** kolumny to litery A–O, rzędy to liczby 1–15 od góry.
+
+## 9. Responsywność
+
+Plansza jest kwadratowa i zajmuje szerokość kontenera do `layout-width-board` (448 px). Przy 320 px ma ok. 272 px szerokości. Współrzędne pojawiają się, gdy plansza ma co najmniej 448 px szerokości (na telefonie ich nie ma).
+
+<Canvas of={Stories.WaskiEkran320} />
+
+## 10. API
+
+<ArgTypes of={Board} />
+
+## 11. Kod
+
+```tsx
+import { Board } from "@gomoku/ui/game/board";
+
+<Board
+  label="Plansza 15 na 15"
+  cellLabel={({ column, row, state }) => `Kolumna ${column}, rząd ${row}, ${stateName[state]}`}
+  stones={stones}
+  lastMove={lastMove}
+  onCellSelect={selectCell}
+/>;
+```
+
+Zakończona partia:
+
+```tsx
+<Board label="Plansza 15 na 15" cellLabel={cellLabel} stones={stones} lastMove={lastMove} winLine={winLine} readOnly />
+```
+
+## 12. Dobrze i źle
+
+**Dobrze:** plansza z opisem dla czytnika, pozycja pokazowa oznaczona jako przykład, na telefonie dwa kroki z przyciskiem „Postaw kamień”. **Źle:** plansza `aria-hidden` w grze, linia wygrywająca w kolorze akcji (za mały kontrast na drewnie), ruch wysyłany jednym dotknięciem na wąskim telefonie.
+
+<Canvas of={Stories.DwaKrokiNaEkranieDotykowym} />
+
+## 13. Powiązane
+
+- **Mylony z:** podglądem planszy na stronie głównej (ta sama plansza, tylko do odczytu, z podpisem).
+- **Występuje we wzorcach:** widok szczegółów (partia), stan zależny od uprawnień (gość widzi planszę tak samo).

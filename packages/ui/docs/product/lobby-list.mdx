@@ -1,0 +1,101 @@
+import { ArgTypes, Canvas, Meta } from "@storybook/addon-docs/blocks";
+import { LobbyList } from "@gomoku/ui/game/lobby-list";
+import * as Stories from "./lobby-list.stories";
+
+<Meta of={Stories} />
+
+# Lista graczy (lobby)
+
+## 1. Do czego służy
+
+Pokazuje graczy aktualnie szukających gry i pozwala wybrać jednego z nich.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Kiedy używać
+
+- **Strona lobby:** lista szukających, bez siebie i bez wygasłych (E03-S02, BR-09).
+- **Każdy wiersz:** nazwa gracza, od kiedy szuka, ile czasu zostało i przycisk wyboru.
+
+## 3. Kiedy nie używać
+
+- **Historia partii:** [Lista partii](?path=/docs/produkt-historia-lista-partii--docs).
+- **Własny status:** [Status szukania gry](?path=/docs/produkt-lobby-status-szukania-gry--docs).
+- **Algorytmiczne dopasowanie:** poza v1 (N-01); wybór jest ręczny.
+
+## 4. Anatomia
+
+`LobbyList` to lista z nazwą dla czytnika. `LobbyRow`:
+
+1. **Nazwa gracza** (publiczna, BR-14).
+2. **Od kiedy szuka** (opcjonalne).
+3. **Czas do wygaśnięcia** ze słowami.
+4. **Przycisk wyboru** z pełną nazwą dla czytnika („Zagraj z Alicja_99”).
+
+## 5. Warianty
+
+Brak wariantów wyglądu. Wiersz ma dwa stany danych: zwykły i w trakcie wybierania.
+
+<Canvas of={Stories.WybieranieTrwa} />
+
+## 6. Stany
+
+Zwykły, wybieranie trwa (przycisk zajęty), dużo graczy, długie nazwy. Stany całej listy (ładowanie, pusto, błąd) składa wzorzec „Lista” ze [Szkieletem](?path=/docs/prymitywy-szkielet-ładowania--docs), [Pustym stanem](?path=/docs/prymitywy-pusty-stan--docs) i [Stanem błędu](?path=/docs/prymitywy-stan-błędu--docs).
+
+## 7. Zachowanie i dostępność
+
+- **Lista:** `<ul>` z nazwą (`aria-label`), wiersze to `<li>`; czytnik ogłasza liczbę pozycji.
+- **Przyciski:** nazwa zawiera gracza („Zagraj z Alicja_99”), bo trzy identyczne „Zagraj” nic nie mówią.
+- **Wybór dwóch osób jednocześnie:** po stronie serwera dostaje drugi komunikat (E03-S02); w interfejsie przycisk jest zajęty podczas wysyłania.
+- **Czas:** cyfry tabelaryczne, bez ogłaszania co sekundę.
+
+## 8. Treść
+
+- **Wiersz:** „szuka od 3 min”, „wygasa za 4:02”, „Zagraj”.
+- **Nazwy:** publiczne nazwy graczy; długie nazwy zawijają się.
+- Komponent nie ma wbudowanych tekstów.
+
+## 9. Responsywność
+
+Wiersz zachowuje przycisk po prawej i zawija nazwę; długie nazwy bez spacji zawijają się w dowolnym miejscu (320 px).
+
+<Canvas of={Stories.DlugieNazwyNaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={LobbyList} />
+
+`LobbyRow` przyjmuje: `name`, `since`, `expiresLabel`, `expiresInMs`, `selectLabel`, `selectAriaLabel`, `selecting`, `onSelect`, `className`.
+
+## 11. Kod
+
+```tsx
+import { LobbyList, LobbyRow } from "@gomoku/ui/game/lobby-list";
+
+<LobbyList label="Gracze szukający gry">
+  {seekers.map((seeker) => (
+    <LobbyRow
+      key={seeker.id}
+      name={seeker.name}
+      since={`szuka od ${seeker.minutes} min`}
+      expiresLabel="wygasa za"
+      expiresInMs={seeker.expiresInMs}
+      selectLabel="Zagraj"
+      selectAriaLabel={`Zagraj z ${seeker.name}`}
+      selecting={selectingId === seeker.id}
+      onSelect={() => select(seeker.id)}
+    />
+  ))}
+</LobbyList>;
+```
+
+## 12. Dobrze i źle
+
+**Dobrze:** przycisk nazwany po graczu, czas wygaśnięcia przy każdym wierszu. **Źle:** „Zagraj” bez nazwy gracza, wiersze bez czasu, lista bez nazwy dla czytnika.
+
+<Canvas of={Stories.WyborPrzeciwnika} />
+
+## 13. Powiązane
+
+- **Mylony z:** Listą partii (historia) i Statusem szukania gry (własny status).
+- **Występuje we wzorcach:** lista (lobby).

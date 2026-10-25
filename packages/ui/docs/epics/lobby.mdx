@@ -1,0 +1,44 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Design system/Otwarte lobby" />
+
+# Epik E03: Otwarte lobby
+
+Oznaczenie się jako „szukający gry” (wygasa po 5 minutach) i wybór przeciwnika z listy. Źródła: `.ai/specs/product-brief.md` (BR-09, BR-12, BR-13, BR-23, D-09), zgłoszenia #25 i #26.
+
+## Przepływ
+
+1. Zalogowany gracz z potwierdzonym e-mailem i bez aktywnej partii oznacza się jako szukający (E03-S01).
+2. Widzi swój status z czasem do wygaśnięcia i listę innych szukających.
+3. Wybiera przeciwnika; powstaje jedna partia, a obaj znikają z lobby (E03-S02).
+
+## Komponenty
+
+[Status szukania gry](?path=/docs/produkt-lobby-status-szukania-gry--docs), [Lista graczy](?path=/docs/produkt-lobby-lista-graczy--docs), [Pusty stan](?path=/docs/prymitywy-pusty-stan--docs), [Stan błędu](?path=/docs/prymitywy-stan-błędu--docs), [Szkielet ładowania](?path=/docs/prymitywy-szkielet-ładowania--docs), [Alert](?path=/docs/prymitywy-alert--docs). Wzorzec: [Lista](?path=/docs/wzorce-lista--docs).
+
+## Mapa stanów ekranu
+
+| Stan | Story |
+|---|---|
+| nie szukam (przycisk „Szukam przeciwnika” i lista) | [Lobby: nie szukam](?path=/story/ekrany-lobby--lobby-nie-szukam) |
+| szukam (status z czasem) | [Lobby: szukam](?path=/story/ekrany-lobby--lobby-szukam) |
+| wybieranie trwa (przycisk zajęty) | [Lobby: wybieranie trwa](?path=/story/ekrany-lobby--lobby-wybieranie-trwa) |
+| gracz został wybrany przez kogoś innego | [Lobby: gracz zajęty](?path=/story/ekrany-lobby--lobby-gracz-zajety-przed-wyborem) |
+| ładowanie | [Lobby: ładowanie](?path=/story/ekrany-lobby--lobby-ladowanie) |
+| nikt nie szuka | [Lobby: puste](?path=/story/ekrany-lobby--lobby-puste) |
+| błąd wczytania | [Lobby: błąd](?path=/story/ekrany-lobby--lobby-blad-wczytania) |
+| e-mail niepotwierdzony (BR-23) | [Lobby: e-mail niepotwierdzony](?path=/story/ekrany-lobby--lobby-email-niepotwierdzony) |
+| ma aktywną partię (BR-13) | [Lobby: aktywna partia](?path=/story/ekrany-lobby--lobby-ma-aktywna-partie) |
+
+## Pliki źródłowe
+
+- Komponenty: `src/game/seeking-status.tsx`, `lobby-list.tsx`, `empty-state.tsx`, `error-state.tsx`, `skeleton.tsx`.
+- Stories ekranu: `docs/screens/lobby.stories.tsx`; wzorzec Lista: `docs/patterns/list.stories.tsx`.
+- Specyfikacje: brak osobnej (autorytet: `.ai/specs/product-brief.md`, zgłoszenia).
+- Zgłoszenia: epik #17, #25, #26.
+
+## Co jeszcze zostaje w produkcie
+
+- Mechanizm czasu rzeczywistego dla listy i wygasania (Q-01, spike #30), migracja statusu (#31), serwis i strona (#25, #26).
+- Czy 5 minut pasuje graczom, to nieprzetestowane założenie (A-02).
+- Lista nie ma filtrów: backlog ich nie przewiduje.

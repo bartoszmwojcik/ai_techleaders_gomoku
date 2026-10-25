@@ -1,9 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
     "paths": {
       "@gomoku/ui/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src", ".storybook", "docs", "scripts", "vitest.storybook.config.ts"]
 }

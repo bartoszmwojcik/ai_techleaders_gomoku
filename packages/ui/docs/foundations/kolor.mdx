@@ -1,0 +1,38 @@
+import { Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { ColorTable, ContrastTable } from "../../.storybook/blocks";
+
+<Meta title="Fundamenty/Kolor" />
+
+# Kolor
+
+Kolor w Gomoku jest oszczędny: ciemne, ciepłe tło (R01.1), jedna akcja w pomarańczu (R02.3), drewno planszy (R01.4) i
+kamienie. Przełącznik motywu w pasku narzędzi pokazuje oba motywy; ciemny jest domyślny (Z3).
+
+## Role kolorów
+
+Tokeny mają trzy warstwy: surowe wartości (`palette-*`, tylko w pliku `game-tokens.css`), znaczenia nazwane według
+przeznaczenia (poniżej) i tokeny komponentów tam, gdzie komponent potrzebuje własnej wartości. W kodzie używasz tylko
+znaczeń, np. `bg-surface-page`, `text-text-muted`, `bg-action-primary-bg`. Domyślna paleta Tailwinda jest wyłączona, więc
+klasa w rodzaju `bg-zinc-900` nie istnieje.
+
+<Unstyled>
+  <ColorTable />
+</Unstyled>
+
+## Zasady
+
+- **Pomarańcz tylko na elementach interaktywnych** (przyciski, linki, fokus), nigdy na nagłówkach. Źródło: Z1, A01.
+- **Kolor nie jest jedynym nośnikiem znaczenia.** Wygrana, porażka, remis, błąd i powodzenie zawsze mają słowo i ikonę. Źródło: WCAG 1.4.1.
+- **Kolory stanów** (`status-*`, `action-danger-*`) to propozycja: ciepłe odcienie, bez zielonego i czerwonego jako jedynego nośnika (Q4).
+- **Tekst pomocniczy** używa `text-muted`, nie ciemniejszego odcienia: dawny `#79716b` miał 3,65:1 w ciemnym motywie (R01.8).
+- **Biały kamień** zawsze ma obrys `piece-outline` 1 px, bo sam ma około 2:1 względem planszy (R01.8).
+- **Zabronione:** niebieski jako kolor tekstu (A01.2), gradienty jako styl marki (A02), więcej niż jeden nasycony kolor naraz (A03).
+
+## Kontrast każdej pary
+
+Progi: tekst 4,5:1, elementy interfejsu 3:1 (WCAG 1.4.3 i 1.4.11). Tabela jest liczona na żywo z kolorów, które widzisz
+na ekranie. Pary poniżej progu mają uwagę i propozycję.
+
+<Unstyled>
+  <ContrastTable />
+</Unstyled>

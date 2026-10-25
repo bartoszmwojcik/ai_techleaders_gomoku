@@ -1,0 +1,20 @@
+import { Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { MotionDemo } from "../../.storybook/blocks";
+
+<Meta title="Fundamenty/Ruch" />
+
+# Ruch
+
+Ruch służy odpowiedzi na działanie gracza: najechanie, fokus, wciśnięcie, otwarcie dialogu. Nie ozdabia. Czasy: 150 ms i 200 ms
+(Q5, propozycja przyjęta).
+
+<Unstyled>
+  <MotionDemo />
+</Unstyled>
+
+## Zasady
+
+- **`motion-fast` (150 ms)** dla zmian stanu kontrolki, **`motion-base` (200 ms)** dla pojawiania się i znikania paneli. Krzywa: `easing-standard`.
+- **`prefers-reduced-motion: reduce`** ustawia oba czasy na 0 ms w jednym miejscu, w pliku tokenów. Żaden komponent nie dodaje własnych animacji. Źródło: WCAG 2.3.3.
+- **Zegar i odliczanie nie animują się płynnie.** Liczby zmieniają się co sekundę, bez przejść, żeby nie rozpraszać w czasie partii (propozycja).
+- **Brak referencji dla ruchu planszy** (stawianie kamienia, reakcja na ruch przeciwnika): do uzupełnienia na prototypach, patrz „Czego brakuje”.

@@ -1,0 +1,104 @@
+import { ArgTypes, Canvas, Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { StatusBadge } from "@gomoku/ui/game/status-badge";
+import { DoDont } from "../../.storybook/blocks";
+import * as Stories from "./status-badge.stories";
+
+<Meta of={Stories} />
+
+# Znacznik statusu
+
+## 1. Do czego służy
+
+Krótko nazywa stan obiektu przy nim samym: wynik partii, status zaproszenia, status gracza w lobby.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Kiedy używać
+
+- **Wynik w historii partii:** „Wygrana”, „Porażka”, „Remis” (E04, spec #27).
+- **Status partii:** „Czeka na przeciwnika”, „Trwa”, „Zakończona” (game-invitations, game-moves).
+- **Status w lobby:** „Szuka gry” z czasem do wygaśnięcia (E03).
+
+## 3. Kiedy nie używać
+
+- **Komunikat dla gracza z instrukcją:** [Alert](?path=/docs/prymitywy-alert--docs).
+- **Akcja:** [Przycisk](?path=/docs/prymitywy-przycisk--docs); znacznik nie jest klikalny.
+- **Licznik czasu:** zegar i odliczanie mają własny komponent w partii 3 (zegar gracza); znacznik opisuje stan, nie odmierza czasu.
+
+## 4. Anatomia
+
+1. **Obramowanie 1 px** w kolorze stanu.
+2. **Ikona** (dekoracyjna).
+3. **Słowo** (wymagane): nazwa stanu.
+
+## 5. Warianty
+
+| Stan | Kiedy wybrać | Źródło |
+|---|---|---|
+| `info` (domyślny) | Neutralny stan: „Remis”, „Czeka na przeciwnika” | propozycja (Q4) |
+| `success` | Pozytywny wynik: „Wygrana” | propozycja (Q4) |
+| `warning` | Uwaga: „Czas się kończy” | propozycja (Q4) |
+| `danger` | Negatywny wynik: „Porażka” | propozycja (Q4) |
+
+Znacznik ma kwadratowe rogi (`radius-base`), bez pigułki (A02).
+
+<Canvas of={Stories.Warianty} />
+
+## 6. Stany
+
+Znacznik jest statyczny: nie ma najechania, fokusu, wciśnięcia, zablokowania ani ładowania (nie dotyczy). Stan oznacza wariant (info, powodzenie, uwaga, błąd).
+
+## 7. Zachowanie i dostępność
+
+- **Stan to słowo i ikona, nie sam kolor** (WCAG 1.4.1): czytnik ekranu czyta słowo, ikona jest ukryta.
+- **Klawiatura:** znacznik nie przyjmuje fokusu.
+- **Kontrast:** tekst i obramowanie w kolorze stanu mają co najmniej 4,5:1 na tle strony w obu motywach.
+- **Rola:** brak roli; zmianę stanu na żywo ogłaszaj osobnym `role="status"` w kontenerze, a nie samym znacznikiem.
+
+## 8. Treść
+
+- **Słowo:** jedno lub dwa słowa, rzeczownik lub przymiotnik: „Wygrana”, „Czeka na przeciwnika”. Bez zdań.
+- **Długość:** do ok. 3 słów; dłuższy tekst zawija się.
+- Komponent nie ma wbudowanych tekstów.
+
+## 9. Responsywność
+
+Znacznik jest `inline-flex`; długa fraza zawija się w wąskim kontenerze.
+
+<Canvas of={Stories.DlugaTrescNaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={StatusBadge} />
+
+## 11. Kod
+
+```tsx
+import { StatusBadge } from "@gomoku/ui/game/status-badge";
+
+<StatusBadge status="success">Wygrana</StatusBadge>;
+```
+
+Wiersz historii (wynik partii):
+
+```tsx
+<StatusBadge status={result === "win" ? "success" : result === "loss" ? "danger" : "info"}>
+  {resultLabel}
+</StatusBadge>
+```
+
+## 12. Dobrze i źle
+
+<Unstyled>
+  <DoDont
+    good={<StatusBadge status="success">Wygrana</StatusBadge>}
+    goodNote="słowo, ikona i kolor niosą ten sam stan."
+    bad={<StatusBadge status="success">·</StatusBadge>}
+    badNote="bez słowa stan opiera się na kolorze i ikonie."
+  />
+</Unstyled>
+
+## 13. Powiązane
+
+- **Mylony z:** Alertem (komunikat) i przyciskiem (akcja).
+- **Występuje we wzorcach:** lista (historia partii, lobby), widok szczegółów (status partii).

@@ -1,0 +1,104 @@
+import { ArgTypes, Canvas, Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { Panel } from "@gomoku/ui/game/panel";
+import { DoDont } from "../../.storybook/blocks";
+import * as Stories from "./panel.stories";
+
+<Meta of={Stories} />
+
+# Panel
+
+## 1. Do czego służy
+
+Wydziela na stronie zamkniętą grupę treści (lobby, konto, historia), żeby gracz od razu widział, co do czego należy.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Kiedy używać
+
+- **Sekcje `/account`:** dane konta, „Zmień hasło”, „Usuń konto” (specyfikacje login-logout, password-change, account-deletion).
+- **Lobby i historia partii:** lista szukających graczy, lista zakończonych partii (E03, E04).
+- **Formularz poza pełną stroną**, np. dołączenie kodem na `/join`.
+
+## 3. Kiedy nie używać
+
+- **Cała strona w jednym panelu:** strona sama ma tło `surface-page`; panel służy do wydzielania grup.
+- **Panel w panelu:** to „karta w karcie” (A02). Jeśli potrzebujesz podgrupy, użyj nagłówka niższego poziomu i odstępu `space-stack`.
+- **Komunikat dla gracza:** użyj [Alertu](?path=/docs/prymitywy-alert--docs).
+- **Samo oddzielenie cieniem:** panel nie ma cienia, oddziela go ton i cienka linia (A02).
+
+## 4. Anatomia
+
+1. **Obramowanie 1 px** (`border-default`) i tło `surface-raised`.
+2. **Nagłówek** (opcjonalny): rola „nagłówek podsekcji”, poziom 2, 3 lub 4.
+3. **Treść** w odstępie `space-stack`, z wypełnieniem `space-panel`.
+
+## 5. Warianty
+
+Brak wariantów wyglądu. Jedna odmiana dotyczy semantyki: `headingLevel` (2, 3 lub 4) dopasowuje nagłówek do konspektu strony. Jeden wygląd zapewnia spójność (R01.2).
+
+<Canvas of={Stories.PoziomyNaglowka} />
+
+## 6. Stany
+
+Panel jest statyczny: nie ma najechania, fokusu, wciśnięcia, zablokowania ani ładowania (nie dotyczy). Gdy zawartość się ładuje, w środku umieść [Szkielet ładowania](?path=/docs/prymitywy-szkielet-ładowania--docs); gdy jest pusta, [Pusty stan](?path=/docs/prymitywy-pusty-stan--docs).
+
+## 7. Zachowanie i dostępność
+
+- **Region z nazwą:** panel z tytułem to `<section aria-labelledby>`, więc czytnik ekranu zapowiada „region: Lobby”. Panel bez tytułu nie jest regionem. Źródło: WAI-ARIA, WCAG 1.3.1.
+- **Nagłówki:** poziom wybierasz tak, by nie przeskakiwać poziomów (2 → 3, nie 2 → 4). Źródło: WCAG 1.3.1, 2.4.6.
+- **Klawiatura i fokus:** panel sam nie przyjmuje fokusu; elementy w środku mają własny.
+- **Kontrast:** tekst na `surface-raised` ma co najmniej 4,5:1 w obu motywach (strona Kolor).
+
+## 8. Treść
+
+- **Tytuł:** rzeczownik lub krótka fraza, do ok. 5 słów: „Lobby: szukają gry”, „Zmień hasło”.
+- **Długi tytuł** zawija się; długie nazwy bez spacji przewijają się w poziomie wewnątrz panelu na telefonie (sprawdź nazwy graczy).
+- Komponent nie ma wbudowanych tekstów.
+
+## 9. Responsywność
+
+Panel zajmuje szerokość kontenera. Wypełnienie `space-panel` (24 px) na każdej szerokości.
+
+<Canvas of={Stories.DlugaTrescNaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={Panel} />
+
+Dodatkowo: wszystkie atrybuty natywnego `<section>` oprócz `title`.
+
+## 11. Kod
+
+```tsx
+import { Panel } from "@gomoku/ui/game/panel";
+
+<Panel title="Lobby: szukają gry">…</Panel>;
+```
+
+Sekcja konta z podsekcją niższego poziomu:
+
+```tsx
+<Panel title="Konto">
+  <Panel title="Zmień hasło" headingLevel={3}>…</Panel>
+</Panel>
+```
+
+## 12. Dobrze i źle
+
+<Unstyled>
+  <DoDont
+    good={<Panel title="Zmień hasło">Inne urządzenia zostaną wylogowane.</Panel>}
+    goodNote="jeden panel z tytułem tworzy nazwany region."
+    bad={
+      <Panel>
+        <Panel title="Zmień hasło">Inne urządzenia zostaną wylogowane.</Panel>
+      </Panel>
+    }
+    badNote="panel w panelu to „karta w karcie” (A02)."
+  />
+</Unstyled>
+
+## 13. Powiązane
+
+- **Mylony z:** Alertem (komunikat) i kartą z cieniem (system jej nie ma).
+- **Występuje we wzorcach:** widok szczegółów, lista z filtrami (lobby, historia), potwierdzenie usunięcia (opis skutków).

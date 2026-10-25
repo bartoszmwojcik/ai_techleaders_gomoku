@@ -1,0 +1,52 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Design system/Czego brakuje" />
+
+# Czego brakuje
+
+## Co jest gotowe
+
+24 komponenty w `packages/ui/src/game` (14 prymitywów i 10 komponentów produktu), 6 wzorców, 4 strony epików, 238 stories w obu motywach i 269 testów jednostkowych ze 100% pokrycia. Lista: [Komponenty](?path=/docs/design-system-komponenty--docs).
+
+## Pokrycie backlogu
+
+Backlog: `.ai/specs/backlog.md` (źródło: brief). Zadania techniczne (migracje, sprzątanie, spike, decyzja o dostawcy poczty) nie mają interfejsu, więc nie dotyczy ich design system. Priorytet z etykiet zgłoszeń.
+
+| Pozycja z backlogu | Komponent lub ekran | Stan | Priorytet |
+|---|---|---|---|
+| E01-S01 (#19) rejestracja i widok „zalogowany” | `/register`, Pole formularza, Pole hasła | ekran i stany gotowe ([Konta](?path=/docs/design-system-konta--docs)); strona to praca implementacyjna | medium |
+| E01-S02 (#20) logowanie i wylogowanie | `/login`, `/account`, Nagłówek strony, Dialog potwierdzenia (wylogowanie w partii) | ekran i stany gotowe | medium |
+| E01-S03 (#34) potwierdzenie e-maila | `/verify-email`, Baner potwierdzenia e-maila | gotowe | medium |
+| E01-S04 (#35) reset hasła | `/forgot-password`, `/reset-password` | gotowe | medium |
+| E01-S05 (#36) zmiana hasła | sekcja na `/account` | gotowe | medium |
+| E01-S06 (#37) usunięcie konta | sekcja na `/account`, Dialog potwierdzenia, wzorzec Potwierdzenie usunięcia | gotowe | medium |
+| E02-S01 (#21) partia i zaproszenie | `/invite/{kod}` (8 stanów), `/join`, `/games/{id}` (czekanie), Karta kodu zaproszenia | gotowe; „już uczestnik” i „własne zaproszenie” to przekierowania bez ekranu | medium |
+| E02-S02 (#22) ruchy i wygrana | Plansza, Status tury, Baner wyniku | gotowe | medium |
+| E02-S03 (#23) zegar 10 minut | Zegar gracza | komponent gotowy; odliczanie i czas serwera to praca aplikacji | medium |
+| E02-S04 (#24) powrót po rozłączeniu | Alert „Wróciłeś do partii” na ekranie partii | gotowe | medium |
+| E03-S01 (#25) status „szukam gry” | Status szukania gry | gotowe | medium |
+| E03-S02 (#26) wybór z lobby | Lista graczy, stany lobby (9) | gotowe | medium |
+| E04-S01 (#27) historia partii | Lista partii, stany historii (5) | gotowe | medium |
+| E05 (#33) później | zmiana e-maila i nazwy, strona o danych | poza zakresem MVP | low |
+
+## Czego jeszcze nie ma w systemie
+
+| Brak | Dlaczego nie ma | Co użyć zamiast |
+|---|---|---|
+| select, radio, przełącznik, pole wielowierszowe | żaden ekran w specyfikacjach ich nie potrzebuje | pole tekstowe, pole wyboru |
+| menu akcji, popover, podpowiedź (tooltip) | j.w.; podpowiedź nie może nieść informacji niezbędnej do działania | tekst obok elementu, kilka przycisków obok siebie |
+| zakładki, panel boczny, awatar | j.w. | osobne strony |
+| toast | błąd wymagający działania nie jest toastem; specyfikacje używają `role="status"` | Alert |
+| link „przejdź do treści” | nie było w specyfikacjach; do dodania z pierwszą stroną gry | brak |
+| stan „wciśnięty” linku tekstowego | brak decyzji | brak |
+| nagłówek ekranu partii bez pasków | zdecydowano: zwykły nagłówek (etap 3) | Nagłówek strony |
+| filtry i wyszukiwanie list | backlog ich nie ma | lista bez filtrów |
+| odtwarzanie partii ruch po ruchu | poza zakresem (#27) | |
+| tabela z kolumnami | na telefonie się nie mieści | lista |
+| tłumaczenia (polski i angielski, kolejne języki) | osobny temat; komponenty mają teksty przez propsy (Q3) | |
+| ruch planszy (stawianie kamienia, reakcja na ruch przeciwnika) | brak referencji | bez animacji |
+| pola planszy na wąskim telefonie mają ok. 17 px | WCAG 2.5.8 wymaga 24 px; wyjątek ze specyfikacji, złagodzony dwoma krokami | dwa kroki: zaznacz, potem „Postaw kamień” |
+
+## Do uzupełnienia po teście agentem
+
+Test agentem (etap 5) pokaże miejsca, w których agent budujący nowy ekran musiał zgadywać. Każde takie miejsce trafi do dokumentacji albo tutaj.

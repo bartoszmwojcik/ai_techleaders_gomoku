@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="pl" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gomoku – przykład tokenów</title>
+<style>
+  /* Warstwa 1: surowe wartości (tylko tutaj) */
+  :root {
+    --palette-stone-50: #fafaf9;
+    --palette-stone-100: #f5f5f4;
+    --palette-stone-200: #e7e5e4;
+    --palette-stone-300: #d6d3d1;
+    --palette-stone-400: #a8a29e;
+    --palette-stone-500: #79716b;
+    --palette-stone-600: #57534e;
+    --palette-stone-700: #44403c;
+    --palette-stone-800: #292524;
+    --palette-stone-900: #1c1917;
+    --palette-amber-700: #b45309;
+    --palette-orange-400: #fb923c;
+    --palette-orange-700: #c2410c;
+    --palette-orange-800: #9a3412;
+    --palette-wood-surface: #dcb35c;
+    --palette-wood-line: #6b4a1b;
+    --palette-wood-grain: #d3aa53;
+
+    --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+    --space-6: 24px; --space-8: 32px; --space-12: 48px;
+
+    /* Warstwa 2: znaczenia, niezależne od motywu */
+    --action-primary-bg: var(--palette-amber-700);
+    --action-primary-text: #ffffff;
+    --border-control: var(--palette-stone-500);
+    --board-surface: var(--palette-wood-surface);
+    --board-line: var(--palette-wood-line);
+    --board-grain: var(--palette-wood-grain);
+    --piece-black: var(--palette-stone-900);
+    --piece-white: var(--palette-stone-50);
+    --piece-outline: var(--palette-stone-900);
+
+    --space-group: var(--space-2);
+    --space-stack: var(--space-4);
+    --space-panel: var(--space-6);
+    --space-section: var(--space-12);
+    --radius-base: 6px;
+    --radius-piece: 9999px;
+    --shadow-board: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    --shadow-piece: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --font-family-base: ui-sans-serif, system-ui, sans-serif;
+    --font-size-meta: 14px; --font-size-body: 16px; --font-size-lead: 18px; --font-size-title: 48px;
+    --font-weight-regular: 400; --font-weight-strong: 700;
+    --target-min: 44px;
+    --piece-size: 80%;
+    --board-padding: var(--space-3);
+    --board-line-width: 1px;
+  }
+  /* Warstwa 2: znaczenia zależne od motywu */
+  :root, :root[data-theme="dark"] {
+    --surface-page: var(--palette-stone-900);
+    --surface-raised: var(--palette-stone-800);
+    --text-primary: var(--palette-stone-100);
+    --text-secondary: var(--palette-stone-300);
+    --text-muted: var(--palette-stone-400);
+    --text-accent: var(--palette-orange-400);
+    --action-primary-bg-hover: var(--palette-orange-700);
+    --focus-ring: var(--palette-orange-400);
+    --border-default: var(--palette-stone-700);
+  }
+  :root[data-theme="light"] {
+    --surface-page: var(--palette-stone-50);
+    --surface-raised: #ffffff;
+    --text-primary: var(--palette-stone-900);
+    --text-secondary: var(--palette-stone-600);
+    --text-muted: var(--palette-stone-500);
+    --text-accent: var(--palette-orange-800);
+    --action-primary-bg-hover: var(--palette-orange-800);
+    --focus-ring: var(--palette-orange-800);
+    --border-default: var(--palette-stone-200);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--surface-page);
+    color: var(--text-primary);
+    font-family: var(--font-family-base);
+    font-size: var(--font-size-body);
+    line-height: 1.5;
+  }
+  :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+  a { color: var(--text-accent); }
+
+  header {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: var(--space-stack);
+    padding: var(--space-4) var(--space-panel);
+    border-bottom: 1px solid var(--border-default);
+  }
+  .brand { font-weight: var(--font-weight-strong); font-size: var(--font-size-lead); }
+  .header-actions { display: flex; align-items: center; gap: var(--space-group); }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: var(--target-min); min-width: var(--target-min);
+    padding: 0 var(--space-4);
+    border: 1px solid transparent; border-radius: var(--radius-base);
+    font: inherit; font-weight: var(--font-weight-strong);
+    cursor: pointer; text-decoration: none;
+  }
+  .btn-primary { background: var(--action-primary-bg); color: var(--action-primary-text); }
+  .btn-primary:hover { background: var(--action-primary-bg-hover); }
+  .btn-secondary { background: transparent; color: var(--text-primary); border-color: var(--border-control); }
+  .btn-secondary:hover { background: var(--surface-raised); }
+
+  main { max-width: 1040px; margin: 0 auto; padding: var(--space-section) var(--space-panel); }
+  .hero {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+    gap: var(--space-section);
+    margin-bottom: var(--space-section);
+  }
+  .hero-text { flex: 1 1 320px; max-width: 384px; display: flex; flex-direction: column; gap: var(--space-stack); }
+  h1 { margin: 0; font-size: var(--font-size-title); font-weight: var(--font-weight-strong); line-height: 1.1; letter-spacing: -0.02em; }
+  .lead { margin: 0; font-size: var(--font-size-lead); color: var(--text-secondary); }
+  .meta { margin: 0; font-size: var(--font-size-meta); color: var(--text-muted); }
+  .hero-actions { display: flex; flex-wrap: wrap; gap: var(--space-group); }
+
+  .board-wrap { flex: 1 1 320px; max-width: 448px; width: 100%; }
+  .board {
+    display: grid; grid-template-columns: repeat(15, minmax(0, 1fr));
+    aspect-ratio: 1; width: 100%;
+    padding: var(--board-padding);
+    border-radius: var(--radius-base);
+    box-shadow: var(--shadow-board);
+    background-color: var(--board-surface);
+    /* słoje: dwie warstwy pasków pod lekkim kątem, w kodzie, bez obrazu */
+    background-image:
+      repeating-linear-gradient(91deg, var(--board-grain) 0 2px, transparent 2px 9px),
+      repeating-linear-gradient(89deg, var(--board-grain) 0 1px, transparent 1px 5px);
+  }
+  .cell { position: relative; display: flex; align-items: center; justify-content: center; }
+  .cell::before, .cell::after { content: ""; position: absolute; background: var(--board-line); }
+  .cell::before { left: 0; right: 0; top: 50%; height: var(--board-line-width); }
+  .cell::after { top: 0; bottom: 0; left: 50%; width: var(--board-line-width); }
+  .piece {
+    position: relative; z-index: 1;
+    width: var(--piece-size); height: var(--piece-size);
+    border-radius: var(--radius-piece);
+    border: 1px solid var(--piece-outline);
+    box-shadow: var(--shadow-piece);
+  }
+  .piece.black { background: var(--piece-black); }
+  .piece.white { background: var(--piece-white); }
+  .caption { margin: var(--space-group) 0 0; font-size: var(--font-size-meta); color: var(--text-muted); }
+
+  section.panel {
+    background: var(--surface-raised);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-base);
+    padding: var(--space-panel);
+    margin-bottom: var(--space-section);
+  }
+  h2 { margin: 0 0 var(--space-stack); font-size: var(--font-size-lead); font-weight: var(--font-weight-strong); }
+  .stack { display: flex; flex-direction: column; gap: var(--space-stack); }
+  .row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: var(--space-stack); padding: var(--space-3) 0; border-top: 1px solid var(--border-default); }
+  @media (max-width: 480px) { .row { grid-template-columns: 1fr auto; } .row .timer { grid-column: 1; grid-row: 2; } .row .btn { grid-column: 2; grid-row: 1 / 3; } }
+  .row:first-of-type { border-top: 0; }
+  .row-name { font-weight: var(--font-weight-strong); }
+  .row-meta { font-size: var(--font-size-meta); color: var(--text-muted); }
+  .timer { font-size: var(--font-size-meta); color: var(--text-secondary); }
+
+  .field { display: flex; flex-direction: column; gap: var(--space-group); max-width: 360px; }
+  .field label { font-size: var(--font-size-meta); color: var(--text-secondary); }
+  .field-inline { display: flex; gap: var(--space-group); flex-wrap: wrap; }
+  .field input {
+    flex: 1 1 160px; min-height: var(--target-min);
+    padding: 0 var(--space-3);
+    background: var(--surface-page); color: var(--text-primary);
+    border: 1px solid var(--border-control); border-radius: var(--radius-base);
+    font: inherit;
+  }
+  footer { text-align: center; color: var(--text-muted); font-size: var(--font-size-meta); padding: 0 var(--space-panel) var(--space-section); }
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">Gomoku</span>
+  <div class="header-actions">
+    <button class="btn btn-secondary" id="theme-toggle" type="button" aria-pressed="false">Motyw jasny</button>
+    <a class="btn btn-primary" href="#">Zaloguj się</a>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="hero-text">
+      <h1>Gomoku</h1>
+      <p class="lead">Gra online 1:1. Pięć w linii wygrywa. Zagraj ze znajomym albo znajdź przeciwnika w lobby.</p>
+      <p class="meta">Swobodne zasady · plansza 15×15 · 10 minut na gracza</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#">Załóż konto</a>
+      </div>
+    </div>
+
+    <figure class="board-wrap" style="margin:0">
+      <div class="board" id="board" role="img" aria-label="Przykładowa pozycja na planszy 15×15: trzy czarne i trzy białe kamienie w środku planszy"></div>
+      <figcaption class="caption">Przykładowa pozycja.</figcaption>
+    </figure>
+  </div>
+
+  <section class="panel" aria-labelledby="lobby-h">
+    <h2 id="lobby-h">Lobby: szukają gry (dane przykładowe)</h2>
+    <div class="row">
+      <div><div class="row-name">Alicja_99</div><div class="row-meta">szuka od 1 min</div></div>
+      <div class="timer">wygasa za 4:02</div>
+      <button class="btn btn-secondary" type="button" aria-label="Zagraj z Alicja_99">Zagraj</button>
+    </div>
+    <div class="row">
+      <div><div class="row-name">czarny_kamień</div><div class="row-meta">szuka od 3 min</div></div>
+      <div class="timer">wygasa za 2:10</div>
+      <button class="btn btn-secondary" type="button" aria-label="Zagraj z czarny_kamień">Zagraj</button>
+    </div>
+    <div class="row">
+      <div><div class="row-name">PiątkaWLinii</div><div class="row-meta">szuka od 4 min</div></div>
+      <div class="timer">wygasa za 0:48</div>
+      <button class="btn btn-secondary" type="button" aria-label="Zagraj z PiątkaWLinii">Zagraj</button>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="join-h">
+    <h2 id="join-h">Masz kod zaproszenia?</h2>
+    <div class="field">
+      <label for="code">Kod zaproszenia</label>
+      <div class="field-inline">
+        <input id="code" type="text" autocomplete="off">
+        <button class="btn btn-secondary" type="button">Dołącz</button>
+      </div>
+    </div>
+    <p class="meta" style="margin-top:var(--space-stack)">Zaproszony może zagrać bez konta. <a href="#">Jak to działa</a></p>
+  </section>
+</main>
+
+<footer>Gomoku 1:1 online</footer>
+
+<script>
+  var stones = { "7:7": "black", "7:8": "white", "8:8": "black", "6:6": "white", "9:9": "black", "8:6": "white" };
+  var board = document.getElementById("board");
+  for (var r = 0; r < 15; r++) {
+    for (var c = 0; c < 15; c++) {
+      var cell = document.createElement("div");
+      cell.className = "cell";
+      var s = stones[r + ":" + c];
+      if (s) { var p = document.createElement("span"); p.className = "piece " + s; cell.appendChild(p); }
+      board.appendChild(cell);
+    }
+  }
+  var btn = document.getElementById("theme-toggle");
+  var root = document.documentElement;
+  btn.addEventListener("click", function () {
+    var light = root.getAttribute("data-theme") !== "light";
+    root.setAttribute("data-theme", light ? "light" : "dark");
+    btn.textContent = light ? "Motyw ciemny" : "Motyw jasny";
+    btn.setAttribute("aria-pressed", String(light));
+  });
+</script>
+</body>
+</html>

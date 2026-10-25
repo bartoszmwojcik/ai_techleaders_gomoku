@@ -1,0 +1,25 @@
+import { Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { ThemePreview } from "../../.storybook/blocks";
+
+<Meta title="Fundamenty/Motywy" />
+
+# Motywy
+
+Dwa motywy: ciemny (domyślny) i jasny (Z3). Tokeny znaczeniowe zmieniają wartość, nazwy zostają te same, więc komponent nie
+wie, który motyw jest aktywny.
+
+<Unstyled>
+  <ThemePreview />
+</Unstyled>
+
+## Jak to działa
+
+- Motyw ustawia atrybut `data-theme` na elemencie głównym dokumentu. Dzięki temu dialogi, menu i popovery, które renderują się poza drzewem strony, dostają ten sam motyw.
+- Dowolny element z `data-theme` ustawia motyw dla swojej zawartości. Tak działają podglądy na tej stronie.
+- Przełącznik w pasku narzędzi Storybooka zmienia motyw całego podglądu. Testy stories uruchamiane są w obu motywach (`npm run test:stories -w @gomoku/ui`).
+- Plansza i kamienie są takie same w obu motywach (R01.4).
+
+## Do ustalenia
+
+Paleta jasnego motywu to propozycja (R02.2 pokazuje białą stronę, ale nie podaje kolorów). Kolor tła, tekstu i akcji
+w jasnym motywie wymagają Twojego przeglądu po obejrzeniu kolejnych prototypów.

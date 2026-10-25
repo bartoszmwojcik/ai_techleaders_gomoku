@@ -1,0 +1,102 @@
+import { ArgTypes, Canvas, Meta } from "@storybook/addon-docs/blocks";
+import { PageHeader } from "@gomoku/ui/game/page-header";
+import * as Stories from "./page-header.stories";
+
+<Meta of={Stories} />
+
+# Nagłówek strony
+
+## 1. Do czego służy
+
+Daje każdej stronie gracza stałe miejsce na nazwę produktu (link do strony głównej), główne przejścia i konto, w tym wyraźny przycisk logowania.
+
+<Canvas of={Stories.GraczNiezalogowany} />
+
+## 2. Kiedy używać
+
+- **Na każdej stronie gracza:** `/`, `/login`, `/register`, `/account`, `/games/{id}` (specyfikacje login-logout, game-invitations: wspólny nagłówek powstaje z pierwszą stroną gry).
+- **Niezalogowany:** przycisk „Zaloguj się” (R02.1), opcjonalnie „Załóż konto” jako drugorzędny.
+- **Zalogowany:** linki „Konto”, „Lobby”, „Historia” i „Wyloguj”.
+
+## 3. Kiedy nie używać
+
+- **W środku strony lub panelu:** do nagłówka sekcji służy nagłówek [Panelu](?path=/docs/prymitywy-panel--docs).
+- **Na ekranie partii**, gdy potrzebny jest cały ekran dla planszy i zegarów: decyzja przy etapie 3 (zob. „Czego brakuje”).
+- **Rozbudowane menu:** system nie ma menu; główne miejsca to linki w nawigacji.
+
+## 4. Anatomia
+
+1. **Nazwa produktu** jako link do strony głównej (wymagana). Tekst, bez kolorowego znaku (A02, audyt).
+2. **Nawigacja** (opcjonalna): linki do głównych miejsc, z nazwą dostępną.
+3. **Akcje** po prawej (opcjonalne): logowanie, konto, wylogowanie.
+4. **Cienka linia** pod nagłówkiem (`border-default`), bez cienia.
+
+## 5. Warianty
+
+Brak wariantów wyglądu. Zawartość zależy od stanu gracza: niezalogowany lub zalogowany (stories).
+
+<Canvas of={Stories.GraczZalogowany} />
+
+## 6. Stany
+
+Nagłówek jest statyczny. Link do strony głównej ma najechanie (kolor akcji) i fokus (obrys 2 px); przyciski i linki w środku mają własne stany. Zablokowania, wciśnięcia, ładowania i błędu nagłówek nie ma (nie dotyczy).
+
+## 7. Zachowanie i dostępność
+
+- **Landmark:** `<header>` na stronie to region „banner”; nawigacja to `<nav aria-label>`. Źródło: WAI-ARIA landmarks, WCAG 1.3.1, 2.4.1.
+- **Klawiatura:** `Tab` przechodzi po nazwie, linkach nawigacji i akcjach w kolejności dokumentu. Nazwa produktu to pierwszy cel fokusu. Źródło: WCAG 2.4.3.
+- **Czytnik ekranu:** czyta „link Gomoku” i nazwę nawigacji.
+- **Cel kliknięcia:** link główny i linki `standalone` mają co najmniej 44 px wysokości.
+- **Nawigacja z nazwą:** `navigationLabel` jest wymagane, gdy jest `navigation`.
+- **Bez linku „przejdź do treści”:** jeszcze go nie ma (patrz „Czego brakuje”).
+
+## 8. Treść
+
+- **Nazwa produktu:** „Gomoku”; krótko, bez sloganu (R01.2).
+- **Akcje:** czasownik: „Zaloguj się”, „Wyloguj”; „Konto” jako rzeczownik w nawigacji.
+- Komponent nie ma wbudowanych tekstów.
+
+## 9. Responsywność
+
+Zawartość zawija się do kilku wierszy przy 320 px; nazwa, nawigacja i akcje układają się jedna pod drugą w razie potrzeby. Treść jest wyśrodkowana do `layout-width-content` (1040 px) z marginesem `space-panel`.
+
+<Canvas of={Stories.DlugaNazwaNaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={PageHeader} />
+
+## 11. Kod
+
+```tsx
+import { Button } from "@gomoku/ui/game/button";
+import { PageHeader } from "@gomoku/ui/game/page-header";
+
+<PageHeader brand="Gomoku">
+  <Button asChild><a href="/login">Zaloguj się</a></Button>
+</PageHeader>;
+```
+
+Zalogowany gracz:
+
+```tsx
+<PageHeader
+  brand="Gomoku"
+  navigation={<TextLink href="/lobby" placement="standalone">Lobby</TextLink>}
+  navigationLabel="Główna nawigacja"
+>
+  <TextLink href="/account" placement="standalone">Konto</TextLink>
+  <Button variant="secondary">Wyloguj</Button>
+</PageHeader>
+```
+
+## 12. Dobrze i źle
+
+**Dobrze:** jedna wyraźna akcja logowania (R02.1), nazwa produktu jako tekst-link, nawigacja z nazwą. **Źle:** kolorowy kwadrat z literą jako logo (A02), kilka równorzędnych głównych przycisków bez potrzeby (Z5 jest zasadą luźną, ale każde odstępstwo wymaga powodu), nawigacja bez nazwy.
+
+<Canvas of={Stories.BaneroweIGlownyPrzycisk} />
+
+## 13. Powiązane
+
+- **Mylony z:** nagłówkiem panelu (Panel) i paskiem narzędzi partii (zegary, w etapie 3).
+- **Występuje we wzorcach:** każda strona gracza; stan zależny od uprawnień (niezalogowany, zalogowany).

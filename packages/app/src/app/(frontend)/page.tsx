@@ -18,13 +18,13 @@ export default function HomePage() {
   });
 
   return (
-    <main className="mx-auto flex min-h-svh max-w-5xl flex-col items-center justify-center gap-12 px-6 py-16 md:flex-row">
+    <main className="mx-auto flex min-h-svh max-w-5xl flex-col items-center justify-center gap-section px-panel py-section md:flex-row">
       <section className="max-w-sm space-y-4 text-center md:text-left">
-        <h1 className="text-5xl font-bold tracking-tight">Gomoku</h1>
-        <p className="text-lg text-stone-300">
+        <h1 className="text-title font-strong tracking-(--letter-spacing-title)">Gomoku</h1>
+        <p className="text-lead text-text-secondary">
           Pięć w linii wygrywa. Zagraj ze znajomym albo znajdź przeciwnika w lobby.
         </p>
-        <p className="text-sm text-stone-500">
+        <p className="text-meta text-text-muted">
           Swobodne zasady · plansza {BOARD_SIZE}×{BOARD_SIZE} · 10 minut na gracza
         </p>
       </section>
@@ -32,7 +32,7 @@ export default function HomePage() {
       <div
         aria-hidden="true"
         data-testid="board"
-        className="grid aspect-square w-full max-w-md rounded-md bg-board p-3 shadow-2xl"
+        className="grid aspect-square w-full max-w-md rounded-base bg-board-surface p-(--board-padding) shadow-board"
         style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, minmax(0, 1fr))` }}
       >
         {cells.map(({ key, stone }) => (
@@ -41,8 +41,8 @@ export default function HomePage() {
             <span className="absolute inset-y-0 left-1/2 w-px bg-board-line" />
             {stone && (
               <span
-                className={`relative z-10 size-[80%] rounded-full shadow-md ${
-                  stone === "black" ? "bg-stone-black" : "bg-stone-white"
+                className={`relative z-10 size-(--piece-size) rounded-piece shadow-piece ${
+                  stone === "black" ? "bg-piece-black" : "bg-piece-white"
                 }`}
               />
             )}

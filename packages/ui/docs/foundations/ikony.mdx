@@ -1,0 +1,20 @@
+import { Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { IconSizes } from "../../.storybook/blocks";
+
+<Meta title="Fundamenty/Ikony" />
+
+# Ikony
+
+Biblioteka: `lucide-react` (Q5, propozycja przyjęta; już jest w zależnościach pakietu). Rozmiary 16, 20 i 24 px
+(`icon-size-sm`, `-md`, `-lg`).
+
+<Unstyled>
+  <IconSizes />
+</Unstyled>
+
+## Zasady
+
+- **Ikona obok słowa jest dekoracyjna** (`aria-hidden="true"`). Ikona bez słowa dostaje podpis dostępny dla czytnika ekranu i widoczną podpowiedź. Źródło: WAI-ARIA, WCAG 1.1.1.
+- **Stan zawsze ma ikonę i słowo**, nie sam kolor: sukces, uwaga, błąd, informacja. Źródło: WCAG 1.4.1.
+- **Zabronione:** emoji zamiast ikon, iskierki jako symbol AI, ikony na kolorowym tle przy nagłówkach. Źródło: A02.
+- Ikona ma kolor tekstu, przy którym stoi (`currentColor`), nie własny.

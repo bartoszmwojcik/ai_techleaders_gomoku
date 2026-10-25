@@ -1,0 +1,101 @@
+import { ArgTypes, Canvas, Meta } from "@storybook/addon-docs/blocks";
+import { Dialog } from "@gomoku/ui/game/dialog";
+import * as Stories from "./dialog.stories";
+
+<Meta of={Stories} />
+
+# Dialog
+
+## 1. Do czego służy
+
+Prosi gracza o jedną krótką rzecz (np. wpisanie kodu) na osobnej warstwie nad stroną, bez opuszczania strony.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Kiedy używać
+
+- **Krótka czynność w kontekście strony:** wpisanie kodu zaproszenia bez przejścia na `/join` (game-invitations).
+- **Zebranie jednej informacji**, którą trzeba podać teraz, by kontynuować.
+
+## 3. Kiedy nie używać
+
+- **Potwierdzenie akcji nieodwracalnej:** [Dialog potwierdzenia](?path=/docs/prymitywy-dialog-potwierdzenia--docs).
+- **Długi formularz lub kilka kroków:** osobna strona (łatwiej o adres, powrót i telefon).
+- **Błąd lub informacja:** [Alert](?path=/docs/prymitywy-alert--docs) na stronie; dialog przerywa pracę.
+- **Dodatkowa informacja ukryta „na wszelki wypadek”:** pokaż ją w treści strony.
+
+## 4. Anatomia
+
+1. **Tło za dialogiem** (`surface-overlay`, bez rozmycia, A02).
+2. **Panel dialogu** z obramowaniem, bez cienia.
+3. **Tytuł** (wymagany).
+4. **Opis** (opcjonalny): jedno zdanie kontekstu.
+5. **Treść** (opcjonalna).
+6. **Przycisk zamknięcia** (zawsze; nazwa przez `closeLabel`).
+
+## 5. Warianty
+
+Brak wariantów. Dialog ma jedną szerokość maksymalną (`layout-width-dialog`, 480 px, propozycja) i jeden wygląd. Źródło: R01.2 (oszczędność).
+
+## 6. Stany
+
+Zamknięty i otwarty. Najechanie, fokus, wciśnięcie i zablokowanie dotyczą elementów w środku (przyciski, pola), nie samego dialogu. Ładowanie: pokaż je na przycisku w środku (`loading`).
+
+<Canvas of={Stories.Otwarty} />
+
+Otwarcie trwa 200 ms (płynne pojawienie się) i jest wyłączane przy `prefers-reduced-motion` (`motion-base`, Q5).
+
+## 7. Zachowanie i dostępność
+
+- **Klawiatura:** po otwarciu fokus przechodzi do dialogu i jest w nim uwięziony (`Tab` krąży wewnątrz). `Escape` zamyka. Po zamknięciu fokus wraca na element, który otworzył dialog. Źródło: WAI-ARIA Authoring Practices (Dialog Modal), WCAG 2.4.3.
+- **Role i atrybuty:** `role="dialog"`, `aria-modal`, `aria-labelledby` na tytule, `aria-describedby` na opisie (tylko gdy opis jest). Strona za dialogiem jest niedostępna dla czytnika.
+- **Czytnik ekranu:** ogłasza nazwę dialogu i opis przy otwarciu.
+- **Przycisk zamknięcia:** ma nazwę dostępną (`closeLabel`) i cel 44 px (`target-min`).
+- **Motyw:** dialog renderuje się w portalu poza stroną, więc motyw musi być na elemencie głównym dokumentu (`data-theme` na `<html>`), tak jak ustawia to Storybook. Źródło: zasada projektu.
+
+## 8. Treść
+
+- **Tytuł:** nazywa zadanie: „Dołącz do partii kodem”. Nie „Uwaga” i nie pytanie z „czy”.
+- **Opis:** jedno zdanie; nie powtarza tytułu.
+- **Przyciski w środku:** czasownik i obiekt (patrz Przycisk).
+- Komponent nie ma wbudowanych tekstów; `closeLabel` przekaż po polsku („Zamknij”).
+
+## 9. Responsywność
+
+Dialog ma `w-full` do 480 px i wypełnienie `space-panel`; przy 320 px zajmuje szerokość ekranu z marginesem, a wysoka treść przewija się wewnątrz tła (nie wychodzi poza ekran).
+
+<Canvas of={Stories.DlugaTrescNaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={Dialog} />
+
+## 11. Kod
+
+```tsx
+import { Button } from "@gomoku/ui/game/button";
+import { Dialog } from "@gomoku/ui/game/dialog";
+
+<Dialog trigger={<Button>Mam kod zaproszenia</Button>} title="Dołącz do partii kodem" closeLabel="Zamknij">
+  …pole kodu…
+</Dialog>;
+```
+
+Sterowany z zewnątrz:
+
+```tsx
+<Dialog open={open} onOpenChange={setOpen} title="Dołącz do partii kodem" description="Wpisz kod od znajomego." closeLabel="Zamknij">
+  …
+</Dialog>
+```
+
+## 12. Dobrze i źle
+
+**Dobrze:** tytuł nazywa zadanie („Dołącz do partii kodem”), przycisk zamknięcia ma nazwę, dialog zawiera jedną czynność. **Źle:** dialog bez tytułu, dialog z przyciskiem zamknięcia bez nazwy dostępnej albo dialog na błąd, który mógłby być alertem na stronie. Przykłady „na żywo” pokazują stories (dialog otwiera się w ramce, żeby nie zasłaniać tej strony).
+
+<Canvas of={Stories.BezOpisu} />
+
+## 13. Powiązane
+
+- **Mylony z:** Dialogiem potwierdzenia (pytanie tak/nie przed akcją nieodwracalną), Alertem (komunikat na stronie) i panelem bocznym (jeszcze nie ma).
+- **Występuje we wzorcach:** formularz (krótki), zaproszenie przez link lub kod.

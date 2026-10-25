@@ -1,0 +1,6 @@
+## R01
+Źródło: http://localhost:3000/
+Podoba mi się: ciemne tło, skrommy jasny tyłuł i oszczędny opis. Podoba mi się skandynawska oszczędność. Plansza gry z przykładowym jej początkiem. Drewniany kolor planszy.
+Nie podoba mi się: kolor planszy bez tekstury drewna. Brak wyraźnej informacji że jest ti gra online.
+Dlaczego to pasuje do naszego produktu: Pokazuje o jaką grę chodzi. Jest nazwa.
+Jak bardzo: jestem do tego mocno przekonany

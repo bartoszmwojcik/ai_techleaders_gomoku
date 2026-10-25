@@ -1,0 +1,48 @@
+import { Canvas, Meta } from "@storybook/addon-docs/blocks";
+import * as Stories from "./list.stories";
+
+<Meta of={Stories} />
+
+# Lista
+
+Wzorzec dla list gracza: lobby i historia partii. Filtrów nie ma, bo backlog ich nie przewiduje (decyzja właściciela); gdy się pojawią, wzorzec zostanie rozszerzony o licznik wyników, aktywne filtry i stan „brak wyników dla filtrów”.
+
+<Canvas of={Stories.LobbyDuzoDanych} />
+
+## Kiedy używać
+
+- Lista graczy szukających gry (E03) i lista zakończonych partii (E04).
+- Nie używaj jej dla pojedynczego obiektu (wzorzec Widok szczegółów).
+
+## Zasady
+
+1. **Lista ma nazwę dla czytnika** i jest prawdziwą listą (`ul`/`li`).
+2. **Pięć rodzajów stanu ma osobny wygląd:** ładowanie ([Szkielet](?path=/docs/prymitywy-szkielet-ładowania--docs) z jednym opisem), pusto ([Pusty stan](?path=/docs/prymitywy-pusty-stan--docs)), błąd ([Stan błędu](?path=/docs/prymitywy-stan-błędu--docs) z ponowieniem), dane częściowe i dużo danych.
+3. **Pusto ma powód i następny krok:** „Nie rozegrałeś jeszcze żadnej partii” z akcją „Utwórz zaproszenie”. Źródło: prompt systemu, A05.
+4. **Błąd wymagający działania nie jest chwilowym komunikatem:** zostaje na ekranie z przyciskiem „Spróbuj ponownie”.
+5. **Dane częściowe nie psują układu:** brak opcjonalnych pól (np. „od kiedy szuka”) po prostu ich nie pokazuje.
+6. **Długie nazwy zawijają się** w dowolnym miejscu; wiersz nigdy nie wychodzi poza ekran 320 px.
+7. **Lobby pokazuje czas wygaśnięcia przy każdym wierszu** (A05); historia pokazuje wynik słowem i ikoną.
+
+## Stany
+
+| Lista | Stan | Story |
+|---|---|---|
+| lobby | ładowanie | [Lobby: ładowanie](?path=/story/wzorce-lista--lobby-ladowanie) |
+| lobby | pusto | [Lobby: pusto](?path=/story/wzorce-lista--lobby-pusto) |
+| lobby | błąd | [Lobby: błąd](?path=/story/wzorce-lista--lobby-blad) |
+| lobby | dane częściowe | [Lobby: częściowe dane](?path=/story/wzorce-lista--lobby-czesciowa-dane) |
+| lobby | dużo danych | [Lobby: dużo danych](?path=/story/wzorce-lista--lobby-duzo-danych) |
+| lobby | długie teksty | [Lobby: długie teksty](?path=/story/wzorce-lista--lobby-dlugie-teksty) |
+| historia | ładowanie | [Historia: ładowanie](?path=/story/wzorce-lista--historia-ladowanie) |
+| historia | pusto | [Historia: pusto](?path=/story/wzorce-lista--historia-pusto) |
+| historia | błąd | [Historia: błąd](?path=/story/wzorce-lista--historia-blad) |
+| historia | dane częściowe | [Historia: częściowe dane](?path=/story/wzorce-lista--historia-czesciowa-dane) |
+| historia | dużo danych | [Historia: dużo danych](?path=/story/wzorce-lista--historia-duzo-danych) |
+| historia | długie teksty | [Historia: długie teksty](?path=/story/wzorce-lista--historia-dlugie-teksty) |
+
+<Canvas of={Stories.PustaListaMaPowodINastepnyKrok} />
+
+## Powiązane
+
+[Lista graczy](?path=/docs/produkt-lobby-lista-graczy--docs), [Lista partii](?path=/docs/produkt-historia-lista-partii--docs), [Panel](?path=/docs/prymitywy-panel--docs).

@@ -1,0 +1,78 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Design system/Jak wybrać komponent" />
+
+# Jak wybrać komponent
+
+Tabele „jeśli… to użyj…” z przykładem z produktu. Wiersze z „jeszcze nie ma” odsyłają do [Czego brakuje](?path=/docs/design-system-czego-brakuje--docs): zanim dorobisz komponent, użyj tego, co jest wskazane w tabeli.
+
+## Przycisk, link, przycisk z ikoną i menu akcji
+
+| Jeśli… | to użyj | Przykład z produktu |
+|---|---|---|
+| akcja zmienia coś na serwerze (wysyła, tworzy, usuwa) | [Przycisk](?path=/docs/prymitywy-przycisk--docs) | „Załóż konto”, „Dołącz do partii”, „Anuluj zaproszenie” |
+| akcja jest nieodwracalna | Przycisk `danger` w [Dialogu potwierdzenia](?path=/docs/prymitywy-dialog-potwierdzenia--docs) | „Usuń konto na zawsze” |
+| prowadzi na inną stronę | [Link tekstowy](?path=/docs/prymitywy-link-tekstowy--docs) | „Nie pamiętasz hasła?”, „Konto” |
+| przejście ma wyglądać jak główna akcja | `Button asChild` z `<a>` | „Zaloguj się” w nagłówku |
+| potrzebna akcja tylko ikoną | jeszcze nie ma; użyj Przycisku z tekstem (ikona wewnątrz, jak „Kopiuj link”) | „Kopiuj link” w Karcie kodu zaproszenia |
+| kilka akcji w jednym miejscu | jeszcze nie ma menu; użyj kilku Przycisków obok siebie | „Kopiuj”, „Udostępnij”, „Anuluj zaproszenie” |
+
+## Radio, select i pole z wyszukiwaniem
+
+| Jeśli… | to użyj | Przykład z produktu |
+|---|---|---|
+| wpisujesz krótki tekst | [Pole tekstowe](?path=/docs/prymitywy-pole-tekstowe--docs) w [Polu formularza](?path=/docs/prymitywy-pole-formularza--docs) | „Kod zaproszenia” |
+| wybierasz jedną z kilku opcji | jeszcze nie ma radia ani selecta | brak takiego ekranu w specyfikacjach |
+| wyszukujesz na liście | jeszcze nie ma | lobby i historia nie mają wyszukiwania ani filtrów |
+
+## Przełącznik i checkbox
+
+| Jeśli… | to użyj | Przykład z produktu |
+|---|---|---|
+| potwierdzasz zgodę przed akcją | [Pole wyboru](?path=/docs/prymitywy-pole-wyboru--docs) | „Rozumiem, że konta nie da się odzyskać” |
+| coś włączasz lub wyłączasz od razu | jeszcze nie ma przełącznika | brak takiego ekranu w specyfikacjach |
+
+## Dialog, dialog potwierdzenia, panel boczny, osobna strona, popover i podpowiedź
+
+| Jeśli… | to użyj | Przykład z produktu |
+|---|---|---|
+| prosisz o jedną krótką rzecz w kontekście | [Dialog](?path=/docs/prymitywy-dialog--docs) | wpisanie kodu zaproszenia |
+| pytasz „tak/nie” przed akcją nieodwracalną | [Dialog potwierdzenia](?path=/docs/prymitywy-dialog-potwierdzenia--docs) | „Usunąć konto Ala_7?” |
+| formularz jest długi lub wieloetapowy | osobna strona | rejestracja, zmiana hasła |
+| potrzebny panel z boku | jeszcze nie ma; użyj osobnej strony | brak takiego ekranu |
+| krótka informacja po najechaniu | jeszcze nie ma popovera ani podpowiedzi; napisz tekst obok | powód zablokowania przycisku |
+| informacja niezbędna do działania | zwykły tekst na stronie, nigdy podpowiedź | „Zaznacz potwierdzenie, aby usunąć konto” |
+
+## Błąd przy polu, alert i toast
+
+| Jeśli… | to użyj | Przykład z produktu |
+|---|---|---|
+| błąd dotyczy jednego pola | błąd w [Polu formularza](?path=/docs/prymitywy-pole-formularza--docs) | „Sprawdź kod: ma 8 znaków.” |
+| komunikat dotyczy całej strony lub formularza | [Alert](?path=/docs/prymitywy-alert--docs) | „Zbyt wiele prób” |
+| treść się nie wczytała | [Stan błędu](?path=/docs/prymitywy-stan-błędu--docs) z ponowieniem | „Nie udało się wczytać listy partii” |
+| błąd wymaga działania | Alert lub Stan błędu, **nigdy toast** | „Nie udało się wysłać wiadomości. Spróbuj ponownie.” |
+| chwilowe potwierdzenie | Alert `success` (`role="status"`); toasta system nie ma | „Hasło zmienione” |
+
+## Szkielet i wskaźnik ładowania
+
+| Jeśli… | to użyj | Przykład z produktu |
+|---|---|---|
+| ładuje się lista lub widok o znanym kształcie | [Szkielet ładowania](?path=/docs/prymitywy-szkielet-ładowania--docs) | lobby, historia, partia |
+| trwa akcja po kliknięciu | `loading` na [Przycisku](?path=/docs/prymitywy-przycisk--docs) | „Zaloguj się” w trakcie wysyłania |
+| kształt treści nieznany | jeszcze nie ma osobnego wskaźnika; krótki tekst w `role="status"` | rzadkie, wpisz do „Czego brakuje” |
+
+## Tabela, lista i karty
+
+| Jeśli… | to użyj | Przykład z produktu |
+|---|---|---|
+| lista graczy lub partii | [Lista graczy](?path=/docs/produkt-lobby-lista-graczy--docs), [Lista partii](?path=/docs/produkt-historia-lista-partii--docs) | lobby, historia |
+| grupa pól i treści w sekcji | [Panel](?path=/docs/prymitywy-panel--docs) | „Zmień hasło” na `/account` |
+| tabela z kolumnami | jeszcze nie ma; użyj listy (na telefonie tabela się nie mieści) | historia partii |
+| karty z cieniem | nie ma; panele oddziela ton i cienka linia (A02) | |
+
+## Zakładki i osobne strony
+
+| Jeśli… | to użyj | Przykład z produktu |
+|---|---|---|
+| przejście między głównymi miejscami | linki w [Nagłówku strony](?path=/docs/prymitywy-nagłówek-strony--docs) | „Lobby”, „Historia”, „Konto” |
+| przełączanie widoków w jednej stronie | jeszcze nie ma zakładek; użyj osobnych stron | brak takiego ekranu |

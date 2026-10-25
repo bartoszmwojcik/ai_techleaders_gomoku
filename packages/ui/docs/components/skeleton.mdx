@@ -1,0 +1,88 @@
+import { ArgTypes, Canvas, Meta } from "@storybook/addon-docs/blocks";
+import { SkeletonRegion } from "@gomoku/ui/game/skeleton";
+import * as Stories from "./skeleton.stories";
+
+<Meta of={Stories} />
+
+# Szkielet ładowania
+
+## 1. Do czego służy
+
+Zajmuje miejsce treści, która się ładuje, żeby strona nie skakała i gracz widział, że coś się dzieje.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Kiedy używać
+
+- **Lista, która się ładuje:** lobby, historia partii (E03, E04).
+- **Dane konta lub partii pobierane po wejściu na stronę:** widok partii `/games/{id}` (game-invitations).
+- **Znany kształt treści:** wiersze, tytuł i opis.
+
+## 3. Kiedy nie używać
+
+- **Akcja trwająca po kliknięciu:** użyj stanu `loading` przycisku (spinner), nie szkieletu.
+- **Ładowanie trwa krócej niż mgnienie:** szkielet, który błyska, rozprasza; pokaż go dopiero po krótkim czasie lub wcale.
+- **Nieznany kształt treści:** krótki tekst „Ładowanie…” w `role="status"`.
+- **Pusto albo błąd:** [Pusty stan](?path=/docs/prymitywy-pusty-stan--docs) lub stan błędu.
+
+## 4. Anatomia
+
+1. **Region** (`SkeletonRegion`): `role="status"`, `aria-busy`.
+2. **Bloki** (`Skeleton`): szare prostokąty w kształcie treści.
+3. **Ukryty opis** (wymagany, `label`): jedno ogłoszenie dla czytnika.
+
+## 5. Warianty
+
+Brak wariantów; kształt bloków nadajesz klasami szerokości i wysokości z tokenów (`h-6`, `h-target`, `w-1/3`). Jeden wygląd, bez zdjęć i gradientów (A02).
+
+<Canvas of={Stories.WierszeListy} />
+
+## 6. Stany
+
+Szkielet jest sam w sobie stanem ładowania: pulsuje, a przy `prefers-reduced-motion` stoi w miejscu (`motion-reduce:animate-none`, WCAG 2.3.3). Najechania, fokusu, wciśnięcia, zablokowania, wyboru i błędu nie ma (nie dotyczy).
+
+## 7. Zachowanie i dostępność
+
+- **Czytnik ekranu:** region `role="status"` ogłasza raz tekst z `label` („Ładowanie listy partii”); same bloki są ukryte (`aria-hidden`). Źródło: WAI-ARIA, WCAG 4.1.3.
+- **`aria-busy="true"`** informuje, że region się zmienia. Gdy treść się pojawi, usuń region ze szkieletem.
+- **Klawiatura i fokus:** szkielet nie przyjmuje fokusu.
+- **Kontrast:** szkielet jest tłem treści, nie informacją; nie ma wymogu kontrastu.
+
+## 8. Treść
+
+- **`label`:** nazywa to, co się ładuje: „Ładowanie listy partii”, „Ładowanie lobby”. Nie samo „Ładowanie…”.
+- Tekst trafia tylko do czytnika ekranu (`sr-only`), komponent nie ma wbudowanych tekstów.
+
+## 9. Responsywność
+
+Bloki mają szerokość kontenera lub jej ułamek; przy 320 px zachowują układ.
+
+<Canvas of={Stories.DlugaTrescNaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={SkeletonRegion} />
+
+`Skeleton` przyjmuje atrybuty natywnego `<div>` i `className`.
+
+## 11. Kod
+
+```tsx
+import { Skeleton, SkeletonRegion } from "@gomoku/ui/game/skeleton";
+
+<SkeletonRegion label="Ładowanie listy partii">
+  <Skeleton className="h-6 w-3/4" />
+  <Skeleton className="h-6 w-full" />
+</SkeletonRegion>;
+```
+
+## 12. Dobrze i źle
+
+**Dobrze:** szkielet kształtem przypomina listę, region ma `label` nazywający to, co się ładuje, a po załadowaniu region znika. **Źle:** szkielet zamiast stanu `loading` przycisku, szkielet bez opisu dla czytnika albo szkielet, który zostaje po załadowaniu treści.
+
+<Canvas of={Stories.JednoOgloszenieDlaCzytnika} />
+
+## 13. Powiązane
+
+- **Mylony z:** spinnerem na przycisku (`loading`) i Pustym stanem.
+- **Występuje we wzorcach:** lista z filtrami (lobby, historia), widok szczegółów (partia).

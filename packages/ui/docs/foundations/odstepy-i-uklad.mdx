@@ -1,0 +1,32 @@
+import { Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { SpaceTable } from "../../.storybook/blocks";
+
+<Meta title="Fundamenty/Odstępy i układ" />
+
+# Odstępy i układ
+
+Jedna skala na siatce 4 px: 4, 8, 12, 16, 24, 32 i 48 px. Odstęp wybierasz według relacji między elementami, nie według
+liczby (tokeny.md).
+
+<Unstyled>
+  <SpaceTable />
+</Unstyled>
+
+## Zasady
+
+- **W grupie** (`space-group`, 8 px): etykieta i pole, ikona i tekst.
+- **Między grupami** (`space-stack`, 16 px).
+- **Wewnątrz panelu** (`space-panel`, 24 px), także margines strony.
+- **Między sekcjami** (`space-section`, 48 px). Dawne 64 px z obecnej strony głównej wypada ze skali.
+- W klasach numerycznych dozwolone są tylko kroki skali: `1`, `2`, `3`, `4`, `6`, `8`, `12` (np. `p-4`). Wartości w nawiasach kwadratowych, jak `p-[13px]`, są zabronione. Pilnuje tego skrypt `check:tokens`.
+
+## Układ
+
+| Szerokość | Do czego służy | Uwagi |
+|---|---|---|
+| 320 px | najwęższy telefon | brak poziomego przewijania; pola i przyciski ≥ 44 px (BR-20, `target-min`) |
+| 768 px | tablet | dwie kolumny od około 720 px, jak w zatwierdzonym przykładzie |
+| 1440 px | komputer | treść do `layout-width-content` (1040 px), wyśrodkowana |
+
+Wąska kolumna tekstu na stronie głównej ma `layout-width-narrow` (384 px). Strona nie przewija się poziomo przy żadnej z
+trzech szerokości; tabele, które się nie mieszczą, zamieniają się w listę (audyt: przepełnienie przy 320 px).

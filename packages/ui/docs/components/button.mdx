@@ -1,0 +1,129 @@
+import { ArgTypes, Canvas, Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { Button } from "@gomoku/ui/game/button";
+import { DoDont } from "../../.storybook/blocks";
+import * as Stories from "./button.stories";
+
+<Meta of={Stories} />
+
+# Przycisk
+
+## 1. Do czego służy
+
+Pozwala graczowi wykonać jedną akcję na stronie: założyć konto, dołączyć do partii, wysłać formularz.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Kiedy używać
+
+- **Wysłanie formularza lub rozpoczęcie akcji:** „Załóż konto”, „Zaloguj się”, „Dołącz do partii”, „Wyślij ponownie” (specyfikacje #19, #20, #21, #34).
+- **Akcja, która zmienia stan na serwerze**, także gdy nie ma formularza: „Anuluj zaproszenie”, „Postaw kamień” (game-invitations, game-moves).
+- **Akcja destrukcyjna** w wariancie `danger`: „Usuń konto na zawsze” (account-deletion).
+
+## 3. Kiedy nie używać
+
+- **Przejście na inną stronę:** użyj [Linku tekstowego](?path=/docs/prymitywy-link-tekstowy--docs) albo `Button asChild` z `<a>`, żeby zachować semantykę linku.
+- **Wybór jednej z kilku opcji:** użyj pola wyboru lub grupy radio (jeszcze nie ma w systemie, patrz „Czego brakuje”).
+- **Informacja o błędzie przy polu:** użyj [Pola formularza](?path=/docs/prymitywy-pole-formularza--docs).
+- **Akcja tylko ikoną bez napisu:** ten komponent zawsze ma tekst (R01.2: oszczędny, czytelny).
+
+## 4. Anatomia
+
+1. **Tło lub obramowanie** (zależnie od wariantu).
+2. **Wskaźnik ładowania** (opcjonalny, tylko przy `loading`): obracająca się ikona, 20 px.
+3. **Etykieta tekstowa** (wymagana): czasownik i obiekt.
+
+## 5. Warianty
+
+| Wariant | Kiedy wybrać | Źródło |
+|---|---|---|
+| `primary` (domyślny) | Główna akcja widoku. Jeden na widok; zasada luźna (Z5), gdy potrzeba, np. „Zaloguj się” w nagłówku obok „Załóż konto” | R02.1, R02.3, Z5 |
+| `secondary` | Akcja pomocnicza obok głównej: „Dołącz” przy kodzie, „Zagraj” w wierszu lobby | R02.1 |
+| `danger` | Akcja nieodwracalna: usunięcie konta, rezygnacja z partii | propozycja (Q4) |
+
+<Canvas of={Stories.Warianty} />
+
+## 6. Stany
+
+Domyślny, najechanie, fokus, wciśnięty, zablokowany i ładowanie.
+
+<Canvas of={Stories.Stany} />
+
+- **Wciśnięty:** ciemniejsze wypełnienie niż przy najechaniu (jaśniejszy motyw: wyraźnie ciemniejsze, ciemny motyw: o krok). Źródło: propozycja przyjęta przez właściciela 2026-10-25.
+- **Zablokowany:** przycisk ma obramowanie i przygaszony tekst, jest niefokusowalny. Gracz musi dowiedzieć się, **dlaczego** akcja jest niedostępna: obok przycisku stoi zwykły tekst z powodem (np. „Zaznacz potwierdzenie, aby usunąć konto”) i `aria-describedby` wskazuje ten tekst. Zablokowany przycisk bez wyjaśnienia jest błędem (zob. „Czego unikać”, częsty błąd implementacji). Źródło: WCAG 3.3.1, propozycja.
+- **Ładowanie:** przycisk jest zablokowany (blokada podwójnego wysłania), ma `aria-busy="true"` i spinner; etykieta zostaje, żeby szerokość się nie zmieniała. Spinner nie obraca się przy `prefers-reduced-motion`. Źródło: ruch (Q5), WCAG 2.3.3.
+
+## 7. Zachowanie i dostępność
+
+- **Klawiatura:** `Tab` ustawia fokus, `Enter` i `Spacja` uruchamiają akcję (natywny `<button>`). Kolejność fokusu = kolejność w dokumencie. Źródło: WAI-ARIA Authoring Practices.
+- **Fokus:** obrys 2 px w `focus-ring` z odstępem 2 px, widoczny na obu motywach (R01.8).
+- **Rola i atrybuty:** natywny przycisk; `aria-busy` przy ładowaniu; `type="button"` domyślnie, żeby przycisk w formularzu nie wysyłał go przypadkiem.
+- **Czytnik ekranu:** czyta etykietę i „przycisk”; przy ładowaniu dodatkowo „zajęty”. Ikona spinnera jest ukryta (`aria-hidden`).
+- **Cel kliknięcia:** wysokość i szerokość co najmniej 44 px (`target-min`, BR-20), więcej niż wymagane 24 × 24 px (WCAG 2.5.8).
+
+## 8. Treść
+
+- **Etykieta:** czasownik i obiekt: „Załóż konto”, „Dołącz do partii”, „Usuń konto na zawsze”. Nie „OK”, nie „Dalej” bez kontekstu.
+- **Długość:** do 3–4 słów; długa etykieta zawija się do kilku linii i przycisk rośnie w dół (sprawdzone przy 320 px).
+- **Liczby i czas:** bez skrótów (np. „Dołącz za 3 min” zamiast „3m”).
+- **Tłumaczenie:** komponent nie ma wbudowanych tekstów, etykieta przychodzi z propsów. Dłuższy język zawija się tak samo.
+
+## 9. Responsywność
+
+Przy 320 px przycisk może mieć `className="w-full"`, a długa etykieta zawija się. Przy 768 i 1440 px ma szerokość treści. Wysokość minimalna 44 px na każdej szerokości.
+
+<Canvas of={Stories.DlugaTrescNaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={Button} />
+
+Dodatkowo: wszystkie atrybuty natywnego `<button>`. `asChild` renderuje podany element (np. link) ze stylami przycisku; `loading` jest wtedy ignorowane.
+
+## 11. Kod
+
+Minimalny przykład:
+
+```tsx
+import { Button } from "@gomoku/ui/game/button";
+
+<Button>Załóż konto</Button>;
+```
+
+Typowy przykład z produktu (formularz logowania, wysyłanie w toku):
+
+```tsx
+<Button type="submit" loading={isSubmitting} className="w-full">
+  Zaloguj się
+</Button>
+```
+
+Link wyglądający jak przycisk (przejście na stronę zaproszenia):
+
+```tsx
+<Button asChild>
+  <a href="/join">Mam kod zaproszenia</a>
+</Button>
+```
+
+## 12. Dobrze i źle
+
+<Unstyled>
+  <DoDont
+    good={<Button>Dołącz do partii</Button>}
+    goodNote="etykieta mówi, co się stanie (czasownik i obiekt)."
+    bad={<Button>OK</Button>}
+    badNote="„OK” nie mówi, co zostanie wykonane."
+  />
+  <div className="h-stack" />
+  <DoDont
+    good={<Button variant="danger">Usuń konto na zawsze</Button>}
+    goodNote="akcja nieodwracalna ma wariant danger i opis skutku w etykiecie."
+    bad={<Button>Usuń konto</Button>}
+    badNote="akcja nieodwracalna w zwykłym głównym przycisku wygląda jak każda inna."
+  />
+</Unstyled>
+
+## 13. Powiązane
+
+- **Mylony z:** Linkiem tekstowym (przejście na stronę) i polem wyboru (opcja).
+- **Występuje we wzorcach:** formularz (wysłanie), potwierdzenie usunięcia (akcja destrukcyjna i rezygnacja), zaproszenie przez link lub kod.

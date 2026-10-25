@@ -1,0 +1,84 @@
+import { ArgTypes, Canvas, Meta } from "@storybook/addon-docs/blocks";
+import { GameResultBanner } from "@gomoku/ui/game/game-result-banner";
+import * as Stories from "./game-result-banner.stories";
+
+<Meta of={Stories} />
+
+# Baner wyniku
+
+## 1. Do czego służy
+
+Mówi graczowi, jak skończyła się partia: wygrana, porażka lub remis, i dlaczego.
+
+<Canvas of={Stories.Wyniki} />
+
+## 2. Kiedy używać
+
+- **Po zakończeniu partii** nad planszą tylko do odczytu: „Wygrałeś”, „Przegrałeś”, „Remis” (game-moves, BR-07, BR-10).
+- **Po powrocie do zakończonej partii** (odświeżenie, wejście po fakcie, E02-S04).
+
+## 3. Kiedy nie używać
+
+- **W trakcie partii:** [Status tury](?path=/docs/produkt-partia-status-tury--docs).
+- **Wynik w liście historii:** [Znacznik statusu](?path=/docs/prymitywy-znacznik-statusu--docs) w wierszu.
+- **Błąd techniczny:** [Stan błędu](?path=/docs/prymitywy-stan-błędu--docs).
+
+## 4. Anatomia
+
+1. **Ikona i obramowanie** w kolorze wyniku (sukces, błąd, informacja).
+2. **Słowo wyniku** (wymagane).
+3. **Powód zakończenia** (opcjonalny): „Pięć kamieni w linii”, „Skończył się Twój czas”, „Plansza jest pełna”.
+
+## 5. Warianty
+
+| `result` | Wygląd | Źródło |
+|---|---|---|
+| `win` | sukces | propozycja (Q4) |
+| `loss` | błąd, ale ogłaszany grzecznie | game-moves (`role="status"`) |
+| `draw` | informacja | propozycja (Q4) |
+
+<Canvas of={Stories.PrzegranaOgloszonaGrzecznie} />
+
+## 6. Stany
+
+Trzy wyniki. Baner jest statyczny: nie ma najechania, fokusu, wciśnięcia, zablokowania ani ładowania (nie dotyczy).
+
+## 7. Zachowanie i dostępność
+
+- **Rola:** `role="status"` także przy przegranej: wynik nie przerywa czytnika ekranu. Źródło: game-moves („baner `role=status`”).
+- **Nie sam kolor:** słowo, ikona i obramowanie (WCAG 1.4.1).
+- **Linia wygrywająca** jest podświetlona na planszy osobno (komponent Plansza).
+- **Kontrast:** kolory stanów mają co najmniej 4,5:1.
+
+## 8. Treść
+
+- **Słowo:** „Wygrałeś”, „Przegrałeś”, „Remis”; bez triumfu i bez pocieszania.
+- **Powód:** krótko, np. „Pięć kamieni w linii.” Zakończenie przez czas: „Skończył się Twój czas.”
+- Komponent nie ma wbudowanych tekstów.
+
+## 9. Responsywność
+
+Treść zawija się; długie nazwy bez spacji zawijają się w dowolnym miejscu.
+
+<Canvas of={Stories.DlugaTrescNaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={GameResultBanner} />
+
+## 11. Kod
+
+```tsx
+import { GameResultBanner } from "@gomoku/ui/game/game-result-banner";
+
+<GameResultBanner result="loss" title="Przegrałeś">Skończył się Twój czas.</GameResultBanner>;
+```
+
+## 12. Dobrze i źle
+
+**Dobrze:** słowo wyniku i krótki powód, ogłoszenie grzeczne. **Źle:** samo „Koniec gry”, wynik tylko kolorem, ogłaszanie przegranej jako alarmu.
+
+## 13. Powiązane
+
+- **Mylony z:** Alertem (ogólny komunikat) i Znacznikiem statusu (mała etykieta w liście).
+- **Występuje we wzorcach:** widok szczegółów (partia zakończona).

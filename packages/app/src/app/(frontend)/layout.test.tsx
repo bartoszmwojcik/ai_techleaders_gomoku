@@ -11,7 +11,7 @@ describe("FrontendLayout", () => {
       </FrontendLayout>,
     );
 
-    expect(html).toMatch(/^<html lang="pl"><head><\/head><body class="[^"]*bg-stone-900[^"]*">/);
+    expect(html).toMatch(/^<html lang="pl"><head><\/head><body class="[^"]*bg-surface-page[^"]*">/);
     expect(html).toContain("<p>page content</p>");
   });
 

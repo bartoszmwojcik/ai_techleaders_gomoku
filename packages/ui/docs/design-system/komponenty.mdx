@@ -1,0 +1,277 @@
+import { Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { Alert } from "@gomoku/ui/game/alert";
+import { Board } from "@gomoku/ui/game/board";
+import { Button } from "@gomoku/ui/game/button";
+import { Checkbox } from "@gomoku/ui/game/checkbox";
+import { ConfirmDialog } from "@gomoku/ui/game/confirm-dialog";
+import { Dialog } from "@gomoku/ui/game/dialog";
+import { EmptyState } from "@gomoku/ui/game/empty-state";
+import { ErrorState } from "@gomoku/ui/game/error-state";
+import { Field } from "@gomoku/ui/game/field";
+import { GameResultBanner } from "@gomoku/ui/game/game-result-banner";
+import { HistoryList, HistoryRow } from "@gomoku/ui/game/history-list";
+import { InviteCodeCard } from "@gomoku/ui/game/invite-code-card";
+import { LobbyList, LobbyRow } from "@gomoku/ui/game/lobby-list";
+import { Panel } from "@gomoku/ui/game/panel";
+import { PageHeader } from "@gomoku/ui/game/page-header";
+import { PasswordField } from "@gomoku/ui/game/password-field";
+import { PlayerClock } from "@gomoku/ui/game/player-clock";
+import { SeekingStatus } from "@gomoku/ui/game/seeking-status";
+import { Skeleton, SkeletonRegion } from "@gomoku/ui/game/skeleton";
+import { StatusBadge } from "@gomoku/ui/game/status-badge";
+import { TextInput } from "@gomoku/ui/game/text-input";
+import { TextLink } from "@gomoku/ui/game/text-link";
+import { TurnStatus } from "@gomoku/ui/game/turn-status";
+import { VerifyEmailBanner } from "@gomoku/ui/game/verify-email-banner";
+import { Narrow } from "../../.storybook/blocks";
+import { cellLabel, OPENING } from "../shared";
+
+<Meta title="Design system/Komponenty" />
+
+# Komponenty
+
+Katalog wszystkich komponentów z małym działającym podglądem, grupą, jednym zdaniem i linkiem do dokumentacji. Wybór komponentu do zadania: [Jak wybrać komponent](?path=/docs/design-system-jak-wybrać-komponent--docs). Czego jeszcze nie ma: [Czego brakuje](?path=/docs/design-system-czego-brakuje--docs).
+
+## Prymitywy
+
+### Przycisk
+
+Wykonuje jedną akcję na stronie. [Dokumentacja](?path=/docs/prymitywy-przycisk--docs), import `@gomoku/ui/game/button`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <Button>Załóż konto</Button>
+  </div>
+</Unstyled>
+
+### Link tekstowy
+
+Prowadzi na inną stronę lub w inne miejsce. [Dokumentacja](?path=/docs/prymitywy-link-tekstowy--docs), import `@gomoku/ui/game/text-link`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <TextLink href="#jak-to-dziala">Jak to działa</TextLink>
+  </div>
+</Unstyled>
+
+### Pole tekstowe
+
+Jednowierszowy wpis: e-mail, kod, nazwa gracza. [Dokumentacja](?path=/docs/prymitywy-pole-tekstowe--docs), import `@gomoku/ui/game/text-input`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <TextInput aria-label="Kod zaproszenia" placeholder="ABCD-EFGH" />
+  </div>
+</Unstyled>
+
+### Pole formularza
+
+Daje polu etykietę, podpowiedź, błąd i znacznik wymaganego. [Dokumentacja](?path=/docs/prymitywy-pole-formularza--docs), import `@gomoku/ui/game/field`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <Field label="Kod zaproszenia" hint="Wielkość liter nie ma znaczenia.">{(control) => <TextInput {...control} autoComplete="off" />}</Field>
+  </div>
+</Unstyled>
+
+### Pole wyboru
+
+Potwierdzenie tak/nie, np. zgoda przed usunięciem konta. [Dokumentacja](?path=/docs/prymitywy-pole-wyboru--docs), import `@gomoku/ui/game/checkbox`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <Checkbox label="Rozumiem, że konta nie da się odzyskać" />
+  </div>
+</Unstyled>
+
+### Alert
+
+Komunikat dla całej strony lub formularza z tym, co robić dalej. [Dokumentacja](?path=/docs/prymitywy-alert--docs), import `@gomoku/ui/game/alert`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <Alert status="warning" title="Grasz bez konta">Nie zmieniaj przeglądarki w trakcie partii.</Alert>
+  </div>
+</Unstyled>
+
+### Panel
+
+Wydziela grupę treści z nagłówkiem. [Dokumentacja](?path=/docs/prymitywy-panel--docs), import `@gomoku/ui/game/panel`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <Panel title="Lobby">Wybierz przeciwnika z listy.</Panel>
+  </div>
+</Unstyled>
+
+### Znacznik statusu
+
+Nazywa stan obiektu przy nim samym (ikona i słowo). [Dokumentacja](?path=/docs/prymitywy-znacznik-statusu--docs), import `@gomoku/ui/game/status-badge`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <StatusBadge status="success">Wygrana</StatusBadge>
+  </div>
+</Unstyled>
+
+### Dialog
+
+Prosi o jedną krótką rzecz na warstwie nad stroną. [Dokumentacja](?path=/docs/prymitywy-dialog--docs), import `@gomoku/ui/game/dialog`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <Dialog trigger={<Button variant="secondary">Mam kod</Button>} title="Dołącz do partii kodem" closeLabel="Zamknij" />
+  </div>
+</Unstyled>
+
+### Dialog potwierdzenia
+
+Zatrzymuje przed akcją nieodwracalną i nazywa jej skutek. [Dokumentacja](?path=/docs/prymitywy-dialog-potwierdzenia--docs), import `@gomoku/ui/game/confirm-dialog`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <ConfirmDialog trigger={<Button variant="danger">Usuń konto</Button>} title="Usunąć konto Ala_7?" confirmLabel="Usuń konto na zawsze" cancelLabel="Zostaw konto" onConfirm={() => undefined} />
+  </div>
+</Unstyled>
+
+### Szkielet ładowania
+
+Zajmuje miejsce treści, która się ładuje. [Dokumentacja](?path=/docs/prymitywy-szkielet-ładowania--docs), import `@gomoku/ui/game/skeleton`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <SkeletonRegion label="Ładowanie listy partii"><Skeleton className="h-6 w-3/4" /><Skeleton className="h-6 w-full" /></SkeletonRegion>
+  </div>
+</Unstyled>
+
+### Pusty stan
+
+Mówi, dlaczego pusto, i co zrobić dalej. [Dokumentacja](?path=/docs/prymitywy-pusty-stan--docs), import `@gomoku/ui/game/empty-state`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <EmptyState title="Nie rozegrałeś jeszcze żadnej partii" action={<Button variant="secondary">Utwórz zaproszenie</Button>} />
+  </div>
+</Unstyled>
+
+### Stan błędu
+
+Zastępuje treść, której nie udało się wczytać. [Dokumentacja](?path=/docs/prymitywy-stan-błędu--docs), import `@gomoku/ui/game/error-state`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <ErrorState title="Nie udało się wczytać listy" action={<Button variant="secondary">Spróbuj ponownie</Button>} />
+  </div>
+</Unstyled>
+
+### Nagłówek strony
+
+Nazwa produktu, nawigacja i konto na każdej stronie. [Dokumentacja](?path=/docs/prymitywy-nagłówek-strony--docs), import `@gomoku/ui/game/page-header`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <PageHeader brand="Gomoku" homeHref="#start"><Button asChild><a href="#zaloguj">Zaloguj się</a></Button></PageHeader>
+  </div>
+</Unstyled>
+
+## Produkt
+
+### Plansza
+
+Pokazuje partię 15×15 i pozwala wskazać pole. [Dokumentacja](?path=/docs/produkt-partia-plansza--docs), import `@gomoku/ui/game/board`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <Narrow><Board label="Plansza 15 na 15" cellLabel={cellLabel} stones={OPENING} readOnly /></Narrow>
+  </div>
+</Unstyled>
+
+### Zegar gracza
+
+Czas gracza i informacja, czyj zegar biegnie. [Dokumentacja](?path=/docs/produkt-partia-zegar-gracza--docs), import `@gomoku/ui/game/player-clock`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <PlayerClock name="Ala_7" remainingMs={581000} active activeLabel="Twój ruch" />
+  </div>
+</Unstyled>
+
+### Status tury
+
+Mówi słowami, czyj jest ruch. [Dokumentacja](?path=/docs/produkt-partia-status-tury--docs), import `@gomoku/ui/game/turn-status`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <TurnStatus color="black">Twój ruch (czarne)</TurnStatus>
+  </div>
+</Unstyled>
+
+### Baner wyniku
+
+Mówi, jak skończyła się partia. [Dokumentacja](?path=/docs/produkt-partia-baner-wyniku--docs), import `@gomoku/ui/game/game-result-banner`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <GameResultBanner result="win" title="Wygrałeś">Pięć kamieni w linii.</GameResultBanner>
+  </div>
+</Unstyled>
+
+### Karta kodu zaproszenia
+
+Link i kod jednego zaproszenia z kopiowaniem i udostępnianiem. [Dokumentacja](?path=/docs/produkt-partia-karta-kodu-zaproszenia--docs), import `@gomoku/ui/game/invite-code-card`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <InviteCodeCard title="Zaproś znajomego" link="https://gomoku.example/invite/ABCD-EFGH" code="ABCD-EFGH" linkLabel="Link do zaproszenia" codeLabel="Kod" copyLabel="Kopiuj link" copiedLabel="Skopiowano" onCopy={() => undefined} />
+  </div>
+</Unstyled>
+
+### Pole hasła
+
+Pole hasła z przyciskiem pokazania. [Dokumentacja](?path=/docs/produkt-konta-pole-hasła--docs), import `@gomoku/ui/game/password-field`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <PasswordField label="Hasło" showLabel="Pokaż hasło" hideLabel="Ukryj hasło" autoComplete="current-password" />
+  </div>
+</Unstyled>
+
+### Baner potwierdzenia e-maila
+
+Przypomina o potwierdzeniu e-maila i pozwala wysłać link ponownie. [Dokumentacja](?path=/docs/produkt-konta-baner-potwierdzenia-e-maila--docs), import `@gomoku/ui/game/verify-email-banner`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <VerifyEmailBanner title="Potwierdź e-mail, aby grać" resendLabel="Wyślij ponownie" onResend={() => undefined}>Link wysyłamy na ala@example.com.</VerifyEmailBanner>
+  </div>
+</Unstyled>
+
+### Status szukania gry
+
+Własny status „szukam gry” z czasem do wygaśnięcia. [Dokumentacja](?path=/docs/produkt-lobby-status-szukania-gry--docs), import `@gomoku/ui/game/seeking-status`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <SeekingStatus title="Szukasz gry" expiresLabel="Status wygasa za" expiresInMs={272000} withdrawLabel="Wycofaj" onWithdraw={() => undefined} />
+  </div>
+</Unstyled>
+
+### Lista graczy
+
+Gracze szukający gry, z czasem do wygaśnięcia i wyborem. [Dokumentacja](?path=/docs/produkt-lobby-lista-graczy--docs), import `@gomoku/ui/game/lobby-list`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <LobbyList label="Gracze szukający gry"><LobbyRow name="Alicja_99" since="szuka od 1 min" expiresLabel="wygasa za" expiresInMs={242000} selectLabel="Zagraj" selectAriaLabel="Zagraj z Alicja_99" onSelect={() => undefined} /></LobbyList>
+  </div>
+</Unstyled>
+
+### Lista partii
+
+Zakończone partie gracza z wynikiem. [Dokumentacja](?path=/docs/produkt-historia-lista-partii--docs), import `@gomoku/ui/game/history-list`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <HistoryList label="Zakończone partie"><HistoryRow opponent="Alicja_99" result="win" resultLabel="Wygrana" date="24.10.2026" reason="5 w linii" /></HistoryList>
+  </div>
+</Unstyled>

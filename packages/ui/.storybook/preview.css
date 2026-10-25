@@ -1,0 +1,45 @@
+@import "tailwindcss";
+@import "../src/styles/game-tokens.css";
+
+@source "../src";
+@source "../docs";
+@source "./blocks";
+
+/*
+ * Frozen states for the documentation: the same hover:/focus-visible:/active: declarations the
+ * components use also apply to an element with data-preview-state. Only Storybook loads this file.
+ */
+@custom-variant hover (&:hover, &[data-preview-state="hover"]);
+@custom-variant focus-visible (&:focus-visible, &[data-preview-state="focus"]);
+@custom-variant active (&:active, &[data-preview-state="pressed"]);
+
+@layer base {
+  body {
+    background: var(--surface-page);
+    color: var(--text-primary);
+    font-family: var(--font-family-base);
+    line-height: var(--line-height-body);
+  }
+}
+
+/* Long inline code in documentation prose must wrap on a 320 px screen. */
+.sbdocs-content :not(pre) > code {
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+}
+
+/* Markdown tables in documentation scroll inside themselves instead of widening the page. */
+.sbdocs-content table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Tailwind's reset removes list markers; documentation prose needs them back. */
+.sbdocs-content ol {
+  list-style-type: decimal;
+}
+
+.sbdocs-content ul {
+  list-style-type: disc;
+}

@@ -1,0 +1,299 @@
+/*
+ * Design tokens for the player-facing game UI (not the /backend shadcn theme in globals.css).
+ * Import it from a stylesheet that already did `@import "tailwindcss"`.
+ *
+ * Three layers:
+ *   1. raw values (palette-*, space-*), used only in this file;
+ *   2. meaning tokens named by purpose (surface-page, text-muted, action-primary-bg, ...);
+ *   3. component tokens, only where a component needs its own value (piece-size, board-padding, ...).
+ *
+ * The `@theme` blocks below reset Tailwind's default colour, text-size, radius, shadow, font and
+ * font-weight scales, so a class such as bg-zinc-900 or rounded-xl does not exist: only tokens do.
+ *
+ * Source references: R01.x / R02.x / A0x are rows in lekcja-06/referencje.md, Z1-Z9 are rules and
+ * "tokeny.md" is lekcja-06/tokeny.md (approved 2026-10-25). "propozycja" marks a value chosen by the
+ * agent that the owner has not yet approved one by one.
+ *
+ * Themes: dark is the default (R01.1). The light theme is selected with data-theme="light" on the
+ * document root; any element with data-theme re-scopes the meaning tokens (used by the docs blocks).
+ */
+
+/* ---- Layer 1 and non-Tailwind tokens ---- */
+:root {
+  /* R01.1, R01.2: warm neutral scale (tokens.md palette-stone-*). */
+  --palette-stone-50: #fafaf9;
+  --palette-stone-100: #f5f5f4;
+  --palette-stone-200: #e7e5e4;
+  --palette-stone-300: #d6d3d1;
+  --palette-stone-400: #a8a29e;
+  --palette-stone-500: #79716b;
+  --palette-stone-600: #57534e;
+  --palette-stone-700: #44403c;
+  --palette-stone-800: #292524;
+  --palette-stone-900: #1c1917;
+  --palette-white: #ffffff;
+
+  /* R02.3: dark or brownish orange as the action colour (tokens.md). */
+  --palette-amber-700: #b45309;
+  --palette-orange-400: #fb923c;
+  --palette-orange-600: #a64e0a; /* pressed in the dark theme (propozycja, accepted 2026-10-25) */
+  --palette-orange-650: #bd580c; /* hover in the dark theme: 3:1 against surface-raised (approved 2026-10-25) */
+  --palette-orange-700: #c2410c;
+  --palette-orange-800: #9a3412;
+  --palette-orange-900: #7c2d12; /* pressed in the light theme (propozycja) */
+
+  /* R01.4, R01.5: wood of the board (tokens.md; grain softened 2026-10-25). */
+  --palette-wood-surface: #dcb35c;
+  --palette-wood-line: #6b4a1b;
+  --palette-wood-grain: #d3aa53;
+
+  /* Status colours: propozycja (Q4 accepted: warm shades, never the only carrier of meaning). */
+  --palette-clay-300: #f2907a;
+  --palette-clay-600: #be4e2c;
+  --palette-clay-650: #c45230;
+  --palette-clay-700: #ab4529; /* danger pressed, dark theme (propozycja) */
+  --palette-clay-750: #a8341f;
+  --palette-clay-800: #9f2d1a;
+  --palette-clay-900: #8f2616; /* danger pressed, light theme (propozycja) */
+  --palette-amber-400: #fbbf24;
+  --palette-amber-800: #92400e;
+  --palette-olive-300: #b5c47a;
+  --palette-olive-700: #4d6a1f;
+
+  /* tokens.md: one spacing scale on a 4 px grid (R01.2, propozycja). */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* Spacing by relation (tokens.md space-*). */
+  --space-group: var(--space-2); /* inside a group: label-field, icon-text */
+  --space-stack: var(--space-4); /* between groups */
+  --space-panel: var(--space-6); /* inside a panel and page margins */
+  --space-section: var(--space-12); /* between sections */
+
+  /* R01.7: sans-serif, narrow to medium width, the current look (tokens.md font-family-base). */
+  --font-family-base: ui-sans-serif, system-ui, sans-serif;
+
+  /* Line heights from the approved example lekcja-06/przyklad-tokeny.html (body, title);
+     the heading value is propozycja. */
+  --line-height-body: 1.5;
+  --line-height-heading: 1.25;
+  --line-height-title: 1.1;
+  --letter-spacing-title: -0.02em;
+  /* Readable measure for running text (prompt rule: about 65 characters). */
+  --measure-text: 65ch;
+
+  /* Motion (Q5 accepted: 150 and 200 ms; reduced motion is handled at the end of this file). */
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --easing-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Icons (Q5 accepted: lucide-react). */
+  --icon-size-sm: 16px;
+  --icon-size-md: 20px;
+  --icon-size-lg: 24px;
+
+  /* Layout: widths 320/768/1440 are test widths; content width from przyklad-tokeny.html. */
+  --layout-width-content: 1040px;
+  --layout-width-narrow: 384px;
+  --layout-width-board: 448px; /* przyklad-tokeny.html: max width of the board */
+  --layout-width-dialog: 480px; /* propozycja: dialog fits a sentence and two buttons */
+
+  /* tokens.md target-min (propozycja, BR-20 phone). */
+  --target-min: 44px;
+
+  /* R01.8: focus ring geometry. */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+
+  /* R01.3, R01.4, R01.5, R01.8: board and stones are the same in both themes. */
+  --board-surface: var(--palette-wood-surface);
+  --board-line: var(--palette-wood-line);
+  --board-grain: var(--palette-wood-grain);
+  --piece-black: var(--palette-stone-900);
+  --piece-white: var(--palette-stone-50);
+  --piece-outline: var(--palette-stone-900);
+  /* Last move and winning line: dark wood tone, 4.06:1 on the board. The action colour reaches only about 2.5:1 on wood. */
+  --board-marker: var(--palette-wood-line);
+
+  /* Layer 3: component tokens. */
+  --piece-size: 80%; /* R01.3: stone as a share of its cell */
+  --board-padding: var(--space-3); /* R01.3 */
+  --board-line-width: 1px; /* R01.3 */
+
+  /* R02.3, R01.8: white label on the action fill, same in both themes. */
+  --action-primary-text: var(--palette-white);
+  --action-primary-bg: var(--palette-amber-700);
+  --action-danger-text: var(--palette-white);
+  --action-danger-bg: var(--palette-clay-600); /* propozycja: destructive action (Q4) */
+
+  /* R01.8: borders of form controls reach 3:1 in both themes. */
+  --border-control: var(--palette-stone-500);
+}
+
+/* ---- Meaning tokens, dark theme (default) ---- */
+:root,
+[data-theme="dark"] {
+  --surface-page: var(--palette-stone-900); /* R01.1 */
+  --surface-raised: var(--palette-stone-800); /* tokens.md (propozycja approved) */
+  --text-primary: var(--palette-stone-100); /* R01.2, R02.2 */
+  --text-secondary: var(--palette-stone-300); /* R01.2 */
+  --text-muted: var(--palette-stone-400); /* R01.8: replaces stone-500 (3.65:1) */
+  --text-accent: var(--palette-orange-400); /* R02.3, Z1: interactive text only */
+  --action-primary-bg-hover: var(--palette-orange-650); /* R02.3 */
+  --action-primary-bg-pressed: var(--palette-orange-600); /* propozycja: pressed = darker fill */
+  --action-danger-bg-hover: var(--palette-clay-650); /* propozycja */
+  --action-danger-bg-pressed: var(--palette-clay-700); /* propozycja */
+  --focus-ring: var(--palette-orange-400); /* R01.8 */
+  --border-default: var(--palette-stone-700); /* R02.4, decorative only */
+  --surface-overlay: rgb(0 0 0 / 0.6); /* propozycja: scrim behind a dialog, no blur (A02) */
+  --status-success: var(--palette-olive-300); /* propozycja (Q4) */
+  --status-warning: var(--palette-amber-400); /* propozycja (Q4) */
+  --status-danger: var(--palette-clay-300); /* propozycja (Q4) */
+  --status-info: var(--palette-stone-300); /* propozycja (Q4) */
+}
+
+/* ---- Meaning tokens, light theme ---- */
+[data-theme="light"] {
+  --surface-page: var(--palette-stone-50); /* Z3, palette approved in tokens.md */
+  --surface-raised: var(--palette-white);
+  --text-primary: var(--palette-stone-900);
+  --text-secondary: var(--palette-stone-600);
+  --text-muted: var(--palette-stone-500);
+  --text-accent: var(--palette-orange-800);
+  --action-primary-bg-hover: var(--palette-orange-800);
+  --action-primary-bg-pressed: var(--palette-orange-900);
+  --action-danger-bg-hover: var(--palette-clay-750);
+  --action-danger-bg-pressed: var(--palette-clay-900);
+  --focus-ring: var(--palette-orange-800);
+  --border-default: var(--palette-stone-200);
+  --surface-overlay: rgb(28 25 23 / 0.5);
+  --status-success: var(--palette-olive-700);
+  --status-warning: var(--palette-amber-800);
+  --status-danger: var(--palette-clay-800);
+  --status-info: var(--palette-stone-600);
+}
+
+/* ---- Tailwind: only tokens exist as utilities ---- */
+@theme {
+  --color-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --font-*: initial;
+  --font-weight-*: initial;
+
+  /* A02: no pills and no large radii; radius-piece only for stones (R01.3). */
+  --radius-base: 6px;
+  --radius-piece: 9999px;
+
+  /* R01.3, A02: shadow only on the board and the stones, never on cards. */
+  --shadow-board: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  --shadow-piece: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+
+  --font-weight-regular: 400;
+  --font-weight-strong: 700;
+
+  /* R01.2 sizes 14/18/48; 16, 20 and 28 are propozycja (Q5 accepted). */
+  --text-meta: 14px;
+  --text-meta--line-height: var(--line-height-body);
+  --text-body: 16px;
+  --text-body--line-height: var(--line-height-body);
+  --text-lead: 18px;
+  --text-lead--line-height: var(--line-height-body);
+  --text-subsection: 20px;
+  --text-subsection--line-height: var(--line-height-heading);
+  --text-section: 28px;
+  --text-section--line-height: var(--line-height-heading);
+  --text-title: 48px;
+  --text-title--line-height: var(--line-height-title);
+
+  --spacing-target: var(--target-min); /* min-h-target, min-w-target: touch target (BR-20) */
+  --spacing-group: var(--space-group);
+  --spacing-stack: var(--space-stack);
+  --spacing-panel: var(--space-panel);
+  --spacing-section: var(--space-section);
+}
+
+@theme inline {
+  --font-sans: var(--font-family-base);
+
+  --color-surface-page: var(--surface-page);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-overlay: var(--surface-overlay);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-accent: var(--text-accent);
+  --color-action-primary-bg: var(--action-primary-bg);
+  --color-action-primary-bg-hover: var(--action-primary-bg-hover);
+  --color-action-primary-bg-pressed: var(--action-primary-bg-pressed);
+  --color-action-primary-text: var(--action-primary-text);
+  --color-action-danger-bg: var(--action-danger-bg);
+  --color-action-danger-bg-hover: var(--action-danger-bg-hover);
+  --color-action-danger-bg-pressed: var(--action-danger-bg-pressed);
+  --color-action-danger-text: var(--action-danger-text);
+  --color-focus-ring: var(--focus-ring);
+  --color-border-default: var(--border-default);
+  --color-border-control: var(--border-control);
+  --color-status-success: var(--status-success);
+  --color-status-warning: var(--status-warning);
+  --color-status-danger: var(--status-danger);
+  --color-status-info: var(--status-info);
+  --color-board-surface: var(--board-surface);
+  --color-board-line: var(--board-line);
+  --color-board-grain: var(--board-grain);
+  --color-board-marker: var(--board-marker);
+  --color-piece-black: var(--piece-black);
+  --color-piece-white: var(--piece-white);
+  --color-piece-outline: var(--piece-outline);
+}
+
+/* Motion: the two tokenised durations as utilities; reduced motion removes them (Q5). */
+/* R01.8: focus ring, 2 px with a 2 px offset; used as focus-visible:focus-ring. */
+@utility focus-ring {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* R01.5: wood grain drawn in code (two layers of thin stripes at a slight angle), no image. */
+@utility board-texture {
+  background-image:
+    repeating-linear-gradient(91deg, var(--board-grain) 0 2px, transparent 2px 9px),
+    repeating-linear-gradient(89deg, var(--board-grain) 0 1px, transparent 1px 5px);
+}
+
+/* Opening a dialog (200 ms, removed by prefers-reduced-motion). */
+@keyframes game-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@utility animate-fade-in {
+  animation: game-fade-in var(--duration-base) var(--easing-standard);
+}
+
+@utility motion-fast {
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--easing-standard);
+}
+
+@utility motion-base {
+  transition-duration: var(--duration-base);
+  transition-timing-function: var(--easing-standard);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+  }
+}

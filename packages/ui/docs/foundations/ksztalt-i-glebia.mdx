@@ -1,0 +1,21 @@
+import { Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { ShapeDemo } from "../../.storybook/blocks";
+
+<Meta title="Fundamenty/Kształt i głębia" />
+
+# Kształt i głębia
+
+Płasko i spokojnie. Jeden promień dla kontrolek i paneli (`radius-base`, 6 px), okrąg wyłącznie dla kamieni
+(`radius-piece`). Cień mają tylko plansza i kamienie.
+
+<Unstyled>
+  <ShapeDemo />
+</Unstyled>
+
+## Zasady
+
+- **Bez pigułek i dużych zaokrągleń** na przyciskach, polach i znacznikach. Źródło: A02.
+- **Panele oddzielasz tłem (`surface-raised`) i cienkim obramowaniem** (`border-default`), nigdy samym cieniem. Źródło: A02.
+- **Cień tylko na planszy i kamieniach** (`shadow-board`, `shadow-piece`). Źródło: R01.3, A02.
+- **Obramowanie kontrolki** (`border-control`) ma co najmniej 3:1 względem tła. Obramowanie dekoracyjne (`border-default`) nie ma wymogu, bo nie niesie informacji. Źródło: R01.8, WCAG 1.4.11.
+- **Zabronione:** karta w karcie, rozmycie i półprzezroczyste panele, poświata. Źródło: A02.
