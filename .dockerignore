@@ -1,0 +1,15 @@
+# Keep secrets, local state and everything the build does not need out of the image.
+.git
+.github
+.env*
+.next
+**/.next
+node_modules
+**/node_modules
+coverage
+**/storybook-static
+tests
+lekcja-06
+.ai
+**/*.test.ts
+**/*.test.tsx

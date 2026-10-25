@@ -1,0 +1,61 @@
+# Production stack for a small VPS (mikr.us): PostgreSQL, a one-shot migration and the app.
+#
+#   docker compose --env-file .env.production -f compose.prod.yaml up -d --build
+#
+# Set POSTGRES_PASSWORD in .env.production (copy .env.production.example). The database is not
+# published; only the app port is, and a mikr.us subdomain points to it (see README.md).
+name: gomoku_prod
+
+x-app: &app
+  build: .
+  image: gomoku-app:latest
+  environment:
+    DATABASE_URL: postgresql://gomoku:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}@postgres:5432/gomoku
+    DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-5}
+
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    # Modest settings for a VPS with little memory.
+    command: ["postgres", "-c", "shared_buffers=64MB", "-c", "max_connections=30"]
+    environment:
+      POSTGRES_USER: gomoku
+      POSTGRES_DB: gomoku
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gomoku -d gomoku"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    <<: *app
+    command: ["npm", "run", "db:migration:up"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  app:
+    <<: *app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      # 503 while the database is unreachable, so the container is unhealthy exactly then.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  postgres-data:
