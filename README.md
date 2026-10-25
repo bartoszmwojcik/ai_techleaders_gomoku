@@ -128,6 +128,26 @@ Zmienne środowiskowe czytane są z plików `.env*` w katalogu głównym repozyt
 | `DATABASE_POOL_MAX` | `10` | Maksymalna liczba połączeń w puli |
 | `DATABASE_DEBUG` | `false` | Logowanie zapytań SQL |
 
+## Wdrożenie na mikr.us
+
+Aplikacja działa w kontenerach Docker na VPS mikr.us (plan z Dockerem, ≥ 2.1), a ruch HTTPS idzie przez darmową subdomenę mikr.us, bez własnej domeny (decyzja G1 w `.ai/specs/2026-10-24-account-registration.md`). Pliki: `Dockerfile`, `compose.prod.yaml`, `.env.production.example`.
+
+```bash
+git clone https://github.com/bartoszmwojcik/ai_techleaders_gomoku.git && cd ai_techleaders_gomoku
+cp .env.production.example .env.production      # ustaw POSTGRES_PASSWORD (openssl rand -hex 24)
+docker compose --env-file .env.production -f compose.prod.yaml up -d --build
+domena gomoku.byst.re 3000                       # subdomena na porcie aplikacji (HTTPS automatycznie)
+curl https://gomoku.byst.re/api/health           # {"status":"ok",...}
+```
+
+- **Stos:** PostgreSQL 17 (nieopublikowany na zewnątrz, dane w woluminie `postgres-data`), jednorazowa migracja (`npm run db:migration:up`) i aplikacja. Aplikacja startuje dopiero po migracji i gotowej bazie; healthcheck wywołuje `/api/health`, który zwraca `503`, gdy baza nie odpowiada.
+- **Sekrety:** `.env.production` leży tylko na serwerze (jest ignorowany przez git). Hasło bazy generuj poleceniem `openssl rand -hex 24` (heks jest bezpieczny w adresie `DATABASE_URL`).
+- **IPv6:** subdomeny mikr.us wymagają, żeby usługa odpowiadała na IPv6. Aplikacja słucha w kontenerze na IPv4, a Docker publikuje port także na adresie IPv6 hosta; komenda `domena` sprawdza, czy port odpowiada, zanim utworzy subdomenę.
+- **Aktualizacja:** `git pull`, potem to samo polecenie `docker compose … up -d --build` (migracje wykonują się przy każdym starcie).
+- **Logi i stan:** `docker compose -f compose.prod.yaml logs -f app`, `docker compose -f compose.prod.yaml ps`.
+- **Kolejne zmienne:** `APP_ORIGIN` i `TRUST_PROXY_HOPS` (konta, #19) oraz `SMTP_*` (poczta, #38) dojdą z tymi funkcjami; produkcyjny start bez nich ma przerywać, zgodnie ze specyfikacjami.
+- **Czyszczenie wygasłych rekordów** (#39) będzie wpisem `cron` na serwerze: `docker compose … run --rm app npm run db:cleanup`.
+
 ## Komendy
 
 Uruchamiane z katalogu głównego:

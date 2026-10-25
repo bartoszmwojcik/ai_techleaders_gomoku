@@ -65,7 +65,7 @@ Dozwolony kierunek zależności (bez cykli): `app → core, db, ui`; `db → cor
 - **Komponenty React** testuj przez `renderToStaticMarkup` z `react-dom/server` (async server component: `renderToStaticMarkup(await Page())`). Komponenty klienckie z interakcją: dodaj `jsdom` + `@testing-library/react` do projektu, który ich potrzebuje.
 - **Testy integracyjne** (`tests/integration/*.test.ts`, `vitest.integration.config.ts`) sprawdzają zbudowaną aplikację end-to-end: `global-setup.ts` startuje PostgreSQL w Testcontainers, wykonuje migracje i `next start` z `DATABASE_URL` kontenera; przeglądarką steruje `agent-browser` przez helper `tests/integration/browser.ts`, a kody HTTP i API sprawdzaj przez `fetch`. Nowa strona, przepływ użytkownika lub endpoint dostaje scenariusz integracyjny. Do selekcji elementów bez roli/tekstu używaj `data-testid`. Log serwera: `tests/integration/server.log`.
 - **Wymagania lokalne:** Docker (Testcontainers) i jednorazowo `npx agent-browser install` (Chrome) — albo `npm run setup -- --with-browser`. Testy integracyjne używają builda — po zmianie kodu lub zależności uruchom `npm run build` przed `npm run test:integration`.
-- **CI** (`.github/workflows/ci.yml`) uruchamia na każdym PR i pushu na `main` joby `lint`, `typecheck`, `unit`, `build`, `integration`, `setup` (dwukrotne `npm run setup` na świeżym checkoucie). Wszystkie muszą być zielone przed merge.
+- **CI** (`.github/workflows/ci.yml`) uruchamia na każdym PR i pushu na `main` joby `lint`, `typecheck`, `unit`, `build`, `integration`, `setup` (dwukrotne `npm run setup` na świeżym checkoucie), `tokens` (wartości spoza tokenów) i `docker` (build obrazu i start stosu `compose.prod.yaml` z sondą `/api/health`). Wszystkie muszą być zielone przed merge.
 
 ### Komendy (z roota)
 

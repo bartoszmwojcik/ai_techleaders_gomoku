@@ -155,3 +155,25 @@ jobs:
           grep -rnE '#[0-9a-fA-F]{3,8}\b|(rgba?|hsla?|oklch)\(|-\[[0-9.]+(px|rem)\]|(^|[^-[:alnum:]_])(bg|text|border|ring|fill|stroke|from|via|to)-(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-[0-9]{2,3}\b|(^|[^-[:alnum:]_])(bg|text|border)-(white|black)\b' packages/app/src packages/ui/src/game --include='*.tsx' --include='*.css' || status=$?
           if [ "$status" -eq 0 ]; then echo "Znaleziono wartości spoza tokenów"; exit 1; fi
           if [ "$status" -ne 1 ]; then echo "grep nie zadziałał, sprawdź ścieżki"; exit 1; fi
+
+  docker:
+    name: Obraz Docker (build + start stosu produkcyjnego)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Zbuduj i uruchom stos z compose.prod.yaml
+        env:
+          POSTGRES_PASSWORD: ci-only-password
+        run: docker compose -f compose.prod.yaml up -d --build
+      - name: Poczekaj na /api/health i sprawdź stronę główną
+        run: |
+          for attempt in $(seq 1 60); do
+            curl --fail --silent http://localhost:3000/api/health && break
+            sleep 5
+          done
+          curl --fail --silent --show-error http://localhost:3000/api/health
+          curl --fail --silent --show-error http://localhost:3000/ | grep -q "Gomoku"
+      - name: Logi przy błędzie
+        if: failure()
+        run: docker compose -f compose.prod.yaml logs --no-color
