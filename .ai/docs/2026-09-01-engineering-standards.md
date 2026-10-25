@@ -143,9 +143,13 @@ The player-facing frontend gets its own equivalents in `packages/app/src/compone
   job is required for correctness.
 - **Concurrency is enforced by the database, not by application checks.** Moves,
   joining a game, accepting an invitation and picking an opponent from the lobby run in
-  a transaction, backed by constraints: unique `(game_id, move_number)` and
-  `(game_id, x, y)` on moves; a partial unique index allowing one active game per user
-  (BR-13); an invitation and a lobby entry can be consumed once.
+  a transaction, backed by constraints: a partial unique index allowing one active game
+  per user (BR-13); an invitation and a lobby entry can be consumed once. Moves are
+  serialized by the `games` row lock and a conditional
+  `UPDATE … WHERE move_count = :expected`; the board invariant (disjoint bitboards, stone
+  count = `move_count` = `moves` length, alternating turns) is a DB `CHECK` on the
+  `games` row (`bit(225)` boards + `moves bytea`, spec `2026-10-25-game-moves-win-detection`).
+  There is no separate moves table.
 - Game origin is stored explicitly (`invite` | `lobby`) so a future matchmaking mode is
   a new value, not a schema rethink.
 - History is a read model over finished games (opponent, result, date, end reason,
@@ -190,8 +194,10 @@ directions, prefer the one that keeps the change **smaller and more explicit**.
 - **Fail closed, not open.** Any error inside an auth or participation check is a
   denial. An ambiguous "is this user a player of this game" is a 403, not a 200.
 - **Idempotency where retries can happen.** A move retried after a dropped connection
-  must not be applied twice — the unique `(game_id, move_number)` constraint plus the
-  client sending the move number it is responding to makes the retry a safe conflict.
+  must not be applied twice — the conditional `UPDATE … WHERE move_count = :expected`
+  plus the client sending the number of the move it is making makes a stale retry a safe
+  conflict, and an identical retry (same number, same cell, same player) returns the
+  current state, even when that move ended the game.
   Finalizing a game (win/draw/timeout) happens exactly once.
 
 ### Security & Validation — Minimum Requirements
