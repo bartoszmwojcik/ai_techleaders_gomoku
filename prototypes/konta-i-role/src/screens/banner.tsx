@@ -3,7 +3,7 @@ import { TextLink } from "@gomoku/ui/game/text-link";
 import { VerifyEmailBanner, type VerifyEmailState } from "@gomoku/ui/game/verify-email-banner";
 import type { ReactNode } from "react";
 
-import { applyVerifiedElsewhere, resend, setBanner, useSim, viewer, type ResendOutcome } from "../sim";
+import { applyVerifiedElsewhere, bannerVisible, dismissBanner, resend, setBanner, useSim, viewer, type ResendOutcome } from "../sim";
 
 // Texts of the results of "Wyślij ponownie". Where the design system banner has no state for an outcome
 // (503 quota, 409 already confirmed, 401 expired session) the closest state carries it: LUKA D02, map L11.
@@ -16,7 +16,7 @@ export function resendFeedback(outcome: ResendOutcome): { state: VerifyEmailStat
     case "failed":
       return { state: "failed", feedback: "Nie udało się wysłać wiadomości. Spróbuj później." };
     case "quota":
-      return { state: "failed", feedback: "Wysyłka wiadomości jest chwilowo niedostępna. Spróbuj jutro albo zagraj jako gość z zaproszenia." };
+      return { state: "failed", feedback: "Wysyłka wiadomości jest chwilowo niedostępna. Spróbuj jutro. Gra nie zależy od potwierdzenia." };
     case "already":
       return {
         state: "sent",
@@ -36,7 +36,8 @@ export function resendFeedback(outcome: ResendOutcome): { state: VerifyEmailStat
 export function ConfirmBanner() {
   const sim = useSim();
   const account = viewer(sim);
-  if (!account || account.verified) return null;
+  // s04.13: a closed banner stays away for 7 days (the real page remembers it in the browser).
+  if (!account || account.verified || !bannerVisible(sim)) return null;
   const { state, outcome } = sim.banner;
   const result = outcome === "none" ? null : resendFeedback(outcome);
   async function onResend() {
@@ -46,13 +47,15 @@ export function ConfirmBanner() {
   }
   return (
     <VerifyEmailBanner
-      title="Potwierdź e-mail, aby grać"
+      title="Potwierdź adres e-mail"
       resendLabel="Wyślij ponownie"
+      dismissLabel="Zamknij"
+      onDismiss={dismissBanner}
       state={state === "sending" ? "sending" : (result?.state ?? "idle")}
       feedback={result?.feedback}
       onResend={onResend}
     >
-      Link wysyłamy na {account.email} — sprawdź też folder spam.
+      Bez potwierdzonego adresu nie odzyskasz konta, jeśli zapomnisz hasła. Link wysyłamy na {account.email} — sprawdź też folder spam.
     </VerifyEmailBanner>
   );
 }

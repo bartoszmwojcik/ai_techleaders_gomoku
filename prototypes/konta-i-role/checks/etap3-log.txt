@@ -4,24 +4,28 @@ PASS A.1440.dark.s02 | s02 przy 1440 px, motyw dark
 PASS A.1440.dark.s04 | s04 przy 1440 px, motyw dark
 PASS A.1440.dark.s05 | s05 przy 1440 px, motyw dark
 PASS A.1440.dark.s06 | s06 przy 1440 px, motyw dark
+PASS A.1440.dark.s07 | s07 przy 1440 px, motyw dark
 PASS A.1440.dark.s03 | s03 przy 1440 px, motyw dark
 PASS A.1440.light.s01 | s01 przy 1440 px, motyw light
 PASS A.1440.light.s02 | s02 przy 1440 px, motyw light
 PASS A.1440.light.s04 | s04 przy 1440 px, motyw light
 PASS A.1440.light.s05 | s05 przy 1440 px, motyw light
 PASS A.1440.light.s06 | s06 przy 1440 px, motyw light
+PASS A.1440.light.s07 | s07 przy 1440 px, motyw light
 PASS A.1440.light.s03 | s03 przy 1440 px, motyw light
 PASS A.320.dark.s01 | s01 przy 320 px, motyw dark
 PASS A.320.dark.s02 | s02 przy 320 px, motyw dark
 PASS A.320.dark.s04 | s04 przy 320 px, motyw dark
 PASS A.320.dark.s05 | s05 przy 320 px, motyw dark
 PASS A.320.dark.s06 | s06 przy 320 px, motyw dark
+PASS A.320.dark.s07 | s07 przy 320 px, motyw dark
 PASS A.320.dark.s03 | s03 przy 320 px, motyw dark
 PASS A.320.light.s01 | s01 przy 320 px, motyw light
 PASS A.320.light.s02 | s02 przy 320 px, motyw light
 PASS A.320.light.s04 | s04 przy 320 px, motyw light
 PASS A.320.light.s05 | s05 przy 320 px, motyw light
 PASS A.320.light.s06 | s06 przy 320 px, motyw light
+PASS A.320.light.s07 | s07 przy 320 px, motyw light
 PASS A.320.light.s03 | s03 przy 320 px, motyw light
 ## A2. kontrolka szerokości podglądu (P13)
 PASS A2.1 | podgląd 320 px: ramka 320 px
@@ -62,5 +66,5 @@ PASS D.5 | ładowanie
 PASS D.6 | tryb Clickable/Comment przełącza się
 PASS D.7 | Show hotspots
 PASS D.8 | Presentation wyłącza tryb jednego ekranu
-PASS D.9 | Threads otwiera panel (powtórzone osobno: pierwszy przebieg zamknął panel, bo tryb Comment otwiera go sam)
+PASS D.9 | Threads otwiera panel
 DONE

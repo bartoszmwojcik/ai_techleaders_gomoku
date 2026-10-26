@@ -1,0 +1,122 @@
+{
+  "format": "discovery-prototype-v1",
+  "skill": "om-mockup-prototype",
+  "slug": "account-registration",
+  "revision": 2,
+  "revisionPath": ".ai/prototypes/discovery/account-registration/revision-002",
+  "previousRevision": ".ai/prototypes/discovery/account-registration/revision-001",
+  "brief": ".ai/specs/product-brief.md",
+  "flow": "account registration",
+  "panelReport": null,
+  "verification": "passed",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "86cf280d86e5e766b53aeac81d0f7cc650a80b16e7f2cfbead9a16d6aac7323b"
+    },
+    {
+      "path": "evidence/01-s01-domyslny.png",
+      "sha256": "5ff3289f98ac1d76caceb25771af05cebb1c466376231cb114841399240c2bc1"
+    },
+    {
+      "path": "evidence/02-s01-bledy-pol.png",
+      "sha256": "a4e667229b7281cada8c36461f09e0932abce28ced9a8142f5ebc54cfbbdb4d3"
+    },
+    {
+      "path": "evidence/03-s01-nazwa-zajeta.png",
+      "sha256": "93dbaf33ac1c3e35b327387c9d1da060b26cd35366f9731c1831c73af702bbaf"
+    },
+    {
+      "path": "evidence/04-s01-email-zajety.png",
+      "sha256": "59c94ab093225dcb0d3a06cb93e1974b6d1c8bb4afaf1a6f16dea57ee2e7cd70"
+    },
+    {
+      "path": "evidence/05-s01-limit.png",
+      "sha256": "4acf5821b9f6745937e2d0f1ec5e55000b6eef9633c4907ba7d54fe98bab8ac7"
+    },
+    {
+      "path": "evidence/06-s01-bez-poczty.png",
+      "sha256": "6dab7b3f93704dccea94c7449ed653fed145166deb295435f7aa05fa60227251"
+    },
+    {
+      "path": "evidence/07-s04-niepotwierdzony.png",
+      "sha256": "c8fe17baf8208dd2c4c4a8bfd03ae2853d27774aaca0e6cb29e438e3a622c0f6"
+    },
+    {
+      "path": "evidence/08-s04-baner-wyslano.png",
+      "sha256": "2c5ca9608222d768d8611c9818c9c33d9c12888f0633fa7a275f7b1434c91952"
+    },
+    {
+      "path": "evidence/09-s06-skrzynka.png",
+      "sha256": "e6b09a37f17b605150b5a283b7c5e8f58a7ab2a2bcfa95fad5b38079a95d0518"
+    },
+    {
+      "path": "evidence/10-s03-link-niewazny.png",
+      "sha256": "245a2087fa816a0806e0333dbeb51e60396412d7870eb000d70d1a1ef631f761"
+    },
+    {
+      "path": "evidence/11-s03-przed-kliknieciem.png",
+      "sha256": "2d0fc3b9529dc361116af40ae09e1a0226a1a79a70183f2f3a3ea9efac438622"
+    },
+    {
+      "path": "evidence/12-s03-sukces.png",
+      "sha256": "160aaff55a5e061e408be16c0abc4efb08a081842008862fa8f5dd99af0a6df9"
+    },
+    {
+      "path": "evidence/13-s04-potwierdzony.png",
+      "sha256": "2c02227ef934bb6a1cada9fc88225e2981866cdd26ae5ab1effa6dbeb6af9dec"
+    },
+    {
+      "path": "evidence/14-outside.png",
+      "sha256": "2d49f59d3405896932f5acf2af6cec00bc269531a490c867090563ccf3c16c7b"
+    },
+    {
+      "path": "evidence/15-s04-baner-502.png",
+      "sha256": "b7dc1dfbd49908ac837f5b103804af2bf3dba80aadc6f38f28f3300bb46fd505"
+    },
+    {
+      "path": "evidence/16-s04-baner-limit.png",
+      "sha256": "375e7665520e43cb99978f2e1d46a8878421c18acc3ac3e1bf37909df4e49459"
+    },
+    {
+      "path": "evidence/17-s03-niezalogowany.png",
+      "sha256": "2311534d783ebea69766680225bbaf008dd1c112a9c933a1d00af14dc53f7c0a"
+    },
+    {
+      "path": "evidence/18-s04-360px.png",
+      "sha256": "af8933e50da0a4737d153b081b9233bbb64419050b336326e12831f819e9c7b7"
+    },
+    {
+      "path": "evidence/19-s01-360px-bledy.png",
+      "sha256": "5d32dd99aa43e5cd1fdc3c92194fd949528b42bbcc4cf5aa383f80919e5818c1"
+    },
+    {
+      "path": "evidence/20-s04-baner-zamkniety.png",
+      "sha256": "b7bea3bfcc6e251864f577f865a2cc2229284f13b0d3b0c5950fe03b56e5dee0"
+    },
+    {
+      "path": "evidence/21-s07-niezalogowany.png",
+      "sha256": "66dafd29a6821e827b853c4b4a30223764dfaa6e1ac68ae990c14fd7e38b6d8b"
+    },
+    {
+      "path": "evidence/22-s07-ostrzezenie.png",
+      "sha256": "f12c824cfcb619f287c9ada3b267ee7d834e8cd1ded91b3fb55c8314c13f44e3"
+    },
+    {
+      "path": "evidence/23-s07-zalogowany.png",
+      "sha256": "5d603c8936350e5a7b1c9bc4c72c2313ec0f2cb2e1bc994d45592842e32d1544"
+    },
+    {
+      "path": "evidence/24-s07-niewazne.png",
+      "sha256": "5f1774afb20b948341423c3c8f2cd5703a7659910e661bab9b1b43ff9e67e378"
+    },
+    {
+      "path": "evidence/walk-log.txt",
+      "sha256": "79164ecc89c8361d869cd84999e5c9b879aac5de4f23a860a7dbab05589672c2"
+    },
+    {
+      "path": "index.html",
+      "sha256": "89e1bd3107dc29f3131c619a42db26d86936676e93750364a72aa89c33ca2527"
+    }
+  ]
+}

@@ -39,7 +39,7 @@ for W in 1440 320; do
     sbtn "Reset symulacji"; sleep 0.3
     for S in s01 s02; do go $S; noscroll "A.$W.$TH.$S" "$S przy $W px, motyw $TH"; done
     sel sc-account "A2 Kuba"; sleep 0.3
-    for S in s04 s05 s06; do go $S; noscroll "A.$W.$TH.$S" "$S przy $W px, motyw $TH"; done
+    for S in s04 s05 s06 s07; do go $S; noscroll "A.$W.$TH.$S" "$S przy $W px, motyw $TH"; done
     btn "Potwierdź adres e-mail"; noscroll "A.$W.$TH.s03" "s03 przy $W px, motyw $TH"
     [[ "$TH" == dark || "$W" == 320 ]] && shot "s03-$W-$TH"
     go s04; shot "s04-$W-$TH"; go s01; shot "s01-$W-$TH"

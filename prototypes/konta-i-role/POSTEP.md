@@ -1,6 +1,6 @@
 # Postęp: klikalny prototyp Epiku 01 (konta)
 
-Stan: **etap 3 (uczciwość i sprawdzenie) gotowy; czeka na raport końcowy i uwagi.**
+Stan: **etapy 0–3 gotowe; zmiana z 2026-10-26 (PR 3 z 3) wprowadzona.**
 
 ## Źródła
 
@@ -49,3 +49,15 @@ Stan: **etap 3 (uczciwość i sprawdzenie) gotowy; czeka na raport końcowy i uw
 - Sprawdzenie w przeglądarce: `checks/etap3-walk.sh`, wynik `checks/etap3-log.txt` (56 sprawdzeń, 0 błędów), zrzuty w `checks/etap3-evidence/`. Zakres: brak poziomego przewijania na wszystkich ekranach przy 320 i 1440 px w obu motywach, kontrolka szerokości, klawiatura (kolejność Tab, Enter, Escape, fokus w dialogach, widoczny obrys), każdy przycisk i link z uwag oraz kontrolki scenariuszy i silnika.
 - Pasek przeglądu przy 320 px przestaje się przyklejać (zajmował cały ekran).
 - `npm run lint` i `npm run typecheck` przechodzą.
+
+## Zmiana 2026-10-26: uproszczony start konta (PR 3 z 3)
+
+Zgodnie z `.ai/specs/2026-10-26-account-onboarding-simplification.md` (D-24…D-26, BR-26…BR-28; osąd właściciela, nie wynik badania):
+- hasło co najmniej 8 znaków (błąd „Hasło musi mieć co najmniej 8 znaków.”, podpis „Co najmniej 8 znaków”);
+- konto aktywne od razu: akcje gry, Lobby i Historia dostępne bez potwierdzenia e-maila; stan s01.12 wycofany;
+- zamykalny baner „Potwierdź adres e-mail” z powodem (reset hasła tylko po potwierdzeniu); zamknięty wraca po 7 dniach (nowy stan s04.13);
+- niepotwierdzone konto bez partii znika po 14 dniach (BR-28), konto z partią zostaje; usunięte konto traci sesję;
+- nowy ekran s07 (`/invite/[code]`) ze stanami s07.1–s07.9, `?next` wraca na zaproszenie po rejestracji i logowaniu, gość po ostrzeżeniu dostaje partię i nie może się zalogować ani zarejestrować;
+- kontrolki: stan zaproszenia, „Rozegraj partię”, zegar +14 dni;
+- testy nawigacji: 15 (Vitest), sprawdzenia w przeglądarce: `checks/etap2-log.txt` (stany, s07, baner, 14 dni) i `checks/etap3-log.txt` (szerokości, motywy, klawiatura, przyciski).
+Do zrobienia osobno: szary prototyp (`.ai/prototypes/discovery/account-registration/`) jako nowa rewizja.

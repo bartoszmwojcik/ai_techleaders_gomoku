@@ -15,7 +15,8 @@ PASS s01.9 | już zalogowany (409)
 PASS s01.9b | po odświeżeniu strona główna
 PASS s01.9c | zalogowany jako Ala_7
 PASS s01.11 | zalogowany na s01 trafia na s04
-PASS s01.12 | rejestracja niedostępna
+PASS s01.12 | s01.12 wycofany: rejestracja działa bez poczty
+PASS s01.12b | formularz dostępny mimo braku poczty
 PASS s01.13 | gość z aktywną partią
 ## s02
 PASS s02.3 | błędne dane
@@ -32,14 +33,15 @@ PASS s02.10 | zalogowany na s02 trafia dalej
 PASS s02.13 | gość z aktywną partią nie może się logować
 PASS s02.x1 | Ewa przed +7 dni zalogowana
 PASS s02.x2 | konto Ewy istnieje
-PASS s02.3c | po +7 dni konto niepotwierdzone usunięte: ta sama porażka
+PASS s02.3c | po +14 dni niepotwierdzone konto bez partii usunięte: ta sama porażka
 PASS s02.11a | (info)
 PASS s02.11 | po +31 dniach sesja wygasła: widok niezalogowany
 ## s03/s04/s06
 PASS s04.2a | po rejestracji s04
 PASS s04.2 | baner
-PASS s04.2b | brak Lobby w nagłówku niepotwierdzonego
-PASS s04.2c | akcje zablokowane z powodem
+PASS s04.2b | Lobby w nagłówku niepotwierdzonego (BR-26)
+PASS s04.2c | akcje gry nie są zablokowane z powodem
+PASS s04.2d | akcje gry aktywne
 PASS s06.1 | wiadomość w skrzynce
 PASS s03.1a | link prowadzi na s03
 PASS s03.1 | przed kliknięciem
@@ -93,4 +95,25 @@ PASS s05.8 | baza niedostępna: przekierowanie na logowanie
 PASS s05.6 | brak sesji: logowanie
 ## s06
 PASS s06.2 | pusta skrzynka
+## s07, baner nieblokujący, hasło 8, 14 dni
+PASS s07.1 | niezalogowany: trzy wybory
+PASS s07.1b | twórca i kod
+PASS s07.2 | ostrzeżenie dla gościa
+PASS s07.2b | gość: dialog Poza prototypem
+PASS s02.13b | gość z partią nie może się zalogować po s07
+PASS s07.n1 | Załóż konto z s07 prowadzi na s01
+PASS s07.n2 | po rejestracji powrót na s07 (next)
+PASS s07.3 | zalogowany: Dołącz do partii
+PASS s07.3b | zalogowany nie ma opcji gościa
+PASS s07.4 | już uczestnik
+PASS s07.5 | własne zaproszenie
+PASS s07.6 | inna partia
+PASS s07.7 | oczekująca
+PASS s07.8 | limit
+PASS s07.9 | nieważne
+PASS s01.2d | hasło 7 znaków odrzucone
+PASS s04.13 | baner zamknięty
+PASS s04.13b | po 7 dniach baner wraca
+PASS s04.14 | A2 po 14 dniach bez partii: konto usunięte (widok niezalogowany)
+PASS s04.15 | A2 z partią po 14 dniach zostaje
 DONE

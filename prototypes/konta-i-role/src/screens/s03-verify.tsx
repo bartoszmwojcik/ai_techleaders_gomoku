@@ -47,7 +47,7 @@ export function S03Verify() {
         <h1 className="m-0 text-section font-strong">Potwierdź adres e-mail</h1>
         {done ? (
           <>
-            <Alert status="success" title="Adres potwierdzony — możesz grać" />
+            <Alert status="success" title="Adres potwierdzony" />
             {account ? (
               <div><Button onClick={() => go("s04")}>Przejdź dalej</Button></div>
             ) : (
