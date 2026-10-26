@@ -1,0 +1,66 @@
+## A. szerokości i motywy: brak poziomego przewijania na każdym ekranie
+PASS A.1440.dark.s01 | s01 przy 1440 px, motyw dark
+PASS A.1440.dark.s02 | s02 przy 1440 px, motyw dark
+PASS A.1440.dark.s04 | s04 przy 1440 px, motyw dark
+PASS A.1440.dark.s05 | s05 przy 1440 px, motyw dark
+PASS A.1440.dark.s06 | s06 przy 1440 px, motyw dark
+PASS A.1440.dark.s03 | s03 przy 1440 px, motyw dark
+PASS A.1440.light.s01 | s01 przy 1440 px, motyw light
+PASS A.1440.light.s02 | s02 przy 1440 px, motyw light
+PASS A.1440.light.s04 | s04 przy 1440 px, motyw light
+PASS A.1440.light.s05 | s05 przy 1440 px, motyw light
+PASS A.1440.light.s06 | s06 przy 1440 px, motyw light
+PASS A.1440.light.s03 | s03 przy 1440 px, motyw light
+PASS A.320.dark.s01 | s01 przy 320 px, motyw dark
+PASS A.320.dark.s02 | s02 przy 320 px, motyw dark
+PASS A.320.dark.s04 | s04 przy 320 px, motyw dark
+PASS A.320.dark.s05 | s05 przy 320 px, motyw dark
+PASS A.320.dark.s06 | s06 przy 320 px, motyw dark
+PASS A.320.dark.s03 | s03 przy 320 px, motyw dark
+PASS A.320.light.s01 | s01 przy 320 px, motyw light
+PASS A.320.light.s02 | s02 przy 320 px, motyw light
+PASS A.320.light.s04 | s04 przy 320 px, motyw light
+PASS A.320.light.s05 | s05 przy 320 px, motyw light
+PASS A.320.light.s06 | s06 przy 320 px, motyw light
+PASS A.320.light.s03 | s03 przy 320 px, motyw light
+## A2. kontrolka szerokości podglądu (P13)
+PASS A2.1 | podgląd 320 px: ramka 320 px
+## B. klawiatura
+INFO B.1 | Tab od pola e-mail: "reg-name" "reg-password" "Pokaż hasło" "Załóż konto" "Zaloguj się" "← Back"
+PASS B.1 | kolejność Tab: nazwa, hasło, Pokaż hasło, Załóż konto
+INFO B.2 | obrys fokusu na przycisku: "solid 2px"
+PASS B.2 | fokus na przycisku jest widoczny (obrys)
+PASS B.3 | Enter w polu hasła wysyła rejestrację
+INFO B.4 | fokus po przejściu: "H1:Gomoku"
+PASS B.4 | fokus na nagłówku nowego ekranu
+PASS B.5 | Enter na przycisku otwiera dialog
+PASS B.6 | Escape zamyka dialog
+PASS B.7 | dialog potwierdzenia z klawiatury
+INFO B.8 | fokus startuje na: "Zostań zalogowany"
+PASS B.8 | fokus w dialogu zaczyna na drodze wyjścia
+## C. kliknięcia bez skutku: każdy przycisk i link z uwagi na ekrany
+PASS C.1 | link „Zaloguj się” w nagłówku (s04) → s02
+PASS C.2 | link „Załóż konto” (s02) → s01
+PASS C.3 | nagłówek s01 „Zaloguj się” → s02
+PASS C.4 | przycisk w nagłówku s02 waliduje (jak formularz)
+PASS C.5 | „Nie pamiętasz hasła?” → dialog Poza prototypem
+PASS C.6 | „Szukam przeciwnika” → dialog
+PASS C.7 | „Co to znaczy?” → dialog
+PASS C.8Lobby | nagłówek „Lobby” → dialog
+PASS C.8Historia | nagłówek „Historia” → dialog
+PASS C.9 | nagłówek „Konto” → s05
+PASS C.10 | logo „Gomoku” → s04
+PASS C.11 | Pokaż hasło odsłania pole
+PASS C.12 | komunikat po błędzie wylogowania
+PASS C.13 | „Zamknij” chowa komunikat
+## D. kontrolki scenariuszy bez wcześniejszych sprawdzeń
+PASS D.1 | +1 h zmienia zegar ("Teraz: poniedziałek, 26 października 2026 10:00." → "Teraz: poniedziałek, 26 października 2026 11:00.")
+PASS D.2 | „Wróć do 10:00” przywraca zegar
+PASS D.3 | wygaszenie sesji: widok niezalogowany
+PASS D.4 | wylogowanie w innej karcie
+PASS D.5 | ładowanie
+PASS D.6 | tryb Clickable/Comment przełącza się
+PASS D.7 | Show hotspots
+PASS D.8 | Presentation wyłącza tryb jednego ekranu
+PASS D.9 | Threads otwiera panel (powtórzone osobno: pierwszy przebieg zamknął panel, bo tryb Comment otwiera go sam)
+DONE

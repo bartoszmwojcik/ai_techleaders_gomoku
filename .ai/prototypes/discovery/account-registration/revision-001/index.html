@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gomoku: rejestracja konta (prototyp discovery)</title>
+<style>
+  :root { --bg:#f4f4f4; --fg:#1a1a1a; --muted:#555; --line:#8a8a8a; --soft:#e4e4e4; --panel:#fff; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, sans-serif; background:var(--bg); color:var(--fg); line-height:1.45; }
+  a { color:inherit; }
+  :focus-visible { outline: 3px solid #000; outline-offset: 2px; }
+  header.site { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--line); background:var(--panel); }
+  header.site .brand { font-weight:700; font-size:1.25rem; text-decoration:none; }
+  header.site nav { display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+  .banner-proto { margin:0; padding:6px 16px; font-size:.85rem; background:var(--soft); border-bottom:1px solid var(--line); }
+  main { max-width: 36rem; margin: 0 auto; padding: 24px 16px 32px; }
+  main > section { display:none; }
+  main > section.active { display:block; }
+  h1 { font-size:1.6rem; margin:0 0 16px; }
+  h2 { font-size:1.1rem; margin:24px 0 8px; }
+  form { display:flex; flex-direction:column; gap:16px; }
+  label { display:block; font-weight:600; margin-bottom:4px; }
+  .hint { font-weight:400; color:var(--muted); font-size:.9rem; margin:2px 0 4px; }
+  input[type=text], input[type=email], input[type=password], select { width:100%; min-height:44px; padding:8px 10px; border:2px solid var(--line); border-radius:4px; font:inherit; background:#fff; }
+  input[aria-invalid=true] { border-color:#000; border-style:dashed; }
+  .field-error { color:#000; font-weight:600; margin:4px 0 0; }
+  .field-error::before { content:"Błąd: "; }
+  .row { display:flex; gap:8px; }
+  .row input { flex:1; }
+  button, .btn { min-height:44px; padding:8px 16px; border:2px solid #000; border-radius:4px; background:#000; color:#fff; font:inherit; font-weight:700; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
+  button.secondary, .btn.secondary { background:#fff; color:#000; }
+  button[disabled], button[aria-disabled=true] { background:#ddd; color:#444; border-color:#888; cursor:not-allowed; }
+  .alert { border:2px solid #000; padding:12px 16px; margin:0 0 16px; background:#fff; border-radius:4px; }
+  .alert strong { display:block; }
+  .alert.info { border-style:solid; }
+  .alert.warn { border-style:dashed; }
+  .alert.ok::before { content:"Gotowe. "; font-weight:700; }
+  .alert.err::before { content:"Błąd. "; font-weight:700; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:16px; margin-bottom:16px; }
+  .excluded { border:2px dotted var(--line); padding:12px 16px; background:#fff; }
+  .mail { background:#fff; border:1px solid var(--line); padding:16px; border-radius:4px; }
+  .mail dl { margin:0 0 12px; display:grid; grid-template-columns: max-content 1fr; gap:4px 12px; }
+  .mail dt { color:var(--muted); }
+  .mail dd { margin:0; }
+  ul.plain { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px; }
+  .board { width:min(100%, 18rem); aspect-ratio:1; border:2px solid #000; background:
+     linear-gradient(#999 1px, transparent 1px) 0 0/ 20% 20%, linear-gradient(90deg,#999 1px, transparent 1px) 0 0/20% 20%, #fff; }
+  .actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .reason { color:var(--muted); font-size:.9rem; margin:4px 0 0; }
+  aside.test { border-top:3px double var(--line); background:#fff; padding:16px; }
+  aside.test .inner { max-width:36rem; margin:0 auto; display:flex; flex-direction:column; gap:12px; }
+  aside.test fieldset { border:1px solid var(--line); padding:8px 12px; margin:0; }
+  aside.test legend { font-weight:700; padding:0 4px; }
+  aside.test label { font-weight:400; display:flex; gap:8px; align-items:center; margin:4px 0; }
+  aside.test input[type=checkbox] { width:20px; height:20px; }
+  aside.test select { min-height:36px; }
+  .vh { position:absolute; left:-9999px; }
+</style>
+</head>
+<body>
+<p class="banner-proto">Discovery prototype. Dane symulowane. Teraz w demo: <time datetime="2026-10-26T10:00">poniedziałek 2026-10-26 10:00</time>.</p>
+<header class="site" id="site-header"></header>
+<main id="app" tabindex="-1">
+
+<!-- s01 Rejestracja -->
+<section id="register" data-screen="s01" aria-labelledby="register-h"></section>
+<!-- s04 Strona główna -->
+<section id="home" data-screen="s04" aria-labelledby="home-h"></section>
+<!-- s06 Skrzynka i wiadomość -->
+<section id="mail" data-screen="s06" aria-labelledby="mail-h"></section>
+<!-- s03 Potwierdzenie e-maila -->
+<section id="verify" data-screen="s03" aria-labelledby="verify-h"></section>
+<!-- poza prototypem -->
+<section id="outside" data-screen="outside" aria-labelledby="outside-h"></section>
+<!-- nieznany fragment -->
+<section id="unknown" data-screen="unknown" aria-labelledby="unknown-h"></section>
+
+</main>
+
+<aside class="test" aria-labelledby="test-h" id="test-panel">
+  <div class="inner">
+    <h2 id="test-h">Test state (kontrolki prototypu, nie funkcje produktu)</h2>
+    <p class="reason">Zajęte w demo: e-mail <code>marek@example.com</code>, nazwa <code>Marek_Z</code>. Hasło demo: <code>drewniana-plansza-2026</code>.</p>
+    <fieldset>
+      <legend>Dostawca poczty (P02, P12)</legend>
+      <label for="t-mail">Wysyłka wiadomości</label>
+      <select id="t-mail">
+        <option value="ok">Działa</option>
+        <option value="fail">Awaria (502)</option>
+        <option value="quota">Dzienny limit wyczerpany (503)</option>
+        <option value="none">Brak dostawcy (rejestracja niedostępna)</option>
+      </select>
+    </fieldset>
+    <fieldset>
+      <legend>Błędy żądania rejestracji (P03, P04, P05)</legend>
+      <label for="t-limit"><input type="checkbox" id="t-limit"> Limit prób (429)</label>
+      <label for="t-500"><input type="checkbox" id="t-500"> Błąd serwera (500)</label>
+      <label for="t-net"><input type="checkbox" id="t-net"> Brak sieci</label>
+    </fieldset>
+    <fieldset>
+      <legend>Link z wiadomości i sesja (P01, P07, P08, P10)</legend>
+      <label for="t-link">Link w wiadomości</label>
+      <select id="t-link">
+        <option value="auto">Według stanu</option>
+        <option value="expired">Wygasły (po 24 h)</option>
+        <option value="used">Już użyty</option>
+        <option value="none">Bez tokenu</option>
+      </select>
+      <label for="t-session">Sesja na tym urządzeniu</label>
+      <select id="t-session">
+        <option value="user">Zalogowany jako nowe konto</option>
+        <option value="none">Niezalogowany (np. telefon)</option>
+        <option value="other">Zalogowany na inne konto (Marek_Z)</option>
+      </select>
+      <label for="t-elsewhere"><input type="checkbox" id="t-elsewhere"> E-mail potwierdzony w innej karcie (409)</label>
+      <label for="t-expired"><input type="checkbox" id="t-expired"> Sesja wygasła przy ponownym wysłaniu (401)</label>
+    </fieldset>
+    <div class="actions"><button type="button" class="secondary" id="reset">Reset symulacji</button><span id="reset-status" role="status"></span></div>
+  </div>
+</aside>
+
+<script>
+(function () {
+  "use strict";
+  var NOW = "poniedziałek 2026-10-26 10:00";
+  var TAKEN_EMAIL = "marek@example.com";
+  var TAKEN_NAME = "Marek_Z";
+  var RESERVED = ["usunietygracz","admin","administrator","moderator","system","gomoku","support"];
+  var $ = function (id) { return document.getElementById(id); };
+
+  function fresh() {
+    return { user: null, mails: [], resendCount: 0, regAttempts: 0, banner: "idle", bannerNote: "",
+             regState: "idle", regValues: { email: "", name: "" }, regErrors: null, regGeneral: null,
+             verify: { phase: "before", mailId: null, resend: "idle", resendNote: "" } };
+  }
+  var S = fresh();
+
+  /* ---------- helpers ---------- */
+  function h(tag, attrs) {
+    var el = document.createElement(tag);
+    var a = attrs || {};
+    Object.keys(a).forEach(function (k) {
+      if (k === "text") el.textContent = a[k];
+      else if (k === "class") el.className = a[k];
+      else if (k.indexOf("on") === 0) el.addEventListener(k.slice(2), a[k]);
+      else if (a[k] === true) el.setAttribute(k, "");
+      else if (a[k] !== false && a[k] != null) el.setAttribute(k, a[k]);
+    });
+    for (var i = 2; i < arguments.length; i++) {
+      var c = arguments[i];
+      if (c == null || c === false) continue;
+      el.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+    }
+    return el;
+  }
+  function alertBox(kind, role, title, body, extra) {
+    var box = h("div", { class: "alert " + kind, role: role });
+    if (title) box.appendChild(h("strong", { text: title }));
+    if (body) box.appendChild(document.createTextNode(body));
+    if (extra) box.appendChild(extra);
+    return box;
+  }
+  function norm(n) {
+    return n.toLowerCase().replace(/ł/g, "l").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[_-]/g, "");
+  }
+  function ctl(id) { return $(id); }
+  function provider() { return ctl("t-mail").value; }
+  function session() { return ctl("t-session").value; }
+  function currentUser() {
+    if (session() === "other") return { name: TAKEN_NAME, verified: true, other: true };
+    if (session() === "user" && S.user) return S.user;
+    return null;
+  }
+  function go(hash) { if (location.hash === hash) render(); else location.hash = hash; }
+
+  /* ---------- header ---------- */
+  function renderHeader() {
+    var hd = $("site-header"); hd.textContent = "";
+    hd.appendChild(h("a", { class: "brand", href: "#/home", text: "Gomoku" }));
+    var nav = h("nav", { "aria-label": "Główna nawigacja" });
+    var u = currentUser();
+    if (!u) {
+      nav.appendChild(h("a", { class: "btn", href: "#/outside?to=login", text: "Zaloguj się" }));
+    } else {
+      if (u.verified) {
+        nav.appendChild(h("a", { href: "#/outside?to=lobby", text: "Lobby" }));
+        nav.appendChild(h("a", { href: "#/outside?to=history", text: "Historia" }));
+      }
+      nav.appendChild(h("span", { "data-testid": "who", text: "Zalogowano jako " + u.name }));
+    }
+    hd.appendChild(nav);
+  }
+
+  /* ---------- s01 register ---------- */
+  function fieldBlock(id, label, hint, error, input) {
+    var wrap = h("div");
+    wrap.appendChild(h("label", { for: id, text: label }));
+    if (hint) wrap.appendChild(h("p", { class: "hint", id: id + "-hint", text: hint }));
+    if (error) input.setAttribute("aria-invalid", "true");
+    var desc = [hint ? id + "-hint" : null, error ? id + "-err" : null].filter(Boolean).join(" ");
+    if (desc) input.setAttribute("aria-describedby", desc);
+    wrap.appendChild(input);
+    if (error) wrap.appendChild(h("p", { class: "field-error", id: id + "-err", text: error }));
+    return wrap;
+  }
+  function renderRegister() {
+    var sec = $("register");
+    var old = sec.querySelector("form");
+    if (old && S.regState !== "sending") {
+      S.regValues = { email: old.email.value, name: old.name.value };
+      S.regPass = old.password.value;
+    }
+    sec.textContent = "";
+    sec.appendChild(h("h1", { id: "register-h", tabindex: "-1", text: "Załóż konto" }));
+    if (provider() === "none") {
+      sec.appendChild(alertBox("warn", "alert", "Rejestracja jest chwilowo niedostępna", "Nie możemy teraz wysłać wiadomości z linkiem potwierdzającym. Spróbuj później."));
+      sec.appendChild(h("p", { class: "reason", text: "Stan s01.12. Treść komunikatu jest założeniem (A-04)." }));
+      return;
+    }
+    if (S.regGeneral) sec.appendChild(S.regGeneral);
+    var er = S.regErrors || {};
+    var sending = S.regState === "sending";
+    var form = h("form", { novalidate: true, "data-testid": "register-form", onsubmit: onRegister });
+    form.appendChild(fieldBlock("f-email", "E-mail", null, er.email,
+      h("input", { id: "f-email", name: "email", type: "email", autocomplete: "email", value: S.regValues.email, required: true })));
+    form.appendChild(fieldBlock("f-name", "Nazwa gracza", "Widzą ją Twoi przeciwnicy. 3–24 znaki.", er.name,
+      h("input", { id: "f-name", name: "name", type: "text", autocomplete: "nickname", value: S.regValues.name, required: true })));
+    var pw = h("input", { id: "f-pass", name: "password", type: "password", autocomplete: "new-password", required: true, value: S.regPass || "" });
+    var pwWrap = h("div");
+    pwWrap.appendChild(h("label", { for: "f-pass", text: "Hasło" }));
+    pwWrap.appendChild(h("p", { class: "hint", id: "f-pass-hint", text: "Co najmniej 16 znaków." }));
+    pw.setAttribute("aria-describedby", "f-pass-hint" + (er.password ? " f-pass-err" : ""));
+    if (er.password) pw.setAttribute("aria-invalid", "true");
+    var toggle = h("button", { type: "button", class: "secondary", "aria-controls": "f-pass", "aria-pressed": "false", text: "Pokaż hasło",
+      onclick: function () {
+        var show = pw.type === "password";
+        pw.type = show ? "text" : "password";
+        toggle.textContent = show ? "Ukryj hasło" : "Pokaż hasło";
+        toggle.setAttribute("aria-pressed", String(show));
+      } });
+    pwWrap.appendChild(h("div", { class: "row" }, pw, toggle));
+    if (er.password) pwWrap.appendChild(h("p", { class: "field-error", id: "f-pass-err", text: er.password }));
+    form.appendChild(pwWrap);
+    var submit = h("button", { type: "submit", "data-testid": "register-submit", disabled: sending, text: sending ? "Zakładanie konta…" : "Załóż konto" });
+    form.appendChild(submit);
+    sec.appendChild(form);
+    sec.appendChild(h("p", {}, "Masz już konto? ", h("a", { href: "#/outside?to=login", text: "Zaloguj się" })));
+    if (S.regFocus) {
+      var first = S.regFocus; S.regFocus = null;
+      setTimeout(function () { var el = $(first); if (el) el.focus(); }, 0);
+    }
+  }
+  function onRegister(ev) {
+    ev.preventDefault();
+    if (S.regState === "sending") return;
+    var f = ev.target;
+    var email = f.email.value.trim().toLowerCase();
+    var name = f.name.value.trim();
+    var pass = f.password.value;
+    S.regValues = { email: f.email.value.trim(), name: name };
+    S.regState = "sending"; S.regErrors = null; S.regGeneral = null; S.regPass = "";
+    renderRegister();
+    setTimeout(function () { S.regState = "idle"; decideRegister(email, name, pass); }, 600);
+  }
+  function decideRegister(email, name, pass) {
+    S.regAttempts++;
+    if (ctl("t-net").checked) {
+      S.regGeneral = alertBox("err", "alert", "Brak połączenia", "Nie udało się połączyć z serwerem. Wpisane dane zostały zachowane, poza hasłem. Spróbuj ponownie.");
+      return renderRegister();
+    }
+    if (ctl("t-limit").checked || S.regAttempts > 5) {
+      S.regGeneral = alertBox("err", "alert", "Zbyt wiele prób", "Spróbuj ponownie za 12 min.");
+      return renderRegister();
+    }
+    if (ctl("t-500").checked) {
+      S.regGeneral = alertBox("err", "alert", null, "Nie udało się założyć konta, spróbuj ponownie.");
+      return renderRegister();
+    }
+    var errs = {};
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) errs.email = "Podaj poprawny adres e-mail.";
+    if (!/^[A-Za-z0-9_\-ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]{3,24}$/.test(name)) errs.name = "Nazwa ma 3–24 znaki: litery, cyfry, _ i -.";
+    else if (RESERVED.indexOf(norm(name)) >= 0) errs.name = "Ta nazwa jest zastrzeżona.";
+    if ([].concat(Array.from(pass)).length < 16) errs.password = "Hasło musi mieć co najmniej 16 znaków.";
+    else if (new TextEncoder().encode(pass).length > 72) errs.password = "Hasło może mieć najwyżej 72 bajty (emoji zajmują więcej niż jeden).";
+    if (Object.keys(errs).length) {
+      S.regErrors = errs;
+      S.regFocus = errs.email ? "f-email" : errs.name ? "f-name" : "f-pass";
+      return renderRegister();
+    }
+    if (email === TAKEN_EMAIL) {
+      var link = h("a", { href: "#/outside?to=login", text: "zaloguj się" });
+      S.regGeneral = alertBox("err", "alert", null, "Nie udało się założyć konta. Jeśli masz już konto, ");
+      S.regGeneral.appendChild(link); S.regGeneral.appendChild(document.createTextNode("."));
+      return renderRegister();
+    }
+    if (norm(name) === norm(TAKEN_NAME)) {
+      S.regErrors = { name: "Ta nazwa jest zajęta. Wybierz inną." };
+      S.regFocus = "f-name";
+      return renderRegister();
+    }
+    S.user = { email: email, name: name, verified: false };
+    S.mails = []; S.resendCount = 0; S.banner = "idle"; S.bannerNote = "";
+    if (provider() === "ok") deliverMail();
+    ctl("t-session").value = "user";
+    S.regValues = { email: "", name: "" };
+    go("#/home");
+  }
+  function deliverMail() {
+    S.mails.forEach(function (m) { m.invalidated = true; });
+    S.mails.push({ id: S.mails.length + 1, invalidated: false, used: false });
+  }
+
+  /* ---------- s04 home ---------- */
+  function renderHome() {
+    var sec = $("home"); sec.textContent = "";
+    var u = currentUser();
+    sec.appendChild(h("h1", { id: "home-h", tabindex: "-1", text: "Gomoku" }));
+    sec.appendChild(h("p", { text: "Gra online 1:1. Pięć w linii wygrywa. Swobodne zasady, plansza 15×15, 10 minut na gracza." }));
+    if (!u) {
+      sec.appendChild(h("div", { class: "board", role: "img", "aria-label": "Podgląd pustej planszy 15×15 (uproszczony rysunek)" }));
+      sec.appendChild(h("p", {}, h("a", { class: "btn", href: "#/register", "data-testid": "cta-register", text: "Załóż konto" })));
+      return;
+    }
+    if (u.verified && !u.other) {
+      sec.appendChild(alertBox("ok", "status", "Adres potwierdzony", "Możesz grać."));
+    }
+    if (!u.verified) sec.appendChild(renderBanner());
+    var acts = h("div", { class: "actions" });
+    var dis = !u.verified;
+    var b1 = h("button", { type: "button", "aria-disabled": dis ? "true" : "false", "aria-describedby": "why-play", text: "Utwórz zaproszenie", onclick: function () { if (!dis) go("#/outside?to=invite"); } });
+    var b2 = h("button", { type: "button", class: "secondary", "aria-disabled": dis ? "true" : "false", "aria-describedby": "why-play", text: "Szukam przeciwnika", onclick: function () { if (!dis) go("#/outside?to=lobby"); } });
+    acts.appendChild(b1); acts.appendChild(b2);
+    sec.appendChild(acts);
+    sec.appendChild(h("p", { class: "reason", id: "why-play", text: dis ? "Potwierdź e-mail, aby tworzyć partie i wchodzić do lobby." : "Akcje gry są poza tym prototypem." }));
+  }
+  function renderBanner() {
+    var u = S.user;
+    var box = h("div", { class: "alert info", role: "status", "data-testid": "verify-banner" });
+    box.appendChild(h("strong", { text: "Potwierdź e-mail, aby grać" }));
+    box.appendChild(document.createTextNode("Link wysyłamy na " + u.email + " — sprawdź też folder spam."));
+    var st = S.banner;
+    var btn = h("button", { type: "button", class: "secondary", "data-testid": "resend", onclick: onResend,
+      disabled: st === "sending" || st === "limited", text: st === "sending" ? "Wysyłanie…" : "Wyślij ponownie" });
+    var wrap = h("p", {}, btn);
+    box.appendChild(wrap);
+    var notes = {
+      sent: ["status", "Wysłano. Nowy link zastępuje poprzedni."],
+      limited: ["alert", "Za wiele prób. Spróbuj za 41 min."],
+      failed: ["alert", "Nie udało się wysłać wiadomości. Spróbuj później."],
+      quota: ["alert", "Wysyłka wiadomości jest chwilowo niedostępna. Spróbuj jutro albo zagraj jako gość z zaproszenia."],
+      already: ["status", "Ten adres jest już potwierdzony. Odśwież stronę."],
+      expired: ["alert", "Sesja wygasła. Zaloguj się ponownie, aby wysłać link."]
+    };
+    if (notes[st]) {
+      var n = h("p", { role: notes[st][0], "data-testid": "banner-note", text: notes[st][1] });
+      if (st === "already") { n.appendChild(document.createTextNode(" ")); n.appendChild(h("button", { type: "button", class: "secondary", "data-testid": "refresh", text: "Odśwież stronę", onclick: function () { S.user.verified = true; S.banner = "idle"; ctl("t-elsewhere").checked = false; render(); } })); }
+      if (st === "expired") { n.appendChild(document.createTextNode(" ")); n.appendChild(h("a", { href: "#/outside?to=login", text: "Zaloguj się" })); }
+      box.appendChild(n);
+    }
+    return box;
+  }
+  function resendOutcome() {
+    if (ctl("t-expired").checked) return "expired";
+    if (ctl("t-elsewhere").checked) return "already";
+    if (S.resendCount >= 3) return "limited";
+    var p = provider();
+    if (p === "fail" || p === "none") { S.resendCount++; return "failed"; }
+    if (p === "quota") { S.resendCount++; return "quota"; }
+    S.resendCount++; deliverMail(); return "sent";
+  }
+  function onResend() {
+    if (S.banner === "sending") return;
+    S.banner = "sending"; render();
+    setTimeout(function () {
+      S.banner = resendOutcome();
+      render();
+    }, 500);
+  }
+
+  /* ---------- s06 mail ---------- */
+  function renderMail() {
+    var sec = $("mail"); sec.textContent = "";
+    sec.appendChild(h("h1", { id: "mail-h", tabindex: "-1", text: "Skrzynka demo" }));
+    sec.appendChild(h("p", { class: "reason", text: "Kontrolka prototypu: tak wyglądałaby skrzynka właściciela adresu. Nie jest ekranem produktu." }));
+    if (!S.user) { sec.appendChild(h("p", { text: "Skrzynka jest pusta. Najpierw załóż konto." })); sec.appendChild(h("a", { class: "btn", href: "#/register", text: "Przejdź do rejestracji" })); return; }
+    if (!S.mails.length) {
+      sec.appendChild(alertBox("warn", "status", "Brak wiadomości", "Wiadomość nie dotarła albo nie została wysłana (stan s06.2). Sprawdź folder spam lub użyj „Wyślij ponownie” na stronie głównej."));
+      sec.appendChild(h("a", { class: "btn secondary", href: "#/home", text: "Wróć na stronę główną" }));
+      return;
+    }
+    var list = h("ul", { class: "plain" });
+    S.mails.slice().reverse().forEach(function (m) {
+      var li = h("li");
+      li.appendChild(h("article", { class: "mail", "data-testid": "mail-" + m.id },
+        h("dl", {},
+          h("dt", { text: "Od" }), h("dd", { text: "Gomoku" }),
+          h("dt", { text: "Do" }), h("dd", { text: S.user.email }),
+          h("dt", { text: "Temat" }), h("dd", { text: "Potwierdź adres e-mail w Gomoku" })),
+        h("p", { text: "Cześć " + S.user.name + ", potwierdź swój adres e-mail, aby móc grać." }),
+        h("p", {}, h("a", { class: "btn", href: "#/verify?m=" + m.id, "data-testid": "mail-link-" + m.id, text: "Potwierdź adres e-mail" })),
+        h("p", { class: "reason", text: "Jeśli to nie Ty zakładałeś konto w Gomoku, zignoruj tę wiadomość." }),
+        m.invalidated ? h("p", { class: "reason", text: "Nowsza wiadomość zastąpiła ten link." }) : null));
+      list.appendChild(li);
+    });
+    sec.appendChild(list);
+  }
+
+  /* ---------- s03 verify ---------- */
+  function linkVariant(m) {
+    var v = ctl("t-link").value;
+    if (v !== "auto") return v;
+    if (!m) return "none";
+    if (m.used || m.invalidated) return "used";
+    return "valid";
+  }
+  function renderVerify(query) {
+    var sec = $("verify"); sec.textContent = "";
+    var id = parseInt(query.get("m") || "0", 10);
+    var m = S.mails.filter(function (x) { return x.id === id; })[0] || null;
+    var variant = linkVariant(m);
+    var V = S.verify;
+    if (S.verifyFresh) { S.verifyFresh = false; V.mailId = id; V.phase = "before"; V.resend = "idle"; }
+    sec.appendChild(h("h1", { id: "verify-h", tabindex: "-1", text: "Potwierdź adres e-mail" }));
+    var u = currentUser();
+    if (V.phase === "confirming") {
+      sec.appendChild(alertBox("info", "status", null, "Potwierdzanie…"));
+      return;
+    }
+    if (V.phase === "done") {
+      sec.appendChild(alertBox("ok", "status", "Adres potwierdzony — możesz grać", ""));
+      if (u) sec.appendChild(h("a", { class: "btn", href: "#/home", "data-testid": "continue", text: "Przejdź dalej" }));
+      else sec.appendChild(h("p", {}, "Nie jesteś zalogowany na tym urządzeniu. ", h("a", { href: "#/outside?to=login", text: "Zaloguj się" }), ", aby zagrać."));
+      return;
+    }
+    if (V.phase === "error500") { sec.appendChild(alertBox("err", "alert", null, "Nie udało się potwierdzić adresu. Spróbuj ponownie.")); sec.appendChild(h("button", { type: "button", class: "secondary", text: "Spróbuj ponownie", onclick: function () { V.phase = "before"; render(); } })); return; }
+    if (V.phase === "net") { sec.appendChild(alertBox("err", "alert", null, "Brak połączenia z serwerem. Spróbuj ponownie.")); sec.appendChild(h("button", { type: "button", class: "secondary", text: "Spróbuj ponownie", onclick: function () { V.phase = "before"; render(); } })); return; }
+    if (variant === "valid") {
+      sec.appendChild(h("p", { text: "Kliknij przycisk, aby potwierdzić adres " + (S.user ? S.user.email : "") + "." }));
+      sec.appendChild(h("button", { type: "button", "data-testid": "confirm", text: "Potwierdź e-mail", onclick: function () {
+        V.phase = "confirming"; render();
+        setTimeout(function () {
+          if (ctl("t-500").checked) { V.phase = "error500"; return render(); }
+          if (ctl("t-net").checked) { V.phase = "net"; return render(); }
+          m.used = true; S.user.verified = true; V.phase = "done"; render();
+        }, 500);
+      } }));
+      return;
+    }
+    // invalid link (expired / used / none)
+    sec.appendChild(alertBox("err", "alert", null, "Link wygasł lub został już użyty."));
+    if (u && S.user && u.verified && !u.other) {
+      sec.appendChild(h("p", { "data-testid": "already", text: "Adres jest już potwierdzony." }));
+      sec.appendChild(h("a", { class: "btn", href: "#/home", text: "Przejdź dalej" }));
+      return;
+    }
+    if (!u) {
+      sec.appendChild(h("a", { href: "#/outside?to=login", "data-testid": "login-for-link", text: "Zaloguj się, aby wysłać nowy link" }));
+      return;
+    }
+    sec.appendChild(h("button", { type: "button", class: "secondary", "data-testid": "new-link", disabled: V.resend === "sending" || V.resend === "limited", text: V.resend === "sending" ? "Wysyłanie…" : "Wyślij nowy link", onclick: function () {
+      V.resend = "sending"; render();
+      setTimeout(function () {
+        V.resend = resendOutcome();
+        render();
+      }, 500);
+    } }));
+    var msgs = {
+      sent: ["status", "Wysłano nowy link. Znajdziesz go w skrzynce demo."],
+      limited: ["alert", "Za wiele prób. Spróbuj za 41 min."],
+      failed: ["alert", "Nie udało się wysłać wiadomości. Spróbuj później."],
+      quota: ["alert", "Wysyłka wiadomości jest chwilowo niedostępna. Spróbuj jutro albo zagraj jako gość z zaproszenia."],
+      already: ["status", "Ten adres jest już potwierdzony."],
+      expired: ["alert", "Sesja wygasła. Zaloguj się ponownie."]
+    };
+    if (msgs[V.resend]) {
+      var p2 = h("p", { role: msgs[V.resend][0], "data-testid": "newlink-note", text: msgs[V.resend][1] });
+      sec.appendChild(p2);
+      if (V.resend === "sent") sec.appendChild(h("a", { href: "#/mail", text: "Otwórz skrzynkę demo" }));
+    }
+  }
+
+  /* ---------- outside ---------- */
+  var OUTSIDE = { login: "Logowanie", lobby: "Lobby", history: "Historia partii", invite: "Zaproszenie do partii" };
+  function renderOutside(query) {
+    var sec = $("outside"); sec.textContent = "";
+    var to = query.get("to");
+    sec.appendChild(h("h1", { id: "outside-h", tabindex: "-1", text: "Poza tym prototypem" }));
+    sec.appendChild(h("div", { class: "excluded" },
+      h("p", { text: "„" + (OUTSIDE[to] || "Ten ekran") + "” nie jest częścią przepływu rejestracji konta." }),
+      h("p", { class: "reason", text: "Ten prototyp obejmuje rejestrację, wiadomość z linkiem i potwierdzenie e-maila." })));
+    sec.appendChild(h("p", {}, h("a", { class: "btn secondary", href: "#/home", text: "Wróć na stronę główną" })));
+  }
+  function renderUnknown() {
+    var sec = $("unknown"); sec.textContent = "";
+    sec.appendChild(h("h1", { id: "unknown-h", tabindex: "-1", text: "Nie ma takiego ekranu" }));
+    sec.appendChild(h("p", { text: "Ten adres nie należy do prototypu." }));
+    sec.appendChild(h("a", { class: "btn", href: "#/register", text: "Wróć do rejestracji" }));
+  }
+
+  /* ---------- router ---------- */
+  var ROUTES = { "/register": ["register", "register-h"], "/home": ["home", "home-h"], "/mail": ["mail", "mail-h"], "/verify": ["verify", "verify-h"], "/outside": ["outside", "outside-h"] };
+  var lastKey = null;
+  function render() {
+    var raw = location.hash.replace(/^#/, "") || "/register";
+    var parts = raw.split("?");
+    var path = parts[0], query = new URLSearchParams(parts[1] || "");
+    var route = ROUTES[path];
+    if (path === "/register" && currentUser()) { location.replace("#/home"); return; }
+    renderHeader();
+    var secs = document.querySelectorAll("main > section");
+    secs.forEach(function (s) { s.classList.remove("active"); });
+    var target;
+    if (lastKey !== raw && path === "/verify") S.verifyFresh = true;
+    if (!route) { renderUnknown(); target = ["unknown", "unknown-h"]; }
+    else {
+      target = route;
+      if (path === "/register") renderRegister();
+      if (path === "/home") renderHome();
+      if (path === "/mail") renderMail();
+      if (path === "/verify") renderVerify(query);
+      if (path === "/outside") renderOutside(query);
+    }
+    $(target[0]).classList.add("active");
+    document.title = "Gomoku: " + ($(target[1]) ? $(target[1]).textContent : "prototyp") + " (prototyp)";
+    if (lastKey !== raw) {
+      lastKey = raw;
+      var hd = $(target[1]); if (hd && !S.regFocus) hd.focus();
+    }
+  }
+  window.addEventListener("hashchange", render);
+  ["t-mail","t-limit","t-500","t-net","t-link","t-session","t-elsewhere","t-expired"].forEach(function (id) {
+    $(id).addEventListener("change", render);
+  });
+  $("reset").addEventListener("click", function () {
+    S = fresh(); lastKey = null;
+    ["t-limit","t-500","t-net","t-elsewhere","t-expired"].forEach(function (id) { $(id).checked = false; });
+    $("t-mail").value = "ok"; $("t-link").value = "auto"; $("t-session").value = "user";
+    $("reset-status").textContent = "Symulacja zresetowana. Start: rejestracja.";
+    if (location.hash === "#/register") render(); else location.hash = "#/register";
+  });
+  render();
+})();
+</script>
+</body>
+</html>

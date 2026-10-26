@@ -50,3 +50,6 @@ next-env.d.ts
 .ai/qa/artifacts_*/
 .ai/qa/test-env.json
 .ai/qa/test-env.env
+
+# grey prototype copies served by Storybook (lesson 07)
+packages/ui/.storybook/public/prototypes/
