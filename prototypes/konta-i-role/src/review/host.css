@@ -1,0 +1,83 @@
+/* Host styles the review engine expects (page frame, toolbar, buttons, inputs). Tokens only. */
+.doc { min-height: 100svh; }
+.doc-toolbar {
+  position: sticky; top: 0; z-index: var(--z-index-dropdown);
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-group);
+  padding: var(--space-group) var(--space-stack);
+  background: var(--surface-raised); border-bottom: 1px solid var(--border-default);
+  font-size: var(--text-meta);
+}
+.doc-toolbar .proto-tag {
+  font-weight: var(--font-weight-strong); padding: var(--space-1) var(--space-group);
+  border: 1px solid var(--border-control); border-radius: var(--radius-base);
+}
+.screen-nav { display: flex; flex-wrap: wrap; gap: var(--space-group); }
+.screen-nav a { color: var(--text-accent); text-underline-offset: 4px; min-height: var(--target-min); display: inline-flex; align-items: center; }
+.doc-toolbar a:focus-visible, .doc-toolbar button:focus-visible, .doc-toolbar select:focus-visible, .doc-toolbar summary:focus-visible,
+.proto-back:focus-visible, .anno-panel button:focus-visible, .anno-panel textarea:focus-visible, .anno-panel input:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset);
+}
+.screen { display: block; }
+.screen-meta { padding: var(--space-stack); border-bottom: 1px solid var(--border-default); }
+.screen-meta h2 { margin: 0; font-size: var(--text-subsection); }
+.screen-meta p { margin: var(--space-1) 0 0; color: var(--text-secondary); font-size: var(--text-meta); }
+.frame { background: var(--surface-page); border: 1px solid var(--border-default); }
+.notes { padding: var(--space-stack); background: var(--surface-raised); border-top: 1px solid var(--border-default); font-size: var(--text-meta); color: var(--text-secondary); }
+.notes .note { margin: 0 0 var(--space-group); }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1);
+  min-height: var(--target-min); padding: var(--space-1) var(--space-group);
+  border: 1px solid var(--border-control); border-radius: var(--radius-base);
+  background: transparent; color: var(--text-primary); font: inherit; font-weight: var(--font-weight-strong); cursor: pointer;
+}
+.btn:hover { background: var(--surface-page); }
+.btn-primary { background: var(--action-primary-bg); border-color: var(--action-primary-bg); color: var(--action-primary-text); }
+.btn-primary:hover { background: var(--action-primary-bg-hover); }
+.btn-ghost { border-color: transparent; }
+.btn-sm { font-size: var(--text-meta); }
+.btn[disabled] { opacity: .6; cursor: not-allowed; }
+.segmented { display: inline-flex; border: 1px solid var(--border-control); border-radius: var(--radius-base); overflow: hidden; }
+.segmented button { min-height: var(--target-min); padding: var(--space-1) var(--space-group); border: 0; background: transparent; color: var(--text-primary); font: inherit; font-size: var(--text-meta); cursor: pointer; }
+.segmented button[aria-pressed="true"], .segmented button.active, .segmented button[data-active="true"] { background: var(--action-primary-bg); color: var(--action-primary-text); }
+.input, .anno-composer textarea { background: var(--surface-page); color: var(--text-primary); border: 1px solid var(--border-control); border-radius: var(--radius-base); padding: var(--space-1) var(--space-group); font: inherit; }
+.anno-panel { font-size: var(--text-meta); color: var(--text-primary); }
+.badge { display: inline-flex; padding: var(--space-1) var(--space-group); border: 1px solid var(--border-control); border-radius: var(--radius-base); font-size: var(--text-meta); }
+.toast { background: var(--surface-raised); color: var(--text-primary); border: 1px solid var(--border-control); border-radius: var(--radius-base); padding: var(--space-group) var(--space-stack); }
+.t-card-title { font-weight: var(--font-weight-strong); }
+.t-hint { color: var(--text-muted); font-size: var(--text-meta); }
+.t-overline { color: var(--text-muted); font-size: var(--text-meta); }
+.row { display: flex; gap: var(--space-group); align-items: center; }
+.anno-panel label, .anno-panel .row { color: var(--text-primary); }
+
+/* Scenario controls live in the review bar, apart from the product navigation. */
+.scenario-bar { flex-basis: 100%; }
+.scenario-bar summary { cursor: pointer; font-weight: var(--font-weight-strong); min-height: var(--target-min); display: flex; align-items: center; }
+.scenario-grid { display: grid; gap: var(--space-stack); grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); padding-bottom: var(--space-group); }
+.scenario-grid fieldset { border: 1px solid var(--border-default); border-radius: var(--radius-base); margin: 0; padding: var(--space-group); display: flex; flex-direction: column; gap: var(--space-group); }
+.scenario-grid legend { font-weight: var(--font-weight-strong); padding: 0 var(--space-1); }
+.scenario-grid label { display: flex; align-items: center; gap: var(--space-group); min-height: var(--target-min); }
+.scenario-grid select { min-height: var(--target-min); background: var(--surface-page); color: var(--text-primary); border: 1px solid var(--border-control); border-radius: var(--radius-base); padding: 0 var(--space-group); font: inherit; max-width: 100%; }
+.scenario-grid input[type="checkbox"] { width: var(--icon-size-md); height: var(--icon-size-md); }
+
+.proto-toolbar { flex-wrap: wrap; }
+.segmented button, .btn { white-space: nowrap; }
+
+/* The engine moves focus to the heading of the screen it shows (so screen readers announce it); the heading is
+   not interactive, so it gets no focus ring (review comments on s01 and s02). */
+.frame [tabindex="-1"]:focus, .frame [tabindex="-1"]:focus-visible { outline: none; }
+
+/* Preview width control: narrows the frame of every screen, to try 320 and 360 px (P13). */
+.doc[data-width] .frame { max-width: var(--preview-width); margin-inline: auto; }
+
+/* The open scenario panel scrolls inside the sticky bar, so it never covers the screen. */
+.scenario-grid { max-height: 50svh; overflow-y: auto; }
+
+/* An open scenario panel is long; the bar stops sticking so it never covers the screen under test. */
+.doc-toolbar:has(details[open]) { position: static; }
+
+/* Notes stay visible in presentation mode too: they carry the story numbers and what the simulation leaves open. */
+body.proto-focus .notes { display: block; }
+.notes .note { max-width: var(--measure-text); }
+
+/* On a phone the review bar is as tall as the screen, so it scrolls away with the page instead of sticking. */
+@media (max-width: 40rem) { .doc-toolbar { position: static; } }

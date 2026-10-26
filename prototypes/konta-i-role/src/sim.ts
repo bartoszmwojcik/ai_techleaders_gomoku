@@ -1,0 +1,381 @@
+import { useSyncExternalStore } from "react";
+
+// Simulated back end of the prototype: accounts, session, mailbox and the outcomes the scenario controls
+// can force. Everything is in memory and fictitious; nothing here talks to a server (map section 3).
+
+export const DEMO_PASSWORD = "drewniana-plansza-2026";
+/** Fixed "now" of the demo: Monday 2026-10-26 10:00, Europe/Warsaw (CET, +01:00). */
+export const NOW_BASE = Date.parse("2026-10-26T10:00:00+01:00");
+const HOUR = 3_600_000;
+const DAY = 24 * HOUR;
+export const LINK_TTL = DAY;
+export const SESSION_TTL = 30 * DAY;
+export const UNCONFIRMED_TTL = 7 * DAY;
+
+export type Account = {
+  email: string;
+  name: string;
+  password: string;
+  verified: boolean;
+  /** Offset from NOW_BASE in ms (negative = in the past). */
+  createdAt: number;
+  activeGame: boolean;
+};
+
+export type Token = { id: number; email: string; issuedAt: number; usedAt: number | null; invalidated: boolean };
+export type Mail = { id: number; tokenId: number; to: string; name: string; sentAt: number };
+
+export type Provider = "ok" | "fail" | "quota" | "none";
+export type LinkOverride = "auto" | "none";
+
+export type Scenario = {
+  provider: Provider;
+  forceLimit: boolean;
+  forceServerError: boolean;
+  forceNetworkError: boolean;
+  linkOverride: LinkOverride;
+  /** The e-mail was confirmed in another tab: "Wyślij ponownie" answers 409 (s04.9). */
+  verifiedElsewhere: boolean;
+  /** The session expired while the player was on the page: "Wyślij ponownie" answers 401 (s04.10). */
+  sessionExpiredOnResend: boolean;
+  /** Another tab already signed the player in: the next form answers 409 ALREADY_AUTHENTICATED (s01.9, s02.12). */
+  alreadyAuthenticated: boolean;
+  /** The database is down: the session cannot be read, so the page shows the signed-out view (s04.11, s05.8). */
+  dbDown: boolean;
+  /** Home and account show a skeleton instead of content (s04.12, s05.9). */
+  loadingPages: boolean;
+};
+
+export type BannerState = "idle" | "sending" | "sent" | "limited" | "failed";
+export type BannerOutcome = "none" | "sent" | "limited" | "failed" | "quota" | "already" | "expired";
+
+export type Sim = {
+  /** Time moved forward by scenario controls (ms). */
+  clock: number;
+  accounts: Record<string, Account>;
+  session: { email: string; at: number } | null;
+  /** A guest of a running game (BR-22), without an account (A6). */
+  guestGame: boolean;
+  mails: Mail[];
+  tokens: Token[];
+  /** The token of the link last opened from the mailbox. */
+  openedToken: number | null;
+  scenario: Scenario;
+  regAttempts: number;
+  resendCount: number;
+  banner: { state: BannerState; outcome: BannerOutcome };
+  /** Name of a place outside the prototype that the player tried to open. */
+  outside: string | null;
+  /** Where to go after login or verification (G8), already sanitized. */
+  next: string | null;
+  seq: number;
+  /** Bumped by Reset so screens drop their typed values. */
+  epoch: number;
+  /** A one-off message for the home page, e.g. after a logout the server did not confirm. */
+  notice: string | null;
+  /** Width of the preview frame in px, 0 = full. */
+  width: number;
+};
+
+const seedAccounts = (): Record<string, Account> => ({
+  "ala@example.com": { email: "ala@example.com", name: "Ala_7", password: DEMO_PASSWORD, verified: true, createdAt: -14 * DAY, activeGame: false },
+  "marek@example.com": { email: "marek@example.com", name: "Marek_Z", password: DEMO_PASSWORD, verified: true, createdAt: -30 * DAY, activeGame: true },
+  "ewa@example.com": { email: "ewa@example.com", name: "Ewa_B", password: DEMO_PASSWORD, verified: false, createdAt: -6 * DAY, activeGame: false },
+});
+
+export const defaultScenario = (): Scenario => ({
+  provider: "ok",
+  forceLimit: false,
+  forceServerError: false,
+  forceNetworkError: false,
+  linkOverride: "auto",
+  verifiedElsewhere: false,
+  sessionExpiredOnResend: false,
+  alreadyAuthenticated: false,
+  dbDown: false,
+  loadingPages: false,
+});
+
+const fresh = (): Sim => ({
+  clock: 0,
+  accounts: seedAccounts(),
+  session: null,
+  guestGame: false,
+  mails: [],
+  tokens: [],
+  openedToken: null,
+  scenario: defaultScenario(),
+  regAttempts: 0,
+  resendCount: 0,
+  banner: { state: "idle", outcome: "none" },
+  outside: null,
+  next: null,
+  seq: 1,
+  epoch: 0,
+  notice: null,
+  width: 0,
+});
+
+let state: Sim = fresh();
+const listeners = new Set<() => void>();
+const emit = () => listeners.forEach((listener) => listener());
+const set = (patch: Partial<Sim> | ((current: Sim) => Partial<Sim>)) => {
+  state = { ...state, ...(typeof patch === "function" ? patch(state) : patch) };
+  emit();
+};
+
+export function useSim(): Sim {
+  return useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    () => state,
+  );
+}
+
+export const getSim = () => state;
+export const nowMs = (sim: Sim = state) => NOW_BASE + sim.clock;
+
+const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+/** Latency of the simulated server; `?fast` in the address removes it (tests). */
+const LATENCY = typeof location !== "undefined" && location.search.includes("fast") ? 0 : 600;
+
+export function formatNow(sim: Sim): string {
+  return new Intl.DateTimeFormat("pl-PL", { dateStyle: "full", timeStyle: "short", timeZone: "Europe/Warsaw" }).format(nowMs(sim));
+}
+
+/** The signed-in account, or null when there is no session or it expired (G5: 30 days). */
+export function viewer(sim: Sim): Account | null {
+  if (!sim.session || sim.scenario.dbDown) return null;
+  if (nowMs(sim) - sim.session.at >= SESSION_TTL) return null;
+  const account = sim.accounts[sim.session.email];
+  if (!account) return null;
+  return account;
+}
+
+/** Unconfirmed accounts older than 7 days are gone (email-verification Q14). */
+export function accountExists(sim: Sim, email: string): Account | null {
+  const account = sim.accounts[email];
+  if (!account) return null;
+  if (!account.verified && nowMs(sim) - (NOW_BASE + account.createdAt) >= UNCONFIRMED_TTL) return null;
+  return account;
+}
+
+// ---- validation (registration-spec G3, G4, G6) -----------------------------------------------------
+
+const RESERVED = ["usunietygracz", "admin", "administrator", "moderator", "system", "gomoku", "support"];
+export const normalizeName = (name: string) =>
+  name.toLowerCase().replace(/ł/g, "l").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[_-]/g, "");
+
+export type RegisterFields = { email: string; name: string; password: string };
+export type RegisterErrors = Partial<Record<keyof RegisterFields, string>>;
+
+export function validateRegister({ email, name, password }: RegisterFields): RegisterErrors {
+  const errors: RegisterErrors = {};
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) errors.email = "Podaj poprawny adres e-mail.";
+  if (!/^[A-Za-z0-9_\-ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]{3,24}$/.test(name)) errors.name = "Nazwa ma 3–24 znaki: litery, cyfry, _ i -.";
+  else if (RESERVED.includes(normalizeName(name))) errors.name = "Ta nazwa jest zastrzeżona. Wybierz inną.";
+  if (Array.from(password).length < 16) errors.password = "Hasło musi mieć co najmniej 16 znaków.";
+  else if (new TextEncoder().encode(password).length > 72) errors.password = "Hasło może mieć najwyżej 72 bajty (emoji zajmują więcej niż jeden).";
+  return errors;
+}
+
+export type RegisterResult =
+  | { kind: "ok" }
+  | { kind: "validation"; errors: RegisterErrors }
+  | { kind: "conflict-name" }
+  | { kind: "conflict-email" }
+  | { kind: "limit" }
+  | { kind: "server" }
+  | { kind: "network" }
+  | { kind: "already" };
+
+/** Safe return path (G8): relative, starts with a single slash, no scheme. In the prototype only screen ids count. */
+export const safeNext = (value: string | null | undefined) => (value && /^s0[1-6]$/.test(value) ? value : null);
+
+function issueMail(email: string, name: string) {
+  const sim = state;
+  const token: Token = { id: sim.seq, email, issuedAt: nowMs(sim), usedAt: null, invalidated: false };
+  const mail: Mail = { id: sim.seq + 1, tokenId: token.id, to: email, name, sentAt: nowMs(sim) };
+  set({
+    // A new link invalidates the older ones, but only after a successful send (email-verification Q7).
+    tokens: [...sim.tokens.map((t) => (t.email === email ? { ...t, invalidated: true } : t)), token],
+    mails: [...sim.mails, mail],
+    seq: sim.seq + 2,
+  });
+}
+
+export async function register(fields: RegisterFields): Promise<RegisterResult> {
+  await wait(LATENCY);
+  const sim = state;
+  const email = fields.email.trim().toLowerCase();
+  const name = fields.name.trim();
+  set({ regAttempts: sim.regAttempts + 1 });
+  if (sim.scenario.forceNetworkError) return { kind: "network" };
+  if (sim.scenario.alreadyAuthenticated) return { kind: "already" };
+  if (sim.scenario.forceLimit || sim.regAttempts + 1 > 5) return { kind: "limit" };
+  if (sim.scenario.forceServerError) return { kind: "server" };
+  const errors = validateRegister({ ...fields, email, name });
+  if (Object.keys(errors).length) return { kind: "validation", errors };
+  if (accountExists(sim, email)) return { kind: "conflict-email" };
+  const key = normalizeName(name);
+  if (Object.values(sim.accounts).some((a) => accountExists(sim, a.email) && normalizeName(a.name) === key)) return { kind: "conflict-name" };
+  const account: Account = { email, name, password: fields.password, verified: false, createdAt: sim.clock, activeGame: false };
+  set({
+    accounts: { ...sim.accounts, [email]: account },
+    session: { email, at: nowMs(sim) },
+    banner: { state: "idle", outcome: "none" },
+    resendCount: 0,
+  });
+  // Account and session exist even when the mail provider fails (email-verification Q6, assumption A-01).
+  if (state.scenario.provider === "ok") issueMail(email, name);
+  return { kind: "ok" };
+}
+
+export type LoginResult =
+  | { kind: "ok"; verified: boolean }
+  | { kind: "invalid" }
+  | { kind: "validation"; errors: { email?: string; password?: string } }
+  | { kind: "limit" }
+  | { kind: "server" }
+  | { kind: "network" }
+  | { kind: "already" };
+
+export async function login(emailRaw: string, password: string): Promise<LoginResult> {
+  await wait(LATENCY);
+  const sim = state;
+  const email = emailRaw.trim().toLowerCase();
+  if (sim.scenario.forceNetworkError) return { kind: "network" };
+  if (sim.scenario.alreadyAuthenticated) return { kind: "already" };
+  if (sim.scenario.forceLimit) return { kind: "limit" };
+  if (sim.scenario.forceServerError) return { kind: "server" };
+  const errors: { email?: string; password?: string } = {};
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = "Podaj poprawny adres e-mail.";
+  if (!password) errors.password = "Wpisz hasło.";
+  if (Object.keys(errors).length) return { kind: "validation", errors };
+  const account = accountExists(sim, email);
+  if (!account || account.password !== password) return { kind: "invalid" };
+  set({ session: { email, at: nowMs(sim) }, banner: { state: "idle", outcome: "none" }, resendCount: 0 });
+  return { kind: "ok", verified: account.verified };
+}
+
+/** The session in this browser always ends; a server error only means the server did not confirm it (login-logout API). */
+export async function logout(): Promise<"ok" | "server"> {
+  await wait(LATENCY);
+  const failed = state.scenario.forceServerError;
+  set({
+    session: null,
+    banner: { state: "idle", outcome: "none" },
+    notice: failed ? "Wylogowano w tej przeglądarce, ale serwer nie potwierdził zakończenia sesji." : null,
+  });
+  return failed ? "server" : "ok";
+}
+
+/** "Odśwież stronę" after a 409: the other tab's session (Ala_7) becomes visible here. */
+export function adoptOtherTabSession() {
+  const sim = state;
+  set({ session: { email: "ala@example.com", at: nowMs(sim) }, scenario: { ...sim.scenario, alreadyAuthenticated: false } });
+}
+
+export const clearNotice = () => set({ notice: null });
+export const expireSession = () => set((s) => (s.session ? { session: { ...s.session, at: nowMs(s) - SESSION_TTL - HOUR } } : {}));
+export const setClock = (ms: number) => set({ clock: ms });
+export const setWidth = (width: number) => set({ width });
+
+/** Switches the demo account without a form (scenario control): "A0".."A6". */
+export function switchAccount(code: string) {
+  const sim = state;
+  const email = { A1: "ala@example.com", A3: "marek@example.com", A5: "ewa@example.com", A2: "kuba@example.com", A4: "kuba@example.com" }[code];
+  if (code === "A0" || code === "A6") {
+    set({ session: null, guestGame: code === "A6", banner: { state: "idle", outcome: "none" } });
+    return;
+  }
+  if (!email) return;
+  let accounts = sim.accounts;
+  if (!accounts[email] && (code === "A2" || code === "A4")) {
+    accounts = { ...accounts, [email]: { email, name: "Kuba_P", password: DEMO_PASSWORD, verified: false, createdAt: -5 * 60_000, activeGame: false } };
+    set({ accounts });
+    issueMail(email, "Kuba_P");
+  }
+  set({ session: { email, at: nowMs(state) }, guestGame: code === "A4", banner: { state: "idle", outcome: "none" } });
+}
+
+// ---- e-mail confirmation (email-verification) -------------------------------------------------------
+
+export type LinkStatus = "valid" | "used" | "expired" | "none";
+
+export function linkStatus(sim: Sim, tokenId: number | null): LinkStatus {
+  if (sim.scenario.linkOverride === "none" || tokenId === null) return "none";
+  const token = sim.tokens.find((t) => t.id === tokenId);
+  if (!token) return "none";
+  if (token.usedAt !== null || token.invalidated) return "used";
+  if (nowMs(sim) - token.issuedAt >= LINK_TTL) return "expired";
+  return "valid";
+}
+
+export type ConfirmResult = { kind: "ok" } | { kind: "invalid" } | { kind: "server" } | { kind: "network" };
+
+export async function confirmEmail(tokenId: number | null): Promise<ConfirmResult> {
+  await wait(LATENCY);
+  const sim = state;
+  if (sim.scenario.forceNetworkError) return { kind: "network" };
+  if (sim.scenario.forceServerError) return { kind: "server" };
+  if (linkStatus(sim, tokenId) !== "valid") return { kind: "invalid" };
+  const token = sim.tokens.find((t) => t.id === tokenId)!;
+  const account = sim.accounts[token.email];
+  if (!account) return { kind: "invalid" };
+  set({
+    tokens: sim.tokens.map((t) => (t.id === token.id ? { ...t, usedAt: nowMs(sim) } : t)),
+    accounts: { ...sim.accounts, [account.email]: { ...account, verified: true } },
+  });
+  return { kind: "ok" };
+}
+
+export type ResendOutcome = Exclude<BannerOutcome, "none">;
+
+/** One "Wyślij ponownie": 3 per hour per account (email-verification Q4). Returns what the page should show. */
+export async function resend(): Promise<ResendOutcome> {
+  await wait(LATENCY);
+  const sim = state;
+  const account = viewer(sim);
+  if (sim.scenario.sessionExpiredOnResend || !account) return "expired";
+  if (sim.scenario.verifiedElsewhere) return "already";
+  if (sim.resendCount >= 3) return "limited";
+  set({ resendCount: sim.resendCount + 1 });
+  const provider = sim.scenario.provider;
+  if (provider === "fail" || provider === "none") return "failed";
+  if (provider === "quota") return "quota";
+  issueMail(account.email, account.name);
+  return "sent";
+}
+
+export function setBanner(bannerState: BannerState, outcome: BannerOutcome = "none") {
+  set({ banner: { state: bannerState, outcome } });
+}
+
+/** The confirmation happened elsewhere: the page learns it after a refresh. */
+export function applyVerifiedElsewhere() {
+  const sim = state;
+  const account = viewer(sim);
+  if (!account) return;
+  set({
+    accounts: { ...sim.accounts, [account.email]: { ...account, verified: true } },
+    scenario: { ...sim.scenario, verifiedElsewhere: false },
+    banner: { state: "idle", outcome: "none" },
+  });
+}
+
+export const openToken = (id: number | null) => set({ openedToken: id });
+export const showOutside = (name: string | null) => set({ outside: name });
+export const setNext = (next: string | null) => set({ next });
+export const patchScenario = (patch: Partial<Scenario>) => set((s) => ({ scenario: { ...s.scenario, ...patch } }));
+export const advanceClock = (ms: number) => set((s) => ({ clock: s.clock + ms }));
+export const resetSim = () => {
+  state = { ...fresh(), epoch: state.epoch + 1 };
+  emit();
+};
+export const clockSteps = { hour: HOUR, day: DAY };
+
+/** The mailbox of the demo: messages sent to the address of the last registered or selected account. */
+export const mailboxFor = (sim: Sim) => [...sim.mails].reverse();

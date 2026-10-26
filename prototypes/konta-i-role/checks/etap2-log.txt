@@ -1,0 +1,96 @@
+## s01
+PASS s01.2 | puste pola: błędy
+PASS s01.3 | nazwa zajęta przy polu
+PASS s01.3b | e-mail zostaje po błędzie
+PASS s01.3c | nazwa podobna (normalizacja)
+PASS s01.4 | zajęty e-mail: jednolity komunikat
+PASS s01.4b | komunikat nie wskazuje pola
+PASS s01.2b | zastrzeżona
+PASS s01.2c | hasło za krótkie
+PASS s01.6 | limit prób
+PASS s01.7 | błąd serwera
+PASS s01.8 | brak sieci
+PASS s01.8b | e-mail zachowany, hasło wyczyszczone
+PASS s01.9 | już zalogowany (409)
+PASS s01.9b | po odświeżeniu strona główna
+PASS s01.9c | zalogowany jako Ala_7
+PASS s01.11 | zalogowany na s01 trafia na s04
+PASS s01.12 | rejestracja niedostępna
+PASS s01.13 | gość z aktywną partią
+## s02
+PASS s02.3 | błędne dane
+PASS s02.3b | nieznany e-mail: ta sama treść
+PASS s02.4 | puste pola
+PASS s02.6 | limit
+PASS s02.7 | serwer
+PASS s02.8 | sieć
+PASS s02.12 | 409
+PASS s02.2 | s05 bez sesji prowadzi na s02
+PASS s02.9 | po logowaniu wraca na s05 (next)
+PASS s02.9b | konto Ala
+PASS s02.10 | zalogowany na s02 trafia dalej
+PASS s02.13 | gość z aktywną partią nie może się logować
+PASS s02.x1 | Ewa przed +7 dni zalogowana
+PASS s02.x2 | konto Ewy istnieje
+PASS s02.3c | po +7 dni konto niepotwierdzone usunięte: ta sama porażka
+PASS s02.11a | (info)
+PASS s02.11 | po +31 dniach sesja wygasła: widok niezalogowany
+## s03/s04/s06
+PASS s04.2a | po rejestracji s04
+PASS s04.2 | baner
+PASS s04.2b | brak Lobby w nagłówku niepotwierdzonego
+PASS s04.2c | akcje zablokowane z powodem
+PASS s06.1 | wiadomość w skrzynce
+PASS s03.1a | link prowadzi na s03
+PASS s03.1 | przed kliknięciem
+PASS s03.1b | nie ujawnia adresu
+PASS s03.4 | sukces zalogowany
+PASS s04.3 | potwierdzony: Lobby w nagłówku
+PASS s04.3b | baner znika
+PASS s03.5a | użyty link: komunikat
+PASS s03.8 | potwierdzony zalogowany: już potwierdzony
+PASS s03.5 | wygasły (24 h)
+PASS s03.5b | zalogowany: Wyślij nowy link
+PASS s03.9 | nowy link wysłany
+PASS s03.x | 409 na stronie błędu
+PASS s03.11 | 502
+PASS s03.12 | 503
+PASS s03.10 | limit po 3 wysyłkach
+PASS s03.7a | bez sesji: potwierdza
+PASS s03.3 | sukces niezalogowany: link do logowania
+PASS s03.6 | wygasły niezalogowany
+PASS s03.7 | brak tokenu
+PASS s03.13 | 500 przy potwierdzaniu
+PASS s03.14 | sieć przy potwierdzaniu
+PASS s03.15 | inne konto: sukces bez ujawniania
+PASS s03.15b | nie ujawnia nazwy
+## baner s04
+PASS s04.5 | wysłano
+PASS s04.6 | limit po 3
+PASS s04.7 | 502
+PASS s04.8 | 503
+PASS s04.9 | 409
+PASS s04.9b | baner znika po odświeżeniu
+PASS s04.10 | 401
+PASS s04.11 | baza niedostępna: widok niezalogowany
+PASS s04.12 | ładowanie
+PASS s05.9 | ładowanie konta
+PASS s04.3d | Ala: akcje
+PASS s04.x | Utwórz zaproszenie: dialog Poza prototypem
+PASS s04.y | Lobby: dialog
+## s05
+PASS s05.1 | potwierdzony
+PASS s05.7 | po wylogowaniu s04
+PASS s05.7b | widok niezalogowany
+PASS s05.2 | niepotwierdzony: baner + status
+PASS s05.2b | baner
+PASS s05.4 | dialog przy aktywnej partii
+PASS s05.4b | anulowanie zostaje na s05
+PASS s05.4c | potwierdzenie wylogowuje
+PASS s05.5 | 500: sesja i tak zakończona
+PASS s05.5b | komunikat
+PASS s05.8 | baza niedostępna: przekierowanie na logowanie
+PASS s05.6 | brak sesji: logowanie
+## s06
+PASS s06.2 | pusta skrzynka
+DONE
