@@ -12,6 +12,7 @@
 > Odświeżenie z 2026-10-24 dodaje decyzje o kontach i danych (D-12…D-23, BR-14…BR-25), interesariuszy,
 > benchmark, mapę ścieżki i ryzykowne założenia. Stare ID zachowane; zmienione decyzje mają wiersze
 > nadpisujące.
+> Zmiana 2026-10-26 (osąd właściciela, nie wynik badania): D-24…D-26 i BR-26…BR-28 nadpisują D-17, BR-23, BR-25 i G3 (konto aktywne od razu, potwierdzenie e-maila asynchroniczne i nieblokujące, hasło ≥ 8 znaków, reset tylko po potwierdzeniu, sprzątanie niepotwierdzonych kont bez partii po 14 dniach). Źródło: `research/decisions/2026-10-26-onboarding-simplification.md`, specyfikacja `2026-10-26-account-onboarding-simplification.md`.
 
 ## Decision summary
 
@@ -24,9 +25,9 @@ otwarte lobby graczy, którzy aktywnie oznaczyli się jako szukający gry. Parti
 do historii konta.
 
 Od 2026-10-24 MVP obejmuje też pełne zarządzanie kontem: rejestrację e-mailem i publiczną nazwą
-gracza, potwierdzenie e-maila przed pierwszą grą, reset i zmianę hasła oraz usunięcie konta z
+gracza, potwierdzenie e-maila jako osobną czynność asynchroniczną (D-24), reset i zmianę hasła oraz usunięcie konta z
 anonimizacją partii (D-13…D-18). To podnosi zakres MVP o wysyłkę poczty — koszt ograniczony do darmowego
-planu (D-20), dostawca do wyboru w #38 (Q-02). Bez poczty nowy gracz z kontem nie zagra (BR-23); zaproszony znajomy może jednak zagrać jako gość, bez konta (BR-22).
+planu (D-20), dostawca do wyboru w #38 (Q-02). Od 2026-10-26 konto jest aktywne bez potwierdzenia e-maila (D-24, BR-26), więc poczta nie blokuje gry; zaproszony znajomy może zagrać jako gość, bez konta (BR-22).
 Wysyłka ma się zmieścić w darmowym planie dostawcy (D-20), a gra ma działać także w przeglądarce
 telefonu (BR-20).
 
@@ -62,8 +63,8 @@ e-maila) da się sprawdzić dopiero pomiarem po udostępnieniu gry.
 
 ### Scenariusze
 
-- Gość zakłada konto (e-mail, nazwa gracza, hasło) i jest od razu zalogowany; do gry potrzebuje potwierdzić e-mail (BR-23, D-17). `[DOCUMENT]` `research/decisions/2026-10-24-accounts-and-data.md`
-- Zalogowany użytkownik z potwierdzonym e-mailem zaprasza konkretną, znaną sobie osobę linkiem lub kodem do partii (BR-09, BR-11); zaproszony może dołączyć jako gość, bez konta (BR-22). `[DOCUMENT]` `research/decisions/2026-10-13-reconciliation.md`
+- Gość zakłada konto (e-mail, nazwa gracza, hasło) i jest od razu zalogowany; do gry nie musi potwierdzać e-maila (BR-26, D-24); potwierdzenie jest osobną czynnością (baner). `[DOCUMENT]` `research/decisions/2026-10-24-accounts-and-data.md`
+- Zalogowany użytkownik zaprasza konkretną, znaną sobie osobę linkiem lub kodem do partii (BR-09, BR-11); zaproszony może dołączyć jako gość, bez konta (BR-22). `[DOCUMENT]` `research/decisions/2026-10-13-reconciliation.md`
 - Zalogowany użytkownik oznacza się jako „szukający gry” i pojawia się w otwartym lobby; status wygasa po 5 minutach bez wyboru (BR-12). `[DOCUMENT]` tamże
 - Zalogowany użytkownik przegląda lobby i wybiera przeciwnika spośród szukających (BR-09). `[DOCUMENT]` tamże
 - Dwóch użytkowników wykonuje naprzemienne ruchy, każdy pod własnym zegarem, i widzi stan partii oraz oba zegary (BR-04, BR-05). `[DOCUMENT]` tamże
@@ -89,7 +90,7 @@ Wpływ botów na odbiór gry: brak danych w żadnym z serwisów. „Przeciwnik A
 ### W zakresie
 
 - rejestracja (e-mail, nazwa gracza, hasło), logowanie i wylogowanie;
-- potwierdzenie e-maila linkiem, wymagane przed pierwszą grą (D-17);
+- potwierdzenie e-maila linkiem, osobna czynność asynchroniczna bez blokad gry (D-24, BR-26);
 - reset hasła przez e-mail (D-15) i zmiana hasła po zalogowaniu (D-18);
 - usunięcie konta z anonimizacją partii (D-16), niedostępne w trakcie aktywnej partii (BR-21);
 - gra w przeglądarce na komputerze i na telefonie (BR-20);
@@ -148,11 +149,14 @@ Właściciel wszystkich: Bartosz Wójcik; zmiana wymaga nowego wpisu zatwierdzon
 | BR-18 | Historia partii jest przechowywana bez limitu czasu, dopóki konto istnieje; wygasłe sesje i liczniki limitu prób są usuwane bez udziału człowieka; nie wpływają na poprawność (filtrowane przy odczycie), a mechanizm sprzątania — zgodny ze standardami („no background worker” dla poprawności) — ustali specyfikacja. | Decyzja właściciela 2026-10-24 („6a”) `[DOCUMENT]` tamże |
 | BR-20 | Gra (plansza, zegary, lobby, formularze kont) działa w przeglądarce na komputerze i na ekranie telefonu; natywne aplikacje pozostają poza zakresem (N-09). | Decyzja właściciela 2026-10-24 („C a”) `[DOCUMENT]` `research/decisions/2026-10-24-accounts-and-data.md` |
 | BR-22 | Gość (bez konta) może wyłącznie dołączyć do partii z linku/kodu zaproszenia (jeden link = jedna partia, BR-11). Nie tworzy zaproszeń, nie wchodzi do lobby, nie ma nazwy ani historii. Rozpoznaje go token jednej partii w ciasteczku tej przeglądarki, ważny do końca partii + 1 h; zmiana przeglądarki w trakcie partii oznacza utratę dostępu (zegar biegnie, BR-06/BR-07) — gość widzi to ostrzeżenie przed dołączeniem. Założenie konta po partii nie przejmuje tej partii. | Decyzja właściciela 2026-10-24 (przesłuchanie specyfikacji #19) `[DOCUMENT]` `research/decisions/2026-10-24-accounts-and-data.md` |
-| BR-23 | Zalogowany użytkownik bez potwierdzonego e-maila nie może tworzyć partii, wchodzić do lobby ani dołączać do zaproszenia jako on sam; widzi „Potwierdź e-mail, aby grać”, a przy linku zaproszenia może zagrać jako gość (BR-22). Nadpisuje BR-15. | Decyzja właściciela 2026-10-24 („5b”, „7a”, gra gościa) `[DOCUMENT]` `research/decisions/2026-10-24-accounts-and-data.md` |
+| BR-23 | ~~Zalogowany użytkownik bez potwierdzonego e-maila nie może tworzyć partii, wchodzić do lobby ani dołączać do zaproszenia jako on sam; widzi „Potwierdź e-mail, aby grać”, a przy linku zaproszenia może zagrać jako gość (BR-22). Nadpisuje BR-15.~~ **Nadpisane przez BR-26.** | Superseded 2026-10-26 |
 | BR-24 | Partie są zapisywane w historii kont uczestników. Gość nie ma historii; u zapraszającego przeciwnikiem jest „Zaproszony przez link”. Nadpisuje BR-08. | Decyzja właściciela 2026-10-24 `[DOCUMENT]` `research/decisions/2026-10-24-accounts-and-data.md` |
 | BR-21 | Usunięcie konta jest odrzucane, dopóki użytkownik ma aktywną partię; komunikat: „Najpierw dokończ albo poddaj partię”. | Decyzja właściciela 2026-10-24 („B a”) `[DOCUMENT]` tamże |
 | BR-19 | ~~Reset hasła odbywa się przez jednorazowy link wysłany na potwierdzony e-mail konta.~~ **Nadpisane przez BR-25.** | Superseded 2026-10-24 |
-| BR-25 | Reset hasła odbywa się przez jednorazowy link (ważny 1 h) wysłany na e-mail konta — także niepotwierdzony; ustawienie nowego hasła z linku potwierdza e-mail i unieważnia wszystkie sesje konta. Dzięki temu właściciel adresu odzyska konto założone na jego e-mail przez kogoś innego. Nadpisuje BR-19. | Decyzja właściciela 2026-10-24 (potwierdzenie założeń specyfikacji #35 Q1 i #34 Q9, „a”) `[DOCUMENT]` `research/decisions/2026-10-24-accounts-and-data.md` |
+| BR-25 | ~~Reset hasła odbywa się przez jednorazowy link (ważny 1 h) wysłany na e-mail konta — także niepotwierdzony; ustawienie nowego hasła z linku potwierdza e-mail i unieważnia wszystkie sesje konta. Dzięki temu właściciel adresu odzyska konto założone na jego e-mail przez kogoś innego. Nadpisuje BR-19.~~ **Nadpisane przez BR-27.** | Superseded 2026-10-26 |
+| BR-26 | Konto jest aktywne od razu po rejestracji: zalogowany użytkownik może tworzyć partie, przyjmować zaproszenia jako on sam i wchodzić do lobby bez względu na stan potwierdzenia e-maila. Potwierdzenie to osobna czynność asynchroniczna; baner (zamykalny, wraca po 7 dniach) tłumaczy powód. Zalogowany nie gra jako gość. Nadpisuje BR-23. | Decyzja właściciela 2026-10-26, osąd właściciela `[DOCUMENT]` `research/decisions/2026-10-26-onboarding-simplification.md` |
+| BR-27 | Reset hasła odbywa się przez jednorazowy link (ważny 1 h) wysłany wyłącznie na **potwierdzony** e-mail konta; dla niepotwierdzonego nic nie jest wysyłane, a odpowiedź dla klienta jest ta sama. Ustawienie nowego hasła unieważnia wszystkie sesje konta. Wraca BR-19; nadpisuje BR-25. | Decyzja właściciela 2026-10-26 `[DOCUMENT]` tamże |
+| BR-28 | Hasło ma co najmniej 8 znaków i najwyżej 72 bajty UTF-8 (nadmiar odrzucany, nie skracany); bez listy popularnych haseł i kontroli wycieków. Nadpisuje G3 ze specyfikacji rejestracji. Konta niepotwierdzone i bez żadnej partii są kasowane po 14 dniach od założenia (zastępuje Q14); konta z partią zostają. | Decyzja właściciela 2026-10-26 `[DOCUMENT]` tamże |
 
 Właściciel wszystkich reguł: Bartosz Wójcik. Zmiana reguły: nowy wiersz nadpisujący, zatwierdzony przez właściciela. Termin przeglądu: nieustalony (unknown).
 
@@ -162,11 +166,11 @@ Właściciel wszystkich reguł: Bartosz Wójcik. Zmiana reguły: nowy wiersz nad
 
 **Stan docelowy:**
 
-1. Zapraszający lub gracz lobby rejestruje się (jest zalogowany) i potwierdza e-mail linkiem (BR-14, BR-23).
+1. Zapraszający lub gracz lobby rejestruje się (jest zalogowany) i może potwierdzić e-mail linkiem, kiedy chce (BR-14, BR-26).
 2. Wybiera ścieżkę: (a) tworzy partię i wysyła link/kod zaproszenia konkretnej osobie, albo
    (b) oznacza się jako „szukający gry” i pojawia się w otwartym lobby.
 3. W ścieżce (a) zaproszony otwiera link i dołącza: jako gość bez konta (BR-22) albo — zalogowany
-   z potwierdzonym e-mailem — jako on sam. W ścieżce (b) inny zalogowany użytkownik z potwierdzonym e-mailem
+   — jako on sam. W ścieżce (b) inny zalogowany użytkownik
    przegląda lobby i wybiera gracza z listy szukających.
 4. System inicjalizuje planszę, kolejność graczy i zegary (10 minut na gracza).
 5. Gracze wykonują naprzemienne ruchy; system odrzuca ruchy niezgodne ze stanem partii lub
@@ -191,7 +195,7 @@ Właściciel wszystkich reguł: Bartosz Wójcik. Zmiana reguły: nowy wiersz nad
 - synchronizacja musi tolerować chwilową utratę połączenia bez psucia zegara ani stanu planszy;
 - należy zdefiniować zachowanie przy jednoczesnych ruchach, odświeżeniu strony i ponownym wejściu do zakończonej partii;
 - lobby „szukających” wymaga mechanizmu czasu rzeczywistego do aktualizacji listy i wygaszania statusu — nie zweryfikowano wybranej technologii (Q-01);
-- weryfikacja e-maila i reset hasła wymagają niezawodnej wysyłki poczty; jej awaria blokuje nowym graczom grę (BR-23); darmowy plan (D-20) ma limit wiadomości, którego przekroczenie zatrzyma rejestracje — dostawca nieustalony (Q-02);
+- weryfikacja e-maila i reset hasła wymagają niezawodnej wysyłki poczty; jej awaria blokuje potwierdzenie i reset hasła, nie grę (BR-26); darmowy plan (D-20) ma limit wiadomości, którego przekroczenie zatrzyma rejestracje — dostawca nieustalony (Q-02);
 - podniesiona ambicja („realny produkt”) nie jest poparta walidacją popytu — zakres może wymagać korekty, gdy pojawią się dane (A-01).
 
 ## Decyzje i ich właściciel
@@ -214,13 +218,16 @@ Właściciel wszystkich reguł: Bartosz Wójcik. Zmiana reguły: nowy wiersz nad
 | D-14 | Rejestracja nie ujawnia zajętego e-maila (BR-16). Rekomendacja agenta przyjęta. | Bartosz Wójcik | Potwierdzona 2026-10-24 `[DOCUMENT]` |
 | D-15 | Reset hasła przez e-mail jest w MVP (BR-19). Agent rekomendował odłożenie resetu; właściciel wybrał MVP. Wymaga dostawcy poczty (Q-02). | Bartosz Wójcik | Potwierdzona 2026-10-24 `[DOCUMENT]` |
 | D-16 | Usunięcie konta jest w MVP, z anonimizacją partii u przeciwników (BR-17). | Bartosz Wójcik | Potwierdzona 2026-10-24 `[DOCUMENT]` |
-| D-17 | Potwierdzenie e-maila jest wymagane przed pierwszą grą; rejestracja od razu loguje (BR-23). Agent rekomendował weryfikację dopiero przed resetem; właściciel wybrał przed grą. | Bartosz Wójcik | Potwierdzona 2026-10-24 `[DOCUMENT]` |
+| D-17 | ~~Potwierdzenie e-maila jest wymagane przed pierwszą grą; rejestracja od razu loguje (BR-23). Agent rekomendował weryfikację dopiero przed resetem; właściciel wybrał przed grą. | Bartosz Wójcik~~ **Nadpisane przez D-24.** | Bartosz Wójcik | Superseded 2026-10-26 |
 | D-18 | Zmiana hasła po zalogowaniu jest w MVP; zmiana e-maila i nazwy gracza — później. | Bartosz Wójcik | Potwierdzona 2026-10-24 `[DOCUMENT]` |
 | D-19 | Gra jest „na razie” darmowa dla graczy; właściciel płaci za hosting. | Bartosz Wójcik | Potwierdzona 2026-10-20 `[DOCUMENT]` `research/2026-10-20-stakeholders.md` |
 | D-20 | Wysyłka poczty (potwierdzenie e-maila, reset) korzysta wyłącznie z darmowego planu dostawcy, z jego limitem wiadomości; wybór dostawcy w #38. | Bartosz Wójcik | Potwierdzona 2026-10-24 („A a”) `[DOCUMENT]` `research/decisions/2026-10-24-accounts-and-data.md` |
 | D-21 | Partia zapisuje sposób powstania (`invite` / `lobby`), żeby przyszły matchmaking był nową wartością, nie przebudową. | Bartosz Wójcik | Potwierdzona 2026-10-24 („D a”) `[DOCUMENT]` tamże |
-| D-23 | Użytkownicy muszą się logować — z wyjątkiem gościa dołączającego do partii z zaproszenia (BR-22). Zaproszenia i lobby wymagają konta z potwierdzonym e-mailem (BR-23). Nadpisuje D-02. Inicjatywa właściciela; granice zaproponował agent. | Bartosz Wójcik | Potwierdzona 2026-10-24 `[DOCUMENT]` `research/decisions/2026-10-24-accounts-and-data.md` |
+| D-23 | Użytkownicy muszą się logować — z wyjątkiem gościa dołączającego do partii z zaproszenia (BR-22). Zaproszenia i lobby wymagają konta (od 2026-10-26 bez wymogu potwierdzenia: D-24, BR-26). Nadpisuje D-02. Inicjatywa właściciela; granice zaproponował agent. | Bartosz Wójcik | Potwierdzona 2026-10-24 `[DOCUMENT]` `research/decisions/2026-10-24-accounts-and-data.md` |
 | D-22 | Strona z informacją o przetwarzaniu danych powstaje przed udostępnieniem gry osobom z zewnątrz (S3); dla grona znajomych nie jest wymagana. | Bartosz Wójcik | Potwierdzona 2026-10-24 („E b”) `[DOCUMENT]` tamże |
+| D-24 | Konto jest aktywne od razu po rejestracji; potwierdzenie e-maila jest osobną czynnością asynchroniczną, bez blokad gry, z banerem z powodem (BR-26). Nadpisuje D-17. Osąd właściciela, nie wynik badania; kolejny panel syntetyczny go nie potwierdza. | Bartosz Wójcik | Potwierdzona 2026-10-26 `[DOCUMENT]` |
+| D-25 | Hasło minimum 8 znaków (BR-28). Słabsze hasła to ryzyko przyjęte przez właściciela (limity prób H1 zostają). Nadpisuje G3. | Bartosz Wójcik | Potwierdzona 2026-10-26 `[DOCUMENT]` |
+| D-26 | Reset tylko po potwierdzeniu e-maila (BR-27); niepotwierdzone konta bez partii kasowane po 14 dniach (BR-28). Przyjęte ryzyko: osoba, która zajmie cudzy adres i zagra jedną partię, utrzymuje go bezterminowo; ścieżka „To nie ja” może być późniejszą historią. Nadpisuje BR-25 i Q14. | Bartosz Wójcik | Potwierdzona 2026-10-26 `[DOCUMENT]` |
 
 Termin przeglądu decyzji: nieustalony (unknown). Zmiana decyzji: nowy wiersz nadpisujący, zatwierdzony przez właściciela.
 
@@ -230,7 +237,7 @@ Termin przeglądu decyzji: nieustalony (unknown). Zmiana decyzji: nowy wiersz na
 |---|---|---|---|---|---|---|---|---|
 | A-01 | Gracze spoza grona właściciela zechcą grać w Gomoku 1:1 online i zostawić feedback. `[ASSUMPTION]` właściciel, brak materiału | wysoka | brak; benchmark pokazuje istniejące serwisy, nie popyt na nasz | zakres „realnego produktu” (D-11) i koszty poczty (D-15, D-19) nie mają uzasadnienia poza nauką | rozmowy z graczami (pytania 1–7 z mapy ścieżki); po udostępnieniu (wymaga Q-05, Q-07) obserwacja, czy gracz spoza grona właściciela, niezaproszony przez niego, rozgrywa partię — propozycja agenta, bez progu liczbowego | Bartosz Wójcik | unknown | untested |
 | A-02 | Gracz rezygnuje, jeśli szukanie partnera nie jest szybkie; 5 minut w lobby mu odpowiada. `[ASSUMPTION]` właściciel, `research/2026-10-20-journey-current-state.md` | średnia | brak; przypuszczenie właściciela | inny czas wygaśnięcia BR-12 lub inny sposób informowania o oczekiwaniu | pytanie 5 z mapy ścieżki w rozmowach z graczami | Bartosz Wójcik | unknown | accepted untested (D-09) |
-| A-03 | Wymóg potwierdzenia e-maila przed pierwszą grą (dla kont; zaproszeni mogą grać jako goście, BR-22) nie zniechęci nowych graczy. `[ASSUMPTION]` agent, wynika z D-17 | średnia | brak danych o naszych graczach; wszystkie trzy sprawdzone serwisy pozwalają grać bez logowania lub jako gość (wiersze benchmarku w „Produkt i wyróżnik”) — to zachowanie konkurencji, nie dowód preferencji graczy | odejście nowych graczy z kontem przed pierwszą partią w lobby lub przed pierwszym zaproszeniem; rozważyć weryfikację dopiero przed resetem | po udostępnieniu: ile kont potwierdza e-mail i rozgrywa pierwszą partię (wymaga pomiaru) | Bartosz Wójcik | unknown | accepted untested (D-17) |
+| A-03 | Wymóg potwierdzenia e-maila przed pierwszą grą (dla kont; zaproszeni mogą grać jako goście, BR-22) nie zniechęci nowych graczy. `[ASSUMPTION]` agent, wynikało z D-17 (nadpisane przez D-24 w 2026-10-26: potwierdzenie przestało blokować grę; założenie dotyczy już tylko niewymuszonego kroku; osąd właściciela, nie badanie) | średnia | brak danych o naszych graczach; wszystkie trzy sprawdzone serwisy pozwalają grać bez logowania lub jako gość (wiersze benchmarku w „Produkt i wyróżnik”) — to zachowanie konkurencji, nie dowód preferencji graczy | odejście nowych graczy z kontem przed pierwszą partią w lobby lub przed pierwszym zaproszeniem; rozważyć weryfikację dopiero przed resetem | po udostępnieniu: ile kont potwierdza e-mail i rozgrywa pierwszą partię (wymaga pomiaru) | Bartosz Wójcik | unknown | accepted untested (D-17) |
 
 ## Kill criteria
 
@@ -246,7 +253,7 @@ Brak hipotez syntetycznych (nie było paneli `om-synthetic-users`).
 | ID | Pytanie | Blokuje | Kto odpowie | Status |
 |---|---|---|---|---|
 | Q-01 | Mechanizm czasu rzeczywistego (WebSocket lub inny) dla partii i lobby; synchronizacja zegara, odświeżenie, ponowne połączenie. | tak — rozgrywka i lobby (#22–#26) | zespół techniczny, spike #30 | open |
-| Q-02 | Dostawca wysyłki poczty w darmowym planie (D-20) i czy jego limit wystarczy. | tak — potwierdzenie e-maila i reset hasła (D-15, D-17); nie blokuje samej rejestracji (#19) | zespół techniczny (#38) | open — koszt rozstrzygnięty 2026-10-24 (D-20) |
+| Q-02 | Dostawca wysyłki poczty w darmowym planie (D-20) i czy jego limit wystarczy. | tak — potwierdzenie e-maila i reset hasła (D-15); nie blokuje rejestracji ani gry (D-24) | zespół techniczny (#38) | open — koszt rozstrzygnięty 2026-10-24 (D-20) |
 | Q-03 | Czy wznowienie partii po rozłączeniu działa w wybranym mechanizmie. | nie — wynika z Q-01 | zespół techniczny | open |
 | Q-04 | Potwierdzenie, że partia zapisuje sposób powstania (`invite`/`lobby`). | — | właściciel | closed 2026-10-24 → D-21 |
 | Q-05 | Kiedy i w jakiej formie informacja o przetwarzaniu danych. | — | właściciel | closed 2026-10-24 → D-22 (treść do przygotowania przed udostępnieniem S3) |
