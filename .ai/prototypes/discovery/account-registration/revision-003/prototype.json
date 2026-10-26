@@ -1,0 +1,126 @@
+{
+  "format": "discovery-prototype-v1",
+  "skill": "om-mockup-prototype",
+  "slug": "account-registration",
+  "revision": 3,
+  "revisionPath": ".ai/prototypes/discovery/account-registration/revision-003",
+  "previousRevision": ".ai/prototypes/discovery/account-registration/revision-002",
+  "brief": ".ai/specs/product-brief.md",
+  "flow": "account registration",
+  "panelReport": null,
+  "verification": "passed",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "929accbb21be7349299fb7162d060b6bcfee4959a5ab1a4ced1ded6bbeaff744"
+    },
+    {
+      "path": "evidence/01-s01-domyslny.png",
+      "sha256": "630726e696c5a22ad93b7b355e2f3e3d3ee3ce05b97913892912934f5757c6f1"
+    },
+    {
+      "path": "evidence/02-s01-bledy-pol.png",
+      "sha256": "999d8c482f9807b10bb6509f8765c6faa5b3e53342b92336c663aad57b949d4c"
+    },
+    {
+      "path": "evidence/03-s01-nazwa-zajeta.png",
+      "sha256": "b0ee3f838f867fb037f9a588736e628fb054df4264ae1c0917f0c01eb930249c"
+    },
+    {
+      "path": "evidence/04-s01-email-zajety.png",
+      "sha256": "db4738a5106ced47135b98ad54563921d3b26b748ce3755c8306a1d66c206dd3"
+    },
+    {
+      "path": "evidence/05-s01-limit.png",
+      "sha256": "1e1038cd9f103eb524cd6d16715b92e246b82ef4d59f081cb8f03e81e672f448"
+    },
+    {
+      "path": "evidence/06-s01-bez-poczty.png",
+      "sha256": "d25099af67a886396b6b8bb57304d3a533fa8121e430d82c1673cdcc9903244c"
+    },
+    {
+      "path": "evidence/07-s04-niepotwierdzony.png",
+      "sha256": "e66f2c66d031ed7e7a780921cb73535fb4ebb95daa5f565051d7657df9a4b4e5"
+    },
+    {
+      "path": "evidence/08-s04-baner-wyslano.png",
+      "sha256": "1fa121ba2cdc44e23f9e4167ab3e5dac3f49e6e2dee0a772ffc7b2f981bb8fc1"
+    },
+    {
+      "path": "evidence/09-s06-skrzynka.png",
+      "sha256": "41ca5d6b4c68ff56a1b660cd470f0f5c5f881ca0ec3719e5395ced590e3c6b46"
+    },
+    {
+      "path": "evidence/10-s03-link-niewazny.png",
+      "sha256": "caaeaf2598940215ac2d0bf379ecb00adf5a6ce603c6965399276d3de20dbf3f"
+    },
+    {
+      "path": "evidence/11-s03-przed-kliknieciem.png",
+      "sha256": "7e9ada7c58d543e9632079f0aded4dbf24eb49b6b6c1611178e979432c6e8cfa"
+    },
+    {
+      "path": "evidence/12-s03-sukces.png",
+      "sha256": "4570ce74b18df0ab2dc18c3c3361c38777ebafdf34673d357882f93bd291c741"
+    },
+    {
+      "path": "evidence/13-s04-potwierdzony.png",
+      "sha256": "ec468289bb1d0e44513f8b3acd92188372f93109f6aa0ae56fe836e1c1036e83"
+    },
+    {
+      "path": "evidence/14-outside.png",
+      "sha256": "b33d3405abc15e20069a37ddab6693d0acbb6fd62ee20b486a6a0becea734c36"
+    },
+    {
+      "path": "evidence/15-s04-baner-502.png",
+      "sha256": "7107e47a43b1dca3f986a1e0b327e629b6d0564437198729fd6eb46fa2e6ebf3"
+    },
+    {
+      "path": "evidence/16-s04-baner-limit.png",
+      "sha256": "b2d56c8eefce38730c2f5275eb738faea0138ba0a7e8fb91c588e9e2bb5051f6"
+    },
+    {
+      "path": "evidence/17-s03-niezalogowany.png",
+      "sha256": "01e6c4c5055fdc0f97ee7e4872c1e32d1e015111025a5ebf87bf42805c9b7257"
+    },
+    {
+      "path": "evidence/18-s04-360px.png",
+      "sha256": "c65e2a6608a08d7f4e0317b8e278dac6192e2eaa459f7fa6a3166ce663be7d57"
+    },
+    {
+      "path": "evidence/19-s01-360px-bledy.png",
+      "sha256": "16f7813aea5ca3b7650074f1015d77118c9a0a9afe6878477a98f0087d861525"
+    },
+    {
+      "path": "evidence/20-s04-baner-zamkniety.png",
+      "sha256": "56fcb88d930b6acf74af49cfc5a73a3d0e79fda5612eaf07ae125efd780d60df"
+    },
+    {
+      "path": "evidence/21-s07-niezalogowany.png",
+      "sha256": "b337be99ec640ef9414a78f0b65c7830a7d666a53c96a89a8475637ca09987e9"
+    },
+    {
+      "path": "evidence/22-s07-ostrzezenie.png",
+      "sha256": "585547f2e257daae568b81e2a1ac0d3aabb09e154894375604f94ed2b69b7408"
+    },
+    {
+      "path": "evidence/23-s07-zalogowany.png",
+      "sha256": "f74dfcba820261868e10a1e3a9b2755c667045f5c0ae4613aab51d4779020a0e"
+    },
+    {
+      "path": "evidence/24-s07-niewazne.png",
+      "sha256": "67e928da0e9f918989fdcc6f54ca5fafedc949d5993e552c679b354907a0c3d4"
+    },
+    {
+      "path": "evidence/25-s01-podpis-email.png",
+      "sha256": "7e8343e258804f8a8f60e472ee9bf6f873aa50363f09900e7809b80e9e349e74"
+    },
+    {
+      "path": "evidence/walk-log.txt",
+      "sha256": "a9821f4b56300e5237ed2e1f3175f6c6842d1b691208e04dce99587810ea3a8a"
+    },
+    {
+      "path": "index.html",
+      "sha256": "be66c5cbede4815c644490360cbfede6009126263224c434acdf0538a505a432"
+    }
+  ]
+}
