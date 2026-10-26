@@ -17,7 +17,7 @@ type Story = StoryObj<typeof meta>;
 export const Playground: Story = {};
 
 export const NoweHaslo: Story = {
-  args: { label: "Nowe hasło", autoComplete: "new-password", hint: "Co najmniej 16 znaków", required: true, requirement: "(wymagane)" },
+  args: { label: "Nowe hasło", autoComplete: "new-password", hint: "Co najmniej 8 znaków", required: true, requirement: "(wymagane)" },
 };
 
 export const Blad: Story = {

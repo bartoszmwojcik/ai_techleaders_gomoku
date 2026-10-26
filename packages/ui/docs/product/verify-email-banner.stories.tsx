@@ -8,8 +8,8 @@ const meta = {
   title: "Produkt/Konta/Baner potwierdzenia e-maila",
   component: VerifyEmailBanner,
   args: {
-    title: "Potwierdź e-mail, aby grać",
-    children: "Link wysyłamy na ala@example.com — sprawdź też folder spam.",
+    title: "Potwierdź adres e-mail",
+    children: "Bez potwierdzonego adresu nie odzyskasz konta, jeśli zapomnisz hasła. Link wysyłamy na ala@example.com — sprawdź też folder spam.",
     resendLabel: "Wyślij ponownie",
     onResend: fn(),
   },
@@ -21,6 +21,14 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Playground: Story = {};
+
+export const ZamykalnyBaner: Story = {
+  args: { dismissLabel: "Zamknij", onDismiss: fn() },
+  play: async ({ canvasElement, args }) => {
+    await userEvent.click(within(canvasElement).getByRole("button", { name: "Zamknij" }));
+    await expect(args.onDismiss).toHaveBeenCalledTimes(1);
+  },
+};
 
 export const Wysylanie: Story = { args: { state: "sending" } };
 

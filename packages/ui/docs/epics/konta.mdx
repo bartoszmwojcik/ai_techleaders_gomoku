@@ -9,7 +9,7 @@ Rejestracja, logowanie, potwierdzenie e-maila, reset i zmiana hasła, usunięcie
 ## Przepływ
 
 1. Gość zakłada konto (`/register`) i jest od razu zalogowany.
-2. Do gry potrzebuje potwierdzić e-mail (`/verify-email`); baner przypomina o tym na `/` i `/account` (BR-23).
+2. Gra od razu (BR-26). Potwierdzenie e-maila (`/verify-email`) jest osobną czynnością; zamykalny baner na `/` i `/account` tłumaczy, po co (reset hasła tylko po potwierdzeniu).
 3. Loguje się (`/login`); zapomniane hasło ustawia przez e-mail (`/forgot-password`, `/reset-password`).
 4. Na `/account` zmienia hasło albo usuwa konto (nie w trakcie partii, BR-21).
 

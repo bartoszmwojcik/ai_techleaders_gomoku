@@ -41,7 +41,7 @@ Gra planszowa dla dwóch osób online: ciemna strona, drewniana plansza, jeden p
 | Baner wyniku | `@gomoku/ui/game/game-result-banner` | po zakończeniu partii | w trakcie partii, lista historii (Znacznik statusu) |
 | Karta kodu zaproszenia | `@gomoku/ui/game/invite-code-card` | strona oczekującej partii | wpisywanie kodu przez zaproszonego (Pole formularza) |
 | Pole hasła | `@gomoku/ui/game/password-field` | każde pole hasła (logowanie, rejestracja, reset, zmiana) | inne dane wrażliwe |
-| Baner potwierdzenia e-maila | `@gomoku/ui/game/verify-email-banner` | `/` i `/account` przy niepotwierdzonym e-mailu | po potwierdzeniu, dla gościa |
+| Baner potwierdzenia e-maila | `@gomoku/ui/game/verify-email-banner` | `/` i `/account` przy niepotwierdzonym e-mailu (nie blokuje gry; zamykalny, wraca po 7 dniach) | po potwierdzeniu, dla gościa |
 | Status szukania gry | `@gomoku/ui/game/seeking-status` | po oznaczeniu się jako szukający | zegar w partii, lista innych graczy |
 | Lista graczy | `@gomoku/ui/game/lobby-list` | strona lobby | historia partii |
 | Lista partii | `@gomoku/ui/game/history-list` | strona historii | lobby, trwające partie |

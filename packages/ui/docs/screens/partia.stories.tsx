@@ -19,7 +19,6 @@ const invite = (state: InviteState, viewer: Viewer): Story => ({ render: () => <
 
 export const ZaproszenieNiezalogowany: Story = invite("visitor", "none");
 export const ZaproszenieZalogowanyPotwierdzony: Story = invite("player-confirmed", "player");
-export const ZaproszenieZalogowanyBezPotwierdzenia: Story = invite("player-unconfirmed", "player");
 export const ZaproszenieOstrzezenieDlaGoscia: Story = invite("guest-warning", "guest");
 export const ZaproszenieMaInnaPartie: Story = invite("has-other-game", "player");
 export const ZaproszenieMaOczekujacaPartie: Story = invite("has-waiting-game", "player");

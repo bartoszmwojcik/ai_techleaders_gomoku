@@ -65,7 +65,7 @@ describe("PasswordField", () => {
   });
 
   it("shows the hint, the requirement and the error through the field", () => {
-    renderField({ hint: "Co najmniej 16 znaków", error: "Hasło jest za krótkie: dodaj znaki.", requirement: "(wymagane)", required: true });
+    renderField({ hint: "Co najmniej 8 znaków", error: "Hasło jest za krótkie: dodaj znaki.", requirement: "(wymagane)", required: true });
 
     const input = screen.getByLabelText(/Hasło/);
     expect(input.getAttribute("aria-invalid")).toBe("true");

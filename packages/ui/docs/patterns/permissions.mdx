@@ -5,9 +5,9 @@ import * as Stories from "./permissions.stories";
 
 # Stan zależny od uprawnień
 
-Wzorzec dla ekranów, które wyglądają inaczej dla niezalogowanego, gracza z niepotwierdzonym e-mailem, gracza z potwierdzonym e-mailem i gościa (BR-22, BR-23, D-23).
+Wzorzec dla ekranów, które wyglądają inaczej dla niezalogowanego, gracza z niepotwierdzonym e-mailem (bez blokad), gracza z potwierdzonym e-mailem i gościa (BR-22, BR-26, D-23).
 
-<Canvas of={Stories.EmailNiepotwierdzonyAkcjeZablokowaneZPowodem} />
+<Canvas of={Stories.EmailNiepotwierdzonyBanerNieblokujacy} />
 
 ## Kiedy używać
 
@@ -15,8 +15,8 @@ Wzorzec dla ekranów, które wyglądają inaczej dla niezalogowanego, gracza z n
 
 ## Zasady
 
-1. **Akcja niedostępna jest zablokowana z powodem obok**, nie ukryta bez śladu: „Potwierdź e-mail, aby tworzyć partie i wchodzić do lobby.” Źródło: BR-23, prompt systemu.
-2. **Przy niepotwierdzonym e-mailu baner prowadzi do rozwiązania** ([Baner potwierdzenia e-maila](?path=/docs/produkt-konta-baner-potwierdzenia-e-maila--docs)) i zaproszony może zagrać jako gość. Źródło: BR-23.
+1. **Akcja niedostępna jest zablokowana z powodem obok**, nie ukryta bez śladu. Od 2026-10-26 niepotwierdzony e-mail niczego nie blokuje (BR-26), więc zasada dotyczy innych powodów (np. „Masz już partię”, BR-13). Źródło: prompt systemu.
+2. **Przy niepotwierdzonym e-mailu zamykalny baner tłumaczy powód** ([Baner potwierdzenia e-maila](?path=/docs/produkt-konta-baner-potwierdzenia-e-maila--docs)); gra jest dostępna od razu. Zalogowany nie gra jako gość. Źródło: BR-26.
 3. **Niezalogowany widzi jedną główną akcję** („Załóż konto”) i drogę do logowania w nagłówku (R02.1).
 4. **Gość nie widzi lobby ani historii** i ma trwałe ostrzeżenie przy partii. Źródło: BR-22.
 5. **Serwer jest strażnikiem:** interfejs tylko wyjaśnia; każda zablokowana akcja jest też odrzucana po stronie serwera.
@@ -26,7 +26,7 @@ Wzorzec dla ekranów, które wyglądają inaczej dla niezalogowanego, gracza z n
 | Uprawnienie | Story |
 |---|---|
 | niezalogowany | [Niezalogowany](?path=/story/wzorce-stan-zależny-od-uprawnień--niezalogowany-na-stronie-glownej) |
-| e-mail niepotwierdzony | [E-mail niepotwierdzony](?path=/story/wzorce-stan-zależny-od-uprawnień--email-niepotwierdzony-akcje-zablokowane-z-powodem) |
+| e-mail niepotwierdzony | [E-mail niepotwierdzony, baner nieblokujący](?path=/story/wzorce-stan-zależny-od-uprawnień--email-niepotwierdzony-baner-nieblokujacy) |
 | e-mail potwierdzony | [Pełny dostęp](?path=/story/wzorce-stan-zależny-od-uprawnień--email-potwierdzony-pelny-dostep) |
 | gość w partii | [Gość w partii](?path=/story/wzorce-stan-zależny-od-uprawnień--gosc-w-partii-z-trwalym-ostrzezeniem) |
 

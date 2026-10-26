@@ -17,8 +17,8 @@ export function HomeScreen({ state }: { state: HomeState }) {
   return (
     <Screen viewer={player ? "player" : "none"}>
       {state === "unconfirmed" && (
-        <VerifyEmailBanner title="Potwierdź e-mail, aby grać" resendLabel="Wyślij ponownie" onResend={noop}>
-          Link wysyłamy na ala@example.com — sprawdź też folder spam.
+        <VerifyEmailBanner title="Potwierdź adres e-mail" resendLabel="Wyślij ponownie" dismissLabel="Zamknij" onDismiss={noop} onResend={noop}>
+          Bez potwierdzonego adresu nie odzyskasz konta, jeśli zapomnisz hasła. Link wysyłamy na ala@example.com — sprawdź też folder spam.
         </VerifyEmailBanner>
       )}
       <div className="flex flex-wrap items-center justify-center gap-section">
@@ -30,22 +30,13 @@ export function HomeScreen({ state }: { state: HomeState }) {
           <p className="m-0 text-meta text-text-muted">Swobodne zasady · plansza 15×15 · 10 minut na gracza</p>
           <div className="flex flex-wrap gap-group">
             {state === "visitor" && <Button asChild><a href="#rejestracja">Załóż konto</a></Button>}
-            {state === "confirmed" && (
+            {player && (
               <>
                 <Button>Utwórz zaproszenie</Button>
                 <Button variant="secondary">Szukam przeciwnika</Button>
               </>
             )}
-            {state === "unconfirmed" && (
-              <>
-                <Button disabled aria-describedby="home-blocked">Utwórz zaproszenie</Button>
-                <Button variant="secondary" disabled aria-describedby="home-blocked">Szukam przeciwnika</Button>
-              </>
-            )}
           </div>
-          {state === "unconfirmed" && (
-            <p id="home-blocked" className="m-0 text-meta text-text-muted">Potwierdź e-mail, aby tworzyć partie i wchodzić do lobby.</p>
-          )}
           <p className="m-0 text-body text-text-secondary">
             Masz kod od znajomego? <TextLink href="#join">Mam kod zaproszenia</TextLink>
           </p>

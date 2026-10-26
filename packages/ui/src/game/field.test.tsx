@@ -28,12 +28,12 @@ describe("Field", () => {
 
   it("shows the hint and the requirement text and describes the control with the hint", () => {
     const html = renderToStaticMarkup(
-      <Field label="Hasło" id="pw" hint="Co najmniej 16 znaków" requirement="(wymagane)" required>
+      <Field label="Hasło" id="pw" hint="Co najmniej 8 znaków" requirement="(wymagane)" required>
         {(control) => <TextInput type="password" {...control} />}
       </Field>,
     );
 
-    expect(html).toContain("Co najmniej 16 znaków");
+    expect(html).toContain("Co najmniej 8 znaków");
     expect(html).toContain("(wymagane)");
     expect(html).toContain('aria-describedby="pw-hint"');
     expect(html).toContain('aria-required="true"');
