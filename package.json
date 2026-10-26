@@ -25,6 +25,7 @@
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "smoke": "node scripts/smoke.mjs",
+    "prototypes": "node scripts/syncPrototypes.mjs",
     "check": "npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration"
   },
   "devDependencies": {
