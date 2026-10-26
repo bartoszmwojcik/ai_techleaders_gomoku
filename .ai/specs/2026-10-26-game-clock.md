@@ -62,7 +62,7 @@ Migrację dostarcza **#29** albo, jeśli jej kształt nie ma tych pól, osobna m
 
 | Encja → tabela | Pola | Ograniczenia |
 |---|---|---|
-| `Game` → `games` (rozszerzenie) | `clockMs1` integer NOT NULL DEFAULT 600000, `clockMs2` integer NOT NULL DEFAULT 600000, `turnStartedAt` timestamptz NULL; `endReason` dostaje wartość `timeout` | `CHECK (clock_ms_1 BETWEEN 0 AND 600000 AND clock_ms_2 BETWEEN 0 AND 600000)`; `CHECK (status <> 'active' OR turn_started_at IS NOT NULL OR (starting)` — jw. nie wymuszamy, bo `active` bez obu `seen_at` ma `turn_started_at IS NULL` (zegar jeszcze nie ruszył) |
+| `Game` → `games` (rozszerzenie) | `clockMs1` integer NOT NULL DEFAULT 600000, `clockMs2` integer NOT NULL DEFAULT 600000, `turnStartedAt` timestamptz NULL; `endReason` dostaje wartość `timeout` | `CHECK (clock_ms_1 BETWEEN 0 AND 600000 AND clock_ms_2 BETWEEN 0 AND 600000)`; `turn_started_at` może być NULL także w `active` (zegar nie ruszył, bo drugi gracz nie otworzył strony), więc bez `CHECK` na status |
 
 `winnerSeat` przy `timeout` to drugie miejsce; `finishedAt` = `turnStartedAt + clockMs[seat]` (moment upływu, nie wykrycia). Dane wrażliwe: brak. Migracja up/down na prawdziwym PostgreSQL; istniejące partie `active` bez zegara dostają domyślne 600000 i `turn_started_at = started_at` tylko jeśli obaj mają `seen_at`, inaczej NULL.
 
