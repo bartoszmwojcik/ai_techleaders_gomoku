@@ -1,0 +1,93 @@
+PASS C01 | wejście: formularz rejestracji | oczekiwano: Załóż konto
+PASS C02 | pusty formularz: błędy pól | oczekiwano: Podaj poprawny adres e-mail
+PASS C02b | błąd nazwy | oczekiwano: Nazwa ma 3–24 znaki
+PASS C02c | błąd hasła | oczekiwano: co najmniej 8 znaków
+PASS C02d | fokus na pierwszym błędnym polu | f-email
+PASS C03 | zajęta nazwa przy polu | oczekiwano: Ta nazwa jest zajęta
+PASS C04 | zajęty e-mail: jednolity komunikat | oczekiwano: Nie udało się założyć konta. Jeśli masz już konto
+PASS C04b | komunikat nie wskazuje pola | brak: zajęty
+PASS C05 | zastrzeżona nazwa | oczekiwano: Ta nazwa jest zastrzeżona
+PASS C05b | nazwa podobna do zajętej (normalizacja) | oczekiwano: Ta nazwa jest zajęta
+PASS C06 | hasło < 16 znaków | oczekiwano: Hasło musi mieć co najmniej 8 znaków
+PASS C07 | limit prób (429) | oczekiwano: Zbyt wiele prób
+PASS C08 | błąd serwera | oczekiwano: Nie udało się założyć konta, spróbuj ponownie.
+PASS C09 | brak sieci | oczekiwano: Brak połączenia
+INFO C09b | e-mail zachowany po błędzie sieci: "kuba@example.com"
+PASS C09c | hasło wyczyszczone po błędzie sieci
+PASS C10 | brak dostawcy: rejestracja nadal działa (s01.12 wycofany) | brak: Rejestracja jest chwilowo niedostępna
+PASS C10b | formularz dostępny | oczekiwano: Załóż konto
+PASS C11 | sukces: strona główna z banerem | oczekiwano: Potwierdź adres e-mail
+PASS C11b | nagłówek: Zalogowano jako Kuba_P
+PASS C11c | niepotwierdzony widzi Lobby i Historię (BR-26)
+PASS C11d | akcje gry nie są zablokowane z powodem | brak: tworzyć partie i wchodzić do lobby
+PASS C11e | akcje gry aktywne | oczekiwano: Utwórz zaproszenie
+INFO C11f | aria-disabled pierwszego przycisku gry: "brak"
+PASS C12 | zalogowany na /register trafia na / | oczekiwano: Potwierdź adres e-mail
+PASS C13 | ponowne wysłanie: sukces | oczekiwano: Wysłano
+PASS C14 | skrzynka: dwie wiadomości, starsza zastąpiona | oczekiwano: Nowsza wiadomość zastąpiła ten link
+PASS C15 | stary link: nieważny | oczekiwano: Link wygasł lub został już użyty.
+PASS C15b | zalogowany: Wyślij nowy link | oczekiwano: Wyślij nowy link
+PASS C16 | ważny link: przed kliknięciem (GET nic nie zmienia) | oczekiwano: Potwierdź e-mail
+PASS C17 | potwierdzenie: sukces | oczekiwano: Adres potwierdzony
+PASS C18 | po potwierdzeniu: brak banera | oczekiwano: Akcje gry są poza tym prototypem
+PASS C18b | baner znika | brak: Potwierdź adres e-mail
+PASS C18c | po potwierdzeniu widać Lobby i Historię
+PASS C19 | użyty link ponownie: INVALID + już potwierdzony | oczekiwano: Adres jest już potwierdzony
+PASS C20 | nieznany fragment: ekran odzyskiwania | oczekiwano: Nie ma takiego ekranu
+PASS C21 | back wraca do poprzedniego ekranu | oczekiwano: Adres jest już potwierdzony
+PASS C21b | forward | oczekiwano: Nie ma takiego ekranu
+PASS C22 | ekran poza prototypem | oczekiwano: nie jest częścią przepływu
+PASS C23 | Reset: powrót do rejestracji | oczekiwano: Załóż konto
+PASS C23b | Reset usuwa konto
+PASS C24 | awaria poczty przy rejestracji: konto powstaje (A-03) | oczekiwano: Potwierdź adres e-mail
+PASS C24b | baner: błąd wysyłki 502 | oczekiwano: Nie udało się wysłać wiadomości
+PASS C25 | baner: dzienny limit poczty 503 | oczekiwano: chwilowo niedostępna
+PASS C25b | trzecie wysłanie dochodzi | oczekiwano: Wysłano
+PASS C26 | baner: limit 3 ponownych wysyłek | oczekiwano: Spróbuj za 41 min
+PASS C27 | baner: 409 już potwierdzony | oczekiwano: jest już potwierdzony
+PASS C28 | baner: 401 sesja wygasła | oczekiwano: Sesja wygasła
+PASS C29 | niezalogowany, link wygasły: link do logowania | oczekiwano: Zaloguj się, aby wysłać nowy link
+PASS C30 | bez tokenu: ten sam komunikat | oczekiwano: Link wygasł lub został już użyty.
+PASS C31 | niezalogowany po sukcesie: link do logowania | oczekiwano: Nie jesteś zalogowany
+PASS C32 | zalogowany na inne konto: komunikat nie ujawnia konta | oczekiwano: Adres potwierdzony
+PASS C32b | nie ujawnia nazwy konta | brak: Ola_K
+PASS C33 | 500 przy potwierdzaniu | oczekiwano: Nie udało się potwierdzić adresu
+PASS C34 | Pokaż hasło odsłania pole
+PASS C34b | Ukryj hasło maskuje pole
+INFO C35 | kolejność Tab od pola e-mail: "f-name" "f-pass" "Pokaż hasło" "Załóż konto" "Zaloguj się"
+PASS C35 | klawiatura: e-mail, nazwa, hasło, Pokaż hasło, Załóż konto
+PASS C36 | wysłanie formularza klawiaturą (Enter) | oczekiwano: Potwierdź adres e-mail
+INFO C37 | fokus po nawigacji: "home-h"
+PASS C37 | fokus na nagłówku po nawigacji
+PASS C38 | 360 px: brak poziomego przewijania (strona główna)
+PASS C38b | 360 px: brak poziomego przewijania (rejestracja)
+PASS C38c | 320 px: brak poziomego przewijania
+## rewizja 2: hasło 8, baner nieblokujący, s07, 14 dni
+PASS C40 | hasło 7 znaków odrzucone | oczekiwano: co najmniej 8 znaków
+PASS C41 | hasło 8 znaków przyjęte (baner) | oczekiwano: Potwierdź adres e-mail
+PASS C42 | baner zamknięty | brak: Potwierdź adres e-mail
+PASS C43 | po 7 dniach baner wraca | oczekiwano: Potwierdź adres e-mail
+PASS C44 | po 14 dniach niepotwierdzone konto bez partii znika | oczekiwano: Załóż konto
+PASS C45 | konto z partią po 14 dniach zostaje
+PASS C46 | s07 niezalogowany: trzy wybory | oczekiwano: Graj jako gość
+PASS C46b | twórca i kod | oczekiwano: Marek_Z zaprasza
+PASS C47 | ostrzeżenie dla gościa | oczekiwano: Grasz bez konta
+PASS C48 | gość: poza prototypem (partia gościa) | oczekiwano: Partia gościa
+PASS C49 | gość z partią nie może się zarejestrować | oczekiwano: Trwa Twoja partia jako gość
+PASS C50 | po rejestracji powrót na zaproszenie (next) | oczekiwano: Dołącz do partii
+PASS C50b | zalogowany nie ma opcji gościa | brak: Graj jako gość
+PASS C51 | s07: Już uczestnik | oczekiwano: Już jesteś w tej partii
+PASS C51 | s07: Własne zaproszenie | oczekiwano: To Twoje zaproszenie
+PASS C51 | s07: Ma inną partię w toku | oczekiwano: Masz już partię
+PASS C51 | s07: Ma własną oczekującą partię | oczekiwano: Anuluj moją partię
+PASS C51 | s07: Limit prób | oczekiwano: Zbyt wiele prób
+PASS C51 | s07: Nieważne | oczekiwano: To zaproszenie jest już nieważne
+PASS R1 | numer rewizji widoczny w pasku prototypu
+PASS R2 | podpis przy e-mailu: link do potwierdzenia i gra od razu | oczekiwano: Wyślemy na ten adres link do potwierdzenia
+DONE
+PASS R3 | pierwsze wejście: fokus na polu e-mail
+PASS R3b | nagłówek nie ma obrysu fokusu
+PASS R4 | po rejestracji w nagłówku jest przycisk Wyloguj
+PASS R5 | po wylogowaniu nagłówek niezalogowanego
+PASS R5b | po wylogowaniu strona główna dla niezalogowanego
+PASS R6 | wejście na rejestrację po wylogowaniu: fokus na e-mail
