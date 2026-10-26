@@ -10,7 +10,7 @@ Po #22 partia ma ruchy, ale nie ma czasu: można ją trzymać bez końca, a BR-1
 
 | # | Pytanie | Decyzja | Źródło |
 |---|---|---|---|
-| Q1 | „Mało czasu” (L07) | Próg **60 s**. Sygnał to **jaskrawy kolor** zegara, **bez tekstu** i bez dźwięku. Pozostaje dodatkowa wskazówka niebędąca tekstem (grubszy obrys), bo sam kolor nie spełnia WCAG 1.4.1 — zob. Risks. | właściciel, 2026-10-26 |
+| Q1 | „Mało czasu” (L07) | Próg **60 s**. Sygnał widoczny to **jaskrawy kolor** zegara i grubszy obrys, **bez widocznego tekstu** i bez dźwięku. Kompromis dostępności zaakceptowany: jednorazowe, wizualnie ukryte ogłoszenie `aria-live="polite"` przy przejściu poniżej 60 s (dla czytników ekranu; WCAG 1.4.1). | właściciel, 2026-10-26 |
 | Q2 | Opóźnienie sieci i odpytywanie | (a) **Bez rekompensaty.** Zegar gracza rusza w chwili przyjęcia ruchu przeciwnika przez serwer; do 2 s odpytywania (#22 Q5) idzie na jego konto. Przegląd po spike #30. | właściciel |
 | Q3 | Rozstrzyganie | **Tylko leniwie** (odczyt, ruch, `settleFor`). Czas zakończenia w historii to moment upływu czasu, nie wykrycia. | właściciel |
 | Q4 | Zakres | Zegar, przegrana na czas i implementacja portu `timeoutSettler`. Powrót po rozłączeniu (#24), poddanie i rewanż w osobnych specyfikacjach. | właściciel |
@@ -84,7 +84,7 @@ Ekran `/games/[gameId]`, stany `active` i `finished`; komponent `PlayerClock` z 
 
 - Format `m:ss` (`formatClock`, zaokrąglanie w górę); `role="timer"` bez ogłaszania co sekundę.
 - Bieg zegara oznaczony **słowem** („Twój ruch” / „Ruch przeciwnika”) i mocnym obrysem, nie tylko kolorem (zgodnie z DS).
-- **Mało czasu (Q1):** poniżej 60 s cyfry i obrys przyjmują jaskrawy kolor ostrzegawczy z tokenu DS (nowy wariant `PlayerClock` bez `lowLabel`; tekst „Mało czasu” nie jest pokazywany) i grubszy obrys jako sygnał niebędący kolorem.
+- **Mało czasu (Q1):** poniżej 60 s cyfry i obrys przyjmują jaskrawy kolor ostrzegawczy z tokenu DS (nowy wariant `PlayerClock` bez `lowLabel`; widoczny tekst „Mało czasu” nie jest pokazywany) i grubszy obrys jako sygnał niebędący kolorem. Dodatkowo region `aria-live="polite"` (wizualnie ukryty) ogłasza raz „Zostało mniej niż minuta” przy przejściu poniżej progu, osobno dla własnego zegara; `role="timer"` nie ogłasza co sekundę. Ogłoszenie nie powtarza się po odpytywaniu, które koryguje czas wokół progu (test jednorazowości).
 - Przed startem zegara (czekanie na otwarcie strony przez drugiego gracza, #21): oba zegary pokazują 10:00 i nie biegną; w stanie p04 nie ma aktywnego znacznika.
 - Koniec przez czas: baner „Przegrałeś — skończył się Twój czas” / „Wygrałeś — przeciwnikowi skończył się czas”; plansza tylko do odczytu; zegary zamrożone.
 - Gdy odpytywanie poprawi wartość o więcej niż 1 s, cyfry zmieniają się bez animacji.
@@ -112,7 +112,7 @@ Prototyp: brak (mapa ekranów `lekcja-07/mapa-ekranow-partia.md`, stany p05.1, p
 
 ## 📝 Risks & Impact Review
 
-- **Kolor jako jedyny sygnał (Q1):** wymaganie właściciela „bez tekstu” oznacza, że ostrzeżenie opiera się na kolorze i grubości obrysu. WCAG 1.4.1 wymaga sygnału niebędącego kolorem — grubszy obrys go zapewnia wizualnie, ale nie dla czytników ekranu. **Zaakceptowane ryzyko właściciela**; możliwa łagodzaca opcja, której nie przyjęto bez zgody (łamie „bez tekstu” dla czytników): jednorazowe ogłoszenie `aria-live="polite"` przy przejściu poniżej 60 s; do zbadania z prawdziwym użytkownikiem czytnika (nie ma dowodu).
+- **Sygnał „mało czasu” (Q1):** widoczny sygnał to kolor i grubszy obrys (bez tekstu, decyzja właściciela); dla czytników ekranu jednorazowe ogłoszenie `aria-live` (kompromis zaakceptowany 2026-10-26). Dla osób niewidomych, ale nie używających czytnika, i dla daltonistów pozostaje tylko obrys; nie ma dowodu z badania z prawdziwymi użytkownikami.
 - **Opóźnienie (Q2 a):** do 2 s z 600 s na ruch może zmienić wynik w końcówce. Przegląd po spike #30; bez pomiaru nie wiemy, jak często.
 - **Rozjazd zegarów instancji:** zakładamy jedną instancję aplikacji albo zsynchronizowane zegary; przy skalowaniu poziomym przenieść źródło czasu do bazy (jedna zmiana wstrzykiwanego `clock`).
 - **Zapis w odczycie:** `GET` zmienia stan przy upływie terminu; `settleGame` musi być idempotentny i bezpieczny przy wyścigach.
@@ -141,6 +141,6 @@ BR-04, BR-05, BR-06, BR-07, BR-13, D-03 (właściciel: Bartosz Wójcik). Spec pr
 5. **`timeoutSettler` (`settleGame`, `settleFor`):** implementacja i testy, w tym kolejność blokad `users` → `games` i brak podwójnego zakończenia (0 wierszy).
 6. **`clock` w `GET`/`POST`:** rozszerzone handlery; test, że pole czasu z żądania jest niewidoczne dla wyniku.
 7. **Testy integracyjne (`fetch`, PostgreSQL; czas przez `turn_started_at` w bazie):** dodatkowo wyścigi na prawdziwej bazie (dwa równoległe `settleGame`, ruch kontra timeout, dwa odczyty startujące zegar), zapis `timeout` przy `CHECK`-ach, `GAME_NOT_STARTED`, granica 15 min (Q21) przed startem zegara, gość po terminie (`settleGame` przed oceną tokenu). start po drugim `seen_at`; maleje tylko zegar gracza na ruchu; przegrana na czas przy ruchu po terminie; przegrana wykryta przez odczyt przeciwnika; zamknięcie przez `settleFor` przy próbie utworzenia nowej partii (BR-13); ponowienie ruchu po terminie → `200`.
-8. **UI:** `useGameClock` (testy z fałszywym czasem), `PlayerClock` w wariancie bez tekstu „mało czasu”, baner końca przez czas; stories w Storybooku (oba motywy, `check:tokens`).
+8. **UI:** `useGameClock` (testy z fałszywym czasem; ogłoszenie `aria-live` jednorazowe przy przejściu poniżej 60 s, także po korekcie czasu przez odpytywanie), `PlayerClock` w wariancie bez tekstu „mało czasu”, baner końca przez czas; stories w Storybooku (oba motywy, `check:tokens`).
 9. **Scenariusz przeglądarkowy** (agent-browser, 360 px): zegar rusza po obu wejściach, zmiana tury, jaskrawy kolor poniżej 60 s (przyspieszony czas), koniec przez czas.
 10. **Dokumentacja i `npm run check`;** lekcja w `.ai/lessons/`, jeśli przegląd wykaże korektę.
