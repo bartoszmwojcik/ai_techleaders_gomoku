@@ -1,10 +1,26 @@
 # Mapa ekranów: Epik 02, partia z zaproszenia
 
-- Data: 2026-10-26. Status: **szkic do zatwierdzenia** (nic nie zbudowano).
+- Data: 2026-10-26. Status: **szkic do zatwierdzenia** (nic nie zbudowano). Uwzględnia decyzje właściciela z 2026-10-26 (sekcja 0a).
 - Przepływ: Epik E02 (#16): tworzenie partii i zaproszenia (#21), dołączenie (zalogowany albo gość), ruchy i wygrana (#22), zegar 10 minut (#23), powrót po rozłączeniu (#24). Kończy się ekranem wyniku. Historia (#27), lobby (#25, #26) i zarządzanie kontem są poza tą mapą.
 - Materiały: `.ai/specs/product-brief.md` (po zmianie 2026-10-26), `.ai/specs/backlog.md`, `2026-10-24-game-invitations.md` (#21), `2026-10-25-game-moves-win-detection.md` (#22), zgłoszenia #23 i #24 (**nie mają specyfikacji**: kryteria z tracker'a), design system (`packages/ui/docs/design-system.md`, `docs/epics/partia.mdx`, `docs/screens/game-screen.tsx`, `invite-screens.tsx`), mapa E01 (`lekcja-07/mapa-ekranow.md`, ekran s07). Persony: brak.
 - **Ekran `/invite/[code]` jest wspólny z E01:** to s07 z `mapa-ekranow.md` (stany s07.1–s07.9). Tutaj go nie powielam; wchodzi w przepływ jako krok 2. ID ekranów tej mapy mają przedrostek `p` (p01, p02, …), żeby nie kolidowały z `s01–s07`. ID są stałe.
 - Różnice względem poleceń z lekcji: w projekcie nie ma ról mentee, mentor i operator, GitHuba ani płatności. Role to: twórca zaproszenia, zaproszony zalogowany, gość (token jednej partii), niezalogowany, osoba spoza partii (brak dostępu, N-05: bez obserwatorów).
+
+## 0a. Decyzje właściciela z 2026-10-26 (rozstrzygnięte luki)
+
+| Luka | Decyzja | Skutek dla mapy |
+|---|---|---|
+| ~~L04~~ (rozstrzygnięta 2026-10-26) | „Anuluj zaproszenie” pyta o potwierdzenie. Po anulowaniu link jest nieważny („To zaproszenie jest już nieważne”), a twórca wychodzi z ekranu partii na stronę główną. | p03.6, p03.8 |
+| ~~L11~~ (rozstrzygnięta 2026-10-26) | Piszemy osobne specyfikacje #23 (zegar) i #24 (powrót po rozłączeniu) przed prototypem. | kolejność prac |
+| ~~L12~~ (rozstrzygnięta 2026-10-26) | Poddanie wchodzi do MVP (zmiana #22 Q6, osobne zgłoszenie i specyfikacja). | p05.13, p05.14, p06.8, p06.9 |
+| ~~L13~~ (rozstrzygnięta 2026-10-26) | Po końcu partii: „Rewanż” (zaproszenie do nowej partii z odwróconymi kolorami) i wyjście do głównego panelu. Gość też może zaproponować i przyjąć rewanż (nowy token w tej samej przeglądarce). Zaproszenie do rewanżu wygasa po 5 minutach. Gdy przeciwnik aktywnie wyjdzie, zapraszający od razu widzi „zaproszenie odrzucone”, a po kliknięciu trafia do głównego panelu. | p06.10–p06.15 |
+| ~~L14~~ (rozstrzygnięta 2026-10-26) | Niezalogowany gracz jest dla przeciwnika „Gość”. | p04, p05, p06 |
+| ~~L16~~ (rozstrzygnięta 2026-10-26) | Poprawiamy tekst w design systemie (tworzenie partii bez potwierdzenia e-maila). | zadanie dokumentacji |
+| ~~L20~~ (rozstrzygnięta 2026-10-26) | Zegar pierwszego gracza rusza, gdy obaj mają `seen_at` (#21 Q20). #22 Q8 do poprawienia. | p04.1, p05.1 |
+| L21 | S | „Aktywne wyjście” z ekranu wyniku: czym jest (przycisk „Wróć do panelu głównego”, zamknięcie karty, nawigacja)? Tylko przycisk jest wykrywalny na pewno | decyzja L13 | Czy „aktywnie wyszedł” = kliknął „Wróć do panelu głównego”? Zamknięcie karty = czekamy do wygaśnięcia po 5 min? |
+| L22 | D | Rewanż a BR-13 (jedna aktywna partia): rewanż tworzy nową partię dopiero po przyjęciu, więc obaj gracze są wolni; co jeśli któryś wcześniej zaczął inną partię | decyzja L13, BR-13 | Czy zaproszenie do rewanżu znika, gdy przeciwnik dołączył do innej partii? |
+| L23 | S | Treść i skutki poddania: wynik `resignation`, potwierdzenie, wpływ na BR-21 (usunięcie konta) i na `is_active` | decyzja L12 | Tekst potwierdzenia i czy poddanie jest możliwe od pierwszego ruchu? |
+| L24 | D | Rewanż gościa: gość po 1 h od końca traci token; czy rewanż przedłuża token na nową partię | decyzja L13 | Czy wystarczy nowy token jak przy zwykłym dołączeniu? |
 
 ## 0. Historie i kryteria w zakresie
 
@@ -67,9 +83,9 @@ Ekran `/invite/[code]` (s07) jest krokiem wejścia dla zaproszonego (stany z E01
 | p03.3 | Brak Clipboard API: zaznaczenie tekstu linku | #21 UI |
 | p03.4 | Brak `navigator.share`: przycisk „Udostępnij” ukryty | #21 UI, Q22 |
 | p03.5 | „Przeciwnik dołączył” i przejście na p04 | #21 UI |
-| p03.6 | Dialog potwierdzenia anulowania (DS: anulowanie własnej partii) | #21 Q5; DS |
-| p03.7 ⚠ | Anulowanie w toku | L04 |
-| p03.8 ⚠ | Po anulowaniu: dokąd i co widzi twórca (spec: status `cancelled`, `200`) | #21 Q5; L04 |
+| p03.6 | Dialog potwierdzenia anulowania (decyzja L04) | #21 Q5; DS; L04 |
+| p03.7 ⚠ | Anulowanie w toku (przycisk zajęty) | #21 Q5 |
+| p03.8 | Po anulowaniu twórca trafia na stronę główną; link zaproszenia pokazuje s07.9 „nieważne” | L04 |
 | p03.9 ⚠ | Zaproszenie wygasło po 24 h: widok pokazuje wygaśnięcie (spec Edge Cases), treści brak | #21 Q3, Edge Cases; L05 |
 | p03.10 ⚠ | Błąd odpytywania | L02 |
 
@@ -97,6 +113,8 @@ Ekran `/invite/[code]` (s07) jest krokiem wejścia dla zaproszonego (stany z E01
 | p05.9 ⚠ | `CELL_OCCUPIED` (pole zajęte): treść komunikatu | #22 API; L08 |
 | p05.10 | Powrót po rozłączeniu: „Wróciłeś do partii”, aktualny czas | #24/K1, BR-06 |
 | p05.11 | Gość: stałe ostrzeżenie nad partią | #21 UI |
+| p05.13 | „Poddaj partię” pod planszą i dialog potwierdzenia | L12, BR-21 |
+| p05.14 ⚠ | Poddanie w toku; błąd | L12 |
 | p05.12 ⚠ | Karta w tle: odpytywanie wstrzymane, po powrocie wznowione; co widać po wznowieniu | #22 UI; L09 |
 
 **p06 Koniec partii**
@@ -110,6 +128,14 @@ Ekran `/invite/[code]` (s07) jest krokiem wejścia dla zaproszonego (stany z E01
 | p06.5 | Odświeżenie lub ponowne wejście po końcu: wynik, bez możliwości ruchu | #24/K3 |
 | p06.6 | Gość po końcu: widzi wynik do 1 h po zakończeniu | #21/K8, BR-22 |
 | p06.7 | Po 1 h token gościa nie działa: `404`, patrz p07.2 | #21/K8 |
+| p06.8 | Koniec przez poddanie: „Wygrałeś, przeciwnik poddał partię” | L12 |
+| p06.9 | Koniec przez poddanie: „Przegrałeś, poddałeś partię” | L12 |
+| p06.10 | Pod wynikiem „Rewanż” (kolory odwrócone) i „Wróć do panelu głównego” | L13 |
+| p06.11 | Rewanż zaproponowany, czekamy na odpowiedź (do 5 min), możliwość wycofania | L13 |
+| p06.12 | Przeciwnik proponuje rewanż: „Przyjmij” / „Odrzuć” | L13 |
+| p06.13 | Przeciwnik aktywnie wyszedł albo odrzucił: od razu „Zaproszenie do rewanżu odrzucone”, po kliknięciu panel główny | L13 |
+| p06.14 ⚠ | Rewanż wygasł po 5 minutach | L13 |
+| p06.15 ⚠ | Rewanż gościa: nowy token w tej samej przeglądarce; gość nie ma historii | L13, BR-22 |
 
 **p07 Brak dostępu i błędy**
 
@@ -213,12 +239,12 @@ Typy: **K** = kryterium bez ekranu lub stanu, **S** = stan bez kryterium, **X** 
 | Pozycja | Liczba |
 |---|---|
 | Ekrany (p01–p07, plus s07 z mapy E01) | 7 |
-| Stany ekranów | 55 (p01: 7, p02: 5, p03: 10, p04: 4, p05: 12, p06: 7, p07: 4; s07 liczone w mapie E01) |
-| w tym stany bez kryterium (⚠) | 15 |
+| Stany ekranów | 65 (p01: 7, p02: 5, p03: 10, p04: 4, p05: 14, p06: 15, p07: 4; s07 liczone w mapie E01) |
+| w tym stany bez kryterium (⚠) | 14 |
 | Scenariusze do przełączania | 12 (Q01–Q12) |
 | Konta demo | 8 (T1–T8; T8 operator bez podstaw w materiałach) |
-| Luki w specyfikacji | 20 (L01–L20): 1 K, 9 S, 3 X, 7 D |
+| Luki w specyfikacji | 24 (L01–L24), z czego 7 rozstrzygniętych 2026-10-26 (L04, L11, L12, L13, L14, L16, L20); otwarte 17 |
 | Luki w design systemie | 7 (D01–D07) |
-| Historie w zakresie / kryteria akceptacji | 4 / 22 (#21: 9 aktywnych + 1 zastąpione, #22: 5, #23: 4, #24: 3 = 21 aktywnych) |
+| Historie w zakresie / kryteria akceptacji | 4 / 21 aktywnych (#21: 9, #22: 5, #23: 4, #24: 3); poddanie i rewanż to nowe historie bez zgłoszeń |
 
-**Czekam na zatwierdzenie mapy.** Najpierw potrzebuję odpowiedzi na L04, L11, L12, L13, L14, L16 i L20, bo zmieniają liczbę ekranów i stanów.
+**Czekam na zatwierdzenie mapy.** Przed prototypem: specyfikacje #23, #24, poddania i rewanżu oraz poprawka #22 Q8. Otwarte luki L21–L24 można rozstrzygnąć w tych specyfikacjach.
