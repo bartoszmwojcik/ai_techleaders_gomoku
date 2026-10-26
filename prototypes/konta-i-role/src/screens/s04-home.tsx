@@ -48,16 +48,14 @@ export function S04Home() {
               {!account && <Button asChild><a href="#s01">Załóż konto</a></Button>}
               {account && (
                 <>
-                  <Button disabled={unverified} aria-describedby="why-play" onClick={() => showOutside("Utwórz zaproszenie")}>Utwórz zaproszenie</Button>
-                  <Button variant="secondary" disabled={unverified} aria-describedby="why-play" onClick={() => showOutside("Szukam przeciwnika")}>Szukam przeciwnika</Button>
+                  <Button onClick={() => showOutside("Utwórz zaproszenie")}>Utwórz zaproszenie</Button>
+                  <Button variant="secondary" onClick={() => showOutside("Szukam przeciwnika")}>Szukam przeciwnika</Button>
                 </>
               )}
             </div>
             {account && (
-              <p id="why-play" className="m-0 text-meta text-text-muted">
-                {unverified
-                  ? "Potwierdź e-mail, aby tworzyć partie i wchodzić do lobby."
-                  : <>Tworzenie partii i lobby są poza tym prototypem (Epik 02 i 03). <OutsideLink name="Lobby">Co to znaczy?</OutsideLink></>}
+              <p className="m-0 text-meta text-text-muted">
+                Tworzenie partii i lobby są poza tym prototypem (Epik 02 i 03). <OutsideLink name="Lobby">Co to znaczy?</OutsideLink>
               </p>
             )}
           </section>

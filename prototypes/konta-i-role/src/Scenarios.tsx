@@ -5,6 +5,8 @@ import {
   advanceClock,
   clockSteps,
   expireSession,
+  giveAccountAGame,
+  setInvite,
   logout,
   patchScenario,
   resetSim,
@@ -13,6 +15,7 @@ import {
   switchAccount,
   useSim,
   viewer,
+  type InviteScenario,
   type Provider,
   type Scenario,
 } from "./sim";
@@ -82,7 +85,7 @@ export function Scenarios() {
               <option value="ok">Działa</option>
               <option value="fail">Awaria (502)</option>
               <option value="quota">Dzienny limit wyczerpany (503)</option>
-              <option value="none">Brak dostawcy (rejestracja niedostępna)</option>
+              <option value="none">Brak dostawcy (wysyłka nie działa)</option>
             </select>
           </label>
         </Group>
@@ -112,10 +115,26 @@ export function Scenarios() {
           <div className="row" style={{ flexWrap: "wrap" }}>
             <button type="button" className="btn btn-outline btn-sm" onClick={() => advanceClock(clockSteps.hour)}>+1 h</button>
             <button type="button" className="btn btn-outline btn-sm" onClick={() => advanceClock(clockSteps.day)}>+24 h (link wygasa)</button>
-            <button type="button" className="btn btn-outline btn-sm" onClick={() => advanceClock(7 * clockSteps.day)}>+7 dni</button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => advanceClock(7 * clockSteps.day)}>+7 dni (baner wraca)</button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => advanceClock(14 * clockSteps.day)}>+14 dni (kasowanie niepotwierdzonych)</button>
             <button type="button" className="btn btn-outline btn-sm" onClick={() => advanceClock(31 * clockSteps.day)}>+31 dni (sesja wygasa)</button>
             <button type="button" className="btn btn-outline btn-sm" onClick={() => setClock(0)}>Wróć do 10:00</button>
           </div>
+        </Group>
+        <Group title="Zaproszenie s07 i partie (P09)">
+          <label htmlFor="sc-invite">
+            Stan zaproszenia
+            <select id="sc-invite" value={sim.invite} onChange={(e) => setInvite(e.target.value as InviteScenario)}>
+              <option value="auto">Według sesji (niezalogowany, zalogowany, gość z partią)</option>
+              <option value="participant">Już uczestnik (przekierowanie)</option>
+              <option value="own">Własne zaproszenie (przekierowanie)</option>
+              <option value="other-game">Ma inną partię w toku</option>
+              <option value="waiting-game">Ma własną oczekującą partię</option>
+              <option value="limit">Limit prób</option>
+              <option value="invalid">Nieważne</option>
+            </select>
+          </label>
+          <button type="button" className="btn btn-outline btn-sm" onClick={giveAccountAGame}>Rozegraj partię (konto ma partię)</button>
         </Group>
         <Group title="Podgląd (P13)">
           <label htmlFor="sc-width">

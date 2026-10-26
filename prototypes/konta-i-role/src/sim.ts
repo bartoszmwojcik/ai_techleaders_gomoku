@@ -10,7 +10,8 @@ const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 export const LINK_TTL = DAY;
 export const SESSION_TTL = 30 * DAY;
-export const UNCONFIRMED_TTL = 7 * DAY;
+export const UNCONFIRMED_TTL = 14 * DAY;
+export const BANNER_REOPEN = 7 * DAY;
 
 export type Account = {
   email: string;
@@ -20,11 +21,14 @@ export type Account = {
   /** Offset from NOW_BASE in ms (negative = in the past). */
   createdAt: number;
   activeGame: boolean;
+  /** The account has been in at least one game: unconfirmed accounts with a game are never deleted (BR-28). */
+  hasGames: boolean;
 };
 
 export type Token = { id: number; email: string; issuedAt: number; usedAt: number | null; invalidated: boolean };
 export type Mail = { id: number; tokenId: number; to: string; name: string; sentAt: number };
 
+export type InviteScenario = "auto" | "participant" | "own" | "other-game" | "waiting-game" | "limit" | "invalid";
 export type Provider = "ok" | "fail" | "quota" | "none";
 export type LinkOverride = "auto" | "none";
 
@@ -66,6 +70,10 @@ export type Sim = {
   banner: { state: BannerState; outcome: BannerOutcome };
   /** Name of a place outside the prototype that the player tried to open. */
   outside: string | null;
+  /** When the player closed the verification banner (null = never). It comes back after 7 days. */
+  bannerClosedAt: number | null;
+  /** Which state the invitation page shows (map s07); "auto" derives it from the session. */
+  invite: InviteScenario;
   /** Where to go after login or verification (G8), already sanitized. */
   next: string | null;
   seq: number;
@@ -78,9 +86,9 @@ export type Sim = {
 };
 
 const seedAccounts = (): Record<string, Account> => ({
-  "ala@example.com": { email: "ala@example.com", name: "Ala_7", password: DEMO_PASSWORD, verified: true, createdAt: -14 * DAY, activeGame: false },
-  "marek@example.com": { email: "marek@example.com", name: "Marek_Z", password: DEMO_PASSWORD, verified: true, createdAt: -30 * DAY, activeGame: true },
-  "ewa@example.com": { email: "ewa@example.com", name: "Ewa_B", password: DEMO_PASSWORD, verified: false, createdAt: -6 * DAY, activeGame: false },
+  "ala@example.com": { email: "ala@example.com", name: "Ala_7", password: DEMO_PASSWORD, verified: true, createdAt: -14 * DAY, activeGame: false, hasGames: true },
+  "marek@example.com": { email: "marek@example.com", name: "Marek_Z", password: DEMO_PASSWORD, verified: true, createdAt: -30 * DAY, activeGame: true, hasGames: true },
+  "ewa@example.com": { email: "ewa@example.com", name: "Ewa_B", password: DEMO_PASSWORD, verified: false, createdAt: -6 * DAY, activeGame: false, hasGames: false },
 });
 
 export const defaultScenario = (): Scenario => ({
@@ -110,6 +118,8 @@ const fresh = (): Sim => ({
   banner: { state: "idle", outcome: "none" },
   outside: null,
   next: null,
+  bannerClosedAt: null,
+  invite: "auto",
   seq: 1,
   epoch: 0,
   notice: null,
@@ -149,16 +159,15 @@ export function formatNow(sim: Sim): string {
 export function viewer(sim: Sim): Account | null {
   if (!sim.session || sim.scenario.dbDown) return null;
   if (nowMs(sim) - sim.session.at >= SESSION_TTL) return null;
-  const account = sim.accounts[sim.session.email];
-  if (!account) return null;
-  return account;
+  // A deleted account takes its sessions with it (cascade), e.g. the 14-day cleanup of an unconfirmed account without games.
+  return accountExists(sim, sim.session.email);
 }
 
-/** Unconfirmed accounts older than 7 days are gone (email-verification Q14). */
+/** Unconfirmed accounts without any game are deleted after 14 days (BR-28, replaces Q14). */
 export function accountExists(sim: Sim, email: string): Account | null {
   const account = sim.accounts[email];
   if (!account) return null;
-  if (!account.verified && nowMs(sim) - (NOW_BASE + account.createdAt) >= UNCONFIRMED_TTL) return null;
+  if (!account.verified && !account.hasGames && nowMs(sim) - (NOW_BASE + account.createdAt) >= UNCONFIRMED_TTL) return null;
   return account;
 }
 
@@ -176,7 +185,7 @@ export function validateRegister({ email, name, password }: RegisterFields): Reg
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) errors.email = "Podaj poprawny adres e-mail.";
   if (!/^[A-Za-z0-9_\-ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]{3,24}$/.test(name)) errors.name = "Nazwa ma 3–24 znaki: litery, cyfry, _ i -.";
   else if (RESERVED.includes(normalizeName(name))) errors.name = "Ta nazwa jest zastrzeżona. Wybierz inną.";
-  if (Array.from(password).length < 16) errors.password = "Hasło musi mieć co najmniej 16 znaków.";
+  if (Array.from(password).length < 8) errors.password = "Hasło musi mieć co najmniej 8 znaków.";
   else if (new TextEncoder().encode(password).length > 72) errors.password = "Hasło może mieć najwyżej 72 bajty (emoji zajmują więcej niż jeden).";
   return errors;
 }
@@ -192,7 +201,7 @@ export type RegisterResult =
   | { kind: "already" };
 
 /** Safe return path (G8): relative, starts with a single slash, no scheme. In the prototype only screen ids count. */
-export const safeNext = (value: string | null | undefined) => (value && /^s0[1-6]$/.test(value) ? value : null);
+export const safeNext = (value: string | null | undefined) => (value && /^s0[1-7]$/.test(value) ? value : null);
 
 function issueMail(email: string, name: string) {
   const sim = state;
@@ -221,7 +230,7 @@ export async function register(fields: RegisterFields): Promise<RegisterResult> 
   if (accountExists(sim, email)) return { kind: "conflict-email" };
   const key = normalizeName(name);
   if (Object.values(sim.accounts).some((a) => accountExists(sim, a.email) && normalizeName(a.name) === key)) return { kind: "conflict-name" };
-  const account: Account = { email, name, password: fields.password, verified: false, createdAt: sim.clock, activeGame: false };
+  const account: Account = { email, name, password: fields.password, verified: false, createdAt: sim.clock, activeGame: false, hasGames: false };
   set({
     accounts: { ...sim.accounts, [email]: account },
     session: { email, at: nowMs(sim) },
@@ -294,7 +303,7 @@ export function switchAccount(code: string) {
   if (!email) return;
   let accounts = sim.accounts;
   if (!accounts[email] && (code === "A2" || code === "A4")) {
-    accounts = { ...accounts, [email]: { email, name: "Kuba_P", password: DEMO_PASSWORD, verified: false, createdAt: -5 * 60_000, activeGame: false } };
+    accounts = { ...accounts, [email]: { email, name: "Kuba_P", password: DEMO_PASSWORD, verified: false, createdAt: -5 * 60_000, activeGame: false, hasGames: false } };
     set({ accounts });
     issueMail(email, "Kuba_P");
   }
@@ -366,6 +375,17 @@ export function applyVerifiedElsewhere() {
   });
 }
 
+export const dismissBanner = () => set((s) => ({ bannerClosedAt: nowMs(s) }));
+/** The banner shows unless it was closed less than 7 days ago; a closing time in the future counts as expired. */
+export const bannerVisible = (sim: Sim) => sim.bannerClosedAt === null || sim.bannerClosedAt > nowMs(sim) || nowMs(sim) - sim.bannerClosedAt >= BANNER_REOPEN;
+export const setInvite = (invite: InviteScenario) => set({ invite });
+/** The guest accepted the warning and joined a game (outside the prototype): from now on they cannot log in or register (BR-22, L26). */
+export const joinAsGuest = () => set({ guestGame: true });
+/** The current account plays a game: an unconfirmed account with a game is never deleted (BR-28). */
+export const giveAccountAGame = () => set((s) => {
+  const account = viewer(s);
+  return account ? { accounts: { ...s.accounts, [account.email]: { ...account, hasGames: true } } } : {};
+});
 export const openToken = (id: number | null) => set({ openedToken: id });
 export const showOutside = (name: string | null) => set({ outside: name });
 export const setNext = (next: string | null) => set({ next });

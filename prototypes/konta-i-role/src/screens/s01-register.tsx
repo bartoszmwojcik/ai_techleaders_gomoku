@@ -78,7 +78,6 @@ export function S01Register() {
   }
 
   const guestBlocked = sim.guestGame;
-  const unavailable = sim.scenario.provider === "none";
 
   return (
     <>
@@ -89,11 +88,6 @@ export function S01Register() {
           // s01.13 (L14, L23, L26): a guest with a running game can neither register nor log in. The wording is an assumption (A-02).
           <Alert status="warning" title="Trwa Twoja partia jako gość">
             Dokończ ją, zanim założysz konto.
-          </Alert>
-        ) : unavailable ? (
-          // s01.12 (L03): registration needs working mail. The wording is an assumption (A-02).
-          <Alert status="warning" title="Rejestracja jest chwilowo niedostępna">
-            Nie możemy teraz wysłać wiadomości z linkiem potwierdzającym. Spróbuj później.
           </Alert>
         ) : (
           <>
@@ -126,7 +120,7 @@ export function S01Register() {
                 showLabel="Pokaż hasło"
                 hideLabel="Ukryj hasło"
                 autoComplete="new-password"
-                hint="Co najmniej 16 znaków"
+                hint="Co najmniej 8 znaków"
                 error={errors.password}
                 required
                 value={password}

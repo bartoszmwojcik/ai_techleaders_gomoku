@@ -7,6 +7,7 @@ import { S03Verify } from "./screens/s03-verify";
 import { S04Home } from "./screens/s04-home";
 import { S05Account } from "./screens/s05-account";
 import { S06Mailbox } from "./screens/s06-mailbox";
+import { S07Invite } from "./screens/s07-invite";
 import { Toolbar } from "./Toolbar";
 import { useSim } from "./sim";
 
@@ -22,11 +23,11 @@ export function App() {
       <ScreenSection
         id="s01"
         title="Rejestracja"
-        meta="Rola: niezalogowany. Historia #19 (E01-S01). Stany s01.1–s01.13."
+        meta="Rola: niezalogowany. Historia #19 (E01-S01). Stany s01.1–s01.13 (s01.12 wycofany 2026-10-26)."
         notes={[
-          "Historia: #19 (E01-S01), kryteria K1–K3; BR-14, BR-16, BR-23. Stany: s01.1–s01.13.",
+          "Historia: #19 (E01-S01), kryteria K1–K3; BR-14, BR-16, BR-26, BR-28 (hasło co najmniej 8 znaków). Stany: s01.1–s01.13; s01.12 wycofany, bo poczta nie wyłącza rejestracji.",
           "Symulacja: konto, sesja i limit prób (6. próba w sesji) istnieją tylko w pamięci strony; nic nie jest wysyłane. Teksty błędów pól, błędu serwera i sieci są założeniem (A-03).",
-          "Nie rozstrzyga: L02 (ekran „Sprawdź skrzynkę” po rejestracji), L04 (409 i 403), L05 (treści błędów), komunikat s01.12 i s01.13 (A-02).",
+          "Nie rozstrzyga: L04 (409 i 403), L05 (treści błędów), komunikat s01.13 (A-02). L02 (ekran „Sprawdź skrzynkę”) jest nieaktualne: po rejestracji gracz gra od razu.",
         ]}
       >
         <S01Register key={epoch} />
@@ -58,11 +59,11 @@ export function App() {
       <ScreenSection
         id="s04"
         title="Strona główna"
-        meta="Rola: niezalogowany, niepotwierdzony, potwierdzony. Historie #19, #20, #34. Stany s04.1–s04.12."
+        meta="Rola: niezalogowany, zalogowany (z potwierdzonym e-mailem lub bez). Historie #19, #20, #34. Stany s04.1–s04.13."
         notes={[
-          "Historie: #19 (widok „zalogowany”), #20 (linki), #34/K1 i K4 (baner); BR-23, D-17. Stany: s04.1–s04.12.",
-          "Symulacja: akcje gry (Utwórz zaproszenie, Szukam przeciwnika, Lobby, Historia) otwierają dialog „Poza tym prototypem” (Epik 02 i 03). Niepotwierdzony nie widzi Lobby i Historii (L06). Baner dla 503, 409 i 401 używa najbliższych stanów komponentu (luka D02).",
-          "Nie rozstrzyga: L11 (wygląd banera dla 409, 401, 503), L12 (ostrzeżenie o usunięciu po 7 dniach), L18 (ładowanie), L17 (akcje gry).",
+          "Historie: #19 (widok „zalogowany”), #20 (linki), #34/K1 i K4 (baner); BR-26, D-24. Stany: s04.1–s04.13.",
+          "Symulacja: akcje gry (Utwórz zaproszenie, Szukam przeciwnika, Lobby, Historia) otwierają dialog „Poza tym prototypem” (Epik 02 i 03). Niepotwierdzony e-mail niczego nie blokuje: te akcje, Lobby i Historia są aktywne. Zamykalny baner wraca po 7 dniach (s04.13). Baner dla 503, 409 i 401 używa najbliższych stanów komponentu (luka D02).",
+          "Nie rozstrzyga: L11 (wygląd banera dla 409, 401, 503), L18 (ładowanie), L17 (akcje gry).",
         ]}
       >
         <S04Home key={epoch} />
@@ -90,6 +91,18 @@ export function App() {
         ]}
       >
         <S06Mailbox key={epoch} />
+      </ScreenSection>
+      <ScreenSection
+        id="s07"
+        title="Wejście z zaproszenia"
+        meta="Rola: niezalogowany, zalogowany, gość. Historia #21 (E02-S01), BR-22, BR-26. Stany s07.1–s07.9."
+        notes={[
+          "Historia: #21 (E02-S01). Zmiana 2026-10-26: bez stanu „zalogowany bez potwierdzenia”, zalogowany nigdy nie gra jako gość (Q19). Stany s07.1–s07.9.",
+          "Symulacja: zaproszenie, twórca (Marek_Z) i kod są fikcyjne. „Graj jako gość” po ostrzeżeniu daje gościowi aktywną partię (jak konto A6), więc od razu widać blokadę logowania i rejestracji. Dołączenie do partii, anulowanie i przejście do partii są poza prototypem (Epik 02). Stan wybierasz w panelu Scenariusze.",
+          "Nie rozstrzyga: przejścia do `/games/{id}` (s07.4, s07.5 pokazane jako zapowiedź), treści ostrzeżenia dla gościa poza specyfikacją #21.",
+        ]}
+      >
+        <S07Invite key={epoch} />
       </ScreenSection>
       <OutsideDialog />
     </div>

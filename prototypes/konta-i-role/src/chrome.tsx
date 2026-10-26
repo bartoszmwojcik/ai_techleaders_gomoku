@@ -71,20 +71,18 @@ export function SiteHeader({ submitForm }: { submitForm?: string } = {}) {
       </PageHeader>
     );
   }
-  // L06: only a confirmed player sees Lobby and Historia. L06 leaves "Wyloguj" in the header open (assumption A-07), so it lives on /account.
+  // BR-26: every signed-in player sees Lobby and Historia, with or without a confirmed e-mail. "Wyloguj" stays on /account (map L06 note).
   return (
     <PageHeader
       brand="Gomoku"
       homeHref="#s04"
       navigation={
-        account.verified ? (
-          <>
-            <OutsideLink name="Lobby" placement="standalone">Lobby</OutsideLink>
-            <OutsideLink name="Historia partii" placement="standalone">Historia</OutsideLink>
-          </>
-        ) : undefined
+        <>
+          <OutsideLink name="Lobby" placement="standalone">Lobby</OutsideLink>
+          <OutsideLink name="Historia partii" placement="standalone">Historia</OutsideLink>
+        </>
       }
-      navigationLabel={account.verified ? "Główna nawigacja" : undefined}
+      navigationLabel="Główna nawigacja"
     >
       <span className="text-body text-text-secondary">Zalogowano jako {account.name}</span>
       <TextLink href="#s05" placement="standalone">Konto</TextLink>
