@@ -1,5 +1,8 @@
 # Walkthrough: account registration, `.ai/prototypes/discovery/account-registration/revision-001/index.html`, 2026-10-26
 
+> **Nota 2026-10-26 (po zmianie polityki kont):** raport dotyczy poprzedniego modelu: hasło 16 znaków, potwierdzenie e-maila wymagane przed grą (D-17, BR-23). Od decyzji D-24…D-26 konto jest aktywne od razu, a potwierdzenie jest nieblokujące (wnioski 2, 4 i 5 tracą na wadze, finding 1 pozostaje hipotezą). Zob. `research/decisions/2026-10-26-onboarding-simplification.md`. Raport zostaje jako historia.
+
+
 **[ASSUMPTION] The basis is assumption-only: no real interview, no usage data, all four personas have more assumed than sourced lines.** The most consequential repeated hypothesis: the registration entry never announces the e-mail confirmation step, and when an option without an account is next to it, every persona in both runs would take that option instead; real check needed next: watch 3 to 5 people invited by a friend (S2) and 3 to 5 outside visitors (S3) use the real invitation link and the real sign-up, with a guest alternative on screen. Every finding below is synthetic and does not satisfy the Definition of Ready.
 
 Stance: validate (brief mode is `own`, whose default would be `adversary`; `validate` was chosen explicitly by the user)
