@@ -11,7 +11,7 @@ Last filed: 2026-10-24
 | E01-S01-T01 | #28 | Migracja: tabela użytkowników | #19 | — | no |
 | E01-S02 | #20 | Użytkownik może się zalogować i wylogować | #15 | E01-S01 (#19) | no |
 | E01-S02-T01 | #39 | Sprzątanie wygasłych sesji i liczników limitu | #20 | E01-S02 (#20) | no |
-| E01-S03 | #34 | Zalogowany użytkownik potwierdza e-mail linkiem i może grać | #15 | E01-S01 (#19), E01-S03-T01 (#38) | no |
+| E01-S03 | #34 | Zalogowany użytkownik może potwierdzić e-mail linkiem (nieblokująco) | #15 | E01-S01 (#19), E01-S03-T01 (#38) | no |
 | E01-S03-T01 | #38 | Decyzja: dostawca wysyłki poczty i jego koszt | #34 | — | no |
 | E01-S04 | #35 | Użytkownik, który zapomniał hasła, ustawia nowe przez link z e-maila | #15 | E01-S03 (#34) | no |
 | E01-S05 | #36 | Zalogowany użytkownik zmienia hasło | #15 | E01-S02 (#20) | no |
@@ -39,7 +39,7 @@ Last filed: 2026-10-24
 |---|---|---|
 | E01-S01 | Hasło co najmniej 8 znaków (BR-28), konto aktywne od razu. **Zgłoszenie zamknięte bez kodu w `main`:** uzgodnić ze stanem rzeczywistym (otworzyć ponownie albo wskazać następcę). | #19 |
 | E01-S02 | Bez zmian poza komunikatem i bannerem (konto niepotwierdzone loguje się i gra normalnie). | #20 |
-| E01-S03 | Tytuł bez „i może grać”: kryterium „gra odblokowana” odpada; zostaje „e-mail potwierdzony”. Potwierdzenie nie blokuje niczego. | #34 |
+| E01-S03 | Tytuł zmieniony (bez „i może grać”): kryterium „gra odblokowana” odpada; zostaje „e-mail potwierdzony”. Potwierdzenie nie blokuje niczego. | #34 |
 | E01-S04 | Reset tylko po potwierdzonym e-mailu (BR-27). | #35 |
 | E01-S05 | Nowe hasło 8–72 bajty (BR-28). | #36 |
 | E02-S01 | Bez stanu „zalogowany bez potwierdzenia”; `as = guest` niedozwolone dla każdego zalogowanego; strona `/invite/[code]` jako s07. | #21 |
