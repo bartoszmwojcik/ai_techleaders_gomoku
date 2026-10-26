@@ -1,16 +1,22 @@
 # Reset hasła przez e-mail (E01-S04, #35)
 
+> **Zmienione przez `2026-10-26-account-onboarding-simplification.md` (decyzje właściciela 2026-10-26, brief D-24…D-26, BR-26…BR-28).** Punkty poniżej są zastąpione; tekst niżej zostaje jako historia i jest oznaczony w miejscach zmian.
+> - Reset hasła tylko dla **potwierdzonego** e-maila (BR-27); dla niepotwierdzonego nic nie jest wysyłane, a odpowiedź ta sama (`200`). Q1 (reset na niepotwierdzony adres) i BR-25 zastąpione; `confirm` nie ustawia już `emailVerifiedAt`.
+> - Komunikat po prośbie: „Jeśli konto z tym adresem istnieje i adres jest potwierdzony, wysłaliśmy link (ważny 1 godzinę). Sprawdź też folder spam.”
+> - Hasło: `newPasswordSchema` 8–72 bajty (BR-28), nie 16.
+
+
 > Status: **zatwierdzona** (`om-auto-write-spec`, 2026-10-24; założenia potwierdzone przez właściciela — Bartosz Wójcik, „a” — 2026-10-24).
 
 ## 📝 TLDR
 
-Dziś (po #19/#20) osoba, która zapomni hasła, traci konto. Po wdrożeniu (zachowanie przyszłe): na `/forgot-password` podaje e-mail i zawsze widzi ten sam komunikat; jeśli konto istnieje, dostaje jednorazowy link ważny 1 h; na `/reset-password` ustawia nowe hasło (reguła G3: co najmniej 16 znaków), wszystkie jej sesje są unieważniane, a niepotwierdzony e-mail staje się potwierdzony (spec #34, Q9).
+Dziś (po #19/#20) osoba, która zapomni hasła, traci konto. Po wdrożeniu (zachowanie przyszłe): na `/forgot-password` podaje e-mail i zawsze widzi ten sam komunikat; jeśli konto istnieje, dostaje jednorazowy link ważny 1 h; na `/reset-password` ustawia nowe hasło (reguła G3 zmieniona 2026-10-26: co najmniej 8 znaków, BR-28), wszystkie jej sesje są unieważniane, a niepotwierdzony e-mail staje się potwierdzony (spec #34, Q9; zastąpione 2026-10-26: reset tylko dla potwierdzonego e-maila, BR-27).
 
 ## Resolved assumptions (autonomous defaults)
 
 | # | Pytanie | Zastosowane założenie | Dlaczego | Potwierdzenie |
 |---|---|---|---|---|
-| Q1 | Reset dla niepotwierdzonego adresu (BR-19 proponuje „tylko potwierdzony”) | **Dozwolony**; ustawienie hasła z linku potwierdza e-mail. Przyjęcie zmienia propozycję BR-19 — wymaga nowego wiersza w briefie za zgodą właściciela. | Jedyna droga właściciela adresu do konta założonego na jego e-mail przez kogoś innego (spec #34, Q9); link na adres jest dowodem dostępu do skrzynki. | ✅ potwierdzone przez właściciela 2026-10-24 |
+| Q1 | Reset dla niepotwierdzonego adresu (BR-19 proponuje „tylko potwierdzony”) | **Dozwolony**; ustawienie hasła z linku potwierdza e-mail. Przyjęcie zmienia propozycję BR-19 — wymaga nowego wiersza w briefie za zgodą właściciela. | Jedyna droga właściciela adresu do konta założonego na jego e-mail przez kogoś innego (spec #34, Q9); link na adres jest dowodem dostępu do skrzynki. | ✅ potwierdzone przez właściciela 2026-10-24 | **[zastąpione 2026-10-26: BR-27, reset tylko po potwierdzeniu]**
 | Q2 | Ważność linku | 1 godzina, jednorazowy; nowa prośba unieważnia poprzednie tokeny dopiero po udanej wysyłce. | Reset daje pełny dostęp do konta — krótsze okno niż potwierdzenie e-maila (24 h). | odwracalne |
 | Q3 | Jak nie zdradzić istnienia konta? | `POST …/request` po walidacji i limitach od razu odpowiada `200` z tym samym komunikatem; **cała** praca zależna od konta (wyszukanie, zapis tokenu, wysyłka, unieważnienie starszych) dzieje się w `after()` z `next/server` we **własnym** `withRequestScope` (scope żądania nie jest gwarantowany po odpowiedzi), więc czas odpowiedzi nie zależy od istnienia konta. | Standardy §1 (komunikaty auth nie zdradzają kont), BR-16. | odwracalne |
 | Q4 | Limity | Prośby: 3/h na `sha256(e-mail)`, 10/h na adres klienta; potwierdzenie z tokenem: 10/15 min na adres; dzienny limit wysyłek wspólny z #34 (`EMAIL_DAILY_LIMIT`). | Chroni skrzynki ofiar i darmowy plan (D-20). | odwracalne |
@@ -29,7 +35,7 @@ Tabela tokenów jak w #34 (`opaque-token`, w bazie SHA-256), dwie strony i dwa r
 ## 📝 Architecture
 
 - **`PasswordResetService`** (scoped, `{ em, emailSender, passwordHasher, sessionService, clock }`): `request(email)` — wołane wyłącznie z `after()` (konto istnieje → token + wysyłka + po sukcesie unieważnienie starszych przez ustawienie `used_at`; nie istnieje → nic), `confirm(token, newPassword)` — warunkowe `UPDATE … SET used_at = now() WHERE token_hash = ? AND used_at IS NULL AND expires_at > now() RETURNING user_id`, potem w tej samej transakcji nowy hash (liczony bcryptem **przed** otwarciem transakcji), `emailVerifiedAt = coalesce(emailVerifiedAt, now())` (Q1), usunięcie wszystkich sesji konta i tokenów resetu.
-- **Schemat hasła:** `newPasswordSchema` (G3: ≥ 16 znaków, ≤ 72 bajty) wydzielony z `registerSchema` w `core/src/validators/auth/` — użyje go też #36.
+- **Schemat hasła:** `newPasswordSchema` (G3: ≥ 8 znaków (zmienione 2026-10-26, BR-28), ≤ 72 bajty) wydzielony z `registerSchema` w `core/src/validators/auth/` — użyje go też #36.
 - **Strony:** `(frontend)/forgot-password/page.tsx`, `(frontend)/reset-password/page.tsx` (`searchParams` jako `Promise`, `Referrer-Policy: no-referrer`, bez zasobów zewnętrznych); link „Nie pamiętasz hasła?” na `/login` (#20).
 
 ## 📝 Data Model
@@ -81,7 +87,7 @@ Mockupy: pominięte — brak deskryptora środowiska testowego `om-prepare-test-
 ## 📝 Risks & Impact Review
 
 - **`risk-high`** (logowanie i sesje, migracja): testy integracyjne każdego kryterium, CSRF, limitów i warunkowego `UPDATE`; review drugiej osoby; QA bez self-QA.
-- **Q1 zmienia propozycję BR-19** — wymaga decyzji właściciela i wiersza w briefie.
+- **Q1 zmienia propozycję BR-19** — wymaga decyzji właściciela i wiersza w briefie. **[zastąpione 2026-10-26: wraca BR-19 jako BR-27]**
 - **`after()`**: wysyłka po odpowiedzi — błąd wysyłki niewidoczny dla użytkownika (świadomie, Q3); test jednostkowy sprawdza, że `request` nie czeka na wysyłkę.
 - **Rollback:** revert + `db:migration:down` przed wdrożeniem; po wdrożeniu revert kodu bez cofania migracji.
 

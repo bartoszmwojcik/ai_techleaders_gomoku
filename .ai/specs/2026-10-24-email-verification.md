@@ -1,10 +1,17 @@
 # Potwierdzenie adresu e-mail (E01-S03, #34)
 
+> **Zmienione przez `2026-10-26-account-onboarding-simplification.md` (decyzje właściciela 2026-10-26, brief D-24…D-26, BR-26…BR-28).** Punkty poniżej są zastąpione; tekst niżej zostaje jako historia i jest oznaczony w miejscach zmian.
+> - Potwierdzenie e-maila **nie blokuje gry** (BR-26): konto jest aktywne od rejestracji; baner (zamykalny, wraca po 7 dniach, pamięć w przeglądarce) tłumaczy, że bez potwierdzenia nie ma resetu hasła.
+> - Q14 (7 dni, baner „zostanie usunięte”) zastąpione przez BR-28: niepotwierdzone konta bez żadnej partii kasowane po 14 dniach od założenia; konta z partią zostają.
+> - Kryterium #34/K2 „gra odblokowana” odpada; zostaje „e-mail potwierdzony”. Zmienia się tytuł zgłoszenia #34 (Faza 4).
+> - Q1/Q6/Q13 o dostawcy poczty: brak dostawcy nie wyłącza rejestracji ani gry (BR-26), tylko wysyłkę potwierdzeń i resetu.
+
+
 > Status: **zatwierdzona** (`om-auto-write-spec`, 2026-10-24; założenia potwierdzone przez właściciela — Bartosz Wójcik, „a” — 2026-10-24).
 
 ## 📝 TLDR
 
-Po #19 konto ma kolumnę `emailVerifiedAt`, ale nic jej nie ustawia — każdy nowy gracz z kontem jest zablokowany przed grą (BR-23), a jedynym wyjściem jest gra gościa z zaproszenia (BR-22).
+Po #19 konto ma kolumnę `emailVerifiedAt`, ale nic jej nie ustawia — każdy nowy gracz z kontem jest zablokowany przed grą (BR-23), a jedynym wyjściem jest gra gościa z zaproszenia (BR-22). **[zastąpione 2026-10-26: gracz gra od razu, BR-26]**
 Po wdrożeniu (zachowanie przyszłe): rejestracja wysyła wiadomość z linkiem; kliknięcie linku i potwierdzenie na stronie `/verify-email` ustawia `emailVerifiedAt`, co odblokowuje tworzenie partii, zaproszenia i lobby. Niepotwierdzony gracz może wysłać link ponownie z `/` lub `/account`. Wysyłka idzie przez wymienialny `EmailSender` — w dev i testach wiadomość trafia do pliku-skrzynki (`EMAIL_OUTBOX_PATH`), w produkcji do dostawcy wybranego w #38.
 
 ## Resolved assumptions (autonomous defaults)
@@ -24,7 +31,7 @@ Po wdrożeniu (zachowanie przyszłe): rejestracja wysyła wiadomość z linkiem;
 
 ## 📝 Problem Statement
 
-- **Kto:** zalogowany gracz z kontem i niepotwierdzonym e-mailem (BR-23) — założyciel partii, zapraszający, gracz lobby. Gość z zaproszenia nie jest objęty (BR-22).
+- **Kto:** zalogowany gracz z kontem i niepotwierdzonym e-mailem (BR-23) — założyciel partii, zapraszający, gracz lobby. Gość z zaproszenia nie jest objęty (BR-22). **[BR-23 zastąpione przez BR-26 (2026-10-26)]**
 - **Dziś (po #19/#20):** `emailVerifiedAt = NULL` u wszystkich; komunikat „Potwierdź e-mail, aby grać” bez sposobu potwierdzenia. Grupa docelowa bez dowodu popytu (A-01); bariera potwierdzenia to niesprawdzone założenie A-03.
 - **Kryteria z #34:** (1) po rejestracji wychodzi wiadomość z linkiem; (2) ważny link → e-mail potwierdzony, gra odblokowana; (3) link użyty lub wygasły → brak potwierdzenia, komunikat z możliwością ponownego wysłania; (4) ponowne wysłanie daje nowy link, liczba próśb ograniczona limitem.
 
@@ -61,7 +68,7 @@ flowchart LR
 - **`clock`** (`{ now(): Date }`, singleton) — nowy wpis w kontenerze; jeśli #19/#20 go nie dodały, dodaje go ten PR.
 - **`EmailSender`** (singleton): `send({ to, subject, text, html })`. Wybór implementacji w `container.ts` z `EMAIL_TRANSPORT`: `file` (dev/testy, z guardem `http://` w produkcji, Q1), adapter dostawcy (#38), brak → `UnconfiguredEmailSender`, który zawsze rzuca błąd wysyłki (→ `502`). Logi nigdy nie zawierają tokenu ani adresu e-mail (standardy §Secrets) — dlatego dev/testy używają pliku, nie logu.
 - **Szablon wiadomości:** czysta funkcja w `app/src/server/services/auth/email-verification-message.ts` (tekst i HTML z linkiem `APP_ORIGIN/verify-email?token=…&next=…`), testowana bez wysyłki.
-- **Blokada gry (BR-23)** należy do route'ów gry (#21, #25, #26) — ta specyfikacja tylko ustawia `emailVerifiedAt`.
+- **Blokada gry (BR-23)** należy do route'ów gry (#21, #25, #26) — ta specyfikacja tylko ustawia `emailVerifiedAt`. **[zastąpione 2026-10-26: bramki nie ma, BR-26]**
 - **`next`** z rejestracji (G8) przechodzi do linku i po potwierdzeniu prowadzi przez `safeNextPath`.
 
 ## 📝 Data Model
@@ -146,7 +153,7 @@ Mockupy: pominięte — repozytorium nie ma deskryptora środowiska testowego `o
 
 ## 📝 Decisions in play
 
-- **D-17** (potwierdzenie przed pierwszą grą), **BR-23** (konto bez potwierdzonego e-maila nie gra), **BR-22 / D-23** (gość z zaproszenia nie potwierdza e-maila), **D-20** (darmowy plan poczty), **Q-02** (dostawca — otwarte, #38), **BR-17** (usunięcie konta kasuje dane), **BR-20** (telefon). Właściciel wszystkich: Bartosz Wójcik.
+- **D-17** (potwierdzenie przed pierwszą grą), **BR-23** (konto bez potwierdzonego e-maila nie gra), **BR-22 / D-23** (gość z zaproszenia nie potwierdza e-maila), **D-20** (darmowy plan poczty), **Q-02** (dostawca — otwarte, #38), **BR-17** (usunięcie konta kasuje dane), **BR-20** (telefon). Właściciel wszystkich: Bartosz Wójcik. **[D-17 i BR-23 zastąpione przez D-24 i BR-26 (2026-10-26)]**
 - Specyfikacje: #19 (G2 CSRF, G7 `opaque-token`, G8 `safeNextPath`), #20 (`requireSession`, `/account`, `RateLimiter.hit`).
 - Żadna aktywna decyzja nie jest nadpisywana.
 
@@ -182,6 +189,6 @@ Potwierdzone przez właściciela — Bartosza Wójcika.
 | Q11 | Zużyty token zawsze daje `400 INVALID_TOKEN` (bez wyjątku „potwierdzone tym tokenem”). Na stronie błędu zostaje „Wyślij nowy link”; zalogowany z potwierdzonym kontem widzi „Adres jest już potwierdzony”. |
 | Q12 | Dzienny limit wysyłek (Q10) ma osobne liczniki: weryfikacja e-maila zużywa najwyżej 70% `EMAIL_DAILY_LIMIT`, reset hasła (#35) może użyć całości — rejestracja jest kanałem nadużyć, reset dotyczy istniejących graczy. |
 | Q13 | Kolejność wdrożenia: #38 (spike SMTP) → #30 (spike adresu klienta) → #34 i #35 razem. Bez dostawcy poczty rejestracja kont jest wyłączona (warunek w README); Q1 nie zmienia startu aplikacji, ale produkcji bez dostawcy się nie wdraża. |
-| Q14 | Konta z `emailVerifiedAt IS NULL` starsze niż 7 dni są usuwane przez #39; baner: „Niepotwierdzone konto zostanie usunięte po 7 dniach”. |
+| Q14 | Konta z `emailVerifiedAt IS NULL` starsze niż 7 dni są usuwane przez #39; baner: „Niepotwierdzone konto zostanie usunięte po 7 dniach”. | **[zastąpione 2026-10-26: BR-28 (14 dni, tylko konta bez partii)]**
 | Q15 | Limity „na adres klienta” działają tylko przy wiarygodnie ustalonym adresie (spike #30); bez niego zostają limity na konto. |
 | Q16 | Plan implementacji dostaje krok: reguła sprzątania `email_verification_tokens` w `packages/db/src/cleanup/rules.ts` (#39). |
