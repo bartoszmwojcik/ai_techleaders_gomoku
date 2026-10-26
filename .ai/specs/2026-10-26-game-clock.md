@@ -38,9 +38,9 @@ Model „zegara szachowego” zapisany w wierszu `games`: **pozostały czas po o
 ## 📝 Architecture
 
 - **`core/src/games/clock.ts` — czyste funkcje, bez I/O:** stała `INITIAL_CLOCK_MS = 600_000`; `remainingMs(state, seat, nowMs)`; `spend(state, seat, nowMs): { clockMs, expired: boolean }`; `deadlineMs(state, seat)` (moment upływu, do `finishedAt`); `isLow(remainingMs)` z progiem `LOW_TIME_MS = 60_000`. Typy `ClockState { clockMs: [number, number]; turnStartedAtMs: number | null }`.
-- **`GameMoveService` (#22):** po `settleGame` i sprawdzeniu kolejki woła `spend`; gdy `expired`, kończy partię (`timeout`) zamiast przyjmować ruch i zwraca `GAME_FINISHED`. Zapis ruchu aktualizuje `clockMs[seat]` i `turnStartedAt` w tym samym warunkowym `UPDATE`.
-- **`timeoutSettler` (port z #21/#22, tu implementacja):** `settleGame(gameId)` — pod już założoną blokadą wiersza sprawdza termin i kończy partię; `settleFor(userId)` — dla partii `active` użytkownika z upłyniętym czasem, w kolejności blokad `users` → `games` z #21. Zakończenie to jeden warunkowy `UPDATE games … WHERE id = :id AND status = 'active' AND move_count = :expected`; 0 wierszy = ktoś był pierwszy, odpowiedź `409`/aktualny stan, nigdy `500`.
-- **`GameService.getState` (#21):** ustawia `seen_at`; gdy to **drugi** brakujący `seen_at`, w tej samej transakcji uruchamia zegar (`UPDATE … SET turn_started_at = :now WHERE turn_started_at IS NULL`). Odczyt przeterminowanej partii woła `settleGame` (zapis w odczycie jest świadomy: stan musi być spójny dla obu graczy).
+- **`GameMoveService` (#22):** **jedna ścieżka terminu:** `settleGame` (pod blokadą wiersza, zaraz po ponowieniu z pkt 1 kolejności #22) jako jedyny kończy partię przez czas; `spend` tylko liczy. Bieżący czas `now` pobierany jest **raz**, po zdobyciu blokady, i przekazywany do obu. Ruch przyjęty aktualizuje `clockMs[seat]` i `turnStartedAt` w tym samym warunkowym `UPDATE`. Ruch przy `turnStartedAt IS NULL` (zegar nie ruszył) zwraca `409 GAME_NOT_STARTED`.
+- **`timeoutSettler` (port z #21/#22, tu implementacja):** `settleGame(gameId)` — pod już założoną blokadą wiersza sprawdza termin i kończy partię; w tej samej transakcji ustawia `is_active = false` obu uczestnikom (kolejność blokad `games` → `game_players`, BR-13). `settleFor(userId)` — dla partii `active` użytkownika z upłyniętym czasem, w kolejności `users` → `games`; partię już zakończoną przez kogoś innego (0 wierszy) pomija bez błędu. Gość (`user_id = NULL`) jest obejmowany przez `resolveParticipant`/`getState`, które wołają `settleGame(gameId)` przed oceną ważności tokenu (#21 Q17). Zakończenie to jeden warunkowy `UPDATE games … WHERE id = :id AND status = 'active' AND move_count = :expected`; 0 wierszy = ktoś był pierwszy, odpowiedź `409`/aktualny stan, nigdy `500`.
+- **`GameService.getState` (#21):** ustawia `seen_at`, a przy każdym odczycie partii `active` wykonuje idempotentny `UPDATE games SET turn_started_at = :now WHERE id = :id AND turn_started_at IS NULL AND NOT EXISTS (SELECT 1 FROM game_players WHERE game_id = :id AND seen_at IS NULL)` (odporny na dwa współbieżne odczyty; zegar startuje dokładnie raz). **Kolejność względem Q21:** najpierw anulowanie partii po 15 min bez `seen_at` (`cancelNotStarted`), dopiero potem start zegara. Odpytywanie pozostaje czystym odczytem: termin liczony jest bez blokady, a blokada i `settleGame` pojawiają się tylko po jego upływie (zapis w odczycie jest świadomy: stan musi być spójny dla obu graczy).
 - **Klient:** `useGameClock({ remainingMs, running, receivedAt })` w `app/src/components/games/` — odlicza lokalnie co 1 s monotonicznym zegarem przeglądarki (`performance.now`, nie `Date.now`); każde odpytywanie (#22, co 2 s) nadpisuje stan wartością serwera. Wartość lokalna służy tylko do wyświetlenia i nigdy nie wraca na serwer.
 
 ```mermaid
@@ -64,19 +64,19 @@ Migrację dostarcza **#29** albo, jeśli jej kształt nie ma tych pól, osobna m
 |---|---|---|
 | `Game` → `games` (rozszerzenie) | `clockMs1` integer NOT NULL DEFAULT 600000, `clockMs2` integer NOT NULL DEFAULT 600000, `turnStartedAt` timestamptz NULL; `endReason` dostaje wartość `timeout` | `CHECK (clock_ms_1 BETWEEN 0 AND 600000 AND clock_ms_2 BETWEEN 0 AND 600000)`; `turn_started_at` może być NULL także w `active` (zegar nie ruszył, bo drugi gracz nie otworzył strony), więc bez `CHECK` na status |
 
-`winnerSeat` przy `timeout` to drugie miejsce; `finishedAt` = `turnStartedAt + clockMs[seat]` (moment upływu, nie wykrycia). Dane wrażliwe: brak. Migracja up/down na prawdziwym PostgreSQL; istniejące partie `active` bez zegara dostają domyślne 600000 i `turn_started_at = started_at` tylko jeśli obaj mają `seen_at`, inaczej NULL.
+**Migracja zmienia `CHECK (end_reason IN ('five_in_row','draw'))` z #22** (DROP/ADD w górę i w dół), inaczej zapis `timeout` kończy się `500`; test integracyjny zapisu `timeout`. `winnerSeat` przy `timeout` to drugie miejsce; `finishedAt` = `turnStartedAt + clockMs[seat]` (moment upływu, nie wykrycia). Dane wrażliwe: brak. Migracja up/down na prawdziwym PostgreSQL; istniejące partie dostają 600000 i `turn_started_at = NULL` (bez ryzyka natychmiastowego zakończenia starej partii; #22 i #23 wychodzą razem).
 
 **Inwarianty** (`assertClockConsistent`): `0 ≤ clockMs ≤ 600000`; dla `active` z `turnStartedAt` zegar gracza na ruchu maleje, drugiego jest stały; w `finished` z `timeout` przegrany ma `clockMs = 0`.
 
 ## 📝 API Contracts
 
-Koperta jak w #21/#22. **Żadne żądanie nie niesie czasu klienta**: `moveCreateSchema` zostaje `{ x, y, moveNumber }`, więc kryterium 4 jest spełnione z konstrukcji (test sprawdza, że dodatkowe pole `elapsedMs` jest odrzucone lub zignorowane i nie zmienia wyniku).
+Koperta jak w #21/#22. **Żadne żądanie nie niesie czasu klienta**: `moveCreateSchema` zostaje `{ x, y, moveNumber }`, więc kryterium 4 jest spełnione z konstrukcji (schemat zod ignoruje nieznane pola; test: żądanie z dodatkowym `elapsedMs` daje wynik identyczny jak bez niego).
 
 `GET /api/games/{id}` i odpowiedź `POST …/moves` (addytywnie): `clock: { remainingMs: [n1, n2], running: 1 | 2 | null }` (po jednym czasie na miejsce, `running` = miejsce, którego zegar biegnie; `null` przed startem zegara i po końcu). `remainingMs` jest policzone w chwili odpowiedzi. Brak pola z czasem serwera: klient odlicza od momentu odbioru.
 
-`result.reason` przyjmuje wartość `timeout`. Ruch po terminie zwraca `409 GAME_FINISHED` (partia właśnie zakończona przegraną); ruch tuż przed terminem jest przyjęty.
+`result.reason` przyjmuje wartość `timeout`. Nowy kod błędu `GAME_NOT_STARTED` (ruch przed startem zegara; dotyczy dołączającego, który wylosował czarne). Ruch po terminie zwraca `409 GAME_FINISHED` (partia właśnie zakończona przegraną); ruch tuż przed terminem jest przyjęty.
 
-Kolejność sprawdzeń z #22 rozszerza się o punkt „(2a) termin”: po ponowieniu i statusie, przed kolejką — `spend` ocenia termin gracza na ruchu.
+Kolejność sprawdzeń z #22 (bez nowego punktu): (1) ponowienie; **termin** — `settleGame` pod blokadą (jedyna ścieżka, zob. Architecture); (2) status; dodatkowo `turnStartedAt IS NULL` → `409 GAME_NOT_STARTED` (UI: „Czekamy, aż przeciwnik otworzy partię”); (3)–(5) jak w #22.
 
 ## 📝 UI/UX
 
@@ -105,12 +105,14 @@ Prototyp: brak (mapa ekranów `lekcja-07/mapa-ekranow-partia.md`, stany p05.1, p
 | Karta w tle, wstrzymane odpytywanie | Po powrocie pierwsze odpytywanie nadpisuje czas; lokalnie wyświetlany czas mógł zostać wstrzymany przez przeglądarkę (korekta po odczycie) |
 | Różnica zegarów między instancjami aplikacji | Czas pochodzi z wstrzykiwanego `clock` aplikacji; przy wielu instancjach rozjazd zakłóca czas (zob. Risks) |
 | Uszkodzony wiersz (`clockMs` spoza zakresu) | `CHECK` odrzuca zapis, `500` bez zapisu; partia nie jest naprawiana po cichu |
-| Zakończenie przez czas i równoległy ruch kończący piątką | Jedna transakcja wygrywa; druga dostaje `409`; wynik ustawiany dokładnie raz |
-| Zaproszenie anulowane przez Q21 (15 min bez `seen_at`) | Zegar nigdy nie ruszył; brak interakcji z tą specyfikacją |
+| Zakończenie przez czas i równoległy ruch kończący piątką | Po zdobyciu blokady czas serwera `now` rozstrzyga: `now` ≤ termin → ruch przyjęty (piątka wygrywa), inaczej przegrana na czas; wynik ustawiany dokładnie raz |
+| Cofnięcie zegara systemowego (NTP) lub błąd | `elapsed = max(0, now − turnStartedAt)`, `clockMs = min(clockMs, 600000)`; test w `clock.ts` |
+| Ruch przed startem zegara (dołączający wylosował czarne, twórca nie otworzył strony) | `409 GAME_NOT_STARTED` |
+| Partia anulowana przez Q21 (15 min bez `seen_at`) | Anulowanie ma pierwszeństwo przed startem zegara; test granicy 15 min |
 
 ## 📝 Risks & Impact Review
 
-- **Kolor jako jedyny sygnał (Q1):** wymaganie właściciela „bez tekstu” oznacza, że ostrzeżenie opiera się na kolorze i grubości obrysu. WCAG 1.4.1 wymaga sygnału niebędącego kolorem — grubszy obrys go zapewnia wizualnie, ale nie dla czytników ekranu. **Zaakceptowane ryzyko właściciela**; do zbadania z prawdziwym użytkownikiem czytnika (nie ma dowodu).
+- **Kolor jako jedyny sygnał (Q1):** wymaganie właściciela „bez tekstu” oznacza, że ostrzeżenie opiera się na kolorze i grubości obrysu. WCAG 1.4.1 wymaga sygnału niebędącego kolorem — grubszy obrys go zapewnia wizualnie, ale nie dla czytników ekranu. **Zaakceptowane ryzyko właściciela**; możliwa łagodzaca opcja, której nie przyjęto bez zgody (łamie „bez tekstu” dla czytników): jednorazowe ogłoszenie `aria-live="polite"` przy przejściu poniżej 60 s; do zbadania z prawdziwym użytkownikiem czytnika (nie ma dowodu).
 - **Opóźnienie (Q2 a):** do 2 s z 600 s na ruch może zmienić wynik w końcówce. Przegląd po spike #30; bez pomiaru nie wiemy, jak często.
 - **Rozjazd zegarów instancji:** zakładamy jedną instancję aplikacji albo zsynchronizowane zegary; przy skalowaniu poziomym przenieść źródło czasu do bazy (jedna zmiana wstrzykiwanego `clock`).
 - **Zapis w odczycie:** `GET` zmienia stan przy upływie terminu; `settleGame` musi być idempotentny i bezpieczny przy wyścigach.
@@ -131,14 +133,14 @@ BR-04, BR-05, BR-06, BR-07, BR-13, D-03 (właściciel: Bartosz Wójcik). Spec pr
 
 ## 📋 Implementation Plan
 
-0. **Uzgodnienie z zależnościami:** komentarze w #22 (Q8), #29 (kolumny), #27; sprawdzić, co jest już wdrożone z #21 i #22.
-1. **`core/src/games/clock.ts` + test (100%):** `remainingMs` (przed startem, w trakcie, po terminie), `spend` (dokładnie 0 ms, tuż przed i po terminie), `deadlineMs`, `isLow` na granicy 60 000, niemutowalność. Test właściwości: suma zużytego czasu nie przekracza 600 000.
+0. **Uzgodnienie z zależnościami:** ta specyfikacja jest **zależną kontynuacją #22** (jeden PR po #22, wydanie razem). Zmienić tekst #22 Q8 (start zegara po `seen_at` obu graczy) i skomentować #22, #29 (kolumny, `CHECK` `end_reason`), #27; sprawdzić, co jest już wdrożone z #21 i #22. Mechanizm czasu w testach integracyjnych: `turn_started_at` ustawiane bezpośrednio w bazie (bez zmiany zegara aplikacji).
+1. **`core/src/games/clock.ts` + test (100%; w tym `turnStartedAt = null`, 0 ms, ujemny `elapsed`, `min(…, 600000)`):** `remainingMs` (przed startem, w trakcie, po terminie), `spend` (dokładnie 0 ms, tuż przed i po terminie), `deadlineMs`, `isLow` na granicy 60 000, niemutowalność. Test właściwości: suma zużytego czasu nie przekracza 600 000.
 2. **Migracja:** kolumny i `CHECK`-i; `db:migration:create`, przegląd, up/down/up na PostgreSQL; test odrzucenia wartości spoza zakresu.
 3. **Start zegara w `GameService.getState`:** warunkowy `UPDATE`, gdy powstaje drugi `seen_at`. Testy: pierwszy i drugi `seen_at`, wyścig dwóch odczytów (zegar startuje raz).
 4. **`spend` w `GameMoveService`:** ruch przed terminem aktualizuje `clockMs[seat]` i `turnStartedAt`; po terminie kończy partię (`timeout`, `winnerSeat`, `finishedAt = deadline`, `is_active = false` obu). Testy na fałszywym `em`: każda gałąź kolejności z §API.
 5. **`timeoutSettler` (`settleGame`, `settleFor`):** implementacja i testy, w tym kolejność blokad `users` → `games` i brak podwójnego zakończenia (0 wierszy).
 6. **`clock` w `GET`/`POST`:** rozszerzone handlery; test, że pole czasu z żądania jest niewidoczne dla wyniku.
-7. **Testy integracyjne (`fetch`, PostgreSQL, wstrzykiwany zegar):** start po drugim `seen_at`; maleje tylko zegar gracza na ruchu; przegrana na czas przy ruchu po terminie; przegrana wykryta przez odczyt przeciwnika; zamknięcie przez `settleFor` przy próbie utworzenia nowej partii (BR-13); ponowienie ruchu po terminie → `200`.
+7. **Testy integracyjne (`fetch`, PostgreSQL; czas przez `turn_started_at` w bazie):** dodatkowo wyścigi na prawdziwej bazie (dwa równoległe `settleGame`, ruch kontra timeout, dwa odczyty startujące zegar), zapis `timeout` przy `CHECK`-ach, `GAME_NOT_STARTED`, granica 15 min (Q21) przed startem zegara, gość po terminie (`settleGame` przed oceną tokenu). start po drugim `seen_at`; maleje tylko zegar gracza na ruchu; przegrana na czas przy ruchu po terminie; przegrana wykryta przez odczyt przeciwnika; zamknięcie przez `settleFor` przy próbie utworzenia nowej partii (BR-13); ponowienie ruchu po terminie → `200`.
 8. **UI:** `useGameClock` (testy z fałszywym czasem), `PlayerClock` w wariancie bez tekstu „mało czasu”, baner końca przez czas; stories w Storybooku (oba motywy, `check:tokens`).
 9. **Scenariusz przeglądarkowy** (agent-browser, 360 px): zegar rusza po obu wejściach, zmiana tury, jaskrawy kolor poniżej 60 s (przyspieszony czas), koniec przez czas.
-10. **Dokumentacja i `npm run check`;** lekcja w `.ai/lessons/`, jeśli przegląd wykaże korektę; poprawka #22 Q8 w specyfikacji #22.
+10. **Dokumentacja i `npm run check`;** lekcja w `.ai/lessons/`, jeśli przegląd wykaże korektę.
