@@ -30,3 +30,19 @@ Last filed: 2026-10-24
 | E04 | #18 | Historia partii | — | — | no |
 | E04-S01 | #27 | Użytkownik widzi listę swoich zakończonych partii z przeciwnikiem, wynikiem, datą i sposobem zakończenia | #18 | E02-S03 (#23) | no |
 | E05 | #33 | Later | — | — | no |
+
+## Zmiany z 2026-10-26: uproszczony start konta
+
+Źródło: `.ai/specs/2026-10-26-account-onboarding-simplification.md` (decyzje D-24…D-26, BR-26…BR-28; osąd właściciela, nie wynik badania). Tabela wyżej odpowiada jeszcze tytułom zgłoszeń sprzed zmiany; edycje zgłoszeń to osobna pozycja (Faza 4) i **muszą być zakończone przed rozpoczęciem implementacji #20, #21 i dalszych**.
+
+| Pozycja | Zmiana | Zgłoszenie |
+|---|---|---|
+| E01-S01 | Hasło co najmniej 8 znaków (BR-28), konto aktywne od razu. **Zgłoszenie zamknięte bez kodu w `main`:** uzgodnić ze stanem rzeczywistym (otworzyć ponownie albo wskazać następcę). | #19 |
+| E01-S02 | Bez zmian poza komunikatem i bannerem (konto niepotwierdzone loguje się i gra normalnie). | #20 |
+| E01-S03 | Tytuł bez „i może grać”: kryterium „gra odblokowana” odpada; zostaje „e-mail potwierdzony”. Potwierdzenie nie blokuje niczego. | #34 |
+| E01-S04 | Reset tylko po potwierdzonym e-mailu (BR-27). | #35 |
+| E01-S05 | Nowe hasło 8–72 bajty (BR-28). | #36 |
+| E02-S01 | Bez stanu „zalogowany bez potwierdzenia”; `as = guest` niedozwolone dla każdego zalogowanego; strona `/invite/[code]` jako s07. | #21 |
+| E03-S01, E03-S02 | Bez bramki `emailVerifiedAt` (BR-26). | #25, #26 |
+| E01-S03-T01 | Dostawca poczty nie blokuje rejestracji ani gry; potrzebny dla potwierdzenia i resetu. | #38 |
+| Nowa pozycja w #39 | Reguła 14 dni: `emailVerifiedAt IS NULL`, `createdAt` starsze niż now − 14 dni, `NOT EXISTS` wiersz uczestnika partii; kaskada usuwa sesje i tokeny. **Zablokowana przez** E02-S01-T01 (#29). Zastępuje Q14 (7 dni). | #39 |

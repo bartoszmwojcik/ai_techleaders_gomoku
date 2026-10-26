@@ -7,10 +7,13 @@ import { VerifyEmailBanner, type VerifyEmailBannerProps } from "./verify-email-b
 
 afterEach(cleanup);
 
-function renderBanner(props: Partial<VerifyEmailBannerProps> = {}) {
+type Overrides = Partial<Pick<VerifyEmailBannerProps, "state" | "feedback">> & { onDismiss?: () => void; dismissLabel?: string };
+
+function renderBanner({ onDismiss, dismissLabel = "Zamknij", ...props }: Overrides = {}) {
   const onResend = vi.fn();
+  const dismiss = onDismiss ? { onDismiss, dismissLabel } : {};
   render(
-    <VerifyEmailBanner title="Potwierdź e-mail, aby grać" resendLabel="Wyślij ponownie" onResend={onResend} {...props}>
+    <VerifyEmailBanner title="Potwierdź adres e-mail" resendLabel="Wyślij ponownie" onResend={onResend} {...props} {...dismiss}>
       Link wysyłamy na ala@example.com — sprawdź też folder spam.
     </VerifyEmailBanner>,
   );
@@ -22,7 +25,7 @@ describe("VerifyEmailBanner", () => {
     const user = userEvent.setup();
     const onResend = renderBanner();
 
-    expect(screen.getByText("Potwierdź e-mail, aby grać")).toBeTruthy();
+    expect(screen.getByText("Potwierdź adres e-mail")).toBeTruthy();
     expect(screen.getByText(/Link wysyłamy na/)).toBeTruthy();
     expect(screen.queryByText(/Wysłano/)).toBeNull();
     await user.click(screen.getByRole("button", { name: "Wyślij ponownie" }));
@@ -57,6 +60,22 @@ describe("VerifyEmailBanner", () => {
 
     expect(screen.getByText("Nie udało się wysłać. Spróbuj ponownie.").getAttribute("role")).toBe("alert");
     expect((screen.getByRole("button", { name: "Wyślij ponownie" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("has no close button unless the page can remember the closing", () => {
+    renderBanner();
+
+    expect(screen.queryByRole("button", { name: "Zamknij" })).toBeNull();
+  });
+
+  it("lets the player close the banner", async () => {
+    const user = userEvent.setup();
+    const onDismiss = vi.fn();
+    renderBanner({ onDismiss, dismissLabel: "Zamknij" });
+
+    await user.click(screen.getByRole("button", { name: "Zamknij" }));
+
+    expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
   it("shows no result line without feedback text", () => {

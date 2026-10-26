@@ -1,5 +1,9 @@
 # Logowanie i wylogowanie (E01-S02, #20)
 
+> **Zmienione przez `2026-10-26-account-onboarding-simplification.md` (decyzje właściciela 2026-10-26, brief D-24…D-26, BR-26…BR-28).** Punkty poniżej są zastąpione; tekst niżej zostaje jako historia i jest oznaczony w miejscach zmian.
+> - Konto bez potwierdzonego e-maila loguje się i gra normalnie; baner na `/` i `/account` jest nieblokujący (BR-26). Komunikat „Potwierdź e-mail, aby grać” zastąpiony bannerem „Potwierdź adres e-mail”.
+
+
 > Status: **zatwierdzona do implementacji** (po niezależnym przeglądzie, poprawki wprowadzone) — odpowiedzi właściciela z 2026-10-24: „zgoda na wszystkie” (Q1–Q4 zgodnie z
 > rekomendacją). Źródło: issue #20 (`Backlog id: E01-S02`), `.ai/specs/product-brief.md`,
 > `.ai/specs/2026-10-24-account-registration.md` (wspólna warstwa, decyzje G1–G8),
@@ -80,7 +84,7 @@ Brak nowych encji i migracji. Używane z #19: `users`, `sessions` (wylogowanie u
 |---|---|---|
 | Sukces | `200` | `{ "ok": true, "data": { "user": { "id": "<uuid>", "displayName": "Ala_7" } } }` (ten sam kształt `user` co w `201` rejestracji; stan potwierdzenia czyta strona z sesji) + `Set-Cookie` jak w #19 (G2, G5) |
 | Nieznany e-mail lub złe hasło | `401` | `{ ok: false, error: { code: "INVALID_CREDENTIALS", message: "Nieprawidłowy e-mail lub hasło." } }` — identyczna treść i ten sam rząd czasu odpowiedzi |
-| Zły kształt (brak pola, nie-e-mail, hasło > 1024 znaki) | `400` | `code: "VALIDATION"` + `fieldErrors` — **bez** reguł hasła z rejestracji (16 znaków, 72 bajty); górna granica 1024 znaków chroni tylko przed bardzo dużym wejściem |
+| Zły kształt (brak pola, nie-e-mail, hasło > 1024 znaki) | `400` | `code: "VALIDATION"` + `fieldErrors` — **bez** reguł hasła z rejestracji (8 znaków od 2026-10-26, 72 bajty); górna granica 1024 znaków chroni tylko przed bardzo dużym wejściem |
 | Brak `X-Gomoku-Request` / `Origin` ≠ `APP_ORIGIN` | `403` | `code: "FORBIDDEN"` |
 | Już zalogowany (ważna sesja) | `409` | `code: "ALREADY_AUTHENTICATED"` |
 | Limit na e-mail lub adres | `429` | `code: "RATE_LIMITED"` + `Retry-After` — ten sam komunikat dla obu limitów |
@@ -110,7 +114,7 @@ Kontrakty są addytywne (`BACKWARD_COMPATIBILITY.md` §2). Nowe adresy stron `/l
 - działa na szerokości telefonu od 360 px (BR-20); `data-testid` tylko dla formularza i komunikatu.
 
 **`/account`** (chroniona, `requirePageSession("/account")`):
-- nazwa gracza, e-mail, stan potwierdzenia („Potwierdź e-mail, aby grać” przy `emailVerifiedAt = NULL`, BR-23), przycisk „Wyloguj”;
+- nazwa gracza, e-mail, stan potwierdzenia („Potwierdź e-mail, aby grać” przy `emailVerifiedAt = NULL`, BR-23), przycisk „Wyloguj”; **[BR-23 zastąpione przez BR-26 (2026-10-26)]**
 - „Wyloguj” → przy `hasActiveGame` (prop ze strony, z `activeGameCheck`; w #20 zawsze `false`) okno potwierdzenia „Trwa partia — po wylogowaniu zegar biegnie dalej. Wylogować?” (Q4) → `POST /api/auth/logout` → `router.replace("/")`.
 
 **`/`**: przy zalogowanym link „Konto” → `/account`; przy niezalogowanym linki „Zaloguj się” i „Załóż konto”.
@@ -125,7 +129,7 @@ Kontrakty są addytywne (`BACKWARD_COMPATIBILITY.md` §2). Nowe adresy stron `/l
 | 100 nieudanych prób na jeden e-mail w godzinę (wiele adresów) | `429` dla wszystkich adresów do końca okna — zablokowanie właściciela wymaga ataku rozproszonego (akceptowany koszt, H1). |
 | Atak rozproszony na jeden e-mail z wielu adresów | Zatrzymuje go limit 100/h na sam e-mail. |
 | Jeden adres próbuje wielu e-maili | Zatrzymuje go limit na adres (30/h). |
-| Konto bez potwierdzonego e-maila | Logowanie się udaje; `/` i `/account` pokazują „Potwierdź e-mail, aby grać” (BR-23). |
+| Konto bez potwierdzonego e-maila | Logowanie się udaje; `/` i `/account` pokazują „Potwierdź e-mail, aby grać” (BR-23). | **[zastąpione 2026-10-26: baner nieblokujący, BR-26]**
 | Wylogowanie na jednym urządzeniu | Inne urządzenia pozostają zalogowane (Q3). |
 | Wylogowanie z wygasłą / nieznaną sesją albo podwójne kliknięcie | `200`, ciasteczko usunięte — bez błędu. |
 | Wiele równoległych prób hasła na jeden e-mail | Licznik rośnie atomowo przed weryfikacją — po 10 kolejne dostają `429`, nawet w trakcie trwających weryfikacji. |
@@ -147,7 +151,7 @@ Kontrakty są addytywne (`BACKWARD_COMPATIBILITY.md` §2). Nowe adresy stron `/l
 ## 📝 Decisions in play
 
 - **D-23** (logowanie wymagane, wyjątek gościa) — realizowane dla kont; gość (BR-22) nie loguje się i nie jest objęty tą specyfikacją.
-- **D-12** (własne uwierzytelnianie), **D-13 / BR-14** (e-mail jako login), **BR-23** (konto bez potwierdzonego e-maila nie gra), **BR-20** (telefon), **BR-16** i standardy §1 (komunikaty nie zdradzają istnienia konta).
+- **D-12** (własne uwierzytelnianie), **D-13 / BR-14** (e-mail jako login), **BR-23** (konto bez potwierdzonego e-maila nie gra), **BR-20** (telefon), **BR-16** i standardy §1 (komunikaty nie zdradzają istnienia konta). **[BR-23 zastąpione przez BR-26 (2026-10-26)]**
 - Specyfikacja #19: **G2** (CSRF, ciasteczko), **G5** (sesja 30 dni, wyjątek partii), **G8** (`safeNextPath`).
 - Żadna aktywna decyzja nie jest nadpisywana.
 

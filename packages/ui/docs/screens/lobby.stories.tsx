@@ -7,7 +7,6 @@ import { Panel } from "@gomoku/ui/game/panel";
 import { SeekingStatus } from "@gomoku/ui/game/seeking-status";
 import { Skeleton, SkeletonRegion } from "@gomoku/ui/game/skeleton";
 import { TextLink } from "@gomoku/ui/game/text-link";
-import { VerifyEmailBanner } from "@gomoku/ui/game/verify-email-banner";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
 
@@ -22,7 +21,7 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-type LobbyState = "idle" | "seeking" | "picking" | "taken" | "loading" | "empty" | "error" | "unconfirmed" | "has-active-game";
+type LobbyState = "idle" | "seeking" | "picking" | "taken" | "loading" | "empty" | "error" | "has-active-game";
 
 const noop = () => undefined;
 
@@ -52,11 +51,7 @@ function Lobby({ state }: { state: LobbyState }) {
   return (
     <Screen viewer="player">
       <h1 className="m-0 text-section font-strong">Lobby</h1>
-      {state === "unconfirmed" ? (
-        <VerifyEmailBanner title="Potwierdź e-mail, aby grać" resendLabel="Wyślij ponownie" onResend={noop}>
-          Do lobby wejdziesz po potwierdzeniu adresu. Link wysyłamy na ala@example.com — sprawdź też folder spam.
-        </VerifyEmailBanner>
-      ) : state === "has-active-game" ? (
+      {state === "has-active-game" ? (
         <>
           <Alert status="warning" title="Masz już partię">Możesz grać tylko jedną partię naraz.</Alert>
           <TextLink href="#partia" placement="standalone">Wróć do swojej partii</TextLink>
@@ -110,5 +105,4 @@ export const LobbyGraczZajetyPrzedWyborem: Story = lobby("taken");
 export const LobbyLadowanie: Story = lobby("loading");
 export const LobbyPuste: Story = lobby("empty");
 export const LobbyBladWczytania: Story = lobby("error");
-export const LobbyEmailNiepotwierdzony: Story = lobby("unconfirmed");
 export const LobbyMaAktywnaPartie: Story = lobby("has-active-game");

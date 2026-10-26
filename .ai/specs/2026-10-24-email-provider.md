@@ -1,5 +1,8 @@
 # Dostawca wysyłki poczty (E01-S03-T01, #38)
 
+> **Zmienione przez `2026-10-26-account-onboarding-simplification.md` (decyzje właściciela 2026-10-26, brief D-24…D-26, BR-26…BR-28).** Dostawca poczty **nie blokuje** rejestracji ani gry (BR-26); potrzebny jest dla potwierdzenia e-maila i resetu hasła (#34 i #35 razem, po #38).
+
+
 > Status: **zatwierdzona** (`om-auto-write-spec`, 2026-10-24; założenia potwierdzone przez właściciela — Bartosz Wójcik, „a” — 2026-10-24).
 
 ## 📝 TLDR

@@ -7,7 +7,7 @@ import { Narrow } from "../../.storybook/blocks";
 const meta = {
   title: "Prymitywy/Alert",
   component: Alert,
-  args: { title: "Potwierdź e-mail, aby grać", children: "Link wysyłamy na ala@example.com — sprawdź też folder spam." },
+  args: { title: "Potwierdź adres e-mail", children: "Link wysyłamy na ala@example.com — sprawdź też folder spam." },
   argTypes: { status: { control: "inline-radio", options: ["info", "success", "warning", "danger"] } },
 } satisfies Meta<typeof Alert>;
 
@@ -20,7 +20,7 @@ export const Playground: Story = {};
 export const Stany: Story = {
   render: () => (
     <div className="flex max-w-xl flex-col gap-stack">
-      <Alert status="info" title="Potwierdź e-mail, aby grać">Link wysyłamy na ala@example.com — sprawdź też folder spam.</Alert>
+      <Alert status="info" title="Potwierdź adres e-mail">Link wysyłamy na ala@example.com — sprawdź też folder spam.</Alert>
       <Alert status="success" title="Hasło zmienione">Inne urządzenia zostały wylogowane.</Alert>
       <Alert status="warning" title="Grasz bez konta">Nie zmieniaj przeglądarki w trakcie partii — stracisz do niej dostęp, a zegar będzie biegł dalej.</Alert>
       <Alert status="danger" title="Zbyt wiele prób">Spróbuj za chwilę.</Alert>

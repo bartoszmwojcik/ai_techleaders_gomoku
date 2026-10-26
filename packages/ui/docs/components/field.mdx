@@ -17,7 +17,7 @@ Daje polu formularza widoczną nazwę, podpowiedź, komunikat błędu i oznaczen
 ## 2. Kiedy używać
 
 - **Każde pole formularza:** „E-mail”, „Hasło”, „Kod zaproszenia”, „Aktualne hasło” (specyfikacje #19, #20, #21, #36).
-- **Gdy pole potrzebuje podpowiedzi** („Co najmniej 16 znaków”) lub komunikatu błędu po stronie serwera.
+- **Gdy pole potrzebuje podpowiedzi** („Co najmniej 8 znaków”) lub komunikatu błędu po stronie serwera.
 
 ## 3. Kiedy nie używać
 
@@ -91,7 +91,7 @@ Typowy przykład (hasło, wymagane, z podpowiedzią i błędem):
 ```tsx
 <Field
   label="Hasło"
-  hint="Co najmniej 16 znaków"
+  hint="Co najmniej 8 znaków"
   error={fieldErrors.password}
   required
 >

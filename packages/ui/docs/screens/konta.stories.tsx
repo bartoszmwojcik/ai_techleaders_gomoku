@@ -41,7 +41,7 @@ function RegisterForm({ nameError, limited }: { nameError?: string; limited?: bo
         <Field label="Nazwa gracza" hint="Widzą ją Twoi przeciwnicy." error={nameError} required>
           {(control) => <TextInput {...control} autoComplete="nickname" defaultValue={nameError ? "Ala_7" : ""} />}
         </Field>
-        <PasswordField label="Hasło" showLabel="Pokaż hasło" hideLabel="Ukryj hasło" autoComplete="new-password" hint="Co najmniej 16 znaków" required />
+        <PasswordField label="Hasło" showLabel="Pokaż hasło" hideLabel="Ukryj hasło" autoComplete="new-password" hint="Co najmniej 8 znaków" required />
         <Button type="submit">Załóż konto</Button>
       </form>
       <p className="m-0 text-body text-text-secondary">Masz już konto? <TextLink href="#zaloguj">Zaloguj się</TextLink></p>
@@ -71,8 +71,8 @@ function Account({ confirmed, passwordChanged, activeGame }: { confirmed: boolea
     <Screen viewer="player">
       <h1 className="m-0 text-section font-strong">Konto</h1>
       {!confirmed && (
-        <VerifyEmailBanner title="Potwierdź e-mail, aby grać" resendLabel="Wyślij ponownie" onResend={() => undefined}>
-          Link wysyłamy na ala@example.com — sprawdź też folder spam.
+        <VerifyEmailBanner title="Potwierdź adres e-mail" resendLabel="Wyślij ponownie" dismissLabel="Zamknij" onDismiss={() => undefined} onResend={() => undefined}>
+          Bez potwierdzonego adresu nie odzyskasz konta, jeśli zapomnisz hasła. Link wysyłamy na ala@example.com — sprawdź też folder spam.
         </VerifyEmailBanner>
       )}
       <Panel title="Dane konta" className="max-w-xl">
@@ -85,7 +85,7 @@ function Account({ confirmed, passwordChanged, activeGame }: { confirmed: boolea
       <Panel title="Zmień hasło" className="max-w-xl">
         {passwordChanged && <Alert status="success" title="Hasło zmienione">Inne urządzenia zostały wylogowane.</Alert>}
         <PasswordField label="Aktualne hasło" showLabel="Pokaż hasło" hideLabel="Ukryj hasło" autoComplete="current-password" required />
-        <PasswordField label="Nowe hasło" showLabel="Pokaż hasło" hideLabel="Ukryj hasło" autoComplete="new-password" hint="Co najmniej 16 znaków" required />
+        <PasswordField label="Nowe hasło" showLabel="Pokaż hasło" hideLabel="Ukryj hasło" autoComplete="new-password" hint="Co najmniej 8 znaków" required />
         <div><Button>Zmień hasło</Button></div>
       </Panel>
       <Panel title="Usuń konto" className="max-w-xl">
@@ -152,7 +152,7 @@ function ResetPassword({ tokenError }: { tokenError?: boolean }) {
         </>
       ) : (
         <form noValidate className="flex flex-col gap-stack">
-          <PasswordField label="Nowe hasło" showLabel="Pokaż hasło" hideLabel="Ukryj hasło" autoComplete="new-password" hint="Co najmniej 16 znaków" required />
+          <PasswordField label="Nowe hasło" showLabel="Pokaż hasło" hideLabel="Ukryj hasło" autoComplete="new-password" hint="Co najmniej 8 znaków" required />
           <Button type="submit">Ustaw nowe hasło</Button>
         </form>
       )}

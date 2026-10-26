@@ -4,11 +4,11 @@ import { Meta } from "@storybook/addon-docs/blocks";
 
 # Epik E03: Otwarte lobby
 
-Oznaczenie się jako „szukający gry” (wygasa po 5 minutach) i wybór przeciwnika z listy. Źródła: `.ai/specs/product-brief.md` (BR-09, BR-12, BR-13, BR-23, D-09), zgłoszenia #25 i #26.
+Oznaczenie się jako „szukający gry” (wygasa po 5 minutach) i wybór przeciwnika z listy. Źródła: `.ai/specs/product-brief.md` (BR-09, BR-12, BR-13, BR-26, D-09), zgłoszenia #25 i #26.
 
 ## Przepływ
 
-1. Zalogowany gracz z potwierdzonym e-mailem i bez aktywnej partii oznacza się jako szukający (E03-S01).
+1. Zalogowany gracz (potwierdzenie e-maila nie jest wymagane, BR-26) i bez aktywnej partii oznacza się jako szukający (E03-S01).
 2. Widzi swój status z czasem do wygaśnięcia i listę innych szukających.
 3. Wybiera przeciwnika; powstaje jedna partia, a obaj znikają z lobby (E03-S02).
 
@@ -27,7 +27,6 @@ Oznaczenie się jako „szukający gry” (wygasa po 5 minutach) i wybór przeci
 | ładowanie | [Lobby: ładowanie](?path=/story/ekrany-lobby--lobby-ladowanie) |
 | nikt nie szuka | [Lobby: puste](?path=/story/ekrany-lobby--lobby-puste) |
 | błąd wczytania | [Lobby: błąd](?path=/story/ekrany-lobby--lobby-blad-wczytania) |
-| e-mail niepotwierdzony (BR-23) | [Lobby: e-mail niepotwierdzony](?path=/story/ekrany-lobby--lobby-email-niepotwierdzony) |
 | ma aktywną partię (BR-13) | [Lobby: aktywna partia](?path=/story/ekrany-lobby--lobby-ma-aktywna-partie) |
 
 ## Pliki źródłowe

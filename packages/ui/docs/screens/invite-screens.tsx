@@ -10,7 +10,6 @@ import { Screen, type Viewer } from "./screen";
 export type InviteState =
   | "visitor"
   | "player-confirmed"
-  | "player-unconfirmed"
   | "guest-warning"
   | "has-other-game"
   | "has-waiting-game"
@@ -35,12 +34,6 @@ export function InviteLanding({ state, viewer }: { state: InviteState; viewer: V
               </div>
             )}
             {state === "player-confirmed" && <div><Button>Dołącz do partii</Button></div>}
-            {state === "player-unconfirmed" && (
-              <>
-                <Alert title="Potwierdź e-mail, aby grać jako Bartek_1">Możesz też zagrać jako gość.</Alert>
-                <div><Button variant="secondary">Graj jako gość</Button></div>
-              </>
-            )}
             {state === "guest-warning" && (
               <>
                 <Alert status="warning" title="Grasz bez konta">

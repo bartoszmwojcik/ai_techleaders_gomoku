@@ -1,5 +1,9 @@
 # Zmiana hasła po zalogowaniu (E01-S05, #36)
 
+> **Zmienione przez `2026-10-26-account-onboarding-simplification.md` (decyzje właściciela 2026-10-26, brief D-24…D-26, BR-26…BR-28).** Punkty poniżej są zastąpione; tekst niżej zostaje jako historia i jest oznaczony w miejscach zmian.
+> - Nowe hasło: `newPasswordSchema` 8–72 bajty (BR-28), podpowiedź „co najmniej 8 znaków”.
+
+
 > Status: **szkic autonomiczny** (`om-auto-write-spec`, 2026-10-24) — założenia odwracalne, do przeglądu przed merge'em. Źródło: issue #36, `.ai/specs/product-brief.md` (D-18), `.ai/specs/2026-10-24-account-registration.md` (G3, G5), `.ai/specs/2026-10-24-login-logout.md` (`/account`, `requireSession`, `RateLimiter.hit`, `PasswordField`, H1). Zależy od #19 i #20; `newPasswordSchema` współdzielony z #35.
 
 ## 📝 TLDR
@@ -43,7 +47,7 @@ Brak nowych encji. `users.passwordHash` (nowy hash bcrypt, async, koszt 12), `se
 
 ## 📝 UI/UX
 
-Sekcja „Zmień hasło” na `/account`: dwa `PasswordField` z „Pokaż hasło” (`autocomplete="current-password"` i `"new-password"`, H2), podpowiedź „co najmniej 16 znaków”, przycisk „Zmień hasło”; sukces w `role="status"` „Hasło zmienione. Inne urządzenia zostały wylogowane.” i wyczyszczenie pól; błędy przy polach. Telefon od 360 px (BR-20). Mockupy: pominięte — brak deskryptora `om-prepare-test-env`.
+Sekcja „Zmień hasło” na `/account`: dwa `PasswordField` z „Pokaż hasło” (`autocomplete="current-password"` i `"new-password"`, H2), podpowiedź „co najmniej 8 znaków (zmienione 2026-10-26, BR-28)”, przycisk „Zmień hasło”; sukces w `role="status"` „Hasło zmienione. Inne urządzenia zostały wylogowane.” i wyczyszczenie pól; błędy przy polach. Telefon od 360 px (BR-20). Mockupy: pominięte — brak deskryptora `om-prepare-test-env`.
 
 ## 📝 Edge Cases & Failure Scenarios
 

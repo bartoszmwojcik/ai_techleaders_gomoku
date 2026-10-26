@@ -1,5 +1,11 @@
 # Rejestracja konta i wspólna warstwa API/UI (E01-S01, #19)
 
+> **Zmienione przez `2026-10-26-account-onboarding-simplification.md` (decyzje właściciela 2026-10-26, brief D-24…D-26, BR-26…BR-28).** Punkty poniżej są zastąpione; tekst niżej zostaje jako historia i jest oznaczony w miejscach zmian.
+> - G3: hasło co najmniej **8 znaków** (BR-28), nie 16; maksimum 72 bajty bez zmian.
+> - D-17 i BR-23 zastąpione przez D-24 i BR-26: konto aktywne od razu po rejestracji, bez bramki potwierdzenia e-maila; `/` i `/account` pokazują nieblokujący, zamykalny baner (nie „Potwierdź e-mail, aby grać”).
+> - Reguła BR-25 zastąpiona przez BR-27 (reset tylko po potwierdzeniu).
+
+
 > Status: **zatwierdzona do implementacji** — odpowiedzi właściciela z 2026-10-24: Q4 = b, Q7 = b, Q8 = a,
 > pozostałe zgodnie z rekomendacją. Źródło: issue #19 (`Backlog id: E01-S01`), `.ai/specs/product-brief.md`,
 > `.ai/docs/2026-09-01-engineering-standards.md`. Obejmuje też migrację z #28 (E01-S01-T01).
@@ -20,15 +26,15 @@ Po wdrożeniu (zachowanie przyszłe) gość na stronie `/register` podaje e-mail
 | Q5 Limit prób | Tabela w PostgreSQL. |
 | Q6 Zakres | Migracja z #28 wchodzi tutaj (#28 zamknięte jako włączone). Rejestracja tworzy sesję; logowanie i wylogowanie zostają w #20. |
 | Q7 Zajęty e-mail (z przeglądu) | **Nie ujawniamy.** Jednolity komunikat „Nie udało się założyć konta. Jeśli masz już konto, zaloguj się.” bez wskazania pola — zgodnie ze standardami §1 „Auth error messages”, które obejmują też rejestrację. Zajęta nazwa gracza (publiczna) jest wskazywana przy polu. |
-| Brief 2026-10-24 (BR-15 → BR-23, D-17) | Rejestracja loguje, ale do gry potrzebny jest potwierdzony e-mail. Wysyłka i potwierdzenie to #34 (poza tą specyfikacją); tu dochodzi kolumna `emailVerifiedAt` i komunikat „Potwierdź e-mail, aby grać”. Blokadę akcji gry egzekwują route'y gry (#21, #25, #26), których jeszcze nie ma. |
+| Brief 2026-10-24 (BR-15 → BR-23, D-17) | Rejestracja loguje, ale do gry potrzebny jest potwierdzony e-mail. Wysyłka i potwierdzenie to #34 (poza tą specyfikacją); tu dochodzi kolumna `emailVerifiedAt` i komunikat „Potwierdź e-mail, aby grać”. Blokadę akcji gry egzekwują route'y gry (#21, #25, #26), których jeszcze nie ma. | **[zastąpione 2026-10-26: konto aktywne od razu, BR-26]**
 | Brief 2026-10-24 (BR-20) | Strony `/register` i `/` działają na szerokości telefonu. |
 | G1 Hosting (przesłuchanie, 2026-10-24) | VPS mikr.us (kontener; plan z Dockerem, ≥ 2.1). Ruch HTTPS przez darmową subdomenę mikr.us (`byst.re` / `bieda.it` / `toadres.pl`), bez własnej domeny. Aplikacja nasłuchuje na IPv6. Czy proxy subdomeny przekazuje adres klienta i WebSockety — sprawdza spike #30. |
 | G2 Wzmocnienia sesji i CSRF (przesłuchanie, 2026-10-24) | Domeny subdomen mikr.us nie są na Public Suffix List (sprawdzone 2026-10-24), więc sąsiednie `*.byst.re` to ta sama witryna: `SameSite` nie chroni, a sąsiad może podrzucić ciasteczko. Dlatego: ciasteczko `__Host-gomoku_session` w produkcji, obowiązkowy `Origin` równy `APP_ORIGIN`, brak `APP_ORIGIN` w produkcji przerywa start. |
-| G3 Hasło (przesłuchanie, 2026-10-24) | Reguła właściciela: **co najmniej 16 znaków, bez dodatkowych wymagań** (bez list popularnych haseł, bez wymogu cyfr czy wielkich liter). Górna granica 72 bajtów UTF-8 zostaje (ograniczenie bcrypt); 16 znaków zajmuje najwyżej 64 bajty, więc granice się nie wykluczają. |
+| G3 Hasło (przesłuchanie, 2026-10-24) | Reguła właściciela: **co najmniej 8 znaków (zmienione 2026-10-26, BR-28), bez dodatkowych wymagań** (bez list popularnych haseł, bez wymogu cyfr czy wielkich liter). Górna granica 72 bajtów UTF-8 zostaje (ograniczenie bcrypt); 16 znaków zajmuje najwyżej 64 bajty, więc granice się nie wykluczają. |
 | G4 Zastrzeżone nazwy (przesłuchanie, 2026-10-24) | Nazwa gracza nie może pokrywać się z zastrzeżonym rdzeniem: `usunietygracz`, `admin`, `administrator`, `moderator`, `system`, `gomoku`, `support`. Porównanie po normalizacji: małe litery, polskie znaki → łacińskie (`ę`→`e`, `ł`→`l`, …), bez `_` i `-`. Normalizację robi jedna funkcja `normalizeDisplayName` w `core/src/validators/auth/` (używana też do klucza unikalności, G6). Lista jest stałą w `registerSchema`; dopisanie słowa to zmiana kodu z testem. |
 | G5 Czas życia sesji (przesłuchanie, 2026-10-24) | **30 dni od utworzenia, bez przedłużania — ale sesja nie wygasa w trakcie aktywnej partii.** Wygasła sesja pozostaje ważna, dopóki trwa partia, która była aktywna w chwili `expiresAt` (najwyżej ~20 min, BR-04, BR-13); po jej zakończeniu wygasa. Nowej partii po `expiresAt` nie da się zacząć, więc tego nie da się łańcuchować. Unieważnienie (wylogowanie #20, zmiana hasła #36, reset #35, usunięcie #37) działa natychmiast, także w trakcie partii. |
 | G6 Unikalność nazwy (przesłuchanie, 2026-10-24) | Klucz unikalności = ta sama normalizacja co G4 (`normalizeDisplayName`: małe litery, polskie znaki → łacińskie, bez `_` i `-`). `Łukasz` blokuje `Lukasz`, `ala_7` blokuje `ala-7` i `ala7`. Wyświetlana nazwa zostaje w brzmieniu użytkownika. |
-| G7 Gra gościa z zaproszenia (przesłuchanie, 2026-10-24) | Brief: BR-22, BR-23, BR-24, D-23 (nadpisują BR-15, BR-08, D-02). Zaproszony może grać bez konta; implementacja należy do #21. **W tej specyfikacji:** generowanie i hashowanie losowego tokenu wydzielone do wspólnego `opaque-token.ts` (użyje go sesja i token gościa z #21/#29); tabela `sessions` pozostaje tylko dla kont. |
+| G7 Gra gościa z zaproszenia (przesłuchanie, 2026-10-24) | Brief: BR-22, BR-23, BR-24, D-23 (nadpisują BR-15, BR-08, D-02). Zaproszony może grać bez konta; implementacja należy do #21. **W tej specyfikacji:** generowanie i hashowanie losowego tokenu wydzielone do wspólnego `opaque-token.ts` (użyje go sesja i token gościa z #21/#29); tabela `sessions` pozostaje tylko dla kont. | **[BR-23 w tej linii zastąpione przez BR-26 (2026-10-26)]**
 | G8 Powrót po rejestracji (przesłuchanie, 2026-10-24) | `/register?next=<ścieżka>` — po sukcesie przekierowanie na `next`, jeśli `safeNextPath` je przepuści (ścieżka względna zaczynająca się od `/`, nie od `//` ani `/\`, bez schematu); inaczej `/`. Konsumenci: #19, #20 (logowanie), #21 (zaproszenie), #34 (potwierdzenie e-maila). |
 | G9 „Pokaż hasło” (z przesłuchania #20, 2026-10-24) | Pole hasła na `/register` używa wspólnego `PasswordField` z przyciskiem „Pokaż hasło” (domyślnie ukryte) i `autocomplete="new-password"`; e-mail `autocomplete="email"`. Specyfikacja #20, H2. |
 | Q8 Podział (z przeglądu) | **Dwa PR-y:** A = Faza 1 (API, migracja, warstwa serwerowa; `risk-high`, `Refs #19`, `Closes #28`), B = Faza 2 (formularz i strony; `Closes #19`). |
@@ -136,7 +142,7 @@ Nowe są wszystkie elementy oprócz `em` (`withRequestScope`) i strony `/`, któ
 **Reguły walidacji (`registerSchema`):**
 - **e-mail:** poprawny format, maksymalnie 254 znaki;
 - **nazwa gracza:** 3–24 znaki z jawnego zestawu `A–Z a–z 0–9 _ -` oraz polskich liter `ąćęłńóśźż ĄĆĘŁŃÓŚŹŻ` (bez `\p{L}`, żeby nie wpuścić homoglifów z cyrylicy i greki), bez spacji na brzegach; po normalizacji (G4) nie równa się żadnemu zastrzeżonemu rdzeniowi → błąd przy polu „Ta nazwa jest zastrzeżona”;
-- **hasło:** co najmniej 16 **znaków** (G3, bez innych wymagań) i najwyżej 72 **bajty** UTF-8 (bcrypt ignoruje resztę powyżej 72 bajtów, więc dłuższe hasło odrzucamy, zamiast cicho je skracać).
+- **hasło:** co najmniej ~~16~~ 8 **znaków** (zmienione 2026-10-26, BR-28) (G3, bez innych wymagań) i najwyżej 72 **bajty** UTF-8 (bcrypt ignoruje resztę powyżej 72 bajtów, więc dłuższe hasło odrzucamy, zamiast cicho je skracać).
 
 **Dane wrażliwe:**
 - hasło jest wyłącznie w postaci hasha bcrypt;
@@ -202,7 +208,7 @@ Kontrakt jest addytywny, a `/api/health` się nie zmienia (`BACKWARD_COMPATIBILI
 ## 📝 UI/UX
 
 **Strona `/register` (grupa `(frontend)`, czysty Tailwind, teksty po polsku):**
-- trzy pola: „E-mail”, „Nazwa gracza” („widoczna dla przeciwników”) i „Hasło” (z podpowiedzią „co najmniej 16 znaków”), plus przycisk „Załóż konto”;
+- trzy pola: „E-mail”, „Nazwa gracza” („widoczna dla przeciwników”) i „Hasło” (z podpowiedzią „co najmniej 8 znaków (zmienione 2026-10-26, BR-28)”), plus przycisk „Załóż konto”;
 - **wysyłanie:** przycisk jest nieaktywny i ma etykietę „Zakładanie konta…”, żeby zapobiec podwójnemu wysłaniu;
 - **błędy pól z `fieldErrors`:** wyświetlane pod polem, z `aria-invalid` i `aria-describedby`, a fokus trafia na pierwsze błędne pole;
 - **błąd ogólny** (limit, 500, brak sieci) pojawia się nad formularzem w `role="alert"`;
@@ -246,7 +252,7 @@ Prototypu brak.
 ## 📝 Decisions in play
 
 - **D-02** „Użytkownicy muszą się logować.” (właściciel: Bartosz Wójcik): realizowane.
-- **D-13, BR-14** (dane konta), **BR-23/D-17** (potwierdzenie e-maila przed grą — tu tylko kolumna i komunikat), **D-23/BR-22** (gra gościa — tu tylko wspólny `opaque-token`), **BR-16/D-14** (bez ujawniania zajętego e-maila), **BR-20** (telefon).
+- **D-13, BR-14** (dane konta), **BR-23/D-17** (potwierdzenie e-maila przed grą — tu tylko kolumna i komunikat), **D-23/BR-22** (gra gościa — tu tylko wspólny `opaque-token`), **BR-16/D-14** (bez ujawniania zajętego e-maila), **BR-20** (telefon). **[BR-23 i D-17 zastąpione przez BR-26 i D-24 (2026-10-26): potwierdzenie nie blokuje gry]**
 - **Non-goals z briefu:** „trwała lista znajomych”. Nie dotykamy, bo konto nie ma relacji między użytkownikami.
 - **OD-2** (standardy) rozstrzygnięte: własne poświadczenia i sesja w bazie, bcrypt koszt 12.
 - **OD-3** (standardy) rozstrzygnięte częściowo: `zod` zaakceptowany.
@@ -267,7 +273,7 @@ Q8 = a: Faza 1 = **PR A** (kroki 1–7, `risk-high`, `Refs #19`, `Closes #28`); 
 ### Faza 1 — Konto i sesja przez API
 
 1. **Błędy i koperta.** `core/src/http/errors.ts`, `api-result.ts`, eksport z `core`. Testy: status i `code` każdego błędu.
-2. **Walidacja.** `npm install zod -w @gomoku/core`; `core/src/validators/auth/register-schema.ts` z normalizacją e-maila i nazwy. Testy: każda reguła, każdy zastrzeżony rdzeń w wariantach (`Admin`, `ADMIN_`, `Usunięty-gracz`, `usuniety_gracz`) oraz nazwa podobna, ale dozwolona (`admina`), granice 3/24 znaki, 15/16 znaków hasła i 72/73 bajty, polskie znaki, spacje na brzegach.
+2. **Walidacja.** `npm install zod -w @gomoku/core`; `core/src/validators/auth/register-schema.ts` z normalizacją e-maila i nazwy. Testy: każda reguła, każdy zastrzeżony rdzeń w wariantach (`Admin`, `ADMIN_`, `Usunięty-gracz`, `usuniety_gracz`) oraz nazwa podobna, ale dozwolona (`admina`), granice 3/24 znaki, 7/8 znaków hasła i 72/73 bajty, polskie znaki, spacje na brzegach.
 3. **Encje i migracja (#28).** `db/src/entities/auth/{user,session}.ts`, `db/src/entities/rate-limit/rate-limit-bucket.ts`, wpis w `entities/index.ts`, wygenerowana i przejrzana migracja. Weryfikacja: `db:migration:up`, `down`, `up` na PostgreSQL. Testy: rejestr encji.
 4. **`PasswordHasher`.** `npm install bcryptjs -w @gomoku/app`; wyłącznie asynchroniczne API (`hash`/`compare` z obietnicą — dzieli pracę i nie blokuje pętli zdarzeń, co ma znaczenie na jednoprocesowym VPS z trwającymi partiami); koszt wstrzykiwany (12 w kontenerze, 4 w testach). Testy: poprawne i błędne hasło, koszt zakodowany w hashu.
 5. **`opaque-token`, `SessionService`, `RateLimiter`, `clientKey`.** Token z `createOpaqueToken()` (`crypto.randomBytes(32)`), w bazie `hashOpaqueToken()` (SHA-256); `findValid` odrzuca wygasłe, z wyjątkiem G5 przez wstrzykiwaną funkcję aktywnej partii (tu: zawsze `false`); `consume` z atomowym upsertem we własnej transakcji; `clientKey` czyta `CLIENT_IP_HEADER` i liczy hopy od prawej (brak nagłówka w produkcji → błąd 500), a w produkcji bez `TRUST_PROXY_HOPS` lub `APP_ORIGIN` budowa kontenera rzuca wyjątek. Rejestracja w `container.ts`; nowe zmienne w `.env.example` i w `global-setup.ts` w tym samym kroku. Testy jednostkowe na fałszywym `em` (granice okna, wygaśnięcie (także wyjątek G5 z fałszywą funkcją aktywnej partii: przed `expiresAt`, po nim z partią rozpoczętą przed i po `expiresAt`), parsowanie każdego wariantu nagłówka, brak nagłówka i zmiennych w produkcji, nazwa i flagi ciasteczka w obu trybach). Upsert na prawdziwym PostgreSQL sprawdza scenariusz `429` z kroku 7.
