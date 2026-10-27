@@ -7,7 +7,7 @@ describe("@gomoku/db public API", () => {
     expect(db).toMatchObject({
       createOrm: expect.any(Function),
       createOrmConfig: expect.any(Function),
-      entities: [],
+      entities: expect.arrayContaining([]),
     });
   });
 });

@@ -15,7 +15,7 @@ Ręczny test po fazie: `curl` (z nagłówkami `Origin` i `X-Gomoku-Request`) na 
 
 - [x] 1.1 Błędy i koperta API (`core/src/http/errors.ts`, `api-result.ts`)
 - [x] 1.2 Walidacja rejestracji (`zod`, `registerSchema`, normalizacja e-maila i nazwy, zastrzeżone nazwy, hasło 8–72 bajty)
-- [ ] 1.3 Encje i migracja: `users`, `sessions`, `rate_limit_buckets` (#28), up/down/up
+- [x] 1.3 Encje i migracja: `users`, `sessions`, `rate_limit_buckets` (#28), up/down/up
 - [ ] 1.4 `PasswordHasher` (bcryptjs, asynchroniczny, koszt wstrzykiwany)
 - [ ] 1.5 `opaque-token`, `SessionService`, `RateLimiter`, `clientKey`
 - [ ] 1.6 `UserService.register`, `apiHandler`, CSRF (`Origin` + `X-Gomoku-Request`)
