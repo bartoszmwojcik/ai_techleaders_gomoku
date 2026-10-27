@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createOrmConfig } from "./config";
+import { entities } from "./entities";
 
 describe("createOrmConfig", () => {
   it("falls back to the local development database and default pool", () => {
@@ -12,7 +13,7 @@ describe("createOrmConfig", () => {
     expect(createOrmConfig()).toMatchObject({
       clientUrl: "postgresql://gomoku:gomoku@localhost:5432/gomoku",
       pool: { min: 0, max: 10 },
-      entities: [],
+      entities: [...entities],
       discovery: { warnWhenNoEntities: false },
       debug: false,
       ensureDatabase: false,
