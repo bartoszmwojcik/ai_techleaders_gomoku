@@ -7,7 +7,12 @@ import {
   createAppContainer,
   type AwilixContainer,
 } from "@gomoku/core";
-import { createOrm, type EntityManager, type Orm } from "@gomoku/db";
+import {
+  createOrm,
+  entities,
+  type EntityManager,
+  type Orm,
+} from "@gomoku/db";
 
 import { readServerConfig, type ServerConfig } from "./config";
 import { PasswordHasher } from "./services/auth/password-hasher";
@@ -47,16 +52,28 @@ export type RequestCradle = AppCradle & {
 // HMR in development and be created once per server process. The promise (not the
 // instance) is cached so concurrent first requests share it; it is dropped on failure
 // so the next request can retry.
+//
+// The cache is keyed by the entity registry object, not global: a production build compiles
+// pages (RSC layer) and route handlers separately, so the app modules, and with them the
+// entity definitions, exist once per layer. An ORM registered the entities of one layer cannot
+// serve services of the other (`em.create(User)` fails), so each copy of the entities gets
+// its own ORM (and pool: mind DATABASE_POOL_MAX), while HMR, which keeps the entities
+// module, still reuses it.
 const globalForOrm = globalThis as typeof globalThis & {
-  __gomokuOrm?: Promise<Orm>;
+  __gomokuOrms?: WeakMap<object, Promise<Orm>>;
 };
 
 function getOrm(): Promise<Orm> {
-  globalForOrm.__gomokuOrm ??= createOrm().catch((error: unknown) => {
-    globalForOrm.__gomokuOrm = undefined;
-    throw error;
-  });
-  return globalForOrm.__gomokuOrm;
+  const orms = (globalForOrm.__gomokuOrms ??= new WeakMap());
+  let orm = orms.get(entities);
+  if (!orm) {
+    orm = createOrm().catch((error: unknown) => {
+      orms.delete(entities);
+      throw error;
+    });
+    orms.set(entities, orm);
+  }
+  return orm;
 }
 
 // The container itself is cheap and module-scoped, so edited services are picked up on HMR.

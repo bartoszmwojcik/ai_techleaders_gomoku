@@ -1,11 +1,14 @@
 import type { Orm } from "@gomoku/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { createOrm } = vi.hoisted(() => ({ createOrm: vi.fn() }));
-vi.mock("@gomoku/db", () => ({ createOrm }));
+const { createOrm, entities } = vi.hoisted(() => ({
+  createOrm: vi.fn(),
+  entities: [] as unknown[],
+}));
+vi.mock("@gomoku/db", () => ({ createOrm, entities }));
 
 const globalForOrm = globalThis as typeof globalThis & {
-  __gomokuOrm?: Promise<Orm>;
+  __gomokuOrms?: WeakMap<object, Promise<Orm>>;
 };
 
 function fakeOrm() {
@@ -27,11 +30,11 @@ async function loadContainer() {
 beforeEach(() => {
   vi.resetModules();
   createOrm.mockReset();
-  delete globalForOrm.__gomokuOrm;
+  delete globalForOrm.__gomokuOrms;
 });
 
 afterEach(() => {
-  delete globalForOrm.__gomokuOrm;
+  delete globalForOrm.__gomokuOrms;
 });
 
 describe("getContainer", () => {
@@ -56,13 +59,29 @@ describe("getContainer", () => {
 
   it("reuses the ORM cached on globalThis across module reloads (HMR)", async () => {
     const { orm } = fakeOrm();
-    globalForOrm.__gomokuOrm = Promise.resolve(orm);
+    globalForOrm.__gomokuOrms = new WeakMap([[entities, Promise.resolve(orm)]]);
     const { getContainer } = await loadContainer();
 
     const container = await getContainer();
 
     expect(container.cradle.orm).toBe(orm);
     expect(createOrm).not.toHaveBeenCalled();
+  });
+
+  it("creates a separate ORM for a separate copy of the entities (page and route layers)", async () => {
+    const pageOrm = fakeOrm().orm;
+    const routeOrm = fakeOrm().orm;
+    createOrm.mockResolvedValueOnce(pageOrm).mockResolvedValueOnce(routeOrm);
+    const { getContainer: forPages } = await loadContainer();
+    expect((await forPages()).cradle.orm).toBe(pageOrm);
+
+    vi.resetModules();
+    vi.doMock("@gomoku/db", () => ({ createOrm, entities: [] }));
+    const { getContainer: forRoutes } = await loadContainer();
+    vi.doMock("@gomoku/db", () => ({ createOrm, entities }));
+
+    expect((await forRoutes()).cradle.orm).toBe(routeOrm);
+    expect(createOrm).toHaveBeenCalledTimes(2);
   });
 
   it("retries on the next call when creating the ORM fails", async () => {
@@ -73,7 +92,7 @@ describe("getContainer", () => {
     const { getContainer } = await loadContainer();
 
     await expect(getContainer()).rejects.toThrow("database unreachable");
-    expect(globalForOrm.__gomokuOrm).toBeUndefined();
+    expect(globalForOrm.__gomokuOrms?.has(entities)).toBe(false);
 
     await expect(getContainer()).resolves.toMatchObject({ cradle: { orm } });
     expect(createOrm).toHaveBeenCalledTimes(2);

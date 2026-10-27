@@ -1,3 +1,5 @@
 /* Player-facing pages: plain Tailwind with the game's design tokens (packages/ui), no shadcn/ui tokens. */
 @import "tailwindcss";
 @import "@gomoku/ui/game-tokens.css";
+/* Tailwind skips node_modules, where the workspace package resolves: scan the design-system sources explicitly. */
+@source "../../../../ui/src/game";

@@ -21,7 +21,8 @@ function isEnvelope(value: unknown): value is ApiResult<unknown> {
 /**
  * The only way client code calls `/api/*`: sends the CSRF header and always
  * resolves to an `ApiResult` (network failures and non-JSON bodies become a
- * `network` error instead of throwing).
+ * `network` error instead of throwing). A `Retry-After` header on a failure is
+ * copied to `error.retryAfterSeconds`.
  */
 export async function apiCall<T>(
   path: string,
@@ -38,7 +39,13 @@ export async function apiCall<T>(
       signal,
     });
     const parsed: unknown = await response.json();
-    return isEnvelope(parsed) ? (parsed as ApiResult<T>) : networkError();
+    if (!isEnvelope(parsed)) return networkError();
+    const result = parsed as ApiResult<T>;
+    if (result.ok) return result;
+    const retryAfterSeconds = Number(response.headers.get("Retry-After"));
+    return retryAfterSeconds > 0
+      ? { ok: false, error: { ...result.error, retryAfterSeconds } }
+      : result;
   } catch {
     return networkError();
   }

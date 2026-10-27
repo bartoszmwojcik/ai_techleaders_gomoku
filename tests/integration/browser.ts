@@ -44,6 +44,46 @@ export class Browser {
     return (await this.run<{ title: string }>("get", "title")).title;
   }
 
+  async url(): Promise<string> {
+    return (await this.run<{ url: string }>("get", "url")).url;
+  }
+
+  async fill(selector: string, value: string): Promise<void> {
+    await this.run("fill", selector, value);
+  }
+
+  async click(selector: string): Promise<void> {
+    await this.run("click", selector);
+  }
+
+  /** Waits until an element matching `selector` is in the page. */
+  async waitFor(selector: string): Promise<void> {
+    await this.run("wait", selector);
+  }
+
+  /** Waits until the JavaScript expression is truthy in the page. */
+  async waitForFn(expression: string): Promise<void> {
+    await this.run("wait", "--fn", expression);
+  }
+
+  /** Evaluates a JavaScript expression in the page and returns its (JSON) value. */
+  async evaluate<T>(expression: string): Promise<T> {
+    return (await this.run<{ result: T }>("eval", expression)).result;
+  }
+
+  async setViewport(width: number, height: number): Promise<void> {
+    await this.run("set", "viewport", String(width), String(height));
+  }
+
+  /** Extra headers for every request of the session, e.g. the client address behind our proxy. */
+  async setHeaders(headers: Record<string, string>): Promise<void> {
+    await this.run("set", "headers", JSON.stringify(headers));
+  }
+
+  async clearCookies(): Promise<void> {
+    await this.run("cookies", "clear");
+  }
+
   async close(): Promise<void> {
     await this.run("close");
   }

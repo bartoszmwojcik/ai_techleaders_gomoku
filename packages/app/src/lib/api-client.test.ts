@@ -8,7 +8,8 @@ function stubFetch(impl: () => Promise<unknown>) {
   return fetchMock;
 }
 
-const json = (body: unknown) => Promise.resolve({ json: () => Promise.resolve(body) });
+const json = (body: unknown, headers: Record<string, string> = {}) =>
+  Promise.resolve({ json: () => Promise.resolve(body), headers: new Headers(headers) });
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -46,6 +47,20 @@ describe("apiCall", () => {
   it("passes through an error envelope with fieldErrors", async () => {
     const error = { code: "VALIDATION", message: "Bad", fieldErrors: { email: ["invalid"] } };
     stubFetch(() => json({ ok: false, error }));
+
+    expect(await apiCall("/api/x")).toEqual({ ok: false, error });
+  });
+
+  it("copies Retry-After of a failure into the error", async () => {
+    const error = { code: "RATE_LIMITED", message: "Wait" };
+    stubFetch(() => json({ ok: false, error }, { "Retry-After": "90" }));
+
+    expect(await apiCall("/api/x")).toEqual({ ok: false, error: { ...error, retryAfterSeconds: 90 } });
+  });
+
+  it("ignores an unusable Retry-After", async () => {
+    const error = { code: "RATE_LIMITED", message: "Wait" };
+    stubFetch(() => json({ ok: false, error }, { "Retry-After": "soon" }));
 
     expect(await apiCall("/api/x")).toEqual({ ok: false, error });
   });

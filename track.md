@@ -27,7 +27,7 @@ Ręczny test po fazie: `npm run dev` → `/register`: rejestracja, przekierowani
 
 - [x] 2.1 `apiCall` i `safeNextPath`
 - [x] 2.2 Komponenty formularza (`FormField`, `SubmitButton`, `ErrorMessage`, jsdom + Testing Library)
-- [ ] 2.3 Strona `/register`, `/` ze stanem zalogowania, dokumentacja (README, standardy)
+- [x] 2.3 Strona `/register`, `/` ze stanem zalogowania, dokumentacja (README, standardy)
 
 ## Faza 3 — Logowanie (#20, kroki 1–5)
 

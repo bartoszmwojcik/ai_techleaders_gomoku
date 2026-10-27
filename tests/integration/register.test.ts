@@ -85,6 +85,23 @@ describe("POST /api/auth/register", () => {
     expect(response.headers.get("set-cookie")).toBeNull();
   });
 
+  it("answers 409 ALREADY_AUTHENTICATED for a signed-in client and creates nothing", async () => {
+    const user = uniqueUser();
+    const first = await register(user);
+    const cookie = (first.headers.get("set-cookie") ?? "").split(";")[0] ?? "";
+    expect(cookie).toMatch(/^gomoku_session=/);
+
+    const other = uniqueUser();
+    const response = await register(other, { headers: { cookie } });
+
+    expect(response.status).toBe(409);
+    const body = (await response.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("ALREADY_AUTHENTICATED");
+    expect(response.headers.get("set-cookie")).toBeNull();
+    // The second account was not created: the same data still registers without the cookie.
+    expect((await register(other)).status).toBe(201);
+  });
+
   it("answers 409 at the displayName field when only the name is taken", async () => {
     const user = uniqueUser();
     expect((await register(user)).status).toBe(201);

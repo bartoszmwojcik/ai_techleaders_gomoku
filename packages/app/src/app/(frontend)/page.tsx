@@ -1,4 +1,8 @@
 import { BOARD_SIZE } from "@gomoku/core";
+import { Button } from "@gomoku/ui/game/button";
+import { connection } from "next/server";
+
+import { getCurrentUser } from "@/server/http/auth";
 
 // Static preview position: a few stones near the centre of the board.
 const PREVIEW_STONES = new Map<string, "black" | "white">([
@@ -10,7 +14,11 @@ const PREVIEW_STONES = new Map<string, "black" | "white">([
   ["8:6", "white"],
 ]);
 
-export default function HomePage() {
+export default async function HomePage() {
+  // Reads the session cookie, so the page is rendered per request.
+  await connection();
+  const user = await getCurrentUser();
+
   const cells = Array.from({ length: BOARD_SIZE * BOARD_SIZE }, (_, i) => {
     const row = Math.floor(i / BOARD_SIZE);
     const col = i % BOARD_SIZE;
@@ -27,6 +35,15 @@ export default function HomePage() {
         <p className="text-meta text-text-muted">
           Swobodne zasady · plansza {BOARD_SIZE}×{BOARD_SIZE} · 10 minut na gracza
         </p>
+        {user ? (
+          <p className="text-body text-text-primary" data-testid="signed-in-as">
+            Zalogowano jako <strong className="font-strong">{user.displayName}</strong>
+          </p>
+        ) : (
+          <Button asChild>
+            <a href="/register">Załóż konto</a>
+          </Button>
+        )}
       </section>
 
       <div

@@ -12,6 +12,10 @@ x-app: &app
   environment:
     DATABASE_URL: postgresql://gomoku:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}@postgres:5432/gomoku
     DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-5}
+    # Required: without them the domain routes (/api/auth/*) answer 500 (fail closed), see README.md.
+    APP_ORIGIN: ${APP_ORIGIN:?set APP_ORIGIN in .env.production (e.g. https://gomoku.byst.re)}
+    TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:?set TRUST_PROXY_HOPS in .env.production (e.g. 1)}
+    CLIENT_IP_HEADER: ${CLIENT_IP_HEADER:-x-forwarded-for}
 
 services:
   postgres:
