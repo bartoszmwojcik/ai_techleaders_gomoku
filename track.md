@@ -7,7 +7,7 @@
 
 ## Wymagania wstępne (środowisko)
 
-- [ ] W-1 Dostępny PostgreSQL do migracji i testów (lokalnie nie działa Docker ani PostgreSQL; wymaga decyzji). Bez niego: tylko testy jednostkowe, lint, typecheck; integracyjne i migracje „up/down/up” nie są uruchamiane i zostanie to napisane wprost.
+- [x] W-1 PostgreSQL do migracji i testów: Docker Desktop uruchomiony, `docker compose up -d` (postgres:17 na `localhost:5432`, `.env.local` z `DATABASE_URL`).
 
 ## Faza 1 — Konto i sesja przez API (#19, PR A: kroki 1–7, razem z #28)
 
