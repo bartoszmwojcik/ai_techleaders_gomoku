@@ -14,7 +14,7 @@
 Ręczny test po fazie: `curl` (z nagłówkami `Origin` i `X-Gomoku-Request`) na `POST /api/auth/register`: 201 z ciasteczkiem, 409 dla duplikatu, 400 z `fieldErrors`, 403 bez nagłówków, 429 po przekroczeniu limitu.
 
 - [x] 1.1 Błędy i koperta API (`core/src/http/errors.ts`, `api-result.ts`)
-- [ ] 1.2 Walidacja rejestracji (`zod`, `registerSchema`, normalizacja e-maila i nazwy, zastrzeżone nazwy, hasło 8–72 bajty)
+- [x] 1.2 Walidacja rejestracji (`zod`, `registerSchema`, normalizacja e-maila i nazwy, zastrzeżone nazwy, hasło 8–72 bajty)
 - [ ] 1.3 Encje i migracja: `users`, `sessions`, `rate_limit_buckets` (#28), up/down/up
 - [ ] 1.4 `PasswordHasher` (bcryptjs, asynchroniczny, koszt wstrzykiwany)
 - [ ] 1.5 `opaque-token`, `SessionService`, `RateLimiter`, `clientKey`
