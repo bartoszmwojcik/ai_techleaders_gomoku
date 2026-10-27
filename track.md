@@ -18,7 +18,7 @@ Ręczny test po fazie: `curl` (z nagłówkami `Origin` i `X-Gomoku-Request`) na 
 - [x] 1.3 Encje i migracja: `users`, `sessions`, `rate_limit_buckets` (#28), up/down/up
 - [x] 1.4 `PasswordHasher` (bcryptjs, asynchroniczny, koszt wstrzykiwany)
 - [x] 1.5 `opaque-token`, `SessionService`, `RateLimiter`, `clientKey`
-- [ ] 1.6 `UserService.register`, `apiHandler`, CSRF (`Origin` + `X-Gomoku-Request`)
+- [x] 1.6 `UserService.register`, `apiHandler`, CSRF (`Origin` + `X-Gomoku-Request`)
 - [ ] 1.7 Route `POST /api/auth/register` + testy integracyjne
 
 ## Faza 2 — Formularz rejestracji i stan zalogowania (#19, PR B: kroki 8–10)

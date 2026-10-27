@@ -89,6 +89,7 @@ describe("auth services", () => {
     await withRequestScope(async ({ cradle }) => {
       expect(cradle.sessionService).toBe(cradle.sessionService);
       expect(cradle.rateLimiter).toBe(cradle.rateLimiter);
+      expect(cradle.userService).toBe(cradle.userService);
       expect(await cradle.hasActiveGame("user", new Date())).toBe(false);
       expect(forkedEm).toBeDefined();
     });
