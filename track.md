@@ -26,7 +26,7 @@ Ręczny test po fazie: `curl` (z nagłówkami `Origin` i `X-Gomoku-Request`) na 
 Ręczny test po fazie: `npm run dev` → `/register`: rejestracja, przekierowanie na `/`, widoczne „Zalogowano jako …”, błędy pól, telefon 360 px.
 
 - [x] 2.1 `apiCall` i `safeNextPath`
-- [ ] 2.2 Komponenty formularza (`FormField`, `SubmitButton`, `ErrorMessage`, jsdom + Testing Library)
+- [x] 2.2 Komponenty formularza (`FormField`, `SubmitButton`, `ErrorMessage`, jsdom + Testing Library)
 - [ ] 2.3 Strona `/register`, `/` ze stanem zalogowania, dokumentacja (README, standardy)
 
 ## Faza 3 — Logowanie (#20, kroki 1–5)
