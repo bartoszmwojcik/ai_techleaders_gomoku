@@ -96,7 +96,14 @@ export default async function setup(project: TestProject) {
     const log = createWriteStream(SERVER_LOG);
     server = spawn(process.execPath, [nextBin, "start", "--port", String(port)], {
       cwd: appRoot,
-      env: { ...env, NODE_ENV: "production" },
+      env: {
+        ...env,
+        NODE_ENV: "production",
+        // `next start` is production without HTTPS: plain-HTTP origin, cookie without `Secure`.
+        TRUST_PROXY_HOPS: "1",
+        APP_ORIGIN: baseUrl,
+        SESSION_COOKIE_SECURE: "false",
+      },
       detached: true,
       stdio: ["ignore", "pipe", "pipe"],
     });

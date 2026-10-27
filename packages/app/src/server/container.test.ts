@@ -4,7 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { createOrm } = vi.hoisted(() => ({ createOrm: vi.fn() }));
 vi.mock("@gomoku/db", () => ({ createOrm }));
 
-const globalForOrm = globalThis as typeof globalThis & { __gomokuOrm?: Promise<Orm> };
+const globalForOrm = globalThis as typeof globalThis & {
+  __gomokuOrm?: Promise<Orm>;
+};
 
 function fakeOrm() {
   const forkedEm = { id: "forked" };
@@ -47,7 +49,9 @@ describe("getContainer", () => {
     expect(first.cradle.healthService).toBe(first.cradle.healthService);
     expect(first.cradle.passwordHashCost).toBe(12);
     expect(first.cradle.passwordHasher).toBe(first.cradle.passwordHasher);
-    expect(await first.cradle.passwordHasher.hash("secret123")).toMatch(/^\$2[aby]\$12\$/);
+    expect(await first.cradle.passwordHasher.hash("secret123")).toMatch(
+      /^\$2[aby]\$12\$/,
+    );
   });
 
   it("reuses the ORM cached on globalThis across module reloads (HMR)", async () => {
@@ -63,7 +67,9 @@ describe("getContainer", () => {
 
   it("retries on the next call when creating the ORM fails", async () => {
     const { orm } = fakeOrm();
-    createOrm.mockRejectedValueOnce(new Error("database unreachable")).mockResolvedValueOnce(orm);
+    createOrm
+      .mockRejectedValueOnce(new Error("database unreachable"))
+      .mockResolvedValueOnce(orm);
     const { getContainer } = await loadContainer();
 
     await expect(getContainer()).rejects.toThrow("database unreachable");
@@ -71,6 +77,45 @@ describe("getContainer", () => {
 
     await expect(getContainer()).resolves.toMatchObject({ cradle: { orm } });
     expect(createOrm).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("auth services", () => {
+  it("resolves session and rate-limit services in a request scope", async () => {
+    const { orm, forkedEm } = fakeOrm();
+    createOrm.mockResolvedValue(orm);
+    const { withRequestScope } = await loadContainer();
+
+    await withRequestScope(async ({ cradle }) => {
+      expect(cradle.sessionService).toBe(cradle.sessionService);
+      expect(cradle.rateLimiter).toBe(cradle.rateLimiter);
+      expect(await cradle.hasActiveGame("user", new Date())).toBe(false);
+      expect(forkedEm).toBeDefined();
+    });
+  });
+
+  it("reads the server configuration lazily so /api/health survives a bad one", async () => {
+    const { orm } = fakeOrm();
+    createOrm.mockResolvedValue(orm);
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("TRUST_PROXY_HOPS", "");
+    const { getContainer } = await loadContainer();
+
+    const container = await getContainer();
+
+    expect(container.cradle.orm).toBe(orm);
+    expect(() => container.cradle.serverConfig).toThrow(/TRUST_PROXY_HOPS/);
+  });
+
+  it("provides the server configuration outside production", async () => {
+    const { orm } = fakeOrm();
+    createOrm.mockResolvedValue(orm);
+    vi.stubEnv("NODE_ENV", "development");
+    const { getContainer } = await loadContainer();
+
+    const container = await getContainer();
+
+    expect(container.cradle.serverConfig.production).toBe(false);
   });
 });
 

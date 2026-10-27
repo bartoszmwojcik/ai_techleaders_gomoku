@@ -1,10 +1,22 @@
 import "server-only";
 
-import { asClass, asValue, createAppContainer, type AwilixContainer } from "@gomoku/core";
+import {
+  asClass,
+  asFunction,
+  asValue,
+  createAppContainer,
+  type AwilixContainer,
+} from "@gomoku/core";
 import { createOrm, type EntityManager, type Orm } from "@gomoku/db";
 
+import { readServerConfig, type ServerConfig } from "./config";
 import { PasswordHasher } from "./services/auth/password-hasher";
+import {
+  SessionService,
+  type HasActiveGame,
+} from "./services/auth/session-service";
 import { HealthService } from "./services/health-service";
+import { RateLimiter } from "./services/rate-limit/rate-limiter";
 
 /** bcrypt cost factor used by the application (tests inject a lower one). */
 const PASSWORD_HASH_COST = 12;
@@ -15,6 +27,13 @@ export type AppCradle = {
   healthService: HealthService;
   passwordHashCost: number;
   passwordHasher: PasswordHasher;
+  /** Resolved lazily: invalid production settings fail the routes that use it, not `/api/health`. */
+  serverConfig: ServerConfig;
+  /** Games do not exist yet (G5); the games feature replaces this registration. */
+  hasActiveGame: HasActiveGame;
+  /** Request-scoped (needs `em`): resolve only from a `withRequestScope` scope. */
+  sessionService: SessionService;
+  rateLimiter: RateLimiter;
 };
 
 /** Dependencies available within a single request. */
@@ -26,7 +45,9 @@ export type RequestCradle = AppCradle & {
 // HMR in development and be created once per server process. The promise (not the
 // instance) is cached so concurrent first requests share it; it is dropped on failure
 // so the next request can retry.
-const globalForOrm = globalThis as typeof globalThis & { __gomokuOrm?: Promise<Orm> };
+const globalForOrm = globalThis as typeof globalThis & {
+  __gomokuOrm?: Promise<Orm>;
+};
 
 function getOrm(): Promise<Orm> {
   globalForOrm.__gomokuOrm ??= createOrm().catch((error: unknown) => {
@@ -46,6 +67,10 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     healthService: asClass(HealthService).singleton(),
     passwordHashCost: asValue(PASSWORD_HASH_COST),
     passwordHasher: asClass(PasswordHasher).singleton(),
+    serverConfig: asFunction(() => readServerConfig(process.env)).singleton(),
+    hasActiveGame: asValue<HasActiveGame>(async () => false),
+    sessionService: asClass(SessionService).scoped(),
+    rateLimiter: asClass(RateLimiter).scoped(),
   });
   return container;
 }
