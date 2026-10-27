@@ -38,6 +38,14 @@ function setup(options: { flushError?: unknown; emailCount?: number } = {}) {
       if (options.flushError) throw options.flushError;
     }),
     clear: vi.fn(() => calls.push("clear")),
+    transactional: vi.fn(async (work: () => Promise<unknown>) => {
+      calls.push("begin");
+      try {
+        return await work();
+      } finally {
+        calls.push("end");
+      }
+    }),
     count: vi.fn(async () => options.emailCount ?? 0),
   };
   const passwordHasher = {
@@ -62,7 +70,7 @@ describe("UserService.register", () => {
 
     const result = await service.register(input);
 
-    expect(calls).toEqual(["hash", "flush"]);
+    expect(calls).toEqual(["hash", "begin", "flush", "end"]);
     expect(em.create).toHaveBeenCalledWith(User, {
       email: "ala@example.com",
       displayName: "Łukasz_7",
@@ -122,6 +130,27 @@ describe("UserService.register", () => {
     const { service } = setup({ flushError: uniqueViolation("other") });
     const error = await service.register(input).catch((e: unknown) => e);
     expect((error as ConflictError).message).toBe(EMAIL_TAKEN_MESSAGE);
+  });
+
+  it("creates the user and the session in one transaction", async () => {
+    const { sessionService, service, calls } = setup();
+    sessionService.create.mockImplementation(async () => {
+      calls.push("session");
+      return { token: "tok", expiresAt: new Date() };
+    });
+
+    await service.register(input);
+
+    expect(calls).toEqual(["hash", "begin", "flush", "session", "end"]);
+  });
+
+  it("propagates a session failure so the transaction rolls back the account", async () => {
+    const failure = new Error("session insert failed");
+    const { sessionService, service, calls } = setup();
+    sessionService.create.mockRejectedValue(failure);
+
+    await expect(service.register(input)).rejects.toBe(failure);
+    expect(calls).toEqual(["hash", "begin", "flush", "end"]);
   });
 
   it("rethrows other database errors", async () => {

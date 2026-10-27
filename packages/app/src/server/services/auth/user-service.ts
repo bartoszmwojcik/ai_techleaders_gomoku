@@ -42,7 +42,7 @@ export class UserService {
   }
 
   /**
-   * Creates an account and its first session. `input` must come from `registerSchema`
+   * Creates an account and its first session in a single transaction. `input` must come from `registerSchema`
    * (normalized e-mail, validated name and password); only its fields are persisted.
    * The password is hashed before the insert on every path, so response time does not
    * depend on whether the e-mail exists. Uniqueness is decided by the database indexes,
@@ -50,22 +50,28 @@ export class UserService {
    */
   async register(input: RegisterInput): Promise<RegisteredUser> {
     const passwordHash = await this.#passwordHasher.hash(input.password);
-    const user = this.#em.create(User, {
-      email: input.email,
-      displayName: input.displayName,
-      displayNameKey: normalizeDisplayName(input.displayName),
-      passwordHash,
-    });
     try {
-      await this.#em.flush();
+      // One transaction: a failure to create the session leaves no account without one.
+      return await this.#em.transactional(async () => {
+        const user = this.#em.create(User, {
+          email: input.email,
+          displayName: input.displayName,
+          displayNameKey: normalizeDisplayName(input.displayName),
+          passwordHash,
+        });
+        await this.#em.flush();
+        const session = await this.#sessionService.create(user.id);
+        return {
+          user: { id: user.id, displayName: user.displayName },
+          session,
+        };
+      });
     } catch (error) {
       if (error instanceof UniqueConstraintViolationException) {
         throw await this.#conflictFor(error, input.email);
       }
       throw error;
     }
-    const session = await this.#sessionService.create(user.id);
-    return { user: { id: user.id, displayName: user.displayName }, session };
   }
 
   /**
