@@ -45,6 +45,9 @@ describe("getContainer", () => {
     expect(first.cradle.orm).toBe(orm);
     expect(first.cradle.healthService).toBeInstanceOf(HealthService);
     expect(first.cradle.healthService).toBe(first.cradle.healthService);
+    expect(first.cradle.passwordHashCost).toBe(12);
+    expect(first.cradle.passwordHasher).toBe(first.cradle.passwordHasher);
+    expect(await first.cradle.passwordHasher.hash("secret123")).toMatch(/^\$2[aby]\$12\$/);
   });
 
   it("reuses the ORM cached on globalThis across module reloads (HMR)", async () => {

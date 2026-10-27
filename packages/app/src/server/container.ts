@@ -3,12 +3,18 @@ import "server-only";
 import { asClass, asValue, createAppContainer, type AwilixContainer } from "@gomoku/core";
 import { createOrm, type EntityManager, type Orm } from "@gomoku/db";
 
+import { PasswordHasher } from "./services/auth/password-hasher";
 import { HealthService } from "./services/health-service";
+
+/** bcrypt cost factor used by the application (tests inject a lower one). */
+const PASSWORD_HASH_COST = 12;
 
 /** Application-wide (singleton) dependencies. */
 export type AppCradle = {
   orm: Orm;
   healthService: HealthService;
+  passwordHashCost: number;
+  passwordHasher: PasswordHasher;
 };
 
 /** Dependencies available within a single request. */
@@ -38,6 +44,8 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
   container.register({
     orm: asValue(await getOrm()),
     healthService: asClass(HealthService).singleton(),
+    passwordHashCost: asValue(PASSWORD_HASH_COST),
+    passwordHasher: asClass(PasswordHasher).singleton(),
   });
   return container;
 }
