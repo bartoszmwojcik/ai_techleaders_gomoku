@@ -1,7 +1,13 @@
-import { AppError, TooManyRequestsError, ValidationError } from "@gomoku/core";
+import {
+  AppError,
+  ConflictError,
+  TooManyRequestsError,
+  ValidationError,
+} from "@gomoku/core";
 import { EmailVerificationToken, User, type EntityManager } from "@gomoku/db";
 
 import type { ServerConfig } from "../../config";
+import { describeError } from "../../http/describe-error";
 import { createOpaqueToken, hashOpaqueToken } from "../../http/opaque-token";
 import type { Clock, EmailSender, SendOptions } from "../email/email-sender";
 import type { RateLimiter } from "../rate-limit/rate-limiter";
@@ -24,6 +30,14 @@ export type VerificationRecipient = {
   email: string;
   displayName: string;
 };
+
+/** How long a request waits for the verification e-mail to be handed to the transport. */
+export const VERIFICATION_SEND_TIMEOUT_MS = 5_000;
+/** Q4: 3 resends per account and 10 per client address, each per hour. */
+export const RESEND_USER_LIMIT = 3;
+export const RESEND_IP_LIMIT = 10;
+export const RESEND_WINDOW_MS = 60 * 60 * 1000;
+export const ALREADY_VERIFIED_MESSAGE = "Adres e-mail jest już potwierdzony.";
 
 export const VERIFICATION_TOKEN_TTL_MS =
   VERIFICATION_LINK_VALID_HOURS * 60 * 60 * 1000;
@@ -112,7 +126,9 @@ export class EmailVerificationService {
         }),
         options,
       );
-    } catch {
+    } catch (cause) {
+      // Only the class name and driver code: the message may carry the address or the token.
+      console.error("Verification e-mail send failed", describeError(cause));
       await this.#em.nativeDelete(EmailVerificationToken, { id: record.id });
       throw new AppError(502, "EMAIL_SEND_FAILED", EMAIL_SEND_FAILED_MESSAGE);
     }
@@ -129,6 +145,36 @@ export class EmailVerificationService {
       },
       { usedAt: now },
     );
+  }
+
+  /**
+   * Sends a new confirmation link to a signed-in player (Q4). Order: already confirmed
+   * (409 `ALREADY_VERIFIED`), then both counters - 3 per account and 10 per client address
+   * per hour, counted before the costly work and kept even when the send fails - then
+   * `issue`, whose send is bounded by `VERIFICATION_SEND_TIMEOUT_MS`. The older links die
+   * only after the new one was sent (see `issue`).
+   * @param ipKey rate-limit key of the client address (`clientKey`), already hashed.
+   * @throws AppError 409 `ALREADY_VERIFIED`; 429 `RATE_LIMITED` (with `retryAfterSeconds`);
+   * plus whatever `issue` throws (502 `EMAIL_SEND_FAILED`, 503 `EMAIL_QUOTA_EXCEEDED`).
+   */
+  async resend(
+    user: VerificationRecipient & { emailVerifiedAt: Date | null },
+    ipKey: string,
+  ): Promise<void> {
+    if (user.emailVerifiedAt !== null) {
+      throw new ConflictError(ALREADY_VERIFIED_MESSAGE, {
+        code: "ALREADY_VERIFIED",
+      });
+    }
+    await this.#rateLimiter.hit(
+      `verification-resend:user:${hashOpaqueToken(user.id)}`,
+      RESEND_USER_LIMIT,
+      RESEND_WINDOW_MS,
+    );
+    await this.#rateLimiter.hit(ipKey, RESEND_IP_LIMIT, RESEND_WINDOW_MS);
+    await this.issue(user, undefined, {
+      signal: AbortSignal.timeout(VERIFICATION_SEND_TIMEOUT_MS),
+    });
   }
 
   /**
