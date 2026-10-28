@@ -15,6 +15,13 @@ const nextConfig: NextConfig = {
     "@mikro-orm/postgresql",
     "kysely",
   ],
+  headers: async () => [
+    {
+      // The verification token is in the address: the page must not leak it in `Referer`.
+      source: "/verify-email",
+      headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
+    },
+  ],
 };
 
 export default nextConfig;

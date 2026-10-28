@@ -1,0 +1,131 @@
+// @vitest-environment jsdom
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const { apiCall } = vi.hoisted(() => ({ apiCall: vi.fn() }));
+vi.mock("@/lib/api-client", () => ({ apiCall }));
+
+import { ConfirmEmail } from "./confirm-email";
+
+const base = { token: "tok", nextPath: "/", signedIn: false, alreadyVerified: false };
+const failure = (code: string) => ({ ok: false, error: { code, message: "x" } });
+
+beforeEach(() => apiCall.mockReset());
+afterEach(cleanup);
+
+async function confirm() {
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: "Potwierdź e-mail" }));
+  return user;
+}
+
+describe("ConfirmEmail", () => {
+  it("shows the button, sends nothing on its own and focuses the heading", () => {
+    render(<ConfirmEmail {...base} />);
+
+    expect(screen.getByRole("heading", { name: "Potwierdź adres e-mail" })).toBe(document.activeElement);
+    expect(screen.getByRole("button", { name: "Potwierdź e-mail" })).toBeTruthy();
+    expect(apiCall).not.toHaveBeenCalled();
+  });
+
+  it("posts the token and next, blocks a second click while pending", async () => {
+    let resolve!: (value: unknown) => void;
+    apiCall.mockReturnValue(new Promise((r) => (resolve = r)));
+    render(<ConfirmEmail {...base} nextPath="/invite/abc" />);
+
+    await confirm();
+
+    expect(apiCall).toHaveBeenCalledWith("/api/auth/email-verification/confirm", {
+      body: { token: "tok", next: "/invite/abc" },
+    });
+    expect((screen.getByRole("button", { name: "Potwierdź e-mail" }) as HTMLButtonElement).disabled).toBe(true);
+    resolve({ ok: true, data: { next: "/invite/abc" } });
+    await screen.findByText("Adres potwierdzony");
+    expect(apiCall).toHaveBeenCalledOnce();
+  });
+
+  it("after success a signed-in player continues to the server's next path; focus moves to the result", async () => {
+    apiCall.mockResolvedValue({ ok: true, data: { next: "/invite/abc" } });
+    render(<ConfirmEmail {...base} signedIn nextPath="/invite/abc" />);
+
+    await confirm();
+
+    const link = await screen.findByRole("link", { name: "Przejdź dalej" });
+    expect(link.getAttribute("href")).toBe("/invite/abc");
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByTestId("verify-done")));
+  });
+
+  it("after success a signed-out player is not logged in and gets a login link keeping next", async () => {
+    apiCall.mockResolvedValue({ ok: true, data: { next: "/invite/abc" } });
+    render(<ConfirmEmail {...base} nextPath="/invite/abc" />);
+
+    await confirm();
+
+    expect(await screen.findByText(/Nie jesteś zalogowany na tym urządzeniu/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Zaloguj się" }).getAttribute("href")).toBe(
+      "/login?next=%2Finvite%2Fabc",
+    );
+  });
+
+  it("links to a plain /login when next is the home page", async () => {
+    apiCall.mockResolvedValue({ ok: true, data: { next: "/" } });
+    render(<ConfirmEmail {...base} />);
+
+    await confirm();
+
+    expect((await screen.findByRole("link", { name: "Zaloguj się" })).getAttribute("href")).toBe("/login");
+  });
+
+  it.each(["INVALID_TOKEN", "VALIDATION"])("%s shows the uniform message and focuses it", async (code) => {
+    apiCall.mockResolvedValue(failure(code));
+    render(<ConfirmEmail {...base} />);
+
+    await confirm();
+
+    expect(await screen.findByText("Link wygasł lub został już użyty.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Potwierdź e-mail" })).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByTestId("verify-invalid")));
+    expect(screen.getByRole("link", { name: "Wróć na stronę główną" }).getAttribute("href")).toBe("/");
+  });
+
+  it("without a token shows the same message straight away", () => {
+    render(<ConfirmEmail {...base} token={undefined} />);
+
+    expect(screen.getByText("Link wygasł lub został już użyty.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Potwierdź e-mail" })).toBeNull();
+    expect(apiCall).not.toHaveBeenCalled();
+  });
+
+  it("tells a signed-in player with a confirmed account so, and offers to continue", () => {
+    render(<ConfirmEmail {...base} token={undefined} signedIn alreadyVerified nextPath="/account" />);
+
+    expect(screen.getByText("Adres jest już potwierdzony.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Przejdź dalej" }).getAttribute("href")).toBe("/account");
+    expect(screen.queryByRole("link", { name: "Wróć na stronę główną" })).toBeNull();
+  });
+
+  it("a server error offers a retry that posts again", async () => {
+    apiCall.mockResolvedValueOnce(failure("INTERNAL")).mockResolvedValueOnce({ ok: true, data: { next: "/" } });
+    render(<ConfirmEmail {...base} />);
+
+    const user = await confirm();
+    expect(await screen.findByText("Nie udało się potwierdzić adresu")).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByTestId("verify-error")));
+
+    await user.click(screen.getByRole("button", { name: "Spróbuj ponownie" }));
+
+    expect(await screen.findByText("Adres potwierdzony")).toBeTruthy();
+    expect(apiCall).toHaveBeenCalledTimes(2);
+  });
+
+  it("a network failure says so and offers a retry", async () => {
+    apiCall.mockResolvedValue(failure("network"));
+    render(<ConfirmEmail {...base} />);
+
+    await confirm();
+
+    expect(await screen.findByText("Brak połączenia")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Spróbuj ponownie" })).toBeTruthy();
+  });
+});

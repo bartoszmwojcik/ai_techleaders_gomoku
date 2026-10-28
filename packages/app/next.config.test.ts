@@ -37,4 +37,15 @@ describe("next.config", () => {
       "kysely",
     ]);
   });
+
+  it("sends Referrer-Policy: no-referrer on /verify-email, where the token is in the URL", async () => {
+    const { default: config } = await import("./next.config");
+
+    expect(await config.headers?.()).toEqual([
+      {
+        source: "/verify-email",
+        headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
+      },
+    ]);
+  });
 });

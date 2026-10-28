@@ -68,13 +68,13 @@ Ręczny test po fazie: rejestracja → plik-skrzynka (`EMAIL_TRANSPORT=file`) �
 - [x] 6.2 `EmailSender`, `FileEmailSender`, `UnconfiguredEmailSender`, `clock`, wybór w `container.ts`
 - [x] 6.3 Szablon wiadomości
 - [x] 6.4 `EmailVerificationService.issue/confirm`, wywołanie po rejestracji (przywrócić podpis pod e-mailem w `register-form` o linku do potwierdzenia; usunięty w 2.4, bo wysyłki jeszcze nie ma)
-- [ ] 6.5 Route `…/confirm` i strona `/verify-email`
+- [x] 6.5 Route `…/confirm` i strona `/verify-email`
 
 ## Faza 7 — Ponowne wysłanie i baner (#34, Faza 2: kroki 6–8)
 
 Ręczny test po fazie: baner „Potwierdź adres e-mail” na `/` i `/account`, zamknięcie, „Wyślij ponownie”, znika po potwierdzeniu.
 
-- [ ] 7.1 `resend` i limity
+- [ ] 7.1 `resend` i limity (dopiąć na `/verify-email` w `confirm-email.tsx`, stan „link nieważny”: przycisk „Wyślij nowy link” dla zalogowanego z niepotwierdzonym kontem (s03.5, 9–12) i link „Zaloguj się, aby wysłać nowy link” (`/login?next=/account`) dla niezalogowanego (s03.6); w 6.5 jest tylko „Wróć na stronę główną”)
 - [ ] 7.2 `VerifyEmailBanner` (zamykalny, powrót po 7 dniach)
 - [ ] 7.3 Dokumentacja
 
