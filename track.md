@@ -34,7 +34,7 @@ Ręczny test po fazie: `npm run dev` → `/register`: rejestracja, przekierowani
 
 Ręczny test po fazie: `/login` (poprawne dane, złe hasło ten sam komunikat, `?next=`, limit prób, „Pokaż hasło”).
 
-- [ ] 3.1 `RateLimiter.hit` i `reset`
+- [x] 3.1 `RateLimiter.hit` i `reset`
 - [ ] 3.2 `normalizeEmail`, `loginSchema`
 - [ ] 3.3 Atrapowy hash i `UserService.authenticate`
 - [ ] 3.4 Route `POST /api/auth/login`

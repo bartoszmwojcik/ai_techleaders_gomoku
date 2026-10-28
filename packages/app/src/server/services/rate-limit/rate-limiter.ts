@@ -22,6 +22,8 @@ const CONSUME_SQL = `
       (b.window_start + (?::double precision * interval '1 millisecond') - now()))))::int
       as retry_after_seconds`;
 
+const RESET_SQL = `delete from rate_limit_buckets where "key" = ?`;
+
 export class RateLimiter {
   readonly #em: EntityManager;
 
@@ -32,9 +34,14 @@ export class RateLimiter {
   /**
    * Counts one attempt for `key` and throws `TooManyRequestsError` once `limit` attempts per
    * `windowMs` are exceeded. The counter is written in its own, immediately committed
-   * transaction, so it survives a later rollback of the caller's work.
+   * transaction, so it survives a later rollback of the caller's work. Returns the counter
+   * state (`count`, `retryAfterSeconds` until the window ends) when the attempt is allowed.
    */
-  async consume(key: string, limit: number, windowMs: number): Promise<void> {
+  async hit(
+    key: string,
+    limit: number,
+    windowMs: number,
+  ): Promise<{ count: number; retryAfterSeconds: number }> {
     const rows = await this.#em.transactional((em) =>
       em.execute<BucketRow[]>(
         CONSUME_SQL,
@@ -51,5 +58,16 @@ export class RateLimiter {
         },
       );
     }
+    return { count: row.count, retryAfterSeconds: row.retry_after_seconds };
+  }
+
+  /** Same as {@link hit}, for callers that only need the limit enforced. */
+  async consume(key: string, limit: number, windowMs: number): Promise<void> {
+    await this.hit(key, limit, windowMs);
+  }
+
+  /** Forgets the counter for `key` (own committed transaction), e.g. after a successful login. */
+  async reset(key: string): Promise<void> {
+    await this.#em.transactional((em) => em.execute(RESET_SQL, [key], "run"));
   }
 }
