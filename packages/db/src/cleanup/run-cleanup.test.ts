@@ -26,20 +26,37 @@ describe("runCleanup", () => {
       emailVerificationTokens: 2,
       passwordResetTokens: 2,
       unverifiedUsers: null,
+      errors: [],
+      truncated: false,
     });
     expect(s.stderr.write).not.toHaveBeenCalled();
     expect(s.orm.close).toHaveBeenCalledOnce();
   });
 
-  it("reports null for absent tables", async () => {
-    const s = setup(() => Promise.reject(Object.assign(new Error("relation missing"), { code: "42P01" })));
+  it("prints the partial result, reports failed rules without messages and returns 1", async () => {
+    const s = setup(() => Promise.reject(Object.assign(new Error("relation x missing"), { code: "42P01" })));
 
-    expect(await runCleanup({ createOrm: s.createOrm, stdout: s.stdout, stderr: s.stderr })).toBe(0);
-    expect(JSON.parse(s.stdout.write.mock.calls[0]![0]).sessions).toBeNull();
+    const code = await runCleanup({ createOrm: s.createOrm, stdout: s.stdout, stderr: s.stderr });
+
+    expect(code).toBe(1);
+    expect(JSON.parse(s.stdout.write.mock.calls[0]![0]).errors).toHaveLength(4);
+    const line = s.stderr.write.mock.calls[0]![0] as string;
+    expect(JSON.parse(line)).toEqual({
+      ok: false,
+      errors: ["sessions", "rateLimitBuckets", "emailVerificationTokens", "passwordResetTokens"].map((rule) => ({
+        rule,
+        code: "42P01",
+      })),
+    });
+    expect(line).not.toContain("relation x missing");
+    expect(s.orm.close).toHaveBeenCalledOnce();
   });
 
-  it("returns 1 with a masked message and closes the ORM when cleanup fails", async () => {
-    const s = setup(() => Promise.reject(new Error("connect failed postgresql://gomoku:s3cret@db:5432/gomoku")));
+  it("returns 1 with a masked message and closes the ORM when cleanup itself throws", async () => {
+    const s = setup(async () => ({ affectedRows: 0 }));
+    s.orm.em.fork.mockImplementation(() => {
+      throw new Error("connect failed postgresql://gomoku:s3cret@db:5432/gomoku");
+    });
 
     const code = await runCleanup({ createOrm: s.createOrm, stdout: s.stdout, stderr: s.stderr });
 

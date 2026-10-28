@@ -250,27 +250,40 @@ Wygasłe sesje, liczniki limitów i tokeny nie wpływają na poprawność (są f
 | Tabela | Usuwane, gdy |
 | --- | --- |
 | `sessions` | `expires_at` starsze niż 1 godzina (margines na partię trwającą po wygaśnięciu sesji) |
-| `rate_limit_buckets` | `window_start` starsze niż 24 godziny (najdłuższe okno limitu to 1 godzina) |
+| `rate_limit_buckets` | `window_start` starsze niż 48 godzin (najdłuższe okno limitu to 24 godziny — dzienne pule `email-daily:*`; drugie 24 godziny to zapas na rozjazd zegara bazy, którym liczy limiter, i zegara Node, którym liczy sprzątanie) |
 | `email_verification_tokens` | `expires_at` **lub** `used_at` starsze niż 24 godziny |
 | `password_reset_tokens` | `expires_at` **lub** `used_at` starsze niż 24 godziny |
 
-Użytkownicy nie są usuwani. Reguła BR-28 (niepotwierdzone konto bez partii po 14 dniach) czeka na tabele partii z Epiku 02 (#29), więc `unverifiedUsers` jest na razie zawsze `null`. Usuwanie idzie partiami po 1000 wierszy (krótkie transakcje, `for update skip locked`), przebieg kończy się po 60 sekundach — resztę zabierze następny. Dwa przebiegi naraz są bezpieczne.
+Użytkownicy nie są usuwani. Reguła BR-28 (niepotwierdzone konto bez partii po 14 dniach) czeka na tabele partii z Epiku 02 (#29), więc `unverifiedUsers` jest na razie zawsze `null`. Usuwanie idzie partiami po 1000 wierszy (krótkie transakcje, `for update skip locked`). Każda reguła ma własny budżet 15 sekund (wolna reguła nie zagłodzi następnych); po jego upływie reguła przerywa, a resztę zabierze następny przebieg (`truncated: true`). Dwa przebiegi naraz są bezpieczne.
 
-**Wynik i kody wyjścia.** Sukces: kod `0` i jedna linia JSON na stdout, liczba usuniętych wierszy lub `null` (tabela nie istnieje):
+**Wynik i kody wyjścia.** Jedna linia JSON na stdout: liczba usuniętych wierszy na regułę (przy błędzie reguły — liczba usuniętych do chwili błędu), `null` (tylko reguła oznaczona jako opcjonalna, gdy jej tabeli brak; dziś żadna nie jest, a `unverifiedUsers` jest zawsze `null`), `errors` (reguły, które zgłosiły błąd) i `truncated`:
 
 ```json
-{"sessions":3,"rateLimitBuckets":0,"emailVerificationTokens":1,"passwordResetTokens":0,"unverifiedUsers":null}
+{"sessions":3,"rateLimitBuckets":0,"emailVerificationTokens":1,"passwordResetTokens":0,"unverifiedUsers":null,"errors":[],"truncated":false}
 ```
 
-Błąd (np. baza niedostępna): kod `1`, na stderr `{"ok":false,"error":"…"}` z zamaskowanym hasłem w adresie bazy; następny przebieg `cron` spróbuje ponownie. Komenda nigdy nie tworzy brakującej bazy.
+Błąd jednej reguły (w tym brak tabeli, np. nieuruchomione migracje) nie przerywa pozostałych: linia JSON z postępem nadal trafia na stdout, a w `errors` jest `{"rule":"sessions","code":"42P01"}` (nazwa reguły i kod SQL lub nazwa klasy błędu — bez komunikatu, który mógłby zawierać dane). Wtedy kod wyjścia to `1`, a na stderr jest `{"ok":false,"errors":[…]}`. Kod `1` i `{"ok":false,"error":"…"}` (zamaskowane hasło w adresie bazy) także przy innej awarii całego przebiegu. Kod `0` oznacza brak błędów (`truncated: true` to nie błąd). Następny przebieg `cron` spróbuje ponownie. Komenda nigdy nie tworzy brakującej bazy.
 
 > **Uwaga:** na bazie deweloperskiej `npm run db:cleanup` naprawdę kasuje wygasłe dane z bazy z `DATABASE_URL` (pliki `.env*`). Przed uruchomieniem sprawdź, na jaką bazę wskazuje. Testy integracyjne sprawdzają komendę wyłącznie na bazie z Testcontainers.
 
 **Cron na mikr.us.** Obraz produkcyjny zawiera `tsx` i kod pakietu `db` (zależności nie są czyszczone), a `DATABASE_URL` jest w środowisku kontenera, więc komenda działa przez `docker exec`. Na serwerze (nie w repozytorium) utwórz osobny plik `/etc/cron.d/gomoku-cleanup`:
 
 ```cron
-# Co godzinę; flock -n pomija przebieg, gdy poprzedni jeszcze trwa. Błędy (kod 1) lądują w logu.
-0 * * * * root flock -n /tmp/gomoku-cleanup.lock docker exec gomoku_prod-app-1 npm run -s db:cleanup >> /var/log/gomoku-cleanup.log 2>&1
+# Co godzinę; flock -n pomija przebieg, gdy poprzedni jeszcze trwa. Wynik, błędy (kod 1) i czas lądują w logu.
+0 * * * * root flock -n /tmp/gomoku-cleanup.lock sh -c 'docker exec gomoku_prod-app-1 npm run -s db:cleanup; echo "$(date -Is) exit=$?"' >> /var/log/gomoku-cleanup.log 2>&1
+```
+
+`flock -n` przy zajętym locku kończy się cicho (bez wpisu w logu — przebieg jest po prostu pominięty). To optymalizacja, nie wymóg poprawności: dwa przebiegi naraz są bezpieczne dzięki `skip locked`. Linia `<data> exit=<kod>` po każdym przebiegu pozwala ocenić, kiedy ostatnio się udał. Log rośnie, więc dodaj rotację, np. `/etc/logrotate.d/gomoku-cleanup`:
+
+```
+/var/log/gomoku-cleanup.log {
+    weekly
+    rotate 8
+    compress
+    missingok
+    notifempty
+    copytruncate
+}
 ```
 
 Nazwę kontenera sprawdź przez `docker compose -f compose.prod.yaml ps` (przy `name: gomoku_prod` to zwykle `gomoku_prod-app-1`). Kontrola: `docker exec gomoku_prod-app-1 npm run -s db:cleanup; echo $?` oraz `tail /var/log/gomoku-cleanup.log`. Rollback: usunięcie pliku `/etc/cron.d/gomoku-cleanup`.

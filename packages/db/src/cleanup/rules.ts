@@ -4,6 +4,13 @@
 
 const HOUR_MS = 60 * 60 * 1000;
 
+/**
+ * The longest rate-limit window the application uses: the daily e-mail pools
+ * (`email-daily:verification`, `email-daily:reset`, `DAILY_WINDOW_MS` in the app). A test in the
+ * app checks that no window is longer; the counters rule keeps a margin on top of it.
+ */
+export const LONGEST_RATE_LIMIT_WINDOW_MS = 24 * HOUR_MS;
+
 export type CleanupRule = {
   /** Key of the result object returned by `cleanupExpired`. */
   readonly key: "sessions" | "rateLimitBuckets" | "emailVerificationTokens" | "passwordResetTokens";
@@ -11,7 +18,9 @@ export type CleanupRule = {
   readonly primaryKey: string;
   /** SQL condition over the table's columns; each `?` is bound to the cutoff timestamp. Static text only. */
   readonly condition: string;
-  /** Rows matching the condition for cutoff = now - graceMs` are deleted. */
+  /** Only an optional rule treats a missing table (42P01) as "nothing to do" (`null`); otherwise it is an error. */
+  readonly optional?: boolean;
+  /** Rows matching the condition for cutoff = `now - graceMs` are deleted. */
   readonly graceMs: number;
 };
 
@@ -25,12 +34,14 @@ export const CLEANUP_RULES: readonly CleanupRule[] = [
     graceMs: HOUR_MS,
   },
   {
-    // The longest rate-limit window is 1 h; 24 h is a safe margin.
+    // The longest window is 24 h (`email-daily:*` pools). The limiter measures time with the database
+    // clock and the cleanup with the Node clock, so a bucket is kept 24 h past the end of the longest
+    // window (48 h in total): clock skew between the two can never reset a pool that is still counting.
     key: "rateLimitBuckets",
     table: "rate_limit_buckets",
     primaryKey: "key",
     condition: "window_start < ?",
-    graceMs: 24 * HOUR_MS,
+    graceMs: LONGEST_RATE_LIMIT_WINDOW_MS + 24 * HOUR_MS,
   },
   {
     key: "emailVerificationTokens",

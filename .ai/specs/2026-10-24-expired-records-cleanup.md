@@ -15,7 +15,7 @@ Wygasłe sesje, liczniki limitu prób oraz zużyte/wygasłe tokeny potwierdzenia
 | # | Pytanie | Zastosowane założenie | Dlaczego | Potwierdzenie |
 |---|---|---|---|---|
 | Q1 | Mechanizm | Komenda CLI w `packages/db` (`db:cleanup`) uruchamiana przez `cron` systemu na mikr.us; brak workera w procesie aplikacji. | Standardy zabraniają workerów w tle **dla poprawności** — sprzątanie poprawności nie dotyczy; osobny proces nie obciąża pętli zdarzeń gry. | odwracalne |
-| Q2 | Progi | Sesje: `expires_at < now() − 1 h` (margines na wyjątek G5 — partia trwa najwyżej ~20 min). Liczniki: `window_start < now() − 24 h` (najdłuższe okno to 1 h). Tokeny e-mail/resetu: `expires_at < now() − 24 h` lub `used_at < now() − 24 h`. | Żaden próg nie usuwa wiersza, który mógłby być jeszcze ważny. | odwracalne |
+| Q2 | Progi | Sesje: `expires_at < now() − 1 h` (margines na wyjątek G5 — partia trwa najwyżej ~20 min). Liczniki: `window_start < now() − 48 h` (najdłuższe okno to 24 h — dzienne pule `email-daily:*`; zapas 24 h na rozjazd zegarów bazy i Node; zob. adnotacja 2026-10-28). Tokeny e-mail/resetu: `expires_at < now() − 24 h` lub `used_at < now() − 24 h`. | Żaden próg nie usuwa wiersza, który mógłby być jeszcze ważny. | odwracalne |
 | Q3 | Rozmiar partii | Usuwanie partiami po 1000 wierszy w pętli do wyczerpania, z limitem czasu 60 s na przebieg. | Krótkie transakcje, brak długich blokad na małym VPS. | odwracalne |
 | Q4 | Tabele z kolejnych specyfikacji (#34, #35, token gościa z #21) | Rejestr reguł sprzątania w `packages/db/src/cleanup/rules.ts` — każda specyfikacja dodaje swoją regułę razem ze swoją encją; ten PR zawiera reguły dla `sessions` i `rate_limit_buckets`. Wymaganie wobec #34, #35 i #21 (token gościa — wygasa z końcem partii + 1 h, BR-22). | Query builder MikroORM potrzebuje metadanych encji, których przed tymi PR-ami nie ma. | odwracalne |
 | Q5 | Jak uruchamiać na mikr.us, skoro aplikacja działa w kontenerze? | `cron` systemu: `docker exec <kontener-aplikacji> npm run db:cleanup`; niezerowy kod wyjścia → wpis w logu systemowym i (opcjonalnie) `MAILTO` crona. | Kod, `node_modules` i `.env` są w kontenerze, nie na hoście. | odwracalne |
@@ -35,7 +35,7 @@ Brak zmian schematu. Opcjonalnie indeksy pod zapytania sprzątające (`sessions.
 
 ## 📝 API Contracts
 
-Brak API HTTP. Kontrakt CLI: `npm run db:cleanup` → kod wyjścia `0` i JSON `{ "sessions": n, "rateLimitBuckets": n, "emailVerificationTokens": n | null, "passwordResetTokens": n | null }` (`null` = tabela nieobecna); kod `1` przy błędzie bazy (komunikat bez danych dostępowych). Nowy skrypt npm jest addytywny (`BACKWARD_COMPATIBILITY.md` — skrypty).
+Brak API HTTP. Kontrakt CLI: `npm run db:cleanup` → kod wyjścia `0` i JSON `{ "sessions": n, "rateLimitBuckets": n, "emailVerificationTokens": n, "passwordResetTokens": n, "unverifiedUsers": null, "errors": [], "truncated": false }`; kod `1` przy błędzie (komunikat bez danych dostępowych). **[uzupełnione 2026-10-28: `errors`, `truncated`, `null` tylko dla reguł opcjonalnych — zob. adnotacje]** Nowy skrypt npm jest addytywny (`BACKWARD_COMPATIBILITY.md` — skrypty).
 
 ## 📝 Edge Cases & Failure Scenarios
 
@@ -81,3 +81,12 @@ Potwierdzone przez właściciela — Bartosza Wójcika.
 - **Krok 4 planu:** README, sekcja „Sprzątanie wygasłych rekordów”; wpis `cron` w formie `/etc/cron.d/gomoku-cleanup` z `flock -n` i logiem (nie `docker exec` w gołym `crontab`). Obraz produkcyjny nie wymagał zmian — `tsx` i pakiet `db` są w obrazie (sprawdzone lokalnie: `docker build`, `docker exec … npm run -s db:cleanup` → kod `0` i JSON, kod `1` przy nieosiągalnej bazie).
 - **Nadal niedostępne:** `unverifiedUsers` (reguła BR-28) — `null` do czasu tabel partii (#29).
 - **Do wykonania ręcznie na serwerze po wdrożeniu:** dodać `/etc/cron.d/gomoku-cleanup` (treść w README).
+
+## 📝 Adnotacje z review Fazy 9 (2026-10-28)
+
+- **Próg liczników (M1):** najdłuższe okno limitu to **24 h** (`email-daily:verification`, `email-daily:reset`; `DAILY_WINDOW_MS`), nie 1 h — zdanie w Q2 było nieprawdziwe. Limiter liczy czas zegarem bazy, sprzątanie zegarem Node, więc próg 24 h (koniec okna bez zapasu) mógłby przy rozjeździe zegarów wyzerować pulę przed końcem okna. Próg liczników to teraz **48 h** (okno + 24 h zapasu); test jednostkowy pilnuje `graceMs ≥ najdłuższe okno + 24 h`, a test w `email-verification-service.test.ts` pilnuje, że okno dzienne nie przekracza stałej `LONGEST_RATE_LIMIT_WINDOW_MS`.
+- **Błąd jednej reguły (M2):** błąd w regule jest łapany, pętla przechodzi do następnych, a wynik zawiera `errors: [{ rule, code? }]` (nazwa reguły i kod SQL lub nazwa klasy błędu, bez komunikatu) oraz liczby usuniętych do chwili błędu. `db:cleanup` wypisuje JSON na stdout także wtedy, a przy niepustym `errors` zwraca kod `1` i `{"ok":false,"errors":[…]}` na stderr.
+- **Budżet czasu (M3):** zamiast wspólnego terminu 60 s każda reguła ma własny budżet **15 s** (stała na regułę — prostsze niż dzielenie łącznego budżetu); wynik ma `truncated: boolean` (`true`, gdy jakaś reguła przerwała z powodu budżetu, zanim skończyły się wiersze). Opcja `deadline` zastąpiona przez `ruleTimeLimitMs`.
+- **Brak tabeli (L4):** `42P01` daje `null` tylko dla reguł z `optional: true` (dziś żadna); dla pozostałych jest błędem w `errors` (kod `1`). `unverifiedUsers` jest `null` zawsze (reguła BR-28 niezaimplementowana).
+- **Indeksy (L5):** na tym etapie **bez indeksów** na `sessions.expires_at` i `rate_limit_buckets.window_start` (sekcja Data Model zostaje opcją): skan sekwencyjny partiami jest akceptowalny przy małej bazie (VPS mikr.us). Do ponownej oceny z `EXPLAIN` przy wzroście tabel.
+- **Cron (L6):** wpis w README loguje datę i kod wyjścia, opisuje rotację (`logrotate`) i podkreśla, że `flock -n` jest optymalizacją (dwa przebiegi naraz są bezpieczne dzięki `skip locked`).

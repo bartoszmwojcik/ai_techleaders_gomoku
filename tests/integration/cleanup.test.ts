@@ -52,11 +52,6 @@ const hash = () => `${"a".repeat(32)}${(++counter).toString(16).padStart(32, "0"
 async function insertSession(userId: string, expiresAt: Date) {
   await sql(`insert into sessions (user_id, token_hash, expires_at) values (?, ?, ?)`, [userId, hash(), expiresAt]);
 }
-async function insertBucket(windowStart: Date): Promise<string> {
-  const key = `cleanup-test:${++counter}`;
-  await sql(`insert into rate_limit_buckets (key, window_start, count) values (?, ?, 1)`, [key, windowStart]);
-  return key;
-}
 async function insertToken(table: string, userId: string, expiresAt: Date, usedAt: Date | null) {
   await sql(`insert into ${table} (user_id, token_hash, expires_at, used_at) values (?, ?, ?, ?)`, [
     userId,
@@ -79,25 +74,37 @@ describe("cleanup thresholds on PostgreSQL", () => {
 
     const result = await cleanupExpired({ em: orm.em.fork(), now });
 
-    expect(result.sessions).toBe(1);
+    // The database is shared: other rows may be eligible too, so the count is a lower bound
+    // and the assertions below look at this test's own rows only.
+    expect(result.sessions).toBeGreaterThanOrEqual(1);
     expect(await rows("sessions", `user_id = '${userId}'`)).toBe("3");
     expect(await rows("sessions", `user_id = '${userId}' and expires_at < '${ago(now, HOUR).toISOString()}'`)).toBe("0");
   });
 
-  it("rate limit buckets: only windows older than 24 h go", async () => {
+  it.each([
+    ["rate limit buckets", "cleanup-test"],
+    ["daily e-mail pools (email-daily:*, 24 h window)", "cleanup-test:email-daily"],
+  ])("%s: only windows older than 48 h go (24 h past the longest window)", async (_name, prefix) => {
     const now = new Date();
-    const old = await insertBucket(ago(now, 24 * HOUR + SECOND));
-    const edge = await insertBucket(ago(now, 24 * HOUR));
-    const recent = await insertBucket(ago(now, 24 * HOUR - SECOND));
-    const fresh = await insertBucket(now);
+    const bucket = async (windowStart: Date) => {
+      const key = `${prefix}:${++counter}`;
+      await sql(`insert into rate_limit_buckets (key, window_start, count) values (?, ?, 1)`, [key, windowStart]);
+      return key;
+    };
+    const old = await bucket(ago(now, 48 * HOUR + SECOND));
+    const edge = await bucket(ago(now, 48 * HOUR));
+    const recent = await bucket(ago(now, 48 * HOUR - SECOND));
+    const endedDayWindow = await bucket(ago(now, 25 * HOUR)); // its 24 h window ended 1 h ago: kept as a skew margin
+    const fresh = await bucket(now);
 
     const result = await cleanupExpired({ em: orm.em.fork(), now });
 
-    expect(result.rateLimitBuckets).toBe(1);
+    expect(result.rateLimitBuckets).toBeGreaterThanOrEqual(1);
+    const keys = [old, edge, recent, endedDayWindow, fresh];
     const left = await orm.em
       .fork()
-      .execute<{ key: string }[]>(`select key from rate_limit_buckets where key in (?, ?, ?, ?)`, [old, edge, recent, fresh]);
-    expect(left.map((r) => r.key).sort()).toEqual([edge, recent, fresh].sort());
+      .execute<{ key: string }[]>(`select key from rate_limit_buckets where key in (${keys.map(() => "?").join(", ")})`, keys);
+    expect(left.map((r) => r.key).sort()).toEqual([edge, recent, endedDayWindow, fresh].sort());
   });
 
   it.each([
@@ -119,7 +126,7 @@ describe("cleanup thresholds on PostgreSQL", () => {
 
     const result = await cleanupExpired({ em: orm.em.fork(), now });
 
-    expect(result[key]).toBe(2);
+    expect(result[key]).toBeGreaterThanOrEqual(2);
     expect(await rows(table, `user_id = '${userId}'`)).toBe("5");
   });
 
@@ -133,9 +140,9 @@ describe("cleanup thresholds on PostgreSQL", () => {
     const result = await cleanupExpired({ em: orm.em.fork(), now });
 
     expect(result.unverifiedUsers).toBeNull();
-    expect(result.sessions).toBe(1);
-    expect(result.emailVerificationTokens).toBe(1);
-    expect(result.passwordResetTokens).toBe(1);
+    expect(result.sessions).toBeGreaterThanOrEqual(1);
+    expect(result.emailVerificationTokens).toBeGreaterThanOrEqual(1);
+    expect(result.passwordResetTokens).toBeGreaterThanOrEqual(1);
     expect(await rows("users", `id = '${userId}'`)).toBe("1");
     expect(await rows("sessions", `user_id = '${userId}'`)).toBe("0");
   });
@@ -148,7 +155,8 @@ describe("cleanup thresholds on PostgreSQL", () => {
 
     const result = await cleanupExpired({ em: orm.em.fork(), now });
 
-    expect(result.sessions).toBe(0);
+    expect(result.errors).toEqual([]);
+    expect(await rows("sessions", `user_id = '${userId}'`)).toBe("0");
   });
 });
 
@@ -162,7 +170,7 @@ describe("batching and parallel runs", () => {
     await sql(
       `insert into rate_limit_buckets (key, window_start, count)
          select 'cleanup-batch:' || md5(random()::text || g), ?, 1 from generate_series(1, ?) g`,
-      [ago(now, 48 * HOUR), count],
+      [ago(now, 72 * HOUR), count],
     );
   }
 
@@ -173,9 +181,12 @@ describe("batching and parallel runs", () => {
 
     const result = await cleanupExpired({ em: orm.em.fork(), now, batchSize: 10 });
 
-    expect(result.sessions).toBe(25);
-    expect(result.rateLimitBuckets).toBe(25);
+    // At least this test's 25 rows (3 batches of 10 needed); other stale rows of the shared database may add to the count.
+    expect(result.sessions).toBeGreaterThanOrEqual(25);
+    expect(result.rateLimitBuckets).toBeGreaterThanOrEqual(25);
+    expect(result.truncated).toBe(false);
     expect(await rows("sessions", `user_id = '${userId}'`)).toBe("0");
+    expect(await rows("rate_limit_buckets", `key like 'cleanup-batch:%'`)).toBe("0");
   });
 
   it("is idempotent: a second run finds nothing", async () => {
@@ -191,6 +202,8 @@ describe("batching and parallel runs", () => {
       emailVerificationTokens: 0,
       passwordResetTokens: 0,
       unverifiedUsers: null,
+      errors: [],
+      truncated: false,
     });
   });
 
@@ -198,15 +211,22 @@ describe("batching and parallel runs", () => {
     const now = new Date();
     const userId = await insertUser();
     await seedOld(userId, now, 200);
+    // Everything eligible right before the runs (this test's rows plus any stale leftovers of the shared database).
+    const eligibleSessions = Number(await rows("sessions", `expires_at < '${ago(now, HOUR).toISOString()}'`));
+    const eligibleBuckets = Number(await rows("rate_limit_buckets", `window_start < '${ago(now, 48 * HOUR).toISOString()}'`));
 
     const [a, b] = await Promise.all([
       cleanupExpired({ em: orm.em.fork(), now, batchSize: 7 }),
       cleanupExpired({ em: orm.em.fork(), now, batchSize: 7 }),
     ]);
 
-    expect((a.sessions ?? 0) + (b.sessions ?? 0)).toBe(200);
-    expect((a.rateLimitBuckets ?? 0) + (b.rateLimitBuckets ?? 0)).toBe(200);
+    expect(eligibleSessions).toBeGreaterThanOrEqual(200);
+    expect(a.errors).toEqual([]);
+    expect(b.errors).toEqual([]);
+    expect((a.sessions ?? 0) + (b.sessions ?? 0)).toBe(eligibleSessions);
+    expect((a.rateLimitBuckets ?? 0) + (b.rateLimitBuckets ?? 0)).toBe(eligibleBuckets);
     expect(await rows("sessions", `user_id = '${userId}'`)).toBe("0");
+    expect(await rows("rate_limit_buckets", `key like 'cleanup-batch:%'`)).toBe("0");
   });
 });
 
@@ -249,8 +269,9 @@ describe("db:cleanup command", () => {
     const result = JSON.parse(stdout.trim()) as CleanupResult;
     expect(result.sessions).toBeGreaterThanOrEqual(1);
     expect(Object.keys(result).sort()).toEqual(
-      ["emailVerificationTokens", "passwordResetTokens", "rateLimitBuckets", "sessions", "unverifiedUsers"],
+      ["emailVerificationTokens", "errors", "passwordResetTokens", "rateLimitBuckets", "sessions", "truncated", "unverifiedUsers"],
     );
+    expect(result.errors).toEqual([]);
     expect(await rows("sessions", `user_id = '${userId}'`)).toBe("1");
   });
 
@@ -261,9 +282,12 @@ describe("db:cleanup command", () => {
       (error: { code: number; stdout: string; stderr: string }) => error,
     );
 
-    expect(failure).toMatchObject({ code: 1, stdout: "" });
-    const { stderr } = failure as { stderr: string };
+    // The lazily connecting ORM fails inside every rule: the (empty) progress still goes to stdout.
+    expect(failure).toMatchObject({ code: 1 });
+    const { stdout, stderr } = failure as { stdout: string; stderr: string };
     expect(stderr).not.toContain("s3cretpw");
+    expect(stdout).not.toContain("s3cretpw");
+    expect(JSON.parse(stdout.trim()).errors).toHaveLength(4);
     expect(JSON.parse(stderr.trim().split("\n").at(-1)!)).toMatchObject({ ok: false });
   });
 });

@@ -1,5 +1,5 @@
 import { AppError, TooManyRequestsError, ValidationError } from "@gomoku/core";
-import { EmailVerificationToken, User, type EntityManager } from "@gomoku/db";
+import { EmailVerificationToken, LONGEST_RATE_LIMIT_WINDOW_MS, User, type EntityManager } from "@gomoku/db";
 import { describe, expect, it, vi } from "vitest";
 
 import type { ServerConfig } from "../../config";
@@ -88,6 +88,12 @@ function setup(
   });
   return { em, tx, emailSender, rateLimiter, service, calls };
 }
+
+describe("rate-limit windows vs. cleanup", () => {
+  it("keeps the daily pool window within the longest window assumed by the counters cleanup rule", () => {
+    expect(DAILY_WINDOW_MS).toBeLessThanOrEqual(LONGEST_RATE_LIMIT_WINDOW_MS);
+  });
+});
 
 describe("EmailVerificationService.issue", () => {
   it("stores the hash with a 24 h expiry, sends the link, then invalidates older tokens", async () => {
