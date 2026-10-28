@@ -1,12 +1,24 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { connection, getCurrentUser } = vi.hoisted(() => ({
+const { connection, getCurrentUser, hasActiveGame } = vi.hoisted(() => ({
   connection: vi.fn(),
   getCurrentUser: vi.fn(),
+  hasActiveGame: vi.fn(),
 }));
 vi.mock("next/server", () => ({ connection }));
 vi.mock("@/server/http/auth", () => ({ getCurrentUser }));
+vi.mock("@/server/container", () => ({
+  withRequestScope: async (fn: (scope: unknown) => unknown) =>
+    fn({ cradle: { activeGameCheck: { hasActiveGame } } }),
+}));
+vi.mock("@/components/auth/logout-button", () => ({
+  LogoutButton: ({ hasActiveGame }: { hasActiveGame: boolean }) => (
+    <button data-testid="logout" data-active={String(hasActiveGame)}>
+      Wyloguj
+    </button>
+  ),
+}));
 
 import HomePage from "./page";
 
@@ -15,6 +27,7 @@ const count = (html: string, fragment: string) => html.split(fragment).length - 
 beforeEach(() => {
   connection.mockReset().mockResolvedValue(undefined);
   getCurrentUser.mockReset().mockResolvedValue(null);
+  hasActiveGame.mockReset().mockResolvedValue(false);
 });
 
 describe("HomePage", () => {
@@ -48,6 +61,8 @@ describe("HomePage", () => {
     expect(html).toContain('href="/login"');
     expect(html).toContain("Zaloguj się");
     expect(html).not.toContain("Zalogowano jako");
+    expect(html).not.toContain("Wyloguj");
+    expect(hasActiveGame).not.toHaveBeenCalled();
   });
 
   it("shows the name of a signed-in player instead of the registration link", async () => {
@@ -57,5 +72,20 @@ describe("HomePage", () => {
     expect(html).toContain("Ala_7");
     expect(html).not.toContain("/register");
     expect(html).not.toContain("/login");
+  });
+
+  it("links a signed-in player to the account and offers logout", async () => {
+    getCurrentUser.mockResolvedValue({ id: "u1", displayName: "Ala_7", emailVerifiedAt: null });
+    const html = renderToStaticMarkup(await HomePage());
+    expect(html).toContain('href="/account"');
+    expect(html).toContain("Konto</a>");
+    expect(html).toContain('data-testid="logout" data-active="false"');
+    expect(hasActiveGame).toHaveBeenCalledWith("u1");
+  });
+
+  it("tells the logout button about a running game", async () => {
+    getCurrentUser.mockResolvedValue({ id: "u1", displayName: "Ala_7", emailVerifiedAt: null });
+    hasActiveGame.mockResolvedValue(true);
+    expect(renderToStaticMarkup(await HomePage())).toContain('data-active="true"');
   });
 });

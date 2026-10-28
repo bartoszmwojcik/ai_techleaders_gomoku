@@ -20,6 +20,7 @@ import {
   SessionService,
   type HasActiveGame,
 } from "./services/auth/session-service";
+import { ActiveGameCheck } from "./services/auth/active-game-check";
 import { UserService } from "./services/auth/user-service";
 import { HealthService } from "./services/health-service";
 import { RateLimiter } from "./services/rate-limit/rate-limiter";
@@ -36,6 +37,7 @@ export type AppCradle = {
   hasActiveGame: HasActiveGame;
   /** Request-scoped (needs `em`): resolve only from a `withRequestScope` scope. */
   sessionService: SessionService;
+  activeGameCheck: ActiveGameCheck;
   rateLimiter: RateLimiter;
   userService: UserService;
 };
@@ -89,6 +91,7 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     serverConfig: asFunction(() => readServerConfig(process.env)).singleton(),
     hasActiveGame: asValue<HasActiveGame>(async () => false),
     sessionService: asClass(SessionService).scoped(),
+    activeGameCheck: asClass(ActiveGameCheck).scoped(),
     rateLimiter: asClass(RateLimiter).scoped(),
     userService: asClass(UserService).scoped(),
   });

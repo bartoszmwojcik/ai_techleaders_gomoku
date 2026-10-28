@@ -2,6 +2,8 @@ import { BOARD_SIZE } from "@gomoku/core";
 import { Button } from "@gomoku/ui/game/button";
 import { connection } from "next/server";
 
+import { LogoutButton } from "@/components/auth/logout-button";
+import { withRequestScope } from "@/server/container";
 import { getCurrentUser } from "@/server/http/auth";
 
 // Static preview position: a few stones near the centre of the board.
@@ -18,6 +20,9 @@ export default async function HomePage() {
   // Reads the session cookie, so the page is rendered per request.
   await connection();
   const user = await getCurrentUser();
+  const hasActiveGame = user
+    ? await withRequestScope(({ cradle }) => cradle.activeGameCheck.hasActiveGame(user.id))
+    : false;
 
   const cells = Array.from({ length: BOARD_SIZE * BOARD_SIZE }, (_, i) => {
     const row = Math.floor(i / BOARD_SIZE);
@@ -36,9 +41,17 @@ export default async function HomePage() {
           Swobodne zasady · plansza {BOARD_SIZE}×{BOARD_SIZE} · 10 minut na gracza
         </p>
         {user ? (
-          <p className="text-body text-text-primary" data-testid="signed-in-as">
-            Zalogowano jako <strong className="font-strong">{user.displayName}</strong>
-          </p>
+          <div className="flex flex-col items-center gap-stack md:items-start">
+            <p className="m-0 text-body text-text-primary" data-testid="signed-in-as">
+              Zalogowano jako <strong className="font-strong">{user.displayName}</strong>
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-group md:justify-start">
+              <Button asChild>
+                <a href="/account">Konto</a>
+              </Button>
+              <LogoutButton hasActiveGame={hasActiveGame} />
+            </div>
+          </div>
         ) : (
           <div className="flex flex-wrap justify-center gap-group md:justify-start">
             <Button asChild>

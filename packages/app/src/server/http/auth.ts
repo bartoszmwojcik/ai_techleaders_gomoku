@@ -1,4 +1,6 @@
+import { UnauthorizedError } from "@gomoku/core";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 import type { ServerConfig } from "../config";
 import { withRequestScope } from "../container";
@@ -16,6 +18,7 @@ export const SESSION_COOKIE_MAX_AGE_SECONDS = SESSION_TTL_MS / 1000 + 60 * 60;
 export type CurrentUser = {
   id: string;
   displayName: string;
+  email: string;
   emailVerifiedAt: Date | null;
 };
 
@@ -69,11 +72,34 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       if (!token) return null;
       const session = await cradle.sessionService.findValid(token);
       if (!session) return null;
-      const { id, displayName, emailVerifiedAt } = session.user;
-      return { id, displayName, emailVerifiedAt: emailVerifiedAt ?? null };
+      const { id, displayName, email, emailVerifiedAt } = session.user;
+      return {
+        id,
+        displayName,
+        email,
+        emailVerifiedAt: emailVerifiedAt ?? null,
+      };
     });
   } catch (error) {
     console.error("Session lookup failed", describeError(error));
     return null;
   }
+}
+
+/** Guard for route handlers: the current user, or a `401` (via `apiHandler`) without a valid session. */
+export async function requireSession(): Promise<CurrentUser> {
+  const user = await getCurrentUser();
+  if (!user) throw new UnauthorizedError("Zaloguj się, aby kontynuować.");
+  return user;
+}
+
+/**
+ * Guard for pages: the current user, or a redirect to `/login?next=<path>`. A server
+ * component does not know its own path, so the page passes it. `redirect` throws, hence it
+ * is called here, outside the `try/catch` of `getCurrentUser`.
+ */
+export async function requirePageSession(path: string): Promise<CurrentUser> {
+  const user = await getCurrentUser();
+  if (!user) redirect(`/login?next=${encodeURIComponent(path)}`);
+  return user;
 }
