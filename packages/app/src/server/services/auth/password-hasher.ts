@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 import bcrypt from "bcryptjs";
 
 type Deps = { passwordHashCost: number };
@@ -10,8 +12,19 @@ type Deps = { passwordHashCost: number };
 export class PasswordHasher {
   readonly #cost: number;
 
+  /**
+   * Hash of a random throwaway secret at the same cost as real hashes, computed once when
+   * the hasher is created. Login verifies against it for an unknown e-mail so the response
+   * time does not reveal whether the account exists, also for the very first such request.
+   */
+  readonly dummyHash: Promise<string>;
+
   constructor({ passwordHashCost }: Deps) {
     this.#cost = passwordHashCost;
+    this.dummyHash = this.hash(randomBytes(32).toString("base64url"));
+    // A failed computation must not be an unhandled rejection of the process: this no-op
+    // handler only marks it as handled, the error still surfaces where `verify` awaits it.
+    this.dummyHash.catch(() => undefined);
   }
 
   hash(password: string): Promise<string> {

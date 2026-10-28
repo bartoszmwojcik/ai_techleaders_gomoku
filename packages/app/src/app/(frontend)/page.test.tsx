@@ -45,6 +45,8 @@ describe("HomePage", () => {
     const html = renderToStaticMarkup(await HomePage());
     expect(html).toContain('href="/register"');
     expect(html).toContain("Załóż konto");
+    expect(html).toContain('href="/login"');
+    expect(html).toContain("Zaloguj się");
     expect(html).not.toContain("Zalogowano jako");
   });
 
@@ -54,5 +56,6 @@ describe("HomePage", () => {
     expect(html).toContain("Zalogowano jako <strong");
     expect(html).toContain("Ala_7");
     expect(html).not.toContain("/register");
+    expect(html).not.toContain("/login");
   });
 });

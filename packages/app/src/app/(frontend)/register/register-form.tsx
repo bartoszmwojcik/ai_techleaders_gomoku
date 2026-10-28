@@ -48,6 +48,7 @@ function rateLimitedError(retryAfterSeconds: number | undefined): GeneralError {
 
 export function RegisterForm({ nextPath }: { nextPath: string }) {
   const router = useRouter();
+  const loginHref = nextPath === "/" ? "/login" : `/login?next=${encodeURIComponent(nextPath)}`;
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
@@ -104,7 +105,11 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
       // Same answer for a taken e-mail, whether or not the name is taken too (no account enumeration).
       setGeneral({
         title: "Nie udało się założyć konta",
-        details: "Jeśli masz już konto, zaloguj się.",
+        details: (
+          <>
+            Jeśli masz już konto, <TextLink href={loginHref}>zaloguj się</TextLink>.
+          </>
+        ),
       });
     } else if (code === "RATE_LIMITED") {
       setGeneral(rateLimitedError(retryAfterSeconds));
@@ -179,6 +184,12 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
           Załóż konto
         </SubmitButton>
       </form>
+      <p className="m-0 text-body text-text-secondary">
+        Masz już konto?{" "}
+        <TextLink href={loginHref} placement="standalone">
+          Zaloguj się
+        </TextLink>
+      </p>
     </>
   );
 }

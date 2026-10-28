@@ -54,3 +54,40 @@ describe("RateLimiter.consume", () => {
     expect(transactional).toHaveReturned();
   });
 });
+
+describe("RateLimiter.hit", () => {
+  it("returns count and retryAfterSeconds while within the limit", async () => {
+    const { limiter, transactional } = setup([
+      { count: 5, retry_after_seconds: 7 },
+    ]);
+    await expect(limiter.hit("k", 5, 1000)).resolves.toEqual({
+      count: 5,
+      retryAfterSeconds: 7,
+    });
+    expect(transactional).toHaveBeenCalledOnce();
+  });
+
+  it("starts a new window at count 1 and throws only above the limit", async () => {
+    const first = setup([{ count: 1, retry_after_seconds: 1000 }]);
+    await expect(first.limiter.hit("k", 1, 1000)).resolves.toMatchObject({
+      count: 1,
+    });
+    const second = setup([{ count: 2, retry_after_seconds: 3 }]);
+    await expect(second.limiter.hit("k", 1, 1000)).rejects.toMatchObject({
+      retryAfterSeconds: 3,
+    });
+  });
+});
+
+describe("RateLimiter.reset", () => {
+  it("deletes the bucket in its own transaction with a bound key", async () => {
+    const { execute, transactional, limiter } = setup([]);
+    await limiter.reset("login:email:a@b.c");
+    expect(transactional).toHaveBeenCalledOnce();
+    expect(execute).toHaveBeenCalledWith(
+      expect.stringContaining("delete from rate_limit_buckets"),
+      ["login:email:a@b.c"],
+      "run",
+    );
+  });
+});

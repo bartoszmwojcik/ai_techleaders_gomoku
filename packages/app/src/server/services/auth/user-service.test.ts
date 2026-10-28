@@ -1,4 +1,4 @@
-import { ConflictError } from "@gomoku/core";
+import { ConflictError, UnauthorizedError } from "@gomoku/core";
 import {
   UniqueConstraintViolationException,
   User,
@@ -11,6 +11,7 @@ import type { SessionService } from "./session-service";
 import {
   DISPLAY_NAME_TAKEN_MESSAGE,
   EMAIL_TAKEN_MESSAGE,
+  INVALID_CREDENTIALS_MESSAGE,
   UserService,
 } from "./user-service";
 
@@ -157,5 +158,94 @@ describe("UserService.register", () => {
     const failure = new Error("connection lost");
     const { service } = setup({ flushError: failure });
     await expect(service.register(input)).rejects.toBe(failure);
+  });
+});
+
+describe("UserService.authenticate", () => {
+  function authSetup(user: object | null, matches: boolean) {
+    const em = { findOne: vi.fn(async () => user) };
+    const passwordHasher = {
+      dummyHash: Promise.resolve("dummy-hash"),
+      verify: vi.fn(async () => matches),
+    };
+    const sessionService = { create: vi.fn() };
+    const service = new UserService({
+      em: em as unknown as EntityManager,
+      passwordHasher: passwordHasher as unknown as PasswordHasher,
+      sessionService: sessionService as unknown as SessionService,
+    });
+    return { em, passwordHasher, sessionService, service };
+  }
+  const stored = {
+    id: "user-1",
+    displayName: "Ala",
+    passwordHash: "stored-hash",
+    emailVerifiedAt: null,
+  };
+
+  it("returns the user for correct credentials, looked up by the normalized e-mail", async () => {
+    const { em, passwordHasher, sessionService, service } = authSetup(
+      stored,
+      true,
+    );
+
+    const result = await service.authenticate(
+      "  ALA@Example.com ",
+      "secret123",
+    );
+
+    expect(result).toEqual({ id: "user-1", displayName: "Ala" });
+    expect(em.findOne).toHaveBeenCalledWith(User, { email: "ala@example.com" });
+    expect(passwordHasher.verify).toHaveBeenCalledWith(
+      "secret123",
+      "stored-hash",
+    );
+    expect(sessionService.create).not.toHaveBeenCalled();
+  });
+
+  it("accepts an account with an unconfirmed e-mail (BR-26)", async () => {
+    const { service } = authSetup({ ...stored, emailVerifiedAt: null }, true);
+    await expect(service.authenticate("ala@example.com", "x")).resolves.toEqual(
+      {
+        id: "user-1",
+        displayName: "Ala",
+      },
+    );
+  });
+
+  it("rejects a wrong password", async () => {
+    const { service } = authSetup(stored, false);
+    const error = await service
+      .authenticate("ala@example.com", "wrong")
+      .catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(UnauthorizedError);
+    expect((error as UnauthorizedError).code).toBe("INVALID_CREDENTIALS");
+    expect((error as UnauthorizedError).message).toBe(
+      INVALID_CREDENTIALS_MESSAGE,
+    );
+  });
+
+  it("verifies against the dummy hash for an unknown e-mail and rejects identically", async () => {
+    const { passwordHasher, service } = authSetup(null, false);
+
+    const error = await service
+      .authenticate("nobody@example.com", "secret123")
+      .catch((e: unknown) => e);
+
+    expect(passwordHasher.verify).toHaveBeenCalledWith(
+      "secret123",
+      "dummy-hash",
+    );
+    expect(error).toBeInstanceOf(UnauthorizedError);
+    expect((error as UnauthorizedError).message).toBe(
+      INVALID_CREDENTIALS_MESSAGE,
+    );
+  });
+
+  it("rejects an unknown e-mail even if the dummy comparison were to succeed", async () => {
+    const { service } = authSetup(null, true);
+    await expect(
+      service.authenticate("nobody@example.com", "x"),
+    ).rejects.toBeInstanceOf(UnauthorizedError);
   });
 });

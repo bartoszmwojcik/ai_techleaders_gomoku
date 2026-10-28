@@ -14,7 +14,20 @@ export type ServerConfig = {
   appOrigin?: string;
   /** `false` only for the integration tests (plain HTTP); never together with an https origin. */
   sessionCookieSecure: boolean;
+  /** bcrypt cost factor (4-31); 12 unless `PASSWORD_HASH_COST` lowers it (integration tests). */
+  passwordHashCost: number;
 };
+
+export const DEFAULT_PASSWORD_HASH_COST = 12;
+
+function parsePasswordHashCost(raw: string | undefined): number {
+  if (raw === undefined || raw === "") return DEFAULT_PASSWORD_HASH_COST;
+  const cost = /^[0-9]{1,2}$/.test(raw) ? Number(raw) : NaN;
+  if (!(cost >= 4 && cost <= 31)) {
+    throw new Error("PASSWORD_HASH_COST must be an integer from 4 to 31.");
+  }
+  return cost;
+}
 
 function parseTrustProxyHops(
   raw: string | undefined,
@@ -97,5 +110,6 @@ export function readServerConfig(
     clientIpHeader,
     appOrigin,
     sessionCookieSecure,
+    passwordHashCost: parsePasswordHashCost(env.PASSWORD_HASH_COST),
   };
 }

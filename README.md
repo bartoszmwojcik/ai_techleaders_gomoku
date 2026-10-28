@@ -73,7 +73,8 @@ const report = await withRequestScope(({ cradle }) => cradle.healthService.check
 
 Gracz zakłada konto na `/register` (e-mail, nazwa gracza, hasło co najmniej 8 znaków) i jest od razu zalogowany; strona `/` pokazuje „Zalogowano jako …”, a zalogowany wchodzący na `/register` trafia na `/`. Parametr `?next=` wskazuje ścieżkę powrotu po rejestracji (tylko ścieżki względne w obrębie serwisu, inne wartości dają `/`). Formularz wywołuje `POST /api/auth/register`:
 
-- **Uwierzytelnianie:** własne, bez biblioteki. Hasło jest hashowane przez `bcryptjs` (koszt 12), sesja leży w tabeli `sessions` (30 dni), a w ciasteczku `httpOnly` jest losowy token (w bazie tylko jego SHA-256). W produkcji ciasteczko nazywa się `__Host-gomoku_session` (`Secure`, bez `Domain`), poza produkcją `gomoku_session`.
+- **Uwierzytelnianie:** własne, bez biblioteki. Hasło jest hashowane przez `bcryptjs` (domyślnie koszt 12, `PASSWORD_HASH_COST`), sesja leży w tabeli `sessions` (30 dni), a w ciasteczku `httpOnly` jest losowy token (w bazie tylko jego SHA-256). W produkcji ciasteczko nazywa się `__Host-gomoku_session` (`Secure`, bez `Domain`), poza produkcją `gomoku_session`.
+- **Koszt bcrypt:** zmiana kosztu (`PASSWORD_HASH_COST`) działa po restarcie procesu, który przelicza atrapę hasha używaną przy logowaniu nieistniejącego konta (`PasswordHasher.dummyHash`, ten sam koszt co prawdziwe hashe). Hashe istniejących kont zachowują stary koszt, aż konto zaloguje się ponownie lub zmieni hasło (hash nie jest jeszcze przeliczany automatycznie).
 - **CSRF:** każde żądanie zmieniające stan musi mieć nagłówek `Origin` równy `APP_ORIGIN` oraz `X-Gomoku-Request: 1` (dodaje go klient `apiCall`); inaczej `403`.
 - **Limit prób:** 5 prób rejestracji na godzinę na adres klienta (`429` z nagłówkiem `Retry-After`). Adres pochodzi z nagłówka `CLIENT_IP_HEADER`, liczony od prawej według `TRUST_PROXY_HOPS`; IPv6 jest skracany do prefiksu /64.
 - **Odpowiedzi:** zajęty e-mail daje jednolite `409` bez wskazania pola (brak ujawniania kont), zajęta nazwa gracza jest zgłaszana przy swoim polu, zalogowany klient dostaje `409 ALREADY_AUTHENTICATED`.
@@ -141,6 +142,7 @@ Zmienne środowiskowe czytane są z plików `.env*` w katalogu głównym repozyt
 | `APP_ORIGIN` | brak (dev: `http://localhost:<port>`) | Dokładny origin aplikacji, np. `https://gomoku.byst.re`; porównywany z nagłówkiem `Origin` (CSRF). **Wymagany w produkcji** |
 | `TRUST_PROXY_HOPS` | brak (dev: wspólny klucz `local`) | Liczba własnych proxy przed aplikacją (liczba całkowita ≥ 1). **Wymagana w produkcji** |
 | `CLIENT_IP_HEADER` | `x-forwarded-for` | Nagłówek z adresem klienta: `x-forwarded-for`, `x-real-ip` albo `cf-connecting-ip` |
+| `PASSWORD_HASH_COST` | `12` | Koszt bcrypt (liczba całkowita 4–31); obniża go tylko `global-setup` testów integracyjnych (4), żeby setki prób logowania nie trwały minutami. W produkcji zostaw nieustawione |
 | `SESSION_COOKIE_SECURE` | `true` | `false` tylko dla testów integracyjnych (HTTP bez TLS); przy `APP_ORIGIN` z `https://` przerywa start |
 
 ## Wdrożenie na mikr.us

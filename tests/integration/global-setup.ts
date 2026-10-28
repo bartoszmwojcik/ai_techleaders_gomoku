@@ -103,6 +103,8 @@ export default async function setup(project: TestProject) {
         TRUST_PROXY_HOPS: "1",
         APP_ORIGIN: baseUrl,
         SESSION_COOKIE_SECURE: "false",
+        // Cheap bcrypt: the limit tests make hundreds of password checks (production is 12).
+        PASSWORD_HASH_COST: "4",
       },
       detached: true,
       stdio: ["ignore", "pipe", "pipe"],

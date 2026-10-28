@@ -9,6 +9,7 @@ import {
 
 import { getContainer } from "../container";
 import type { ServerConfig } from "../config";
+import { describeError } from "./describe-error";
 
 /** Header every state-changing request must carry (set by `apiCall`); a second CSRF layer. */
 export const CSRF_HEADER = "x-gomoku-request";
@@ -84,7 +85,8 @@ export function apiHandler<T, Args extends unknown[] = []>(
       const appError =
         error instanceof AppError ? error : toValidationError(error);
       if (appError) return errorResponse(appError);
-      console.error("Unhandled API error", error);
+      // Name and code only: the message of a database error may contain the query with PII.
+      console.error("Unhandled API error", describeError(error));
       return errorResponse(
         new AppError(500, "INTERNAL", "Wystąpił nieoczekiwany błąd."),
       );
