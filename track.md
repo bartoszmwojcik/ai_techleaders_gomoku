@@ -83,7 +83,7 @@ Ręczny test po fazie: `/forgot-password` → link ze skrzynki → `/reset-passw
 
 - [ ] 8.1 Encja i migracja `password_reset_tokens`
 - [ ] 8.2 `newPasswordSchema` + schematy resetu
-- [ ] 8.3 `PasswordResetService` + szablon
+- [ ] 8.3 `PasswordResetService` + szablon (dopiąć: w `container.ts` zastąpić no-op `invalidateResetTokens` (z 5.2) scopowaną funkcją na `em` usuwającą/unieważniającą niewykorzystane tokeny resetu użytkownika, z testami)
 - [ ] 8.4 Route `…/request` i `…/confirm`
 - [ ] 8.5 Strony `/forgot-password`, `/reset-password`, link na `/login`
 - [ ] 8.6 Dokumentacja
