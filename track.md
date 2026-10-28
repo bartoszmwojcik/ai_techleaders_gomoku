@@ -85,7 +85,7 @@ Ręczny test po fazie: baner „Potwierdź adres e-mail” na `/` i `/account`, 
 Ręczny test po fazie: `/forgot-password` → link ze skrzynki → `/reset-password`; tylko dla potwierdzonego e-maila (BR-27).
 
 - [x] 8.1 Encja i migracja `password_reset_tokens`
-- [ ] 8.2 `newPasswordSchema` + schematy resetu
+- [x] 8.2 `newPasswordSchema` + schematy resetu
 - [ ] 8.3 `PasswordResetService` + szablon (dopiąć: w `container.ts` zastąpić no-op `invalidateResetTokens` (z 5.2) funkcją `(userId, em)` usuwającą/unieważniającą niewykorzystane tokeny resetu użytkownika wyłącznie przez przekazany `em` (`tx` transakcji zmiany hasła, nie wstrzyknięty `em`), z testami; sygnatura jest już gotowa od 5.5)
 - [ ] 8.4 Route `…/request` i `…/confirm`
 - [ ] 8.5 Strony `/forgot-password`, `/reset-password`, link na `/login`
