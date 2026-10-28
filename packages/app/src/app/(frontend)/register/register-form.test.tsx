@@ -34,15 +34,23 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("RegisterForm", () => {
-  it("shows the labels and hints, without a login link", () => {
+  it("shows the labels and hints, and a link to log in", () => {
     render(<RegisterForm nextPath="/" />);
     expect(screen.getByLabelText(/E-mail/)).toBeTruthy();
     expect(screen.getByText("Używasz go do logowania.")).toBeTruthy();
     expect(screen.queryByText(/Wyślemy/)).toBeNull();
     expect(screen.getByText("Widzą ją Twoi przeciwnicy.")).toBeTruthy();
     expect(screen.getByText("Co najmniej 8 znaków")).toBeTruthy();
-    expect(screen.queryByRole("link")).toBeNull();
+    expect(screen.getByText(/Masz już konto\?/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Zaloguj się" }).getAttribute("href")).toBe("/login");
     expect(screen.queryByTestId("register-error")).toBeNull();
+  });
+
+  it("keeps a non-default next path in the login link", () => {
+    render(<RegisterForm nextPath="/invite/abc" />);
+    expect(screen.getByRole("link", { name: "Zaloguj się" }).getAttribute("href")).toBe(
+      "/login?next=%2Finvite%2Fabc",
+    );
   });
 
   it("reveals the password on demand", async () => {
@@ -133,7 +141,8 @@ describe("RegisterForm", () => {
     const alert = screen.getByTestId("register-error");
     expect(alert.textContent).toContain("Nie udało się założyć konta");
     expect(alert.textContent).toContain("Jeśli masz już konto, zaloguj się.");
-    expect(alert.querySelector("a")).toBeNull();
+    expect(alert.querySelector("a")?.getAttribute("href")).toBe("/login");
+    expect(alert.querySelector("a")?.textContent).toBe("zaloguj się");
     await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText(/^Hasło/)));
   });
 

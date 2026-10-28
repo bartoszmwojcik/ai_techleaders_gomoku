@@ -40,9 +40,14 @@ export default async function HomePage() {
             Zalogowano jako <strong className="font-strong">{user.displayName}</strong>
           </p>
         ) : (
-          <Button asChild>
-            <a href="/register">Załóż konto</a>
-          </Button>
+          <div className="flex flex-wrap justify-center gap-group md:justify-start">
+            <Button asChild>
+              <a href="/register">Załóż konto</a>
+            </Button>
+            <Button asChild variant="secondary">
+              <a href="/login">Zaloguj się</a>
+            </Button>
+          </div>
         )}
       </section>
 

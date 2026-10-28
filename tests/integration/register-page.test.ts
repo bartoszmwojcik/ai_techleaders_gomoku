@@ -95,6 +95,26 @@ describe("registration page", () => {
     expect(await browser.evaluate<string>("document.activeElement.id")).toBe("register-display-name");
   });
 
+  it("answers a taken e-mail with the uniform message and a login link, no field error", async () => {
+    const taken = uniqueUser();
+    await browser.open(`${baseUrl}/register`);
+    await fillForm(taken);
+    await submit();
+    await browser.waitFor("[data-testid=signed-in-as]");
+    await browser.clearCookies();
+
+    await browser.open(`${baseUrl}/register`);
+    await fillForm({ ...uniqueUser(), email: taken.email });
+    await submit();
+
+    await browser.waitFor("[data-testid=register-error]");
+    expect(await browser.text("[data-testid=register-error]")).toContain("Jeśli masz już konto, zaloguj się.");
+    expect(await browser.count("[data-testid=register-error] a[href='/login']")).toBe(1);
+    expect(await browser.count("#register-email-error")).toBe(0);
+    expect(await browser.count("#register-display-name-error")).toBe(0);
+    expect(await browser.url()).toBe(`${baseUrl}/register`);
+  });
+
   it("validates in the browser without a request and focuses the first invalid field", async () => {
     await browser.open(`${baseUrl}/register`);
 
