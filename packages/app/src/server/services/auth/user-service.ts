@@ -12,6 +12,8 @@ import {
   type EntityManager,
 } from "@gomoku/db";
 
+import { describeError } from "../../http/describe-error";
+import type { EmailVerificationService } from "./email-verification-service";
 import type { PasswordHasher } from "./password-hasher";
 import type { SessionService } from "./session-service";
 
@@ -29,6 +31,7 @@ type Deps = {
   passwordHasher: PasswordHasher;
   sessionService: SessionService;
   invalidateResetTokens: InvalidateResetTokens;
+  emailVerificationService: EmailVerificationService;
 };
 
 export type RegisteredUser = {
@@ -55,17 +58,20 @@ export class UserService {
   readonly #passwordHasher: PasswordHasher;
   readonly #sessionService: SessionService;
   readonly #invalidateResetTokens: InvalidateResetTokens;
+  readonly #emailVerificationService: EmailVerificationService;
 
   constructor({
     em,
     passwordHasher,
     sessionService,
     invalidateResetTokens,
+    emailVerificationService,
   }: Deps) {
     this.#em = em;
     this.#passwordHasher = passwordHasher;
     this.#sessionService = sessionService;
     this.#invalidateResetTokens = invalidateResetTokens;
+    this.#emailVerificationService = emailVerificationService;
   }
 
   /**
@@ -77,10 +83,11 @@ export class UserService {
    */
   async register(input: RegisterInput): Promise<RegisteredUser> {
     const passwordHash = await this.#passwordHasher.hash(input.password);
+    let registered: RegisteredUser;
     try {
       // One transaction: a failure to create the session leaves no account without one.
       // Writes go through `tx`; the injected fork (`useContext = false`) is outside it.
-      return await this.#em.transactional(async (tx) => {
+      registered = await this.#em.transactional(async (tx) => {
         const user = tx.create(User, {
           email: input.email,
           displayName: input.displayName,
@@ -103,6 +110,24 @@ export class UserService {
         throw await this.#conflictFor(error, input.email);
       }
       throw error;
+    }
+    await this.#sendVerification(registered.user, input.email);
+    return registered;
+  }
+
+  /**
+   * Sends the confirmation link after the registration committed. The call is awaited
+   * (no background work), but a failure never fails the registration (Q6): it is logged
+   * without the address or the token, and the player can ask for a new link later.
+   */
+  async #sendVerification(
+    user: RegisteredUser["user"],
+    email: string,
+  ): Promise<void> {
+    try {
+      await this.#emailVerificationService.issue({ ...user, email });
+    } catch (error) {
+      console.error("Verification e-mail not sent", describeError(error));
     }
   }
 

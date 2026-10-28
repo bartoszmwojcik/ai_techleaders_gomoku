@@ -67,7 +67,7 @@ Ręczny test po fazie: rejestracja → plik-skrzynka (`EMAIL_TRANSPORT=file`) �
 - [x] 6.1 Encja i migracja `email_verification_tokens`
 - [x] 6.2 `EmailSender`, `FileEmailSender`, `UnconfiguredEmailSender`, `clock`, wybór w `container.ts`
 - [x] 6.3 Szablon wiadomości
-- [ ] 6.4 `EmailVerificationService.issue/confirm`, wywołanie po rejestracji (przywrócić podpis pod e-mailem w `register-form` o linku do potwierdzenia; usunięty w 2.4, bo wysyłki jeszcze nie ma)
+- [x] 6.4 `EmailVerificationService.issue/confirm`, wywołanie po rejestracji (przywrócić podpis pod e-mailem w `register-form` o linku do potwierdzenia; usunięty w 2.4, bo wysyłki jeszcze nie ma)
 - [ ] 6.5 Route `…/confirm` i strona `/verify-email`
 
 ## Faza 7 — Ponowne wysłanie i baner (#34, Faza 2: kroki 6–8)

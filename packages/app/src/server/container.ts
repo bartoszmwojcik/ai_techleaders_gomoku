@@ -15,6 +15,7 @@ import {
   SessionService,
   type HasActiveGame,
 } from "./services/auth/session-service";
+import { EmailVerificationService } from "./services/auth/email-verification-service";
 import { GameParticipation } from "./services/auth/game-participation";
 import {
   UserService,
@@ -49,6 +50,7 @@ export type AppCradle = {
   sessionService: SessionService;
   gameParticipation: GameParticipation;
   rateLimiter: RateLimiter;
+  emailVerificationService: EmailVerificationService;
   userService: UserService;
 };
 
@@ -117,6 +119,7 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     sessionService: asClass(SessionService).scoped(),
     gameParticipation: asClass(GameParticipation).singleton(),
     rateLimiter: asClass(RateLimiter).scoped(),
+    emailVerificationService: asClass(EmailVerificationService).scoped(),
     userService: asClass(UserService).scoped(),
   });
   return container;

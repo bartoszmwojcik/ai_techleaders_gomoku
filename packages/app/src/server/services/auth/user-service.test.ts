@@ -10,6 +10,7 @@ import {
 } from "@gomoku/db";
 import { describe, expect, it, vi } from "vitest";
 
+import type { EmailVerificationService } from "./email-verification-service";
 import type { PasswordHasher } from "./password-hasher";
 import type { SessionService } from "./session-service";
 import {
@@ -68,13 +69,21 @@ function setup(options: { flushError?: unknown; emailCount?: number } = {}) {
   };
   const session = { token: "tok", expiresAt: new Date("2026-11-26T00:00:00Z") };
   const sessionService = { create: vi.fn(async () => session) };
+  const emailVerificationService = {
+    issue: vi.fn(async () => {
+      calls.push("issue");
+    }),
+  };
   const service = new UserService({
     em: em as unknown as EntityManager,
     passwordHasher: passwordHasher as unknown as PasswordHasher,
     sessionService: sessionService as unknown as SessionService,
     invalidateResetTokens: vi.fn(async () => undefined),
+    emailVerificationService:
+      emailVerificationService as unknown as EmailVerificationService,
   });
   return {
+    emailVerificationService,
     em,
     tx,
     passwordHasher,
@@ -91,7 +100,7 @@ describe("UserService.register", () => {
 
     const result = await service.register(input);
 
-    expect(calls).toEqual(["hash", "begin", "flush", "end"]);
+    expect(calls).toEqual(["hash", "begin", "flush", "end", "issue"]);
     expect(em.create).not.toHaveBeenCalled();
     expect(em.flush).not.toHaveBeenCalled();
     expect(tx.create).toHaveBeenCalledWith(User, {
@@ -168,7 +177,14 @@ describe("UserService.register", () => {
 
     await service.register(input);
 
-    expect(calls).toEqual(["hash", "begin", "flush", "session", "end"]);
+    expect(calls).toEqual([
+      "hash",
+      "begin",
+      "flush",
+      "session",
+      "end",
+      "issue",
+    ]);
   });
 
   it("propagates a session failure so the transaction rolls back the account", async () => {
@@ -185,6 +201,45 @@ describe("UserService.register", () => {
     const { service } = setup({ flushError: failure });
     await expect(service.register(input)).rejects.toBe(failure);
   });
+
+  it("issues the confirmation link after the commit, with the registered address", async () => {
+    const { emailVerificationService, service } = setup();
+
+    await service.register(input);
+
+    expect(emailVerificationService.issue).toHaveBeenCalledExactlyOnceWith({
+      id: "user-1",
+      displayName: "Łukasz_7",
+      email: "ala@example.com",
+    });
+  });
+
+  it("does not issue a link when the registration fails", async () => {
+    const { emailVerificationService, service } = setup({
+      flushError: uniqueViolation("users_email_unique"),
+    });
+    await service.register(input).catch(() => undefined);
+    expect(emailVerificationService.issue).not.toHaveBeenCalled();
+  });
+
+  it("still registers when sending fails and logs only the error class and code", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const { emailVerificationService, service, session } = setup();
+    emailVerificationService.issue.mockRejectedValue(
+      Object.assign(new Error("boom ala@example.com"), { code: "ECONNRESET" }),
+    );
+
+    const result = await service.register(input);
+
+    expect(result.session).toBe(session);
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+      "Verification e-mail not sent",
+      { name: "Error", code: "ECONNRESET" },
+    );
+    consoleError.mockRestore();
+  });
 });
 
 describe("UserService.authenticate", () => {
@@ -200,6 +255,7 @@ describe("UserService.authenticate", () => {
       passwordHasher: passwordHasher as unknown as PasswordHasher,
       sessionService: sessionService as unknown as SessionService,
       invalidateResetTokens: vi.fn(async () => undefined),
+      emailVerificationService: {} as unknown as EmailVerificationService,
     });
     return { em, passwordHasher, sessionService, service };
   }
@@ -329,6 +385,7 @@ describe("UserService.changePassword", () => {
       passwordHasher: passwordHasher as unknown as PasswordHasher,
       sessionService: sessionService as unknown as SessionService,
       invalidateResetTokens,
+      emailVerificationService: {} as unknown as EmailVerificationService,
     });
     return {
       em,

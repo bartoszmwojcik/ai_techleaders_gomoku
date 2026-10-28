@@ -37,8 +37,11 @@ describe("RegisterForm", () => {
   it("shows the labels and hints, and a link to log in", () => {
     render(<RegisterForm nextPath="/" />);
     expect(screen.getByLabelText(/E-mail/)).toBeTruthy();
-    expect(screen.getByText("Używasz go do logowania.")).toBeTruthy();
-    expect(screen.queryByText(/Wyślemy/)).toBeNull();
+    expect(
+      screen.getByText(
+        "Używasz go do logowania. Wyślemy na ten adres link do potwierdzenia. Grasz od razu, adres możesz potwierdzić później.",
+      ),
+    ).toBeTruthy();
     expect(screen.getByText("Widzą ją Twoi przeciwnicy.")).toBeTruthy();
     expect(screen.getByText("Co najmniej 8 znaków")).toBeTruthy();
     expect(screen.getByText(/Masz już konto\?/)).toBeTruthy();
