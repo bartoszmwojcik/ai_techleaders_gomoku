@@ -104,11 +104,7 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
       // Same answer for a taken e-mail, whether or not the name is taken too (no account enumeration).
       setGeneral({
         title: "Nie udało się założyć konta",
-        details: (
-          <>
-            Jeśli masz już konto, <TextLink href="/login">zaloguj się</TextLink>.
-          </>
-        ),
+        details: "Jeśli masz już konto, zaloguj się.",
       });
     } else if (code === "RATE_LIMITED") {
       setGeneral(rateLimitedError(retryAfterSeconds));
@@ -130,6 +126,8 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
     } else {
       setGeneral(GENERIC_ERROR);
     }
+    // The password field was remounted empty; a general error has no field of its own, so focus it.
+    if (Object.keys(messages).length === 0) setFocusTarget({ id: FIELD_IDS.password });
   }
 
   return (
@@ -146,7 +144,7 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
           type="email"
           autoComplete="email"
           label="E-mail"
-          hint="Wyślemy na ten adres link do potwierdzenia. Grasz od razu, adres możesz potwierdzić później."
+          hint="Używasz go do logowania."
           error={errors.email}
           required
           value={email}
@@ -181,9 +179,6 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
           Załóż konto
         </SubmitButton>
       </form>
-      <p className="m-0 text-body text-text-secondary">
-        Masz już konto? <TextLink href="/login">Zaloguj się</TextLink>
-      </p>
     </>
   );
 }

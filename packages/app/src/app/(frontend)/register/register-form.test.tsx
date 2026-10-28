@@ -34,15 +34,14 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("RegisterForm", () => {
-  it("shows the labels, hints and the login link", () => {
+  it("shows the labels and hints, without a login link", () => {
     render(<RegisterForm nextPath="/" />);
     expect(screen.getByLabelText(/E-mail/)).toBeTruthy();
-    expect(
-      screen.getByText("Wyślemy na ten adres link do potwierdzenia. Grasz od razu, adres możesz potwierdzić później."),
-    ).toBeTruthy();
+    expect(screen.getByText("Używasz go do logowania.")).toBeTruthy();
+    expect(screen.queryByText(/Wyślemy/)).toBeNull();
     expect(screen.getByText("Widzą ją Twoi przeciwnicy.")).toBeTruthy();
     expect(screen.getByText("Co najmniej 8 znaków")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Zaloguj się" }).getAttribute("href")).toBe("/login");
+    expect(screen.queryByRole("link")).toBeNull();
     expect(screen.queryByTestId("register-error")).toBeNull();
   });
 
@@ -134,7 +133,8 @@ describe("RegisterForm", () => {
     const alert = screen.getByTestId("register-error");
     expect(alert.textContent).toContain("Nie udało się założyć konta");
     expect(alert.textContent).toContain("Jeśli masz już konto, zaloguj się.");
-    expect(alert.querySelector("a")?.getAttribute("href")).toBe("/login");
+    expect(alert.querySelector("a")).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText(/^Hasło/)));
   });
 
   it.each([
@@ -150,6 +150,7 @@ describe("RegisterForm", () => {
     const alert = screen.getByTestId("register-error");
     expect(alert.textContent).toContain("Zbyt wiele prób");
     expect(alert.textContent).toContain(text);
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText(/^Hasło/)));
   });
 
   it("explains an already signed-in session", async () => {

@@ -165,7 +165,7 @@ jobs:
       - name: Zbuduj i uruchom stos z compose.prod.yaml
         env:
           POSTGRES_PASSWORD: ci-only-password
-          APP_ORIGIN: http://localhost:3000
+          APP_ORIGIN: https://gomoku.example
           TRUST_PROXY_HOPS: "1"
         run: docker compose -f compose.prod.yaml up -d --build
       - name: Poczekaj na /api/health i sprawdź stronę główną
@@ -176,6 +176,18 @@ jobs:
           done
           curl --fail --silent --show-error http://localhost:3000/api/health
           curl --fail --silent --show-error http://localhost:3000/ | grep -q "Gomoku"
+      - name: Sprawdź route domenowy (konfiguracja kont jest poprawna)
+        run: |
+          # Walidacja pustego ciała musi dać 400; 500 oznacza błędną konfigurację (np. APP_ORIGIN).
+          status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            -X POST http://localhost:3000/api/auth/register \
+            -H 'Origin: https://gomoku.example' \
+            -H 'X-Gomoku-Request: 1' \
+            -H 'X-Forwarded-For: 203.0.113.1' \
+            -H 'Content-Type: application/json' \
+            -d '{}')
+          echo "POST /api/auth/register -> $status"
+          test "$status" = "400"
       - name: Logi przy błędzie
         if: failure()
         run: docker compose -f compose.prod.yaml logs --no-color

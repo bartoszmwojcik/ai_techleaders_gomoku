@@ -71,7 +71,8 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       const { id, displayName, emailVerifiedAt } = session.user;
       return { id, displayName, emailVerifiedAt: emailVerifiedAt ?? null };
     });
-  } catch {
+  } catch (error) {
+    console.error("Session lookup failed", error);
     return null;
   }
 }
