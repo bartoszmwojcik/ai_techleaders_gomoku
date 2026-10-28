@@ -69,7 +69,7 @@ Dozwolony kierunek zależności (bez cykli): `app → core, db, ui`; `db → cor
 
 ### Komendy (z roota)
 
-`npm run setup` · `npm run dev` · `npm run build` · `npm run start` · `npm run lint` · `npm run typecheck` · `npm test` · `npm run test:watch` · `npm run test:integration` · `npm run smoke` · `npm run check` · `npm run db:migration:create|up|down|list` · `npm run db:status`
+`npm run setup` · `npm run dev` · `npm run build` · `npm run start` · `npm run lint` · `npm run typecheck` · `npm test` · `npm run test:watch` · `npm run test:integration` · `npm run smoke` · `npm run check` · `npm run db:migration:create|up|down|list` · `npm run db:status` · `npm run db:cleanup` (sprzątanie wygasłych rekordów; na bazie dev kasuje dane — uruchamiaj świadomie, na bazie dev najpierw sprawdź `DATABASE_URL`; cron na VPS)
 
 ## Struktura `.ai/`
 

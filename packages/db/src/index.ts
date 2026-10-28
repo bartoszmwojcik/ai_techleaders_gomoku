@@ -7,3 +7,10 @@ export { PasswordResetToken } from "./entities/auth/password-reset-token";
 export { Session } from "./entities/auth/session";
 export { RateLimitBucket } from "./entities/rate-limit/rate-limit-bucket";
 export { UniqueConstraintViolationException } from "@mikro-orm/core";
+export {
+  cleanupExpired,
+  type CleanupError,
+  type CleanupOptions,
+  type CleanupResult,
+} from "./cleanup/cleanup-expired";
+export { LONGEST_RATE_LIMIT_WINDOW_MS } from "./cleanup/rules";
