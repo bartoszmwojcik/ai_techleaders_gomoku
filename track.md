@@ -56,7 +56,7 @@ Ręczny test po fazie: `/account` → zmiana hasła; stare hasło nie loguje; dr
 
 - [x] 5.1 `passwordChangeSchema` (+ `newPasswordSchema`)
 - [x] 5.2 `UserService.changePassword`, `SessionService.revokeOthers`
-- [ ] 5.3 Route `POST /api/auth/password`
+- [x] 5.3 Route `POST /api/auth/password`
 - [ ] 5.4 Formularz na `/account`
 
 ## Faza 6 — Potwierdzenie e-maila (#34, Faza 1: kroki 1–5; port poczty z #38)
