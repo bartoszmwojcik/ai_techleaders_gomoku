@@ -17,7 +17,7 @@ import {
 } from "./services/auth/session-service";
 import { EmailVerificationService } from "./services/auth/email-verification-service";
 import { GameParticipation } from "./services/auth/game-participation";
-import { invalidateResetTokens } from "./services/auth/invalidate-reset-tokens";
+import { createInvalidateResetTokens } from "./services/auth/invalidate-reset-tokens";
 import { PasswordResetService } from "./services/auth/password-reset-service";
 import {
   UserService,
@@ -105,9 +105,10 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     passwordHasher: asClass(PasswordHasher).singleton(),
     serverConfig: asFunction(() => readServerConfig(process.env)).singleton(),
     hasActiveGame: asValue<HasActiveGame>(async () => false),
-    invalidateResetTokens: asValue<InvalidateResetTokens>(
-      invalidateResetTokens,
-    ),
+    invalidateResetTokens: asFunction(
+      ({ clock }: AppCradle): InvalidateResetTokens =>
+        createInvalidateResetTokens({ clock }),
+    ).singleton(),
     clock: asValue(systemClock),
     emailSender: asFunction(
       ({ serverConfig, clock }: AppCradle): EmailSender =>

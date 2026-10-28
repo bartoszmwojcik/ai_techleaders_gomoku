@@ -291,7 +291,7 @@ describe("PasswordResetService.confirm", () => {
     expect(t.passwordHasher.hash).toHaveBeenCalledWith("new-secret1");
     expect(t.tx.execute).toHaveBeenCalledExactlyOnceWith(
       expect.stringMatching(
-        /update password_reset_tokens set used_at = \?[\s\S]*used_at is null and expires_at > \?[\s\S]*returning user_id/,
+        /update password_reset_tokens set used_at = \?[\s\S]*used_at is null and expires_at > \?[\s\S]*users\.email_verified_at is not null[\s\S]*returning user_id/,
       ),
       [NOW, hashOpaqueToken("raw-token"), NOW],
       "all",

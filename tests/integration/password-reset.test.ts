@@ -11,7 +11,7 @@ import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 
 import { hashOpaqueToken } from "../../packages/app/src/server/http/opaque-token";
 import { PasswordHasher } from "../../packages/app/src/server/services/auth/password-hasher";
-import { invalidateResetTokens } from "../../packages/app/src/server/services/auth/invalidate-reset-tokens";
+import { createInvalidateResetTokens } from "../../packages/app/src/server/services/auth/invalidate-reset-tokens";
 import { PasswordResetService } from "../../packages/app/src/server/services/auth/password-reset-service";
 import { SessionService } from "../../packages/app/src/server/services/auth/session-service";
 import { UserService } from "../../packages/app/src/server/services/auth/user-service";
@@ -23,6 +23,9 @@ import { waitForMessages, type OutboxMessage } from "./outbox";
 const baseUrl = inject("baseUrl");
 const outbox = inject("emailOutboxPath");
 const passwordHasher = new PasswordHasher({ passwordHashCost: 4 });
+const invalidateResetTokens = createInvalidateResetTokens({
+  clock: { now: () => new Date() },
+});
 const OLD_PASSWORD = "secret123";
 const NEW_PASSWORD = "brand-new-pass1";
 let orm: Orm;
@@ -279,6 +282,31 @@ describe("password reset on PostgreSQL", () => {
     expect(await passwordHasher.verify(OLD_PASSWORD, stored.passwordHash)).toBe(
       true,
     );
+  });
+
+  it("does not accept a token once the account's e-mail is no longer confirmed, and leaves it unused", async () => {
+    const user = await createUser();
+    const token = await requestAndRead(user.email);
+    await orm.em
+      .fork()
+      .nativeUpdate(User, { id: user.id }, { emailVerifiedAt: null });
+
+    await expect(
+      reset().service.confirm(token, NEW_PASSWORD),
+    ).rejects.toMatchObject({ status: 400, code: "INVALID_TOKEN" });
+    const [row] = await tokenRows(user.id);
+    expect(row?.usedAt).toBeNull();
+    const stored = await orm.em.fork().findOneOrFail(User, { id: user.id });
+    expect(await passwordHasher.verify(OLD_PASSWORD, stored.passwordHash)).toBe(
+      true,
+    );
+
+    await orm.em
+      .fork()
+      .nativeUpdate(User, { id: user.id }, { emailVerifiedAt: new Date() });
+    await expect(
+      reset().service.confirm(token, NEW_PASSWORD),
+    ).resolves.toBeUndefined();
   });
 
   it("lets exactly one of parallel confirmations win", async () => {

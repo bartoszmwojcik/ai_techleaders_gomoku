@@ -5,7 +5,7 @@
 > - Komunikat po prośbie: „Jeśli konto z tym adresem istnieje i adres jest potwierdzony, wysłaliśmy link (ważny 1 godzinę). Sprawdź też folder spam.”
 > - Hasło: `newPasswordSchema` 8–72 bajty (BR-28), nie 16.
 
-> **Odstępstwa wdrożenia (2026-10-29):**
+> **Odstępstwa wdrożenia (2026-10-28):**
 > - Pole hasła w `confirm` to `newPassword` (`fieldErrors.newPassword`), nie `password`.
 > - Limit adresu klienta (10/h) w `request` jest sprawdzany przed walidacją kształtu: odpowiedź `400 VALIDATION` też zużywa limit.
 > - `PasswordResetService.request` połyka błędy wysyłki i limity (zwraca `void`, błąd tylko w logu), a `after()` łapie resztę; klient zawsze dostaje `200`.
@@ -122,7 +122,7 @@ Potwierdzone przez właściciela — Bartosza Wójcika.
 | # | Ustalenie |
 |---|---|
 | Q7 | Limit 3/h na `sha256(e-mail)` liczy wysyłki. Po jego przekroczeniu nie wysyłamy nowej wiadomości, a poprzedni link zostaje ważny do końca 1 h; odpowiedź dla klienta jest identyczna (`200`) — atakujący nie może zablokować cudzego resetu ani poznać stanu konta. |
-| Q8 | Dzienny limit wysyłek ma osobną pulę dla resetu: weryfikacja e-maila (#34) zużywa najwyżej 70%, reset może użyć całości. |
+| Q8 | Dzienny limit wysyłek ma osobną pulę dla resetu: weryfikacja e-maila (#34) zużywa najwyżej 70%, reset może użyć całości. **[adnotacja 2026-10-28 (decyzja właściciela, wariant b): pule dzienne są niezależne: weryfikacja używa najwyżej 70% `EMAIL_DAILY_LIMIT` (osobny licznik `email-daily:verification`), reset może użyć całości (osobny licznik `email-daily:reset`), więc łączny dzienny wolumen może sięgnąć 170% `EMAIL_DAILY_LIMIT`. Jeśli limit odzwierciedla limit dostawcy poczty (D-20/#38), ustaw `EMAIL_DAILY_LIMIT` ≤ limit dostawcy / 1,7, inaczej dostawca zablokuje wysyłkę wcześniej niż aplikacja.]** |
 | Q9 | Sesje są unieważniane także w trakcie partii (Q6 bez wyjątku G5). |
 | Q10 | Kolejność wdrożenia: #38 → #30 → #34 i #35 razem. Limity „na adres klienta” działają tylko przy wiarygodnie ustalonym adresie (spike #30); limity na konto i e-mail zostają zawsze. |
 | Q11 | Plan implementacji dostaje krok: reguła sprzątania `password_reset_tokens` w `packages/db/src/cleanup/rules.ts` (#39). |

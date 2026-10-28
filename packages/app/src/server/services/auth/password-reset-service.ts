@@ -49,6 +49,10 @@ const DEV_ORIGIN = "http://localhost:3000";
 const CONSUME_TOKEN_SQL = `
   update password_reset_tokens set used_at = ?
   where token_hash = ? and used_at is null and expires_at > ?
+    and exists (
+      select 1 from users
+      where users.id = password_reset_tokens.user_id and users.email_verified_at is not null
+    )
   returning user_id`;
 
 export class PasswordResetService {

@@ -90,6 +90,7 @@ Ręczny test po fazie: `/forgot-password` → link ze skrzynki → `/reset-passw
 - [x] 8.4 Route `…/request` i `…/confirm`
 - [x] 8.5 Strony `/forgot-password`, `/reset-password`, link na `/login`
 - [x] 8.6 Dokumentacja (do wykonania po scaleniu PR, ręcznie: zamknięcie #35, jeśli nie zamknie się samo)
+- [x] 8.7 Poprawki po code review Fazy 8 (M1 wariant b: pule dzienne weryfikacji i resetu niezależne — zapis w README i specyfikacji, że `EMAIL_DAILY_LIMIT` trzeba ustawić z uwzględnieniem sumy do 170%; L1 `confirm` sprawdza `emailVerifiedAt` przy zużyciu tokenu; L2 `invalidateResetTokens` z `clock`; L3 wpis `.snapshot-*.json` w `.gitignore` z wyjątkiem `.snapshot-gomoku.json`; N1 poprawić daty 2026-10-29 na 2026-10-28)
 
 ## Faza 9 — Sprzątanie wygasłych rekordów (#39, z regułą 14 dni dla niepotwierdzonych kont)
 

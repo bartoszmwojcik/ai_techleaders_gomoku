@@ -57,3 +57,7 @@ packages/ui/.storybook/public/prototypes/
 # email outbox of the file transport (dev/tests; holds full messages)
 .email-outbox.jsonl
 *.email-outbox.jsonl
+
+# migration snapshots left by tests on temporary databases (only the tracked one stays)
+packages/db/src/migrations/.snapshot-*.json
+!packages/db/src/migrations/.snapshot-gomoku.json
