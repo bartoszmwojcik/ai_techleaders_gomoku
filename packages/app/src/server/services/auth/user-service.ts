@@ -24,7 +24,10 @@ import type { SessionService } from "./session-service";
  * The `password_reset_tokens` table does not exist yet, so the container registers a no-op
  * until the reset feature replaces the registration.
  */
-export type InvalidateResetTokens = (userId: string, em: EntityManager) => Promise<void>;
+export type InvalidateResetTokens = (
+  userId: string,
+  em: EntityManager,
+) => Promise<void>;
 
 type Deps = {
   em: EntityManager;
@@ -40,6 +43,9 @@ export type RegisteredUser = {
 };
 
 /** Uniform answer for a taken e-mail: it must not reveal whether the account exists (Q7). */
+/** How long registration waits for the verification e-mail to be handed to the transport. */
+export const VERIFICATION_SEND_TIMEOUT_MS = 5_000;
+
 export const EMAIL_TAKEN_MESSAGE =
   "Nie udało się założyć konta. Jeśli masz już konto, zaloguj się.";
 export const DISPLAY_NAME_TAKEN_MESSAGE = "Ta nazwa gracza jest już zajęta.";
@@ -119,13 +125,23 @@ export class UserService {
    * Sends the confirmation link after the registration committed. The call is awaited
    * (no background work), but a failure never fails the registration (Q6): it is logged
    * without the address or the token, and the player can ask for a new link later.
+   * The wait is bounded by `VERIFICATION_SEND_TIMEOUT_MS`: on timeout the sender aborts, the
+   * service removes the unsent token (the earlier link, if any, stays valid) and registration
+   * still answers 201. If the provider delivered the message despite the abort, its link is
+   * dead (token removed) and the player asks for a new one.
    */
   async #sendVerification(
     user: RegisteredUser["user"],
     email: string,
   ): Promise<void> {
     try {
-      await this.#emailVerificationService.issue({ ...user, email });
+      await this.#emailVerificationService.issue(
+        { ...user, email },
+        undefined,
+        {
+          signal: AbortSignal.timeout(VERIFICATION_SEND_TIMEOUT_MS),
+        },
+      );
     } catch (error) {
       console.error("Verification e-mail not sent", describeError(error));
     }
@@ -186,11 +202,7 @@ export class UserService {
         { passwordHash: newHash },
       );
       if (updated === 0) throw invalidCurrentPassword();
-      await this.#sessionService.revokeOthers(
-        userId,
-        currentSessionId,
-        tx,
-      );
+      await this.#sessionService.revokeOthers(userId, currentSessionId, tx);
       await this.#invalidateResetTokens(userId, tx);
     });
   }

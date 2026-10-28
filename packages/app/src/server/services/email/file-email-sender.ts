@@ -1,7 +1,12 @@
 import { appendFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 
-import type { Clock, EmailMessage, EmailSender } from "./email-sender";
+import type {
+  Clock,
+  EmailMessage,
+  EmailSender,
+  SendOptions,
+} from "./email-sender";
 
 type Options = {
   outboxPath: string;
@@ -25,13 +30,23 @@ export class FileEmailSender implements EmailSender {
     this.clock = clock;
   }
 
-  async send(message: EmailMessage): Promise<void> {
+  async send(
+    message: EmailMessage,
+    { signal }: SendOptions = {},
+  ): Promise<void> {
+    signal?.throwIfAborted();
     const line = JSON.stringify({
       at: this.clock.now().toISOString(),
       from: this.from,
       ...message,
     });
     await mkdir(dirname(this.outboxPath), { recursive: true });
-    await appendFile(this.outboxPath, `${line}\n`, "utf8");
+    signal?.throwIfAborted();
+    await appendFile(
+      this.outboxPath,
+      `${line}
+`,
+      "utf8",
+    );
   }
 }

@@ -3,7 +3,7 @@ import { EmailVerificationToken, User, type EntityManager } from "@gomoku/db";
 
 import type { ServerConfig } from "../../config";
 import { createOpaqueToken, hashOpaqueToken } from "../../http/opaque-token";
-import type { Clock, EmailSender } from "../email/email-sender";
+import type { Clock, EmailSender, SendOptions } from "../email/email-sender";
 import type { RateLimiter } from "../rate-limit/rate-limiter";
 import {
   VERIFICATION_LINK_VALID_HOURS,
@@ -29,6 +29,13 @@ export const VERIFICATION_TOKEN_TTL_MS =
   VERIFICATION_LINK_VALID_HOURS * 60 * 60 * 1000;
 /** E-mail verification may use at most this share of `EMAIL_DAILY_LIMIT` (Q12). */
 export const VERIFICATION_DAILY_SHARE = 0.7;
+/**
+ * Verification's slice of the daily limit: 70%, rounded down, but never below 1 - with
+ * `EMAIL_DAILY_LIMIT=1` the plain `floor(1 * 0.7) = 0` would block every send.
+ */
+export function verificationDailyBudget(dailyLimit: number): number {
+  return Math.max(1, Math.floor(dailyLimit * VERIFICATION_DAILY_SHARE));
+}
 export const DAILY_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const VERIFICATION_DAILY_KEY = "email-daily:verification";
 
@@ -68,10 +75,20 @@ export class EmailVerificationService {
    * older unused tokens are invalidated only after the message was sent, so a failed send
    * leaves the previous link valid (Q7). The daily send limit (Q10, at most 70% of it for
    * this channel, Q12) is checked first; without `EMAIL_DAILY_LIMIT` nothing is limited.
+   * Parallel calls for one user are safe: a call invalidates only tokens older than its own,
+   * ordered by `(createdAt, id)` (the app-set `createdAt` is the clock's millisecond; the
+   * random `id` breaks a tie deterministically), so the newest link always stays valid and
+   * two concurrent calls can never kill each other's links.
+   * `options.signal` bounds the send (the `EmailSender` port must honour it); an aborted
+   * send is a failed send: the new token is removed, the previous link stays valid.
    * @throws AppError 503 `EMAIL_QUOTA_EXCEEDED` when the daily share is used up;
    * 502 `EMAIL_SEND_FAILED` when the transport fails (the unsent token is removed).
    */
-  async issue(user: VerificationRecipient, next?: string): Promise<void> {
+  async issue(
+    user: VerificationRecipient,
+    next?: string,
+    options: SendOptions = {},
+  ): Promise<void> {
     await this.#assertDailyQuota();
 
     const now = this.#clock.now();
@@ -79,6 +96,7 @@ export class EmailVerificationService {
     const record = this.#em.create(EmailVerificationToken, {
       user: this.#em.getReference(User, user.id),
       tokenHash: hashOpaqueToken(token),
+      createdAt: now,
       expiresAt: new Date(now.getTime() + VERIFICATION_TOKEN_TTL_MS),
     });
     await this.#em.flush();
@@ -92,6 +110,7 @@ export class EmailVerificationService {
           origin: this.#serverConfig.appOrigin ?? DEV_ORIGIN,
           next,
         }),
+        options,
       );
     } catch {
       await this.#em.nativeDelete(EmailVerificationToken, { id: record.id });
@@ -100,7 +119,14 @@ export class EmailVerificationService {
 
     await this.#em.nativeUpdate(
       EmailVerificationToken,
-      { user: user.id, usedAt: null, id: { $ne: record.id } },
+      {
+        user: user.id,
+        usedAt: null,
+        $or: [
+          { createdAt: { $lt: record.createdAt } },
+          { createdAt: record.createdAt, id: { $lt: record.id } },
+        ],
+      },
       { usedAt: now },
     );
   }
@@ -142,7 +168,7 @@ export class EmailVerificationService {
     try {
       await this.#rateLimiter.hit(
         VERIFICATION_DAILY_KEY,
-        Math.floor(dailyLimit * VERIFICATION_DAILY_SHARE),
+        verificationDailyBudget(dailyLimit),
         DAILY_WINDOW_MS,
       );
     } catch (error) {

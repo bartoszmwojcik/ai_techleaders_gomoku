@@ -1,4 +1,5 @@
 import {
+  AppError,
   ConflictError,
   UnauthorizedError,
   ValidationError,
@@ -19,6 +20,7 @@ import {
   INVALID_CREDENTIALS_MESSAGE,
   INVALID_CURRENT_PASSWORD_MESSAGE,
   UserService,
+  VERIFICATION_SEND_TIMEOUT_MS,
 } from "./user-service";
 
 const input = {
@@ -207,11 +209,11 @@ describe("UserService.register", () => {
 
     await service.register(input);
 
-    expect(emailVerificationService.issue).toHaveBeenCalledExactlyOnceWith({
-      id: "user-1",
-      displayName: "Łukasz_7",
-      email: "ala@example.com",
-    });
+    expect(emailVerificationService.issue).toHaveBeenCalledExactlyOnceWith(
+      { id: "user-1", displayName: "Łukasz_7", email: "ala@example.com" },
+      undefined,
+      { signal: expect.any(AbortSignal) },
+    );
   });
 
   it("does not issue a link when the registration fails", async () => {
@@ -237,6 +239,40 @@ describe("UserService.register", () => {
     expect(consoleError).toHaveBeenCalledExactlyOnceWith(
       "Verification e-mail not sent",
       { name: "Error", code: "ECONNRESET" },
+    );
+    consoleError.mockRestore();
+  });
+});
+
+describe("UserService.register verification timeout", () => {
+  it("bounds the send with a timeout signal", async () => {
+    const { emailVerificationService, service } = setup();
+    await service.register(input);
+    const options = (
+      emailVerificationService.issue.mock.calls as unknown[][]
+    )[0]![2] as {
+      signal: AbortSignal;
+    };
+    expect(options.signal).toBeInstanceOf(AbortSignal);
+    expect(options.signal.aborted).toBe(false);
+    expect(VERIFICATION_SEND_TIMEOUT_MS).toBe(5000);
+  });
+
+  it("still registers on a timeout and logs only the error class and domain code", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const { emailVerificationService, service, session } = setup();
+    emailVerificationService.issue.mockRejectedValue(
+      new AppError(502, "EMAIL_SEND_FAILED", "timeout for ala@example.com"),
+    );
+
+    const result = await service.register(input);
+
+    expect(result.session).toBe(session);
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+      "Verification e-mail not sent",
+      { name: "AppError", code: "EMAIL_SEND_FAILED" },
     );
     consoleError.mockRestore();
   });
@@ -418,10 +454,7 @@ describe("UserService.changePassword", () => {
       "sess-1",
       tx,
     );
-    expect(invalidateResetTokens).toHaveBeenCalledExactlyOnceWith(
-      "user-1",
-      tx,
-    );
+    expect(invalidateResetTokens).toHaveBeenCalledExactlyOnceWith("user-1", tx);
     expect(calls).toEqual([
       "verify",
       "hash",

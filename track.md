@@ -69,6 +69,7 @@ Ręczny test po fazie: rejestracja → plik-skrzynka (`EMAIL_TRANSPORT=file`) �
 - [x] 6.3 Szablon wiadomości
 - [x] 6.4 `EmailVerificationService.issue/confirm`, wywołanie po rejestracji (przywrócić podpis pod e-mailem w `register-form` o linku do potwierdzenia; usunięty w 2.4, bo wysyłki jeszcze nie ma)
 - [x] 6.5 Route `…/confirm` i strona `/verify-email`
+- [x] 6.6 Poprawki po code review Fazy 6 (M1 wyścig w `issue`: unieważniaj tylko starsze tokeny + test równoległych `issue`, M2 timeout w kontrakcie `EmailSender` i ograniczenie czasu oczekiwania w `register`, wpis w specyfikacji #38, L2 `EMAIL_DAILY_LIMIT=1`, L3 log kodu błędu domenowego przy 503/502)
 
 ## Faza 7 — Ponowne wysłanie i baner (#34, Faza 2: kroki 6–8)
 

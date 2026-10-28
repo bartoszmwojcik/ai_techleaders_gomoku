@@ -5,6 +5,7 @@ import { AppError } from "@gomoku/core";
 import { EmailVerificationToken, User, createOrm, type Orm } from "@gomoku/db";
 import { afterAll, beforeAll, describe, expect, inject, it, vi } from "vitest";
 
+import { hashOpaqueToken } from "../../packages/app/src/server/http/opaque-token";
 import { EmailVerificationService } from "../../packages/app/src/server/services/auth/email-verification-service";
 import { PasswordHasher } from "../../packages/app/src/server/services/auth/password-hasher";
 import { SessionService } from "../../packages/app/src/server/services/auth/session-service";
@@ -214,6 +215,57 @@ describe("e-mail verification on PostgreSQL", () => {
     await expect(verification().service.confirm(second)).resolves.toEqual({
       userId,
     });
+  });
+
+  it("parallel issues never kill each other: the newest link stays valid", async () => {
+    const { userId, token: registered } = await registerOverHttp();
+    const recipient = { id: userId, email: "p@example.com", displayName: "P" };
+    const sent: string[] = [];
+    const emailSender: EmailSender = {
+      send: async (m) => {
+        // Both sends overlap in time, as with two simultaneous resend requests.
+        await new Promise((resolveWait) => setTimeout(resolveWait, 50));
+        sent.push(m.text);
+      },
+    };
+
+    await Promise.all([
+      verification({ emailSender }).service.issue(recipient),
+      verification({ emailSender }).service.issue(recipient),
+    ]);
+
+    expect(sent).toHaveLength(2);
+    const tokens = sent.map(
+      (text) => verificationLink({ text } as never).token,
+    );
+    const rows = await orm.em
+      .fork()
+      .find(EmailVerificationToken, { user: userId });
+    expect(rows).toHaveLength(3);
+    const byCreated = [...rows].sort(
+      (a, b) =>
+        a.createdAt.getTime() - b.createdAt.getTime() ||
+        a.id.localeCompare(b.id),
+    );
+    // Only the newest token must be unused; older ones may be invalidated.
+    expect(byCreated.at(-1)!.usedAt).toBeNull();
+    const live = rows.filter((row) => row.usedAt === null);
+    expect(live.length).toBeGreaterThanOrEqual(1);
+    const unusedHashes = new Set(live.map((row) => row.tokenHash));
+    const newestToken = tokens.find(
+      (t) => byCreated.at(-1)!.tokenHash === hashOpaqueToken(t),
+    );
+    expect(newestToken).toBeDefined();
+    expect(unusedHashes.has(hashOpaqueToken(newestToken!))).toBe(true);
+    // The registration token is older than both and has been invalidated.
+    await expect(
+      verification().service.confirm(registered),
+    ).rejects.toMatchObject({ code: "INVALID_TOKEN" });
+    await expect(verification().service.confirm(newestToken!)).resolves.toEqual(
+      {
+        userId,
+      },
+    );
   });
 
   it("an already confirmed account keeps its timestamp and the token is consumed", async () => {

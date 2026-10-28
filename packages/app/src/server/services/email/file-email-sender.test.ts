@@ -45,6 +45,30 @@ describe("FileEmailSender", () => {
     ]);
   });
 
+  it("rejects without writing when the signal is already aborted", async () => {
+    const outboxPath = join(dir, "outbox.jsonl");
+    const sender = new FileEmailSender({
+      outboxPath,
+      from: "Gomoku",
+      clock: systemClock,
+    });
+    const signal = AbortSignal.abort();
+
+    await expect(sender.send(message, { signal })).rejects.toThrow();
+    await expect(readFile(outboxPath, "utf8")).rejects.toThrow();
+  });
+
+  it("accepts a live signal", async () => {
+    const outboxPath = join(dir, "outbox.jsonl");
+    const sender = new FileEmailSender({
+      outboxPath,
+      from: "Gomoku",
+      clock: systemClock,
+    });
+    await sender.send(message, { signal: AbortSignal.timeout(5000) });
+    expect(await readFile(outboxPath, "utf8")).toContain("a@example.com");
+  });
+
   it("rejects when the outbox cannot be written", async () => {
     const sender = new FileEmailSender({
       outboxPath: dir,

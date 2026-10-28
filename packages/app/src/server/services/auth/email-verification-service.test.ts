@@ -14,6 +14,7 @@ import {
   INVALID_TOKEN_MESSAGE,
   VERIFICATION_DAILY_KEY,
   VERIFICATION_TOKEN_TTL_MS,
+  verificationDailyBudget,
 } from "./email-verification-service";
 
 const NOW = new Date("2026-10-28T10:00:00.000Z");
@@ -98,6 +99,7 @@ describe("EmailVerificationService.issue", () => {
     expect(em.create.mock.calls[0]?.[0]).toBe(EmailVerificationToken);
     expect(em.getReference).toHaveBeenCalledWith(User, "user-1");
     expect(data.user).toEqual({ ref: "user-1" });
+    expect((data as unknown as { createdAt: Date }).createdAt).toBe(NOW);
     expect(data.expiresAt.getTime()).toBe(
       NOW.getTime() + VERIFICATION_TOKEN_TTL_MS,
     );
@@ -115,7 +117,14 @@ describe("EmailVerificationService.issue", () => {
 
     expect(em.nativeUpdate).toHaveBeenCalledExactlyOnceWith(
       EmailVerificationToken,
-      { user: "user-1", usedAt: null, id: { $ne: "token-1" } },
+      {
+        user: "user-1",
+        usedAt: null,
+        $or: [
+          { createdAt: { $lt: NOW } },
+          { createdAt: NOW, id: { $lt: "token-1" } },
+        ],
+      },
       { usedAt: NOW },
     );
   });
@@ -164,6 +173,41 @@ describe("EmailVerificationService.issue", () => {
       DAILY_WINDOW_MS,
     );
     expect(calls[0]).toBe("hit");
+  });
+
+  it("never lets the verification budget drop to zero", () => {
+    expect(verificationDailyBudget(1)).toBe(1);
+    expect(verificationDailyBudget(2)).toBe(1);
+    expect(verificationDailyBudget(10)).toBe(7);
+    expect(verificationDailyBudget(100)).toBe(70);
+  });
+
+  it("allows one send per day with EMAIL_DAILY_LIMIT=1", async () => {
+    const { rateLimiter, service } = setup({ config: { emailDailyLimit: 1 } });
+    await service.issue(recipient);
+    expect(rateLimiter.hit).toHaveBeenCalledWith(
+      VERIFICATION_DAILY_KEY,
+      1,
+      DAILY_WINDOW_MS,
+    );
+  });
+
+  it("passes the send options (abort signal) to the sender", async () => {
+    const { emailSender, service } = setup();
+    const signal = AbortSignal.timeout(1000);
+    await service.issue(recipient, undefined, { signal });
+    expect(emailSender.send.mock.calls[0]?.[1]).toEqual({ signal });
+  });
+
+  it("treats an aborted send as a failed send", async () => {
+    const { em, service } = setup({
+      sendError: new DOMException("timeout", "TimeoutError"),
+    });
+    await expect(service.issue(recipient)).rejects.toMatchObject({
+      code: "EMAIL_SEND_FAILED",
+    });
+    expect(em.nativeDelete).toHaveBeenCalled();
+    expect(em.nativeUpdate).not.toHaveBeenCalled();
   });
 
   it("answers 503 EMAIL_QUOTA_EXCEEDED and sends nothing when the share is used up", async () => {
