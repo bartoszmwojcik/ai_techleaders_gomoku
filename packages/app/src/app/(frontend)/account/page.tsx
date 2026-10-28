@@ -1,8 +1,10 @@
 import { Panel } from "@gomoku/ui/game/panel";
+import { StatusBadge } from "@gomoku/ui/game/status-badge";
 import { TextLink } from "@gomoku/ui/game/text-link";
 import { connection } from "next/server";
 
 import { LogoutButton } from "@/components/auth/logout-button";
+import { VerifyEmailNotice } from "@/components/auth/verify-email-banner";
 import { withRequestScope } from "@/server/container";
 import { requirePageSession } from "@/server/http/auth";
 
@@ -16,15 +18,21 @@ export default async function AccountPage() {
     cradle.gameParticipation.hasActiveGame(user.id),
   );
 
+  const verified = user.emailVerifiedAt !== null;
+
   return (
     <main className="mx-auto flex min-h-svh w-full max-w-xl flex-col justify-center gap-stack px-panel py-section">
       <h1 className="m-0 text-section font-strong">Konto</h1>
+      {!verified && <VerifyEmailNotice userId={user.id} email={user.email} />}
       <Panel title="Dane konta">
         <p className="m-0 text-body">
           Nazwa gracza: <strong className="font-strong" data-testid="account-name">{user.displayName}</strong>
         </p>
-        <p className="m-0 text-body">
+        <p className="m-0 flex flex-wrap items-center gap-group text-body">
           E-mail: <strong className="font-strong" data-testid="account-email">{user.email}</strong>
+          <StatusBadge status={verified ? "success" : "warning"}>
+            {verified ? "Potwierdzony" : "Niepotwierdzony"}
+          </StatusBadge>
         </p>
         <LogoutButton hasActiveGame={hasActiveGame} />
       </Panel>
