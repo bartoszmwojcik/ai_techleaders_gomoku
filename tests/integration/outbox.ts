@@ -52,3 +52,34 @@ export function verificationLink(message: OutboxMessage): {
   const token = new URL(link).searchParams.get("token") as string;
   return { link, token };
 }
+
+/** Extracts the raw token and the link from a password reset message. */
+export function resetLink(message: OutboxMessage): {
+  link: string;
+  token: string;
+} {
+  const link = /https?:\/\/\S+\/reset-password\?\S+/.exec(
+    message.text,
+  )?.[0] as string;
+  const token = new URL(link).searchParams.get("token") as string;
+  return { link, token };
+}
+
+/** Waits for the reset message to `to` (the verification mail of a fresh account is skipped). */
+export async function waitForResetMessage(
+  path: string,
+  to: string,
+  timeoutMs = 10_000,
+): Promise<OutboxMessage> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const found = (await waitForMessages(path, to, 1, timeoutMs)).find((m) =>
+      /\/reset-password\?/.test(m.text),
+    );
+    if (found) return found;
+    if (Date.now() > deadline) {
+      throw new Error(`No password reset message to ${to}.`);
+    }
+    await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+  }
+}

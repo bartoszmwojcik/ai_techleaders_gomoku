@@ -24,8 +24,7 @@ import type { SessionService } from "./session-service";
  * Invalidates the user's unused password reset tokens (#35). Called inside the password
  * change transaction with the transaction's `em` (`tx`): an implementation must write only
  * through it, never through an injected `em` (that fork does not join the transaction).
- * The `password_reset_tokens` table does not exist yet, so the container registers a no-op
- * until the reset feature replaces the registration.
+ * The container registers `invalidateResetTokens` from `invalidate-reset-tokens.ts`.
  */
 export type InvalidateResetTokens = (
   userId: string,

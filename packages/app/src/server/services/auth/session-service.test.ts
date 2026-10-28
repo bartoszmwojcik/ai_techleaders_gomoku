@@ -166,3 +166,26 @@ describe("SessionService.revokeOthers", () => {
     });
   });
 });
+
+describe("SessionService.revokeAll", () => {
+  it("deletes every session of the user", async () => {
+    const { em, service } = setup();
+    em.nativeDelete.mockResolvedValue(2);
+
+    await expect(service.revokeAll("user-1")).resolves.toBe(2);
+    expect(em.nativeDelete).toHaveBeenCalledExactlyOnceWith(Session, {
+      user: "user-1",
+    });
+  });
+
+  it("uses the given em (the transaction's tx) instead of the injected one", async () => {
+    const { em, service } = setup();
+    const tx = { nativeDelete: vi.fn(async () => 5) };
+
+    await expect(
+      service.revokeAll("user-1", tx as unknown as EntityManager),
+    ).resolves.toBe(5);
+    expect(tx.nativeDelete).toHaveBeenCalledOnce();
+    expect(em.nativeDelete).not.toHaveBeenCalled();
+  });
+});

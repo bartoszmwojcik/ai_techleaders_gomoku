@@ -17,6 +17,8 @@ import {
 } from "./services/auth/session-service";
 import { EmailVerificationService } from "./services/auth/email-verification-service";
 import { GameParticipation } from "./services/auth/game-participation";
+import { createInvalidateResetTokens } from "./services/auth/invalidate-reset-tokens";
+import { PasswordResetService } from "./services/auth/password-reset-service";
 import {
   UserService,
   type InvalidateResetTokens,
@@ -41,7 +43,7 @@ export type AppCradle = {
   serverConfig: ServerConfig;
   /** Games do not exist yet (G5); the games feature replaces this registration. */
   hasActiveGame: HasActiveGame;
-  /** Reset tokens (#35) do not exist yet; the reset feature replaces this registration. */
+  /** Marks a user's unused reset tokens as used; writes only through the `em` it is given. */
   invalidateResetTokens: InvalidateResetTokens;
   clock: Clock;
   /** Chosen by EMAIL_TRANSPORT; resolved lazily, so a bad setting fails only the routes that send mail. */
@@ -52,6 +54,7 @@ export type AppCradle = {
   rateLimiter: RateLimiter;
   emailVerificationService: EmailVerificationService;
   userService: UserService;
+  passwordResetService: PasswordResetService;
 };
 
 /** Dependencies available within a single request. */
@@ -102,9 +105,10 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     passwordHasher: asClass(PasswordHasher).singleton(),
     serverConfig: asFunction(() => readServerConfig(process.env)).singleton(),
     hasActiveGame: asValue<HasActiveGame>(async () => false),
-    invalidateResetTokens: asValue<InvalidateResetTokens>(
-      async () => undefined,
-    ),
+    invalidateResetTokens: asFunction(
+      ({ clock }: AppCradle): InvalidateResetTokens =>
+        createInvalidateResetTokens({ clock }),
+    ).singleton(),
     clock: asValue(systemClock),
     emailSender: asFunction(
       ({ serverConfig, clock }: AppCradle): EmailSender =>
@@ -121,6 +125,7 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     rateLimiter: asClass(RateLimiter).scoped(),
     emailVerificationService: asClass(EmailVerificationService).scoped(),
     userService: asClass(UserService).scoped(),
+    passwordResetService: asClass(PasswordResetService).scoped(),
   });
   return container;
 }

@@ -5,11 +5,12 @@ import { join } from "node:path";
 import type { Orm } from "@gomoku/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { createOrm, entities } = vi.hoisted(() => ({
+const { createOrm, entities, PasswordResetToken } = vi.hoisted(() => ({
   createOrm: vi.fn(),
   entities: [] as unknown[],
+  PasswordResetToken: { name: "PasswordResetToken" },
 }));
-vi.mock("@gomoku/db", () => ({ createOrm, entities }));
+vi.mock("@gomoku/db", () => ({ createOrm, entities, PasswordResetToken }));
 
 const globalForOrm = globalThis as typeof globalThis & {
   __gomokuOrms?: WeakMap<object, Promise<Orm>>;
@@ -80,9 +81,17 @@ describe("getContainer", () => {
     expect((await forPages()).cradle.orm).toBe(pageOrm);
 
     vi.resetModules();
-    vi.doMock("@gomoku/db", () => ({ createOrm, entities: [] }));
+    vi.doMock("@gomoku/db", () => ({
+      createOrm,
+      entities: [],
+      PasswordResetToken,
+    }));
     const { getContainer: forRoutes } = await loadContainer();
-    vi.doMock("@gomoku/db", () => ({ createOrm, entities }));
+    vi.doMock("@gomoku/db", () => ({
+      createOrm,
+      entities,
+      PasswordResetToken,
+    }));
 
     expect((await forRoutes()).cradle.orm).toBe(routeOrm);
     expect(createOrm).toHaveBeenCalledTimes(2);
@@ -119,9 +128,14 @@ describe("auth services", () => {
       expect(cradle.gameParticipation).toBe(cradle.gameParticipation);
       expect(await cradle.gameParticipation.hasActiveGame("user")).toBe(false);
       expect(await cradle.hasActiveGame("user", new Date())).toBe(false);
-      expect(
-        await cradle.invalidateResetTokens("user", forkedEm as never),
-      ).toBeUndefined();
+      expect(cradle.passwordResetService).toBe(cradle.passwordResetService);
+      const nativeUpdate = vi.fn(async () => 1);
+      await cradle.invalidateResetTokens("user", { nativeUpdate } as never);
+      expect(nativeUpdate).toHaveBeenCalledWith(
+        PasswordResetToken,
+        { user: "user", usedAt: null },
+        { usedAt: expect.any(Date) },
+      );
       expect(forkedEm).toBeDefined();
     });
   });

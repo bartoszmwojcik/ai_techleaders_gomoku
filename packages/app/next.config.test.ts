@@ -38,12 +38,16 @@ describe("next.config", () => {
     ]);
   });
 
-  it("sends Referrer-Policy: no-referrer on /verify-email, where the token is in the URL", async () => {
+  it("sends Referrer-Policy: no-referrer on /verify-email and /reset-password, where the token is in the URL", async () => {
     const { default: config } = await import("./next.config");
 
     expect(await config.headers?.()).toEqual([
       {
         source: "/verify-email",
+        headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
+      },
+      {
+        source: "/reset-password",
         headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
       },
     ]);

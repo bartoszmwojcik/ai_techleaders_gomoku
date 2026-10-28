@@ -150,6 +150,11 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
         </SubmitButton>
       </form>
       <p className="m-0 text-body text-text-secondary">
+        <TextLink href="/forgot-password" placement="standalone">
+          Nie pamiętasz hasła?
+        </TextLink>
+      </p>
+      <p className="m-0 text-body text-text-secondary">
         Nie masz konta?{" "}
         <TextLink href={registerHref} placement="standalone">
           Załóż konto

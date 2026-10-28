@@ -84,12 +84,13 @@ Ręczny test po fazie: baner „Potwierdź adres e-mail” na `/` i `/account`, 
 
 Ręczny test po fazie: `/forgot-password` → link ze skrzynki → `/reset-password`; tylko dla potwierdzonego e-maila (BR-27).
 
-- [ ] 8.1 Encja i migracja `password_reset_tokens`
-- [ ] 8.2 `newPasswordSchema` + schematy resetu
-- [ ] 8.3 `PasswordResetService` + szablon (dopiąć: w `container.ts` zastąpić no-op `invalidateResetTokens` (z 5.2) funkcją `(userId, em)` usuwającą/unieważniającą niewykorzystane tokeny resetu użytkownika wyłącznie przez przekazany `em` (`tx` transakcji zmiany hasła, nie wstrzyknięty `em`), z testami; sygnatura jest już gotowa od 5.5)
-- [ ] 8.4 Route `…/request` i `…/confirm`
-- [ ] 8.5 Strony `/forgot-password`, `/reset-password`, link na `/login`
-- [ ] 8.6 Dokumentacja
+- [x] 8.1 Encja i migracja `password_reset_tokens`
+- [x] 8.2 `newPasswordSchema` + schematy resetu
+- [x] 8.3 `PasswordResetService` + szablon (dopiąć: w `container.ts` zastąpić no-op `invalidateResetTokens` (z 5.2) funkcją `(userId, em)` usuwającą/unieważniającą niewykorzystane tokeny resetu użytkownika wyłącznie przez przekazany `em` (`tx` transakcji zmiany hasła, nie wstrzyknięty `em`), z testami; sygnatura jest już gotowa od 5.5)
+- [x] 8.4 Route `…/request` i `…/confirm`
+- [x] 8.5 Strony `/forgot-password`, `/reset-password`, link na `/login`
+- [x] 8.6 Dokumentacja (do wykonania po scaleniu PR, ręcznie: zamknięcie #35, jeśli nie zamknie się samo)
+- [x] 8.7 Poprawki po code review Fazy 8 (M1 wariant b: pule dzienne weryfikacji i resetu niezależne — zapis w README i specyfikacji, że `EMAIL_DAILY_LIMIT` trzeba ustawić z uwzględnieniem sumy do 170%; L1 `confirm` sprawdza `emailVerifiedAt` przy zużyciu tokenu; L2 `invalidateResetTokens` z `clock`; L3 wpis `.snapshot-*.json` w `.gitignore` z wyjątkiem `.snapshot-gomoku.json`; N1 poprawić daty 2026-10-29 na 2026-10-28)
 
 ## Faza 9 — Sprzątanie wygasłych rekordów (#39, z regułą 14 dni dla niepotwierdzonych kont)
 

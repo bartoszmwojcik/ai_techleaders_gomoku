@@ -1,0 +1,6 @@
+# `db:migration:down` poszedł na bazę dev zamiast na tymczasową
+
+- **Problem:** podczas zadania 8.3 subagent chciał sprawdzić `down`/`up` migracji na tymczasowej bazie. `psql` nie jest zainstalowany lokalnie, więc `create database` w łańcuchu `&&` nie wykonało się, a następne `export DATABASE_URL=…` zostało pominięte. Dwa `db:migration:down` zadziałały na bazie dev `gomoku` użytkownika i cofnęły dwie migracje (tokeny weryfikacji e-maila i tokeny resetu); po natychmiastowym `up` schemat wrócił, ale dane tych dwóch tabel (tokeny z dev) przepadły.
+- **Przyczyna:** polecenia destrukcyjne uruchomione bez sprawdzenia, na jaką bazę wskazuje `DATABASE_URL`, oraz zależność od narzędzia (`psql`), którego nie ma na maszynie.
+- **Reguła:** przed `db:migration:down`/`schema` itp. wypisz docelową bazę (`echo` bez hasła) i zatrzymaj się, jeśli to nie jest baza tymczasowa; nie łącz `create database` i `export DATABASE_URL` w jednym `&&` bez sprawdzenia wyniku; tymczasową bazę twórz przez `docker compose exec -T postgres psql …` albo jednorazowy kontener `postgres:17-alpine` na osobnym porcie.
+- **Powiązane:** [Sandbox nadpisuje .env](2026-10-18-sandbox-env-overrides.md); [Zapisy w transakcji](2026-10-28-transactional-callback-uses-tx.md).

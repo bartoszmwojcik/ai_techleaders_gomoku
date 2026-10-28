@@ -88,4 +88,16 @@ export class SessionService {
       id: { $ne: currentSessionId },
     });
   }
+
+  /**
+   * Revokes every session of the user, also those of a game in progress (password reset,
+   * Q9). Inside `em.transactional` pass the callback's `tx` as `em`.
+   * @returns how many sessions were deleted.
+   */
+  async revokeAll(
+    userId: string,
+    em: EntityManager = this.#em,
+  ): Promise<number> {
+    return em.nativeDelete(Session, { user: userId });
+  }
 }

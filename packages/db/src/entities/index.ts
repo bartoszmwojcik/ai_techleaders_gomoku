@@ -1,4 +1,5 @@
 import { EmailVerificationToken } from "./auth/email-verification-token";
+import { PasswordResetToken } from "./auth/password-reset-token";
 import { Session } from "./auth/session";
 import { User } from "./auth/user";
 import { RateLimitBucket } from "./rate-limit/rate-limit-bucket";
@@ -10,5 +11,6 @@ export const entities = [
   User,
   Session,
   EmailVerificationToken,
+  PasswordResetToken,
   RateLimitBucket,
 ] as const;

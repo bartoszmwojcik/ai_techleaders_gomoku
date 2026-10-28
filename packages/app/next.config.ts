@@ -25,8 +25,12 @@ const nextConfig: NextConfig = {
   ],
   headers: async () => [
     {
-      // The verification token is in the address: the page must not leak it in `Referer`.
+      // The verification and reset tokens are in the address: the pages must not leak them in `Referer`.
       source: "/verify-email",
+      headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
+    },
+    {
+      source: "/reset-password",
       headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
     },
   ],

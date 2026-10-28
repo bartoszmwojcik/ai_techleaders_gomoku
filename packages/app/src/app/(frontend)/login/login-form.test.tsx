@@ -37,6 +37,13 @@ describe("LoginForm", () => {
     expect(screen.queryByTestId("login-error")).toBeNull();
   });
 
+  it("links to the password reset", () => {
+    render(<LoginForm nextPath="/account" />);
+    expect(screen.getByRole("link", { name: "Nie pamiętasz hasła?" }).getAttribute("href")).toBe(
+      "/forgot-password",
+    );
+  });
+
   it("keeps a non-default next path in the register link", () => {
     render(<LoginForm nextPath="/account" />);
     expect(screen.getByRole("link", { name: "Załóż konto" }).getAttribute("href")).toBe(
