@@ -64,7 +64,7 @@ Ręczny test po fazie: `/account` → zmiana hasła; stare hasło nie loguje; dr
 
 Ręczny test po fazie: rejestracja → plik-skrzynka (`EMAIL_TRANSPORT=file`) → link → `/verify-email` potwierdza adres.
 
-- [ ] 6.1 Encja i migracja `email_verification_tokens`
+- [x] 6.1 Encja i migracja `email_verification_tokens`
 - [ ] 6.2 `EmailSender`, `FileEmailSender`, `UnconfiguredEmailSender`, `clock`, wybór w `container.ts`
 - [ ] 6.3 Szablon wiadomości
 - [ ] 6.4 `EmailVerificationService.issue/confirm`, wywołanie po rejestracji (przywrócić podpis pod e-mailem w `register-form` o linku do potwierdzenia; usunięty w 2.4, bo wysyłki jeszcze nie ma)
