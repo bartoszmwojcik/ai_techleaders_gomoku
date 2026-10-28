@@ -17,6 +17,10 @@ describe("readServerConfig", () => {
       appOrigin: undefined,
       sessionCookieSecure: true,
       passwordHashCost: 12,
+      emailTransport: undefined,
+      emailFrom: "Gomoku",
+      emailOutboxPath: ".email-outbox.jsonl",
+      emailDailyLimit: undefined,
     });
     expect(
       readServerConfig({
@@ -40,6 +44,10 @@ describe("readServerConfig", () => {
       appOrigin: "https://gomoku.byst.re",
       sessionCookieSecure: true,
       passwordHashCost: 12,
+      emailTransport: undefined,
+      emailFrom: "Gomoku",
+      emailOutboxPath: ".email-outbox.jsonl",
+      emailDailyLimit: undefined,
     });
   });
 
@@ -61,6 +69,10 @@ describe("readServerConfig", () => {
     });
     expect(readServerConfig({ PASSWORD_HASH_COST: "" })).toMatchObject({
       passwordHashCost: 12,
+      emailTransport: undefined,
+      emailFrom: "Gomoku",
+      emailOutboxPath: ".email-outbox.jsonl",
+      emailDailyLimit: undefined,
     });
     for (const bad of ["3", "32", "abc", "12.5", "-4", "004", "1e1"]) {
       expect(() => readServerConfig({ PASSWORD_HASH_COST: bad })).toThrow(
@@ -107,5 +119,51 @@ describe("readServerConfig", () => {
     expect(() => readServerConfig({ CLIENT_IP_HEADER: "x-evil" })).toThrow(
       /CLIENT_IP_HEADER/,
     );
+  });
+});
+
+describe("readServerConfig email settings", () => {
+  it("reads the file transport and its options", () => {
+    expect(
+      readServerConfig({
+        EMAIL_TRANSPORT: "file",
+        EMAIL_FROM: "Gra <gra@example.com>",
+        EMAIL_OUTBOX_PATH: "/tmp/outbox.jsonl",
+        EMAIL_DAILY_LIMIT: "100",
+      }),
+    ).toMatchObject({
+      emailTransport: "file",
+      emailFrom: "Gra <gra@example.com>",
+      emailOutboxPath: "/tmp/outbox.jsonl",
+      emailDailyLimit: 100,
+    });
+    expect(readServerConfig({ EMAIL_TRANSPORT: "" })).toMatchObject({
+      emailTransport: undefined,
+    });
+  });
+
+  it("rejects an unknown transport and a bad daily limit", () => {
+    expect(() => readServerConfig({ EMAIL_TRANSPORT: "smtp" })).toThrow(
+      /EMAIL_TRANSPORT/,
+    );
+    for (const bad of ["0", "-1", "1.5", "abc", "1000000000"]) {
+      expect(() => readServerConfig({ EMAIL_DAILY_LIMIT: bad })).toThrow(
+        /EMAIL_DAILY_LIMIT/,
+      );
+    }
+  });
+
+  it("allows the file transport in production only with an http:// origin", () => {
+    expect(() =>
+      readServerConfig({ ...production, EMAIL_TRANSPORT: "file" }),
+    ).toThrow(/http:\/\//);
+    expect(
+      readServerConfig({
+        ...production,
+        APP_ORIGIN: "http://127.0.0.1:3000",
+        SESSION_COOKIE_SECURE: "false",
+        EMAIL_TRANSPORT: "file",
+      }),
+    ).toMatchObject({ emailTransport: "file" });
   });
 });

@@ -53,3 +53,7 @@ next-env.d.ts
 
 # grey prototype copies served by Storybook (lesson 07)
 packages/ui/.storybook/public/prototypes/
+
+# email outbox of the file transport (dev/tests; holds full messages)
+.email-outbox.jsonl
+*.email-outbox.jsonl

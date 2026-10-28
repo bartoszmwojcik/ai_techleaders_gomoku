@@ -16,7 +16,21 @@ export type ServerConfig = {
   sessionCookieSecure: boolean;
   /** bcrypt cost factor (4-31); 12 unless `PASSWORD_HASH_COST` lowers it (integration tests). */
   passwordHashCost: number;
+  /** `file` writes to the outbox (dev/tests); unset means no transport (sending fails, #34 Q1). */
+  emailTransport?: EmailTransport;
+  /** Sender shown in outgoing mail. */
+  emailFrom: string;
+  /** Outbox file of the `file` transport (relative paths resolve against the process cwd). */
+  emailOutboxPath: string;
+  /** Global daily send limit (#34 Q10); unset means no limit is enforced. */
+  emailDailyLimit?: number;
 };
+
+export const EMAIL_TRANSPORTS = ["file"] as const;
+export type EmailTransport = (typeof EMAIL_TRANSPORTS)[number];
+
+export const DEFAULT_EMAIL_FROM = "Gomoku";
+export const DEFAULT_EMAIL_OUTBOX_PATH = ".email-outbox.jsonl";
 
 export const DEFAULT_PASSWORD_HASH_COST = 12;
 
@@ -27,6 +41,34 @@ function parsePasswordHashCost(raw: string | undefined): number {
     throw new Error("PASSWORD_HASH_COST must be an integer from 4 to 31.");
   }
   return cost;
+}
+
+function parseEmailTransport(
+  raw: string | undefined,
+  production: boolean,
+  appOrigin: string | undefined,
+): EmailTransport | undefined {
+  if (raw === undefined || raw === "") return undefined;
+  const transport = EMAIL_TRANSPORTS.find((candidate) => candidate === raw);
+  if (!transport) {
+    throw new Error(
+      `EMAIL_TRANSPORT must be one of: ${EMAIL_TRANSPORTS.join(", ")} (or unset).`,
+    );
+  }
+  if (transport === "file" && production && !appOrigin?.startsWith("http://")) {
+    throw new Error(
+      "EMAIL_TRANSPORT=file is allowed in production only with an http:// APP_ORIGIN.",
+    );
+  }
+  return transport;
+}
+
+function parseEmailDailyLimit(raw: string | undefined): number | undefined {
+  if (raw === undefined || raw === "") return undefined;
+  if (!/^[1-9][0-9]{0,8}$/.test(raw)) {
+    throw new Error("EMAIL_DAILY_LIMIT must be a positive integer.");
+  }
+  return Number(raw);
 }
 
 function parseTrustProxyHops(
@@ -111,5 +153,13 @@ export function readServerConfig(
     appOrigin,
     sessionCookieSecure,
     passwordHashCost: parsePasswordHashCost(env.PASSWORD_HASH_COST),
+    emailTransport: parseEmailTransport(
+      env.EMAIL_TRANSPORT,
+      production,
+      appOrigin,
+    ),
+    emailFrom: env.EMAIL_FROM || DEFAULT_EMAIL_FROM,
+    emailOutboxPath: env.EMAIL_OUTBOX_PATH || DEFAULT_EMAIL_OUTBOX_PATH,
+    emailDailyLimit: parseEmailDailyLimit(env.EMAIL_DAILY_LIMIT),
   };
 }

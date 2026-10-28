@@ -2,7 +2,7 @@
 // (Testcontainers), the database migrations and the production build of @gomoku/app
 // (`next start`) connected to it. Requires Docker and `npm run build`.
 import { execFile, spawn, type ChildProcess } from "node:child_process";
-import { createWriteStream, existsSync } from "node:fs";
+import { createWriteStream, existsSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
@@ -17,6 +17,7 @@ declare module "vitest" {
     baseUrl: string;
     browserSession: string;
     databaseUrl: string;
+    emailOutboxPath: string;
   }
 }
 
@@ -26,6 +27,8 @@ const appRoot = resolve(repoRoot, "packages/app");
 const nextBin = resolve(repoRoot, "node_modules/next/dist/bin/next");
 // Output of `next start`: the first place to look when a test sees a 500 (CI uploads it).
 export const SERVER_LOG = resolve(import.meta.dirname, "server.log");
+// Outbox of the `file` e-mail transport (git-ignored by `*.email-outbox.jsonl`); tests read links from it.
+export const EMAIL_OUTBOX = resolve(import.meta.dirname, "integration.email-outbox.jsonl");
 const READY_TIMEOUT_MS = 60_000;
 
 async function freePort(): Promise<number> {
@@ -93,6 +96,7 @@ export default async function setup(project: TestProject) {
 
     const port = await freePort();
     const baseUrl = `http://127.0.0.1:${port}`;
+    rmSync(EMAIL_OUTBOX, { force: true });
     let output = "";
     const log = createWriteStream(SERVER_LOG);
     server = spawn(process.execPath, [nextBin, "start", "--port", String(port)], {
@@ -106,6 +110,9 @@ export default async function setup(project: TestProject) {
         SESSION_COOKIE_SECURE: "false",
         // Cheap bcrypt: the limit tests make hundreds of password checks (production is 12).
         PASSWORD_HASH_COST: "4",
+        // Confirmation mails go to a file the tests read (no provider needed).
+        EMAIL_TRANSPORT: "file",
+        EMAIL_OUTBOX_PATH: EMAIL_OUTBOX,
       },
       detached: true,
       stdio: ["ignore", "pipe", "pipe"],
@@ -120,6 +127,7 @@ export default async function setup(project: TestProject) {
 
     project.provide("baseUrl", baseUrl);
     project.provide("databaseUrl", container.getConnectionUri());
+    project.provide("emailOutboxPath", EMAIL_OUTBOX);
     project.provide("browserSession", browser.session);
   } catch (error) {
     await teardown();

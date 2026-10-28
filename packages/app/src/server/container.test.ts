@@ -1,3 +1,7 @@
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import type { Orm } from "@gomoku/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -109,10 +113,15 @@ describe("auth services", () => {
       expect(cradle.sessionService).toBe(cradle.sessionService);
       expect(cradle.rateLimiter).toBe(cradle.rateLimiter);
       expect(cradle.userService).toBe(cradle.userService);
+      expect(cradle.emailVerificationService).toBe(
+        cradle.emailVerificationService,
+      );
       expect(cradle.gameParticipation).toBe(cradle.gameParticipation);
       expect(await cradle.gameParticipation.hasActiveGame("user")).toBe(false);
       expect(await cradle.hasActiveGame("user", new Date())).toBe(false);
-      expect(await cradle.invalidateResetTokens("user", forkedEm as never)).toBeUndefined();
+      expect(
+        await cradle.invalidateResetTokens("user", forkedEm as never),
+      ).toBeUndefined();
       expect(forkedEm).toBeDefined();
     });
   });
@@ -153,6 +162,64 @@ describe("auth services", () => {
     const container = await getContainer();
 
     expect(container.cradle.serverConfig.production).toBe(false);
+  });
+});
+
+describe("email sender", () => {
+  it("uses the unconfigured sender without EMAIL_TRANSPORT and provides the clock", async () => {
+    const { orm } = fakeOrm();
+    createOrm.mockResolvedValue(orm);
+    vi.stubEnv("EMAIL_TRANSPORT", "");
+    const { getContainer } = await loadContainer();
+
+    const { cradle } = await getContainer();
+
+    expect(cradle.clock.now()).toBeInstanceOf(Date);
+    await expect(
+      cradle.emailSender.send({
+        to: "a@b.c",
+        subject: "s",
+        text: "t",
+        html: "h",
+      }),
+    ).rejects.toThrow(/EMAIL_TRANSPORT/);
+  });
+
+  it("uses the file sender for EMAIL_TRANSPORT=file", async () => {
+    const { orm } = fakeOrm();
+    createOrm.mockResolvedValue(orm);
+    const dir = await mkdtemp(join(tmpdir(), "outbox-"));
+    const outbox = join(dir, "out.jsonl");
+    vi.stubEnv("EMAIL_TRANSPORT", "file");
+    vi.stubEnv("EMAIL_OUTBOX_PATH", outbox);
+    vi.stubEnv("EMAIL_FROM", "Gomoku");
+    const { getContainer } = await loadContainer();
+
+    const { cradle } = await getContainer();
+    await cradle.emailSender.send({
+      to: "a@b.c",
+      subject: "s",
+      text: "t",
+      html: "h",
+    });
+
+    expect(JSON.parse((await readFile(outbox, "utf8")).trim())).toMatchObject({
+      to: "a@b.c",
+      from: "Gomoku",
+    });
+    await rm(dir, { recursive: true });
+  });
+
+  it("fails only the email sender on a bad EMAIL_TRANSPORT", async () => {
+    const { orm } = fakeOrm();
+    createOrm.mockResolvedValue(orm);
+    vi.stubEnv("EMAIL_TRANSPORT", "carrier-pigeon");
+    const { getContainer } = await loadContainer();
+
+    const { cradle } = await getContainer();
+
+    expect(cradle.orm).toBe(orm);
+    expect(() => cradle.emailSender).toThrow(/EMAIL_TRANSPORT/);
   });
 });
 

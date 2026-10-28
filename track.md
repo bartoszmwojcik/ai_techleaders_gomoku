@@ -64,17 +64,18 @@ Ręczny test po fazie: `/account` → zmiana hasła; stare hasło nie loguje; dr
 
 Ręczny test po fazie: rejestracja → plik-skrzynka (`EMAIL_TRANSPORT=file`) → link → `/verify-email` potwierdza adres.
 
-- [ ] 6.1 Encja i migracja `email_verification_tokens`
-- [ ] 6.2 `EmailSender`, `FileEmailSender`, `UnconfiguredEmailSender`, `clock`, wybór w `container.ts`
-- [ ] 6.3 Szablon wiadomości
-- [ ] 6.4 `EmailVerificationService.issue/confirm`, wywołanie po rejestracji (przywrócić podpis pod e-mailem w `register-form` o linku do potwierdzenia; usunięty w 2.4, bo wysyłki jeszcze nie ma)
-- [ ] 6.5 Route `…/confirm` i strona `/verify-email`
+- [x] 6.1 Encja i migracja `email_verification_tokens`
+- [x] 6.2 `EmailSender`, `FileEmailSender`, `UnconfiguredEmailSender`, `clock`, wybór w `container.ts`
+- [x] 6.3 Szablon wiadomości
+- [x] 6.4 `EmailVerificationService.issue/confirm`, wywołanie po rejestracji (przywrócić podpis pod e-mailem w `register-form` o linku do potwierdzenia; usunięty w 2.4, bo wysyłki jeszcze nie ma)
+- [x] 6.5 Route `…/confirm` i strona `/verify-email`
+- [x] 6.6 Poprawki po code review Fazy 6 (M1 wyścig w `issue`: unieważniaj tylko starsze tokeny + test równoległych `issue`, M2 timeout w kontrakcie `EmailSender` i ograniczenie czasu oczekiwania w `register`, wpis w specyfikacji #38, L2 `EMAIL_DAILY_LIMIT=1`, L3 log kodu błędu domenowego przy 503/502)
 
 ## Faza 7 — Ponowne wysłanie i baner (#34, Faza 2: kroki 6–8)
 
 Ręczny test po fazie: baner „Potwierdź adres e-mail” na `/` i `/account`, zamknięcie, „Wyślij ponownie”, znika po potwierdzeniu.
 
-- [ ] 7.1 `resend` i limity
+- [ ] 7.1 `resend` i limity (dodatkowo: `EmailVerificationService.issue` połyka przyczynę błędu wysyłki w `catch {` — zaloguj bez danych osobowych nazwę i kod przyczyny (np. przez `describeError(cause)`), a sam `AppError` 502 zachowaj bez ujawniania przyczyny klientowi; test, że log nie zawiera adresu ani tokenu — zob. lekcja `2026-10-28-next-env-root-env-not-loaded-in-dev.md`) (dopiąć na `/verify-email` w `confirm-email.tsx`, stan „link nieważny”: przycisk „Wyślij nowy link” dla zalogowanego z niepotwierdzonym kontem (s03.5, 9–12) i link „Zaloguj się, aby wysłać nowy link” (`/login?next=/account`) dla niezalogowanego (s03.6); w 6.5 jest tylko „Wróć na stronę główną”)
 - [ ] 7.2 `VerifyEmailBanner` (zamykalny, powrót po 7 dniach)
 - [ ] 7.3 Dokumentacja
 

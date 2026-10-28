@@ -17,14 +17,14 @@ describe("next.config", () => {
     vi.stubEnv("NODE_ENV", "development");
     await import("./next.config");
 
-    expect(loadEnvConfig).toHaveBeenCalledWith(monorepoRoot, true);
+    expect(loadEnvConfig).toHaveBeenCalledWith(monorepoRoot, true, console, true);
   });
 
   it("loads the production .env files in production", async () => {
     vi.stubEnv("NODE_ENV", "production");
     await import("./next.config");
 
-    expect(loadEnvConfig).toHaveBeenCalledWith(monorepoRoot, false);
+    expect(loadEnvConfig).toHaveBeenCalledWith(monorepoRoot, false, console, true);
   });
 
   it("keeps MikroORM v7 out of the server bundle", async () => {
@@ -35,6 +35,17 @@ describe("next.config", () => {
       "@mikro-orm/sql",
       "@mikro-orm/postgresql",
       "kysely",
+    ]);
+  });
+
+  it("sends Referrer-Policy: no-referrer on /verify-email, where the token is in the URL", async () => {
+    const { default: config } = await import("./next.config");
+
+    expect(await config.headers?.()).toEqual([
+      {
+        source: "/verify-email",
+        headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
+      },
     ]);
   });
 });

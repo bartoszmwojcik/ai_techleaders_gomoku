@@ -149,7 +149,7 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
           type="email"
           autoComplete="email"
           label="E-mail"
-          hint="Używasz go do logowania."
+          hint="Używasz go do logowania. Wyślemy na ten adres link do potwierdzenia. Grasz od razu, adres możesz potwierdzić później."
           error={errors.email}
           required
           value={email}

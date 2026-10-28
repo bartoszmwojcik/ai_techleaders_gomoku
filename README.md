@@ -104,6 +104,26 @@ Specyfikacja i kontrakt API: [`.ai/specs/2026-10-24-account-registration.md`](.a
 
 Specyfikacja i kontrakt API: [`.ai/specs/2026-10-24-login-logout.md`](.ai/specs/2026-10-24-login-logout.md).
 
+#### Potwierdzenie e-maila
+
+Po rejestracji aplikacja wysyła wiadomość z linkiem `APP_ORIGIN/verify-email?token=…` (ważnym 24 godziny); błąd wysyłki nie blokuje rejestracji ani gry. Wejście w link (GET) niczego nie zmienia (skanery poczty i podglądy linków otwierają adresy): strona pokazuje przycisk „Potwierdź e-mail”, a dopiero jego kliknięcie wysyła `POST /api/auth/email-verification/confirm` (`{ token, next? }`, nagłówki CSRF jak wyżej, sesja niewymagana; potwierdzenie nie loguje). Odpowiedź `200` ma `{ ok: true, data: { next } }`, gdzie `next` to bezpieczna ścieżka powrotu (`/` dla każdej innej). Strona `/verify-email` ma nagłówek `Referrer-Policy: no-referrer`, bo token jest w adresie.
+
+- **Zmienne `EMAIL_*`** (`.env.example`): `EMAIL_TRANSPORT` (`file`: dopisuje wiadomości jako linie JSON do pliku; bez wartości wysyłka kończy się `EMAIL_SEND_FAILED`), `EMAIL_OUTBOX_PATH` (plik-skrzynka, ignorowany przez git), `EMAIL_FROM` (nadawca), `EMAIL_DAILY_LIMIT` (globalny dzienny limit wysyłek; weryfikacja e-maila zużywa najwyżej 70%, zaokrąglone w dół, ale co najmniej 1 wysyłkę dziennie - przy `EMAIL_DAILY_LIMIT=1` weryfikacja nie jest blokowana). Transport `file` w produkcji (`next start`) jest dozwolony tylko przy `APP_ORIGIN` zaczynającym się od `http://`. **Produkcja wymaga dostawcy poczty z #38**: bez niego nikt nie potwierdzi e-maila, a wysyłka zwraca `502`.
+- **Ręczne sprawdzenie w dev:** w `.env.local` ustaw `EMAIL_TRANSPORT=file` i `EMAIL_OUTBOX_PATH=/tmp/outbox.jsonl`, uruchom `npm run dev`, załóż konto na `/register`, a link wyciągnij z ostatniej linii pliku: `tail -n 1 /tmp/outbox.jsonl | jq -r .text`. Otwórz go w przeglądarce i kliknij „Potwierdź e-mail”; `email_verified_at` konta zostaje ustawione.
+- **Kody błędów:**
+
+  | Kod | Status | Kiedy |
+  | --- | --- | --- |
+  | `INVALID_TOKEN` | `400` | token nieznany, użyty (także drugie żądanie z tym samym tokenem), wygasły, unieważniony nowszym linkiem lub konto usunięte; jednolity komunikat „Link wygasł lub został już użyty.” |
+  | `VALIDATION` | `400` | zły kształt danych (brak lub pusty `token`) |
+  | `FORBIDDEN` | `403` | brak nagłówków CSRF |
+  | `EMAIL_SEND_FAILED` | `502` | wysyłka nie powiodła się lub brak dostawcy (przy wysyłaniu linku, np. ponownym; poprzedni link zostaje ważny) |
+  | `EMAIL_QUOTA_EXCEEDED` | `503` | wyczerpany dzienny limit wysyłek (`EMAIL_DAILY_LIMIT`) |
+
+  Ostatnie dwa kody dotyczą wysyłki wiadomości (rejestracja je loguje i dalej kończy się `201`; zwraca je ponowne wysłanie, #34 Faza 2). Endpoint `confirm` nie ma limitu prób: token jest jednorazowy i ma 256 bitów losowości.
+
+Specyfikacja: [`.ai/specs/2026-10-24-email-verification.md`](.ai/specs/2026-10-24-email-verification.md).
+
 ### `@gomoku/core` — części wielokrotnego użytku
 
 Czysty TypeScript bez zależności od frameworków:

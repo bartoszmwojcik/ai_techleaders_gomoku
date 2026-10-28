@@ -5,6 +5,7 @@
 import { Session, User, createOrm, type Orm } from "@gomoku/db";
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 
+import { EmailVerificationService } from "../../packages/app/src/server/services/auth/email-verification-service";
 import { PasswordHasher } from "../../packages/app/src/server/services/auth/password-hasher";
 import { SessionService } from "../../packages/app/src/server/services/auth/session-service";
 import {
@@ -31,6 +32,17 @@ afterAll(async () => {
   await orm.close();
 });
 
+/** Verification service whose mail goes nowhere: these tests are about transactions only. */
+function noMail(em: ReturnType<Orm["em"]["fork"]>) {
+  return new EmailVerificationService({
+    em,
+    emailSender: { send: async () => {} },
+    clock: { now: () => new Date() },
+    serverConfig: {} as never,
+    rateLimiter: {} as never,
+  });
+}
+
 /** Services on a fresh request-scoped fork, like `withRequestScope` builds them. */
 function scope(options: {
   failSessionCreate?: boolean;
@@ -50,6 +62,7 @@ function scope(options: {
     passwordHasher,
     sessionService,
     invalidateResetTokens: options.invalidateResetTokens ?? (async () => {}),
+    emailVerificationService: noMail(em),
   });
   return { em, sessionService: real, userService };
 }
@@ -122,6 +135,7 @@ describe("transactions on PostgreSQL", () => {
       passwordHasher,
       sessionService: failing.sessionService,
       invalidateResetTokens: async () => {},
+      emailVerificationService: noMail(failing.em),
     });
 
     await expect(
