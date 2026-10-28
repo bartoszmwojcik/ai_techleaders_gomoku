@@ -96,7 +96,7 @@ Ręczny test po fazie: `/forgot-password` → link ze skrzynki → `/reset-passw
 
 Ręczny test po fazie: `npm run db:cleanup` na bazie ze starymi rekordami.
 
-- [ ] 9.1 `cleanupExpired` (+ reguły dla sesji, liczników, tokenów)
+- [x] 9.1 `cleanupExpired` (+ reguły dla sesji, liczników, tokenów)
 - [ ] 9.2 `cleanup-cli.ts`, `db:cleanup`
 - [ ] 9.3 Testy integracyjne progów, README (cron)
 - [!] 9.4 Reguła „niepotwierdzone konto bez partii po 14 dniach” — zablokowana do #29 (tabela uczestników partii)

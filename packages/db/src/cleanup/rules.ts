@@ -1,0 +1,52 @@
+// Cleanup rules (spec 2026-10-24-expired-records-cleanup, Q2/Q4). Every entity with an
+// `expiresAt` column needs a rule here or an entry in `CLEANUP_EXEMPT_TABLES` (guard test).
+// Each new expiring table adds its rule together with its entity.
+
+const HOUR_MS = 60 * 60 * 1000;
+
+export type CleanupRule = {
+  /** Key of the result object returned by `cleanupExpired`. */
+  readonly key: "sessions" | "rateLimitBuckets" | "emailVerificationTokens" | "passwordResetTokens";
+  readonly table: string;
+  readonly primaryKey: string;
+  /** SQL condition over the table's columns; `$1` is the cutoff timestamp. Static text only. */
+  readonly condition: string;
+  /** Rows matching the condition for `$1 = now - graceMs` are deleted. */
+  readonly graceMs: number;
+};
+
+export const CLEANUP_RULES: readonly CleanupRule[] = [
+  {
+    // 1 h margin: a session that expired mid-game stays until the game ends (G5, games last <= ~20 min).
+    key: "sessions",
+    table: "sessions",
+    primaryKey: "id",
+    condition: "expires_at < $1",
+    graceMs: HOUR_MS,
+  },
+  {
+    // The longest rate-limit window is 1 h; 24 h is a safe margin.
+    key: "rateLimitBuckets",
+    table: "rate_limit_buckets",
+    primaryKey: "key",
+    condition: "window_start < $1",
+    graceMs: 24 * HOUR_MS,
+  },
+  {
+    key: "emailVerificationTokens",
+    table: "email_verification_tokens",
+    primaryKey: "id",
+    condition: "expires_at < $1 or used_at < $1",
+    graceMs: 24 * HOUR_MS,
+  },
+  {
+    key: "passwordResetTokens",
+    table: "password_reset_tokens",
+    primaryKey: "id",
+    condition: "expires_at < $1 or used_at < $1",
+    graceMs: 24 * HOUR_MS,
+  },
+];
+
+/** Tables with an `expiresAt` column that are deliberately not swept (none yet). */
+export const CLEANUP_EXEMPT_TABLES: readonly string[] = [];
