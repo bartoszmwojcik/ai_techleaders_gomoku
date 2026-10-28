@@ -66,4 +66,19 @@ export class SessionService {
   async revoke(token: string): Promise<void> {
     await this.#em.nativeDelete(Session, { tokenHash: hashOpaqueToken(token) });
   }
+
+  /**
+   * Revokes every session of the user except the current one (password change, Q4), also
+   * those of a game in progress. Joins the surrounding transaction when there is one.
+   * @returns how many sessions were deleted.
+   */
+  async revokeOthers(
+    userId: string,
+    currentSessionId: string,
+  ): Promise<number> {
+    return this.#em.nativeDelete(Session, {
+      user: userId,
+      id: { $ne: currentSessionId },
+    });
+  }
 }

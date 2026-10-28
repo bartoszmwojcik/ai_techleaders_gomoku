@@ -1,4 +1,8 @@
-import { ConflictError, UnauthorizedError } from "@gomoku/core";
+import {
+  ConflictError,
+  UnauthorizedError,
+  ValidationError,
+} from "@gomoku/core";
 import {
   UniqueConstraintViolationException,
   User,
@@ -12,6 +16,7 @@ import {
   DISPLAY_NAME_TAKEN_MESSAGE,
   EMAIL_TAKEN_MESSAGE,
   INVALID_CREDENTIALS_MESSAGE,
+  INVALID_CURRENT_PASSWORD_MESSAGE,
   UserService,
 } from "./user-service";
 
@@ -61,6 +66,7 @@ function setup(options: { flushError?: unknown; emailCount?: number } = {}) {
     em: em as unknown as EntityManager,
     passwordHasher: passwordHasher as unknown as PasswordHasher,
     sessionService: sessionService as unknown as SessionService,
+    invalidateResetTokens: vi.fn(async () => undefined),
   });
   return { em, passwordHasher, sessionService, service, session, calls };
 }
@@ -173,6 +179,7 @@ describe("UserService.authenticate", () => {
       em: em as unknown as EntityManager,
       passwordHasher: passwordHasher as unknown as PasswordHasher,
       sessionService: sessionService as unknown as SessionService,
+      invalidateResetTokens: vi.fn(async () => undefined),
     });
     return { em, passwordHasher, sessionService, service };
   }
@@ -247,5 +254,155 @@ describe("UserService.authenticate", () => {
     await expect(
       service.authenticate("nobody@example.com", "x"),
     ).rejects.toBeInstanceOf(UnauthorizedError);
+  });
+});
+
+describe("UserService.changePassword", () => {
+  function changeSetup(
+    options: { user?: object | null; matches?: boolean; updated?: number } = {},
+  ) {
+    const calls: string[] = [];
+    const user =
+      options.user === undefined
+        ? { id: "user-1", passwordHash: "old-hash" }
+        : options.user;
+    const em = {
+      findOne: vi.fn(async () => user),
+      nativeUpdate: vi.fn(async () => {
+        calls.push("update");
+        return options.updated ?? 1;
+      }),
+      transactional: vi.fn(async (work: () => Promise<unknown>) => {
+        calls.push("begin");
+        try {
+          return await work();
+        } finally {
+          calls.push("end");
+        }
+      }),
+    };
+    const passwordHasher = {
+      verify: vi.fn(async () => {
+        calls.push("verify");
+        return options.matches ?? true;
+      }),
+      hash: vi.fn(async () => {
+        calls.push("hash");
+        return "new-hash";
+      }),
+    };
+    const sessionService = {
+      revokeOthers: vi.fn(async () => {
+        calls.push("revokeOthers");
+        return 2;
+      }),
+    };
+    const invalidateResetTokens = vi.fn(async () => {
+      calls.push("invalidateResetTokens");
+    });
+    const service = new UserService({
+      em: em as unknown as EntityManager,
+      passwordHasher: passwordHasher as unknown as PasswordHasher,
+      sessionService: sessionService as unknown as SessionService,
+      invalidateResetTokens,
+    });
+    return {
+      em,
+      passwordHasher,
+      sessionService,
+      invalidateResetTokens,
+      service,
+      calls,
+    };
+  }
+
+  it("verifies, hashes, then updates conditionally and revokes others in one transaction", async () => {
+    const { em, sessionService, invalidateResetTokens, service, calls } =
+      changeSetup();
+
+    await expect(
+      service.changePassword("user-1", "sess-1", "old-pass", "new-pass-1"),
+    ).resolves.toBeUndefined();
+
+    expect(em.findOne).toHaveBeenCalledWith(User, { id: "user-1" });
+    expect(em.nativeUpdate).toHaveBeenCalledExactlyOnceWith(
+      User,
+      { id: "user-1", passwordHash: "old-hash" },
+      { passwordHash: "new-hash" },
+    );
+    expect(sessionService.revokeOthers).toHaveBeenCalledWith(
+      "user-1",
+      "sess-1",
+    );
+    expect(invalidateResetTokens).toHaveBeenCalledWith("user-1");
+    expect(calls).toEqual([
+      "verify",
+      "hash",
+      "begin",
+      "update",
+      "revokeOthers",
+      "invalidateResetTokens",
+      "end",
+    ]);
+  });
+
+  it("rejects a wrong current password before hashing or writing anything", async () => {
+    const {
+      em,
+      passwordHasher,
+      sessionService,
+      invalidateResetTokens,
+      service,
+    } = changeSetup({ matches: false });
+
+    const error = await service
+      .changePassword("user-1", "sess-1", "wrong", "new-pass-1")
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ValidationError);
+    expect(error).toMatchObject({
+      status: 400,
+      code: "INVALID_CURRENT_PASSWORD",
+      fieldErrors: { currentPassword: [INVALID_CURRENT_PASSWORD_MESSAGE] },
+    });
+    expect(passwordHasher.hash).not.toHaveBeenCalled();
+    expect(em.transactional).not.toHaveBeenCalled();
+    expect(sessionService.revokeOthers).not.toHaveBeenCalled();
+    expect(invalidateResetTokens).not.toHaveBeenCalled();
+  });
+
+  it("answers INVALID_CURRENT_PASSWORD and revokes nothing when a parallel change won (0 rows)", async () => {
+    const { sessionService, invalidateResetTokens, service, calls } =
+      changeSetup({ updated: 0 });
+
+    await expect(
+      service.changePassword("user-1", "sess-1", "old-pass", "new-pass-1"),
+    ).rejects.toMatchObject({
+      status: 400,
+      code: "INVALID_CURRENT_PASSWORD",
+      fieldErrors: { currentPassword: [INVALID_CURRENT_PASSWORD_MESSAGE] },
+    });
+    expect(sessionService.revokeOthers).not.toHaveBeenCalled();
+    expect(invalidateResetTokens).not.toHaveBeenCalled();
+    expect(calls.slice(-2)).toEqual(["update", "end"]);
+  });
+
+  it("propagates a failure of the later steps (the transaction rolls back)", async () => {
+    const failure = new Error("reset tokens failed");
+    const { invalidateResetTokens, service } = changeSetup();
+    invalidateResetTokens.mockRejectedValue(failure);
+
+    await expect(
+      service.changePassword("user-1", "sess-1", "old-pass", "new-pass-1"),
+    ).rejects.toBe(failure);
+  });
+
+  it("answers 401 when the user no longer exists", async () => {
+    const { passwordHasher, service } = changeSetup({ user: null });
+
+    await expect(
+      service.changePassword("user-1", "sess-1", "old-pass", "new-pass-1"),
+    ).rejects.toBeInstanceOf(UnauthorizedError);
+    expect(passwordHasher.verify).not.toHaveBeenCalled();
   });
 });

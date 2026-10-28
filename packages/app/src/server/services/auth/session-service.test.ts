@@ -120,3 +120,16 @@ describe("SessionService.revoke", () => {
     expect(em.nativeDelete).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("SessionService.revokeOthers", () => {
+  it("deletes every session of the user except the current one", async () => {
+    const { em, service } = setup();
+    em.nativeDelete.mockResolvedValue(3);
+
+    await expect(service.revokeOthers("user-1", "sess-1")).resolves.toBe(3);
+    expect(em.nativeDelete).toHaveBeenCalledExactlyOnceWith(Session, {
+      user: "user-1",
+      id: { $ne: "sess-1" },
+    });
+  });
+});

@@ -55,7 +55,7 @@ Ręczny test po fazie: wylogowanie, `/account` bez sesji przekierowuje na `/logi
 Ręczny test po fazie: `/account` → zmiana hasła; stare hasło nie loguje; druga sesja wylogowana.
 
 - [x] 5.1 `passwordChangeSchema` (+ `newPasswordSchema`)
-- [ ] 5.2 `UserService.changePassword`, `SessionService.revokeOthers`
+- [x] 5.2 `UserService.changePassword`, `SessionService.revokeOthers`
 - [ ] 5.3 Route `POST /api/auth/password`
 - [ ] 5.4 Formularz na `/account`
 

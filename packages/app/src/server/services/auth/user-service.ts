@@ -1,6 +1,7 @@
 import {
   ConflictError,
   UnauthorizedError,
+  ValidationError,
   normalizeDisplayName,
   normalizeEmail,
   type RegisterInput,
@@ -14,10 +15,19 @@ import {
 import type { PasswordHasher } from "./password-hasher";
 import type { SessionService } from "./session-service";
 
+/**
+ * Invalidates the user's unused password reset tokens (#35). Called inside the password
+ * change transaction, so an implementation must write through the request-scoped `em`.
+ * The `password_reset_tokens` table does not exist yet, so the container registers a no-op
+ * until the reset feature replaces the registration.
+ */
+export type InvalidateResetTokens = (userId: string) => Promise<void>;
+
 type Deps = {
   em: EntityManager;
   passwordHasher: PasswordHasher;
   sessionService: SessionService;
+  invalidateResetTokens: InvalidateResetTokens;
 };
 
 export type RegisteredUser = {
@@ -33,17 +43,28 @@ export const DISPLAY_NAME_TAKEN_MESSAGE = "Ta nazwa gracza jest już zajęta.";
 /** One answer for an unknown e-mail and a wrong password (never reveals which). */
 export const INVALID_CREDENTIALS_MESSAGE = "Nieprawidłowy e-mail lub hasło.";
 
+/** Answer for a wrong current password, also when a concurrent change got there first. */
+export const INVALID_CURRENT_PASSWORD_MESSAGE =
+  "Obecne hasło jest nieprawidłowe.";
+
 const DISPLAY_NAME_KEY_CONSTRAINT = "users_display_name_key_unique";
 
 export class UserService {
   readonly #em: EntityManager;
   readonly #passwordHasher: PasswordHasher;
   readonly #sessionService: SessionService;
+  readonly #invalidateResetTokens: InvalidateResetTokens;
 
-  constructor({ em, passwordHasher, sessionService }: Deps) {
+  constructor({
+    em,
+    passwordHasher,
+    sessionService,
+    invalidateResetTokens,
+  }: Deps) {
     this.#em = em;
     this.#passwordHasher = passwordHasher;
     this.#sessionService = sessionService;
+    this.#invalidateResetTokens = invalidateResetTokens;
   }
 
   /**
@@ -102,6 +123,44 @@ export class UserService {
   }
 
   /**
+   * Changes the password of a signed-in user. `newPassword` must come from
+   * `passwordChangeSchema`. The current password is verified against the stored hash and the
+   * new one hashed before the transaction (bcrypt must not hold a connection); the
+   * transaction then replaces the hash only if it is still the one that was verified
+   * (`UPDATE ... WHERE password_hash = <verified>`, so of two parallel changes only the first
+   * wins), removes the user's other sessions (all but `currentSessionId`) and invalidates
+   * unused reset tokens, all or nothing.
+   * @throws ValidationError `INVALID_CURRENT_PASSWORD` (`fieldErrors.currentPassword`) for a
+   * wrong current password or a lost race; UnauthorizedError when the user no longer exists.
+   */
+  async changePassword(
+    userId: string,
+    currentSessionId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const user = await this.#em.findOne(User, { id: userId });
+    if (!user) {
+      throw new UnauthorizedError("Zaloguj się, aby kontynuować.");
+    }
+    const previousHash = user.passwordHash;
+    if (!(await this.#passwordHasher.verify(currentPassword, previousHash))) {
+      throw invalidCurrentPassword();
+    }
+    const newHash = await this.#passwordHasher.hash(newPassword);
+    await this.#em.transactional(async () => {
+      const updated = await this.#em.nativeUpdate(
+        User,
+        { id: userId, passwordHash: previousHash },
+        { passwordHash: newHash },
+      );
+      if (updated === 0) throw invalidCurrentPassword();
+      await this.#sessionService.revokeOthers(userId, currentSessionId);
+      await this.#invalidateResetTokens(userId);
+    });
+  }
+
+  /**
    * PostgreSQL reports only the first violated index, so when the name index fired the
    * e-mail may be taken as well; it is looked up so that the uniform e-mail answer wins
    * and a name conflict never confirms an e-mail.
@@ -122,4 +181,11 @@ export class UserService {
     }
     return new ConflictError(EMAIL_TAKEN_MESSAGE);
   }
+}
+
+function invalidCurrentPassword(): ValidationError {
+  return new ValidationError(INVALID_CURRENT_PASSWORD_MESSAGE, {
+    code: "INVALID_CURRENT_PASSWORD",
+    fieldErrors: { currentPassword: [INVALID_CURRENT_PASSWORD_MESSAGE] },
+  });
 }
