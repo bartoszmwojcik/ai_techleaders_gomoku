@@ -98,6 +98,15 @@ describe("nawigacja między ekranami", () => {
     expect(inFrame().getByRole("link", { name: "Załóż konto" })).toBeTruthy();
   });
 
+  it("wylogowanie ze strony głównej (s04) zostaje na s04 w widoku niezalogowanego", async () => {
+    start();
+    act(() => switchAccount("A1"));
+    goTo("s04");
+    fireEvent.click(inFrame().getByRole("button", { name: "Wyloguj" }));
+    await waitFor(() => expect(inFrame().getByRole("link", { name: "Załóż konto" })).toBeTruthy());
+    expect(current()).toBe("s04");
+  });
+
   it("zalogowany na s01 i s02 jest odsyłany na s04", () => {
     start();
     act(() => switchAccount("A1"));

@@ -1,0 +1,6 @@
+# Długo działający `next dev` trzyma stary kod serwisu
+
+- **Problem:** po założeniu konta logowanie zwracało ogólny błąd „Nie udało się zalogować” (500 `INTERNAL`) dla każdego e-maila i hasła, także nieistniejącego. Logowanie nie miało związku z wylogowaniem; rejestracja działała.
+- **Przyczyna:** log `packages/app/.next/dev/logs/next-development.log` pokazał `TypeError: rateLimiter.hit is not a function`. Serwer `next dev` działał od Fazy 2 i trzymał w pamięci starą wersję `rate-limiter.ts` (tylko `consume`), załadowaną przez route rejestracji. Nowa trasa logowania, skompilowana później, użyła tej samej, nieodświeżonej instancji modułu serwerowego. Świeży `next dev` z tego samego kodu i bazy zwracał 200, build produkcyjny też.
+- **Reguła:** po zmianie, która dodaje metody do istniejącego modułu serwerowego (serwis, klasa w kontenerze DI), albo po zmianie gałęzi, zrestartuj `next dev`; „ogólny błąd” w dev sprawdzaj najpierw w `packages/app/.next/dev/logs/next-development.log` (stdout serwera bywa niedostępny). Błąd odtwarzaj na świeżym serwerze, zanim szukasz winnego w kodzie.
+- **Powiązane:** [Dwie kopie modułów w warstwach Next](2026-10-27-next-layers-duplicate-modules.md); Faza 3 w `track.md` (zadanie 3.1 dodało `RateLimiter.hit`).

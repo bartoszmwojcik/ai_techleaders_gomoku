@@ -1,21 +1,17 @@
 import { Alert } from "@gomoku/ui/game/alert";
-import { Button } from "@gomoku/ui/game/button";
-import { ConfirmDialog } from "@gomoku/ui/game/confirm-dialog";
 import { Panel } from "@gomoku/ui/game/panel";
 import { Skeleton, SkeletonRegion } from "@gomoku/ui/game/skeleton";
 import { StatusBadge } from "@gomoku/ui/game/status-badge";
 import { TextLink } from "@gomoku/ui/game/text-link";
-import { useState } from "react";
 
 import { go, Main, SiteHeader, useScreenEnter } from "../chrome";
-import { logout, setNext, useSim, viewer, getSim } from "../sim";
+import { setNext, useSim, viewer, getSim } from "../sim";
 import { ConfirmBanner } from "./banner";
+import { SignOutButton } from "./sign-out-button";
 
 export function S05Account() {
   const sim = useSim();
   const account = viewer(sim);
-  const [asking, setAsking] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
 
   // s05.6: no session means the login page, which brings the player back here afterwards (spec #20).
   useScreenEnter("s05", () => {
@@ -24,15 +20,6 @@ export function S05Account() {
       go("s02");
     }
   });
-
-  // s05.3: the button shows the wait. The session ends in this browser even when the server errs (s05.5, map L20).
-  async function signOut() {
-    setSigningOut(true);
-    await logout();
-    setSigningOut(false);
-    setAsking(false);
-    go("s04");
-  }
 
   return (
     <>
@@ -60,20 +47,9 @@ export function S05Account() {
                 <StatusBadge status={account.verified ? "success" : "warning"}>{account.verified ? "Potwierdzony" : "Niepotwierdzony"}</StatusBadge>
               </p>
               <div>
-                <Button variant="secondary" loading={signingOut} onClick={() => (account.activeGame ? setAsking(true) : void signOut())}>Wyloguj</Button>
+                <SignOutButton />
               </div>
             </Panel>
-            <ConfirmDialog
-              open={asking}
-              onOpenChange={setAsking}
-              tone="primary"
-              title="Wylogować?"
-              description="Trwa partia — po wylogowaniu zegar biegnie dalej. Wylogować?"
-              confirmLabel="Wyloguj"
-              cancelLabel="Zostań zalogowany"
-              confirming={signingOut}
-              onConfirm={() => void signOut()}
-            />
           </>
         )}
       </Main>

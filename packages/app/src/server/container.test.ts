@@ -109,6 +109,8 @@ describe("auth services", () => {
       expect(cradle.sessionService).toBe(cradle.sessionService);
       expect(cradle.rateLimiter).toBe(cradle.rateLimiter);
       expect(cradle.userService).toBe(cradle.userService);
+      expect(cradle.gameParticipation).toBe(cradle.gameParticipation);
+      expect(await cradle.gameParticipation.hasActiveGame("user")).toBe(false);
       expect(await cradle.hasActiveGame("user", new Date())).toBe(false);
       expect(forkedEm).toBeDefined();
     });

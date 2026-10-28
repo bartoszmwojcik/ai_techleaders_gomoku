@@ -57,4 +57,13 @@ export class SessionService {
       ? session
       : null;
   }
+
+  /**
+   * Revokes the session behind a token (logout). Only that session: the user's other
+   * sessions stay valid (Q3). Idempotent: an unknown, expired or already revoked token
+   * deletes nothing and is not an error.
+   */
+  async revoke(token: string): Promise<void> {
+    await this.#em.nativeDelete(Session, { tokenHash: hashOpaqueToken(token) });
+  }
 }

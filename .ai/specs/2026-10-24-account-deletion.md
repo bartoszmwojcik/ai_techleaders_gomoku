@@ -22,7 +22,7 @@ Dziś (po #20) nie da się usunąć konta. Po wdrożeniu (zachowanie przyszłe):
 
 ## 📝 Proposed Solution
 
-`POST /api/account/delete` (`requireSession`, `apiHandler`; POST zamiast DELETE z treścią — treść w DELETE bywa gubiona przez proxy) → limit (Q2) → `accountDeleteSchema` (`password`, `confirm: true`) → `activeGameCheck.hasActiveGame` (BR-21) → `AccountService.delete(userId, password)` w jednej transakcji → usunięcie ciasteczka (jak w #20). Kaskady w bazie: `sessions`, `email_verification_tokens` (#34), `password_reset_tokens` (#35), wpis lobby (#31), niewykorzystane zaproszenia utworzone przez użytkownika (#21/#29) — `on delete cascade`; uczestnik partii (#29) — `set null` (Q1). **Odrzucone:** miękkie usunięcie z flagą (dane osobowe zostają — sprzeczne z BR-17), anonimizacja przez nadpisanie e-maila i nazwy (konto-widmo zajmuje unikalne indeksy, łatwo o wyciek starych danych w kopiach). **Poza zakresem:** eksport danych, panel administratora do usuwania kont.
+`POST /api/account/delete` (`requireSession`, `apiHandler`; POST zamiast DELETE z treścią — treść w DELETE bywa gubiona przez proxy) → limit (Q2) → `accountDeleteSchema` (`password`, `confirm: true`) → `gameParticipation.hasActiveGame` (BR-21) → `AccountService.delete(userId, password)` w jednej transakcji → usunięcie ciasteczka (jak w #20). Kaskady w bazie: `sessions`, `email_verification_tokens` (#34), `password_reset_tokens` (#35), wpis lobby (#31), niewykorzystane zaproszenia utworzone przez użytkownika (#21/#29) — `on delete cascade`; uczestnik partii (#29) — `set null` (Q1). **Odrzucone:** miękkie usunięcie z flagą (dane osobowe zostają — sprzeczne z BR-17), anonimizacja przez nadpisanie e-maila i nazwy (konto-widmo zajmuje unikalne indeksy, łatwo o wyciek starych danych w kopiach). **Poza zakresem:** eksport danych, panel administratora do usuwania kont.
 
 ## 📝 Data Model
 
@@ -50,7 +50,7 @@ Sekcja „Usuń konto” na `/account` (na dole, wizualnie oddzielona): opis sku
 
 | Sytuacja | Co widzi użytkownik |
 |---|---|
-| Aktywna partia | `409` z komunikatem BR-21 (w #37 przed #21/#22 funkcja `activeGameCheck` zwraca `false`). |
+| Aktywna partia | `409` z komunikatem BR-21 (w #37 przed #21/#22 funkcja `gameParticipation` zwraca `false`). |
 | Partia startuje równolegle z usuwaniem | Transakcja usunięcia sprawdza aktywną partię z blokadą wiersza `users` (`SELECT … FOR UPDATE`); tworzenie partii (#21, #26) blokuje te same wiersze. **Reguła dla wszystkich (wymaganie wobec #21, #26, #29, #31): wiersze `users` blokujemy zawsze w kolejności rosnącego `id`** — parowanie z lobby blokuje dwóch graczy, więc bez stałej kolejności grozi zakleszczenie. |
 | Inne urządzenia zalogowane | Ich sesje znikają kaskadowo — następne żądanie jest niezalogowane. |
 | Baza niedostępna | `500`; nic nie zostało usunięte (jedna transakcja). |
@@ -65,16 +65,16 @@ Sekcja „Usuń konto” na `/account` (na dole, wizualnie oddzielona): opis sku
 
 ## 📝 Decisions in play
 
-D-16, BR-17, BR-21, BR-24, BR-22, D-22; specyfikacja #20 (H1, `activeGameCheck`, `requireSession`). Właściciel: Bartosz Wójcik.
+D-16, BR-17, BR-21, BR-24, BR-22, D-22; specyfikacja #20 (H1, `gameParticipation`, `requireSession`). Właściciel: Bartosz Wójcik.
 
 ## 📋 Phasing
 
-Jedna faza, jeden PR (`Closes #37`), **po #20, #29 i prawdziwej implementacji `activeGameCheck`** (z #21/#22 albo w tym PR na modelu z #29) — bez niej usunięcie konta w trakcie partii złamałoby BR-21. Kaskady #31/#34/#35 sprawdzane, gdy te tabele istnieją.
+Jedna faza, jeden PR (`Closes #37`), **po #20, #29 i prawdziwej implementacji `gameParticipation`** (z #21/#22 albo w tym PR na modelu z #29) — bez niej usunięcie konta w trakcie partii złamałoby BR-21. Kaskady #31/#34/#35 sprawdzane, gdy te tabele istnieją.
 
 ## 📋 Implementation Plan
 
 1. `accountDeleteSchema`. Testy.
-2. `AccountService.delete` (weryfikacja hasła, blokada wiersza, `activeGameCheck`, usunięcie). Testy jednostkowe na fałszywym `em`.
+2. `AccountService.delete` (weryfikacja hasła, blokada wiersza, `gameParticipation`, usunięcie). Testy jednostkowe na fałszywym `em`.
 3. Route `api/account/delete/route.ts` (`POST`). Testy integracyjne: po usunięciu brak wierszy w `users`, `sessions` i tabelach tokenów; partia przeciwnika z `user_id` NULL wyświetlana jako „Usunięty gracz”; logowanie się nie udaje; ponowna rejestracja tym e-mailem działa; `409` przy aktywnej partii (fałszywa partia w bazie testowej); `400`/`401`/`403`/`429`.
 4. Sekcja na `/account`. Testy komponentu (przycisk nieaktywny bez potwierdzenia); agent-browser na szerokości telefonu.
 5. Komentarz w #29 o wymaganiu `set null` i rozróżnieniu `account`/`guest`.
@@ -83,5 +83,5 @@ Jedna faza, jeden PR (`Closes #37`), **po #20, #29 i prawdziwej implementacji `a
 
 Potwierdzone przez właściciela — Bartosza Wójcika.
 
-- **Definicja „aktywnej partii” (BR-21):** blokuje tylko partia **w toku** (obaj gracze, zegar biegnie). Partia oczekująca na przeciwnika i wpis w lobby nie blokują — są usuwane kaskadą razem z kontem. Dokładny status zapisujemy jako wymaganie wobec #26/#29 (`activeGameCheck`).
+- **Definicja „aktywnej partii” (BR-21):** blokuje tylko partia **w toku** (obaj gracze, zegar biegnie). Partia oczekująca na przeciwnika i wpis w lobby nie blokują — są usuwane kaskadą razem z kontem. Dokładny status zapisujemy jako wymaganie wobec #26/#29 (`gameParticipation`).
 - **Limity per adres klienta** działają tylko przy wiarygodnie ustalonym adresie (spike #30); limit 10 prób na konto zostaje zawsze.

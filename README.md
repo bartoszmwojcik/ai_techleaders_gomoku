@@ -51,7 +51,7 @@ Aplikacja Next.js z App Routerem (`packages/app/src/app`). Ma dwie części, ka�
 
 | Część | Katalog | Adres | Style |
 | --- | --- | --- | --- |
-| Frontend — strony dla graczy | `src/app/(frontend)` | `/`, `/register` | Tailwind CSS z własnym motywem gry (`frontend.css`) |
+| Frontend — strony dla graczy | `src/app/(frontend)` | `/`, `/register`, `/login`, `/account` | Tailwind CSS z własnym motywem gry (`frontend.css`) |
 | Backend — panel administracyjny | `src/app/(backend)` | `/backend` | shadcn/ui z `@gomoku/ui` |
 | API | `src/app/api` | `/api/*` | — |
 
@@ -80,6 +80,28 @@ Gracz zakłada konto na `/register` (e-mail, nazwa gracza, hasło co najmniej 8 
 - **Odpowiedzi:** zajęty e-mail daje jednolite `409` bez wskazania pola (brak ujawniania kont), zajęta nazwa gracza jest zgłaszana przy swoim polu, zalogowany klient dostaje `409 ALREADY_AUTHENTICATED`.
 
 Specyfikacja i kontrakt API: [`.ai/specs/2026-10-24-account-registration.md`](.ai/specs/2026-10-24-account-registration.md).
+
+#### Logowanie, wylogowanie i strona konta
+
+- **Strony:** `/login` (e-mail i hasło; parametr `?next=` jak przy rejestracji, a zalogowany wchodzący na `/login` trafia na `next`) oraz `/account` (nazwa gracza, e-mail i przycisk „Wyloguj”; baner i znacznik potwierdzenia e-maila dojdą w fazach 6–7). Strona `/` pokazuje zalogowanemu link „Konto” i przycisk „Wyloguj”, a gościowi linki „Zaloguj się” i „Załóż konto”.
+- **Endpointy:** `POST /api/auth/login` (`{ email, password }`; sukces `200` z ciasteczkiem sesji) i `POST /api/auth/logout` (`200` z `{ "ok": true, "data": null }`). Oba wymagają nagłówków CSRF opisanych wyżej.
+- **Kody błędów** (pole `code` w kopercie błędu):
+
+  | Kod | Status | Kiedy |
+  | --- | --- | --- |
+  | `INVALID_CREDENTIALS` | `401` | zły e-mail lub hasło; treść i czas odpowiedzi są takie same dla nieznanego konta (atrapowy hash), więc nie ujawniają istnienia konta |
+  | `RATE_LIMITED` | `429` | przekroczony któryś limit prób; nagłówek `Retry-After`, ten sam komunikat dla wszystkich limitów |
+  | `ALREADY_AUTHENTICATED` | `409` | klient ma już ważną sesję (ciasteczko z wygasłą lub nieznaną sesją nie przeszkadza i jest nadpisywane) |
+  | `VALIDATION` | `400` | zły kształt danych (brak pola, nieprawidłowy e-mail, hasło dłuższe niż 1024 znaki); bez reguł hasła z rejestracji |
+
+- **Limity prób logowania** (bez blokady konta): 30 prób na godzinę na adres klienta, 10 nieudanych na parę e-mail + adres w 15 minut i 100 nieudanych na sam e-mail w godzinę (przeciw atakowi z wielu adresów). Liczniki rosną przed sprawdzeniem hasła, więc równoległe próby nie omijają limitu; udane logowanie zeruje oba liczniki e-mailowe, a limit na adres zostaje. Właściciel konta, którego e-mail ktoś zgaduje z jednego adresu, loguje się normalnie z innego. Klucze limitów to skróty SHA-256 (w bazie nie ma e-maili ani adresów); wiersze sprząta czyszczenie wygasłych rekordów (#39).
+- **Adres klienta** pochodzi z `CLIENT_IP_HEADER` według `TRUST_PROXY_HOPS` (IPv6 skrócony do /64). Źle ustawione `TRUST_PROXY_HOPS` psuje limity: za duże pozwala podszyć się pod adres, za małe wrzuca wszystkich pod adres proxy, więc jedna osoba wyczerpie limit całej aplikacji. W dev (bez `TRUST_PROXY_HOPS`) wszyscy współdzielą klucz `local`.
+- **Ciasteczko sesji:** `httpOnly`, `SameSite=Lax`, `Path=/` (w produkcji `__Host-gomoku_session` z `Secure`). Każde logowanie tworzy nową sesję z nowym tokenem (brak session fixation). Wylogowanie unieważnia tylko bieżącą sesję w bazie (inne urządzenia zostają zalogowane) i usuwa ciasteczko; jest idempotentne, a przy niedostępnej bazie odpowiada `500`, ale ciasteczko i tak jest usuwane (przycisk „Wyloguj” traktuje wtedy `500` jak udane wylogowanie i przechodzi na `/`; błąd sieci pokazuje komunikat i pozwala ponowić). Wszystkie sesje konta unieważnią dopiero zmiana hasła (#36) i reset hasła (#35).
+- **Strażnik sesji** (`packages/app/src/server/http/auth.ts`): `requireSession()` w route handlerach (bez sesji `401` przez `apiHandler`) i `requirePageSession(path)` na stronach (przekierowanie na `/login?next=<path>`). Obie zawodzą bezpiecznie: przy błędzie bazy nie ma sesji. Każda nowa chroniona trasa lub strona woła jedną z nich jako pierwszą.
+- **Wylogowanie w trakcie partii (Q4):** `/account` i `/` przekazują do `LogoutButton` prop `hasActiveGame` z `gameParticipation.hasActiveGame(userId)` (po zamknięciu okna fokus wraca na przycisk „Wyloguj”); gdy jest `true`, przed wylogowaniem pojawia się potwierdzenie „Trwa partia — po wylogowaniu zegar biegnie dalej. Wylogować?”. Dziś partii nie ma, więc `GameParticipation` (singleton) zawsze zwraca `false`; implementację podmieni funkcja gry (#21/#22).
+- **Koszt hasha:** `PASSWORD_HASH_COST` (opis wyżej) dotyczy też logowania: nieznany e-mail jest weryfikowany względem atrapowego hasha o tym samym koszcie, żeby czas odpowiedzi nie zdradzał istnienia konta. W produkcji zostaw domyślne `12`.
+
+Specyfikacja i kontrakt API: [`.ai/specs/2026-10-24-login-logout.md`](.ai/specs/2026-10-24-login-logout.md).
 
 ### `@gomoku/core` — części wielokrotnego użytku
 

@@ -45,9 +45,10 @@ Ręczny test po fazie: `/login` (poprawne dane, złe hasło ten sam komunikat, `
 
 Ręczny test po fazie: wylogowanie, `/account` bez sesji przekierowuje na `/login?next=…`, linki na `/`.
 
-- [ ] 4.1 `SessionService.revoke` i `POST /api/auth/logout`
-- [ ] 4.2 `requireSession` / `requirePageSession`, `activeGameCheck`, `/account`, `LogoutButton`, linki na `/`
-- [ ] 4.3 Dokumentacja (README: logowanie, limity)
+- [x] 4.1 `SessionService.revoke` i `POST /api/auth/logout`
+- [x] 4.2 `requireSession` / `requirePageSession`, `activeGameCheck`, `/account`, `LogoutButton`, linki na `/`
+- [x] 4.3 Dokumentacja (README: logowanie, limity)
+- [x] 4.4 Poprawki po code review Fazy 4 (M1 README bez „stanu potwierdzenia”, M2 przycisk „Wyloguj” na `/` zostaje: dopisać do specyfikacji i prototypu, jeden scope dla użytkownika i `hasActiveGame`, M3 fokus po zamknięciu `ConfirmDialog`, L1 500 przy wylogowaniu traktowane jak wylogowanie lokalne, L4 zmiana nazwy `activeGameCheck`, L5 `requirePageSession` przez `safeNextPath`/komentarz)
 
 ## Faza 5 — Zmiana hasła (#36)
 
@@ -98,7 +99,7 @@ Ręczny test po fazie: `npm run db:cleanup` na bazie ze starymi rekordami.
 
 ## Faza 10 — Usunięcie konta (#37)
 
-- [!] Zablokowana: wymaga #29 (tabele partii) i prawdziwego `activeGameCheck` (E02). Po E02-S01 kroki 1–5 ze specyfikacji `account-deletion`.
+- [!] Zablokowana: wymaga #29 (tabele partii) i prawdziwego `gameParticipation` (E02). Po E02-S01 kroki 1–5 ze specyfikacji `account-deletion`.
 
 ## Poza zakresem tego przebiegu
 

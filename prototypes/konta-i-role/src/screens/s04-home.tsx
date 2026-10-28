@@ -7,6 +7,7 @@ import { Main, OutsideLink, SiteHeader } from "../chrome";
 import { cellLabel, OPENING } from "../demo";
 import { clearNotice, showOutside, useSim, viewer } from "../sim";
 import { ConfirmBanner } from "./banner";
+import { SignOutButton } from "./sign-out-button";
 
 export function S04Home() {
   const sim = useSim();
@@ -50,6 +51,7 @@ export function S04Home() {
                 <>
                   <Button onClick={() => showOutside("Utwórz zaproszenie")}>Utwórz zaproszenie</Button>
                   <Button variant="secondary" onClick={() => showOutside("Szukam przeciwnika")}>Szukam przeciwnika</Button>
+                  <SignOutButton />
                 </>
               )}
             </div>
