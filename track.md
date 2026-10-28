@@ -101,6 +101,17 @@ Ręczny test po fazie: `npm run db:cleanup` na bazie ze starymi rekordami.
 
 - [!] Zablokowana: wymaga #29 (tabele partii) i prawdziwego `gameParticipation` (E02). Po E02-S01 kroki 1–5 ze specyfikacji `account-deletion`.
 
+## Faza 11 — Przełącznik motywu jasny/ciemny (dodane 2026-10-28, decyzja właściciela; poza specyfikacjami E01)
+
+Dziś strony gracza mają zawsze motyw ciemny (`:root`), jasny włącza `data-theme="light"` na `<html>` (`packages/ui/src/styles/game-tokens.css`); aplikacja nie ma przełącznika. Propozycja robocza do potwierdzenia w mini-specyfikacji: `data-theme` ustawiany na `<html>` według `prefers-color-scheme`, z ręcznym wyborem zapamiętanym w ciasteczku (bez migotania przy ładowaniu), przełącznik w nagłówku stron gracza.
+
+Ręczny test po fazie: przełączenie motywu na `/`, `/register`, `/login`, `/account`; zapamiętanie wyboru po odświeżeniu; zgodność z ustawieniem systemu przy pierwszej wizycie; kontrast i fokus w obu motywach; 360 px.
+
+- [ ] 11.1 Mini-specyfikacja `.ai/specs/YYYY-MM-DD-theme-switcher.md` (zachowanie, miejsce przełącznika, ciasteczko vs `localStorage`, brak migotania, dostępność, testy); pytania do właściciela przed kodem
+- [ ] 11.2 Mechanizm motywu (czysta logika w `core`/`ui`, ustawienie `data-theme` w layoucie `(frontend)`, ciasteczko)
+- [ ] 11.3 Komponent przełącznika w `@gomoku/ui/game/*` (Storybook, oba motywy) i użycie w nagłówku stron gracza
+- [ ] 11.4 Testy jednostkowe, integracyjne (agent-browser) i przegląd obu motywów wszystkich ekranów E01 (w tym jasny motyw, dotąd nieoglądany)
+
 ## Poza zakresem tego przebiegu
 
 - #38 w części decyzji o produkcyjnym dostawcy poczty (spike SMTP) i #30 (adres klienta): produkcja wymaga ich rozstrzygnięcia; lokalnie używamy `FileEmailSender`.
