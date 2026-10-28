@@ -58,6 +58,7 @@ Ręczny test po fazie: `/account` → zmiana hasła; stare hasło nie loguje; dr
 - [x] 5.2 `UserService.changePassword`, `SessionService.revokeOthers`
 - [x] 5.3 Route `POST /api/auth/password`
 - [x] 5.4 Formularz na `/account`
+- [x] 5.5 Poprawki po code review Fazy 5 (C1 atomowość: zapisy w `em.transactional` przez przekazany `tx` w `changePassword` ORAZ w `register`, `revokeOthers` i `invalidateResetTokens` przyjmują `em`, test na PostgreSQL wymuszonej awarii; M1 obsługa 401 w formularzu; M2 sygnatura `invalidateResetTokens(userId, em)` + test kontraktu; L1 testy równoległych zmian; L5 README; L6 a11y statusu; lekcja o `em.transactional`)
 
 ## Faza 6 — Potwierdzenie e-maila (#34, Faza 1: kroki 1–5; port poczty z #38)
 
@@ -83,7 +84,7 @@ Ręczny test po fazie: `/forgot-password` → link ze skrzynki → `/reset-passw
 
 - [ ] 8.1 Encja i migracja `password_reset_tokens`
 - [ ] 8.2 `newPasswordSchema` + schematy resetu
-- [ ] 8.3 `PasswordResetService` + szablon (dopiąć: w `container.ts` zastąpić no-op `invalidateResetTokens` (z 5.2) scopowaną funkcją na `em` usuwającą/unieważniającą niewykorzystane tokeny resetu użytkownika, z testami)
+- [ ] 8.3 `PasswordResetService` + szablon (dopiąć: w `container.ts` zastąpić no-op `invalidateResetTokens` (z 5.2) funkcją `(userId, em)` usuwającą/unieważniającą niewykorzystane tokeny resetu użytkownika wyłącznie przez przekazany `em` (`tx` transakcji zmiany hasła, nie wstrzyknięty `em`), z testami; sygnatura jest już gotowa od 5.5)
 - [ ] 8.4 Route `…/request` i `…/confirm`
 - [ ] 8.5 Strony `/forgot-password`, `/reset-password`, link na `/login`
 - [ ] 8.6 Dokumentacja

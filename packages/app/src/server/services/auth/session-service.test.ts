@@ -121,6 +121,39 @@ describe("SessionService.revoke", () => {
   });
 });
 
+describe("SessionService with a transaction entity manager", () => {
+  const fakeTx = () => ({
+    create: vi.fn(),
+    getReference: vi.fn((_entity: unknown, id: string) => ({ ref: id })),
+    flush: vi.fn(async () => undefined),
+    nativeDelete: vi.fn(async () => 4),
+  });
+
+  it("creates the session through the given em, not the injected one", async () => {
+    const { em, service } = setup();
+    const tx = fakeTx();
+
+    await service.create("user-1", now, tx as unknown as EntityManager);
+
+    expect(tx.create).toHaveBeenCalledOnce();
+    expect(tx.flush).toHaveBeenCalledOnce();
+    expect(em.create).not.toHaveBeenCalled();
+    expect(em.flush).not.toHaveBeenCalled();
+  });
+
+  it("revokes others through the given em, not the injected one", async () => {
+    const { em, service } = setup();
+    const tx = fakeTx();
+
+    await expect(
+      service.revokeOthers("user-1", "sess-1", tx as unknown as EntityManager),
+    ).resolves.toBe(4);
+
+    expect(tx.nativeDelete).toHaveBeenCalledOnce();
+    expect(em.nativeDelete).not.toHaveBeenCalled();
+  });
+});
+
 describe("SessionService.revokeOthers", () => {
   it("deletes every session of the user except the current one", async () => {
     const { em, service } = setup();

@@ -86,6 +86,20 @@ describe("change password form on /account", () => {
     await browser.waitFor("[data-testid=signed-in-as]");
   });
 
+  it("sends a user whose session expired to sign-in and back to the account page", async () => {
+    const user = uniqueUser();
+    await registerInBrowser(user);
+    await browser.open(`${baseUrl}/account`);
+    await browser.waitFor("[data-testid=change-password-form]");
+
+    await browser.clearCookies();
+    await browser.fill("#change-current-password", user.password);
+    await browser.fill("#change-new-password", NEW_PASSWORD);
+    await browser.click("[data-testid=change-password-form] button[type=submit]");
+
+    await browser.waitForFn(`location.pathname === '/login' && location.search === '?next=%2Faccount'`);
+  });
+
   it("validates the form on the client without leaving the page", async () => {
     const user = uniqueUser();
     await registerInBrowser(user);

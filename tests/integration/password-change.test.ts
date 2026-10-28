@@ -99,6 +99,49 @@ describe("POST /api/auth/password", () => {
     expect(fresh.status).toBe(200);
   });
 
+  it("lets only one of two parallel changes with the right current password win", async () => {
+    const { user, cookie } = await registerUser();
+    const first = "first-new-pass1";
+    const second = "second-new-pass2";
+
+    const responses = await Promise.all([
+      changePassword(cookie, {
+        currentPassword: user.password,
+        newPassword: first,
+      }),
+      changePassword(cookie, {
+        currentPassword: user.password,
+        newPassword: second,
+      }),
+    ]);
+
+    const statuses = responses.map((response) => response.status).sort();
+    expect(statuses).toEqual([200, 400]);
+    const winnerIndex = responses.findIndex((r) => r.status === 200);
+    const loser = responses[1 - winnerIndex] as Response;
+    expect(((await loser.json()) as ErrorBody).error.code).toBe(
+      "INVALID_CURRENT_PASSWORD",
+    );
+    const winnerPassword = winnerIndex === 0 ? first : second;
+    const loserPassword = winnerIndex === 0 ? second : first;
+    expect(
+      (
+        await post("/api/auth/login", {
+          email: user.email,
+          password: winnerPassword,
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await post("/api/auth/login", {
+          email: user.email,
+          password: loserPassword,
+        })
+      ).status,
+    ).toBe(401);
+  });
+
   it("keeps the current session and ends the other ones", async () => {
     const { user, cookie: current } = await registerUser();
     const other = await loginAs(user);

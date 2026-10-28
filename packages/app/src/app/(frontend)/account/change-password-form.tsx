@@ -4,6 +4,7 @@ import { toValidationError } from "@gomoku/core/http/zod-error";
 import { passwordChangeSchema } from "@gomoku/core/validators/auth/password-change-schema";
 import { Alert } from "@gomoku/ui/game/alert";
 import { PasswordField } from "@gomoku/ui/game/password-field";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { ErrorMessage } from "@/components/feedback/error-message";
@@ -40,6 +41,7 @@ function rateLimitedError(retryAfterSeconds: number | undefined): GeneralError {
 }
 
 export function ChangePasswordForm() {
+  const router = useRouter();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   // Remounting a password field hides the password again.
@@ -90,6 +92,11 @@ export function ChangePasswordForm() {
     }
 
     const { code, retryAfterSeconds, fieldErrors } = result.error;
+    if (code === "UNAUTHORIZED") {
+      // The session expired while the form was open: sign in again and come back here.
+      router.replace(`/login?next=${encodeURIComponent("/account")}`);
+      return;
+    }
     const messages = firstMessages(fieldErrors);
     if (code === "INVALID_CURRENT_PASSWORD") {
       // Only the wrong password is cleared (and hidden again); the new one stays.
@@ -116,13 +123,16 @@ export function ChangePasswordForm() {
 
   return (
     <>
-      {changed && (
-        <div data-testid="change-password-success">
-          <Alert status="success" role="status" title="Hasło zmienione">
-            Inne urządzenia zostały wylogowane.
-          </Alert>
-        </div>
-      )}
+      {/* Mounted from the start, so assistive technology announces the content added later. */}
+      <div aria-live="polite" data-testid="change-password-live">
+        {changed && (
+          <div data-testid="change-password-success">
+            <Alert status="success" role="status" title="Hasło zmienione">
+              Inne urządzenia zostały wylogowane.
+            </Alert>
+          </div>
+        )}
+      </div>
       {general && (
         <div data-testid="change-password-error">
           <ErrorMessage title={general.title}>{general.details}</ErrorMessage>
@@ -156,7 +166,8 @@ export function ChangePasswordForm() {
           value={newPassword}
           onChange={setNewPassword}
         />
-        <Alert status="warning" role="status" title="Wylogowanie z innych urządzeń">
+        {/* Static text, not a message: no role, so it is not announced as a live region. */}
+        <Alert status="warning" role="none" title="Wylogowanie z innych urządzeń">
           Inne urządzenia zostaną wylogowane, także w trakcie partii.
         </Alert>
         <SubmitButton pending={pending} pendingLabel="Zmienianie hasła…">

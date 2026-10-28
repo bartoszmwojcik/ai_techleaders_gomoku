@@ -4,7 +4,9 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { apiCall } = vi.hoisted(() => ({ apiCall: vi.fn() }));
+const { replace } = vi.hoisted(() => ({ replace: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiCall }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
 
 import { ChangePasswordForm } from "./change-password-form";
 
@@ -24,7 +26,10 @@ async function fillAndSubmit({ currentPassword = "secret123", newPassword = "bra
   return user;
 }
 
-beforeEach(() => apiCall.mockReset());
+beforeEach(() => {
+  apiCall.mockReset();
+  replace.mockReset();
+});
 afterEach(cleanup);
 
 describe("ChangePasswordForm", () => {
@@ -35,6 +40,32 @@ describe("ChangePasswordForm", () => {
     expect(screen.getByText("Co najmniej 8 znaków")).toBeTruthy();
     expect(screen.getByText("Inne urządzenia zostaną wylogowane, także w trakcie partii.")).toBeTruthy();
     expect(screen.queryByTestId("change-password-success")).toBeNull();
+    expect(screen.queryByTestId("change-password-error")).toBeNull();
+  });
+
+  it("keeps the static warning out of the live regions and announces the success in a stable one", async () => {
+    apiCall.mockResolvedValue({ ok: true, data: null });
+    render(<ChangePasswordForm />);
+    const warning = screen.getByText("Wylogowanie z innych urządzeń");
+    expect(warning.closest("[role], [aria-live]")).toBeNull();
+    expect(screen.queryAllByRole("status")).toHaveLength(0);
+    const live = screen.getByTestId("change-password-live");
+    expect(live.getAttribute("aria-live")).toBe("polite");
+    expect(live.textContent).toBe("");
+
+    await fillAndSubmit();
+
+    // The very same element received the message, so it is announced.
+    expect(screen.getByTestId("change-password-live")).toBe(live);
+    expect(live.textContent).toContain("Hasło zmienione");
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+  });
+
+  it("sends an expired session to sign-in and back to the account page", async () => {
+    apiCall.mockResolvedValue(failure({ code: "UNAUTHORIZED" }));
+    render(<ChangePasswordForm />);
+    await fillAndSubmit();
+    expect(replace).toHaveBeenCalledExactlyOnceWith("/login?next=%2Faccount");
     expect(screen.queryByTestId("change-password-error")).toBeNull();
   });
 

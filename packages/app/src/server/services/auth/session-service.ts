@@ -25,19 +25,24 @@ export class SessionService {
     this.#hasActiveGame = hasActiveGame;
   }
 
-  /** Creates a session and returns the raw token (for the cookie); only its hash is stored. */
+  /**
+   * Creates a session and returns the raw token (for the cookie); only its hash is stored.
+   * Inside `em.transactional` pass the callback's `tx` as `em`: the injected fork does not
+   * join the transaction.
+   */
   async create(
     userId: string,
     now: Date = new Date(),
+    em: EntityManager = this.#em,
   ): Promise<{ token: string; expiresAt: Date }> {
     const token = createOpaqueToken();
     const expiresAt = new Date(now.getTime() + SESSION_TTL_MS);
-    this.#em.create(Session, {
-      user: this.#em.getReference(User, userId),
+    em.create(Session, {
+      user: em.getReference(User, userId),
       tokenHash: hashOpaqueToken(token),
       expiresAt,
     });
-    await this.#em.flush();
+    await em.flush();
     return { token, expiresAt };
   }
 
@@ -69,14 +74,16 @@ export class SessionService {
 
   /**
    * Revokes every session of the user except the current one (password change, Q4), also
-   * those of a game in progress. Joins the surrounding transaction when there is one.
+   * those of a game in progress. Inside `em.transactional` pass the callback's `tx` as `em`;
+   * the injected fork does not join the transaction (it has `useContext = false`).
    * @returns how many sessions were deleted.
    */
   async revokeOthers(
     userId: string,
     currentSessionId: string,
+    em: EntityManager = this.#em,
   ): Promise<number> {
-    return this.#em.nativeDelete(Session, {
+    return em.nativeDelete(Session, {
       user: userId,
       id: { $ne: currentSessionId },
     });

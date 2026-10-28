@@ -17,11 +17,12 @@ import type { SessionService } from "./session-service";
 
 /**
  * Invalidates the user's unused password reset tokens (#35). Called inside the password
- * change transaction, so an implementation must write through the request-scoped `em`.
+ * change transaction with the transaction's `em` (`tx`): an implementation must write only
+ * through it, never through an injected `em` (that fork does not join the transaction).
  * The `password_reset_tokens` table does not exist yet, so the container registers a no-op
  * until the reset feature replaces the registration.
  */
-export type InvalidateResetTokens = (userId: string) => Promise<void>;
+export type InvalidateResetTokens = (userId: string, em: EntityManager) => Promise<void>;
 
 type Deps = {
   em: EntityManager;
@@ -78,15 +79,20 @@ export class UserService {
     const passwordHash = await this.#passwordHasher.hash(input.password);
     try {
       // One transaction: a failure to create the session leaves no account without one.
-      return await this.#em.transactional(async () => {
-        const user = this.#em.create(User, {
+      // Writes go through `tx`; the injected fork (`useContext = false`) is outside it.
+      return await this.#em.transactional(async (tx) => {
+        const user = tx.create(User, {
           email: input.email,
           displayName: input.displayName,
           displayNameKey: normalizeDisplayName(input.displayName),
           passwordHash,
         });
-        await this.#em.flush();
-        const session = await this.#sessionService.create(user.id);
+        await tx.flush();
+        const session = await this.#sessionService.create(
+          user.id,
+          new Date(),
+          tx,
+        );
         return {
           user: { id: user.id, displayName: user.displayName },
           session,
@@ -148,15 +154,19 @@ export class UserService {
       throw invalidCurrentPassword();
     }
     const newHash = await this.#passwordHasher.hash(newPassword);
-    await this.#em.transactional(async () => {
-      const updated = await this.#em.nativeUpdate(
+    await this.#em.transactional(async (tx) => {
+      const updated = await tx.nativeUpdate(
         User,
         { id: userId, passwordHash: previousHash },
         { passwordHash: newHash },
       );
       if (updated === 0) throw invalidCurrentPassword();
-      await this.#sessionService.revokeOthers(userId, currentSessionId);
-      await this.#invalidateResetTokens(userId);
+      await this.#sessionService.revokeOthers(
+        userId,
+        currentSessionId,
+        tx,
+      );
+      await this.#invalidateResetTokens(userId, tx);
     });
   }
 

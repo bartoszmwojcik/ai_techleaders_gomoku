@@ -16,6 +16,7 @@ declare module "vitest" {
   export interface ProvidedContext {
     baseUrl: string;
     browserSession: string;
+    databaseUrl: string;
   }
 }
 
@@ -118,6 +119,7 @@ export default async function setup(project: TestProject) {
     await waitUntilReady(baseUrl, server, () => output);
 
     project.provide("baseUrl", baseUrl);
+    project.provide("databaseUrl", container.getConnectionUri());
     project.provide("browserSession", browser.session);
   } catch (error) {
     await teardown();

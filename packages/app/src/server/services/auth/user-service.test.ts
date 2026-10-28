@@ -34,7 +34,9 @@ function uniqueViolation(constraint: string) {
 
 function setup(options: { flushError?: unknown; emailCount?: number } = {}) {
   const calls: string[] = [];
-  const em = {
+  // The transaction's em differs from the injected one, like in MikroORM 7 (the fork has
+  // `useContext = false`): only writes through `tx` are part of the transaction.
+  const tx = {
     create: vi.fn((_entity: unknown, data: object) => ({
       id: "user-1",
       ...data,
@@ -43,11 +45,15 @@ function setup(options: { flushError?: unknown; emailCount?: number } = {}) {
       calls.push("flush");
       if (options.flushError) throw options.flushError;
     }),
+  };
+  const em = {
+    create: vi.fn(),
+    flush: vi.fn(),
     clear: vi.fn(() => calls.push("clear")),
-    transactional: vi.fn(async (work: () => Promise<unknown>) => {
+    transactional: vi.fn(async (work: (tx: unknown) => Promise<unknown>) => {
       calls.push("begin");
       try {
-        return await work();
+        return await work(tx);
       } finally {
         calls.push("end");
       }
@@ -68,23 +74,37 @@ function setup(options: { flushError?: unknown; emailCount?: number } = {}) {
     sessionService: sessionService as unknown as SessionService,
     invalidateResetTokens: vi.fn(async () => undefined),
   });
-  return { em, passwordHasher, sessionService, service, session, calls };
+  return {
+    em,
+    tx,
+    passwordHasher,
+    sessionService,
+    service,
+    session,
+    calls,
+  };
 }
 
 describe("UserService.register", () => {
   it("hashes first, inserts only the schema fields and starts a session", async () => {
-    const { em, sessionService, service, session, calls } = setup();
+    const { em, tx, sessionService, service, session, calls } = setup();
 
     const result = await service.register(input);
 
     expect(calls).toEqual(["hash", "begin", "flush", "end"]);
-    expect(em.create).toHaveBeenCalledWith(User, {
+    expect(em.create).not.toHaveBeenCalled();
+    expect(em.flush).not.toHaveBeenCalled();
+    expect(tx.create).toHaveBeenCalledWith(User, {
       email: "ala@example.com",
       displayName: "Łukasz_7",
       displayNameKey: "lukasz7",
       passwordHash: "hashed",
     });
-    expect(sessionService.create).toHaveBeenCalledWith("user-1");
+    expect(sessionService.create).toHaveBeenCalledExactlyOnceWith(
+      "user-1",
+      expect.any(Date),
+      tx,
+    );
     expect(result).toEqual({
       user: { id: "user-1", displayName: "Łukasz_7" },
       session,
@@ -266,16 +286,20 @@ describe("UserService.changePassword", () => {
       options.user === undefined
         ? { id: "user-1", passwordHash: "old-hash" }
         : options.user;
-    const em = {
-      findOne: vi.fn(async () => user),
+    // Differs from the injected `em`: only writes through `tx` are transactional.
+    const tx = {
       nativeUpdate: vi.fn(async () => {
         calls.push("update");
         return options.updated ?? 1;
       }),
-      transactional: vi.fn(async (work: () => Promise<unknown>) => {
+    };
+    const em = {
+      findOne: vi.fn(async () => user),
+      nativeUpdate: vi.fn(),
+      transactional: vi.fn(async (work: (tx: unknown) => Promise<unknown>) => {
         calls.push("begin");
         try {
-          return await work();
+          return await work(tx);
         } finally {
           calls.push("end");
         }
@@ -308,6 +332,7 @@ describe("UserService.changePassword", () => {
     });
     return {
       em,
+      tx,
       passwordHasher,
       sessionService,
       invalidateResetTokens,
@@ -317,7 +342,7 @@ describe("UserService.changePassword", () => {
   }
 
   it("verifies, hashes, then updates conditionally and revokes others in one transaction", async () => {
-    const { em, sessionService, invalidateResetTokens, service, calls } =
+    const { em, tx, sessionService, invalidateResetTokens, service, calls } =
       changeSetup();
 
     await expect(
@@ -325,16 +350,21 @@ describe("UserService.changePassword", () => {
     ).resolves.toBeUndefined();
 
     expect(em.findOne).toHaveBeenCalledWith(User, { id: "user-1" });
-    expect(em.nativeUpdate).toHaveBeenCalledExactlyOnceWith(
+    expect(em.nativeUpdate).not.toHaveBeenCalled();
+    expect(tx.nativeUpdate).toHaveBeenCalledExactlyOnceWith(
       User,
       { id: "user-1", passwordHash: "old-hash" },
       { passwordHash: "new-hash" },
     );
-    expect(sessionService.revokeOthers).toHaveBeenCalledWith(
+    expect(sessionService.revokeOthers).toHaveBeenCalledExactlyOnceWith(
       "user-1",
       "sess-1",
+      tx,
     );
-    expect(invalidateResetTokens).toHaveBeenCalledWith("user-1");
+    expect(invalidateResetTokens).toHaveBeenCalledExactlyOnceWith(
+      "user-1",
+      tx,
+    );
     expect(calls).toEqual([
       "verify",
       "hash",

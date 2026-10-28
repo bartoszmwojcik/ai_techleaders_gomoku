@@ -32,6 +32,10 @@ describe("Alert", () => {
     expect(danger).toContain("border-status-danger");
   });
 
+  it("renders no role for static text when asked for none", () => {
+    expect(renderToStaticMarkup(<Alert title="Uwaga" status="warning" role="none" />)).not.toContain("role=");
+  });
+
   it("lets the caller choose a politer role than the status implies", () => {
     expect(renderToStaticMarkup(<Alert title="Przegrałeś" status="danger" role="status" />)).toContain('role="status"');
   });
