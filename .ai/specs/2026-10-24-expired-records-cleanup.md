@@ -72,3 +72,12 @@ Potwierdzone przez właściciela — Bartosza Wójcika.
 - **Test strażnik (Q4):** test jednostkowy po metadanych encji — każda encja z kolumną `expiresAt` musi mieć regułę w `cleanup/rules.ts` albo jawny wyjątek. Plany #34 i #35 dostają krok „dodaj regułę sprzątania”.
 - **Konta niepotwierdzone:** reguła dla `users`: `email_verified_at IS NULL` i `created_at < now() − 7 dni`; kaskada usuwa sesje i tokeny. Takie konto nie mogło grać (BR-23), więc nie ma partii. Reguła dochodzi razem z #34 (kolumna `emailVerifiedAt` z #19); JSON CLI dostaje klucz `unverifiedUsers`. **[zastąpione 2026-10-26: 14 dni i tylko bez partii (BR-28); poprzednie zdanie „takie konto nie mogło grać (BR-23)” nieaktualne, BR-26]**
 - **Kontrakt CLI:** wynik `db:cleanup` rozszerzony o `unverifiedUsers: n | null`.
+
+## 📝 Adnotacje z wdrożenia (2026-10-28)
+
+- **Implementacja odstępuje od szkicu nazewnictwa:** kod leży w `packages/db/src/cleanup/` (`cleanup-expired.ts`, `rules.ts`, `run-cleanup.ts`), a wejście CLI w `packages/db/src/cli/cleanup-cli.ts`. Zapytania to surowy SQL przez `em.execute` (z `for update skip locked`), nie query builder — tabele sprzątania są opisane statycznymi regułami.
+- **Błąd wykryty dopiero na PostgreSQL:** `em.execute` wiąże placeholdery `?`, nie `$n` (`there is no parameter $1`); testy jednostkowe na fałszywym `em` tego nie pokazały. Reguły używają teraz `?` (po jednym związanym punkcie odcięcia na każde `?` warunku), a test integracyjny `tests/integration/cleanup.test.ts` sprawdza progi, partie, równoległość i komendę na prawdziwej bazie.
+- **Krok 3 planu** zrealizowany w `tests/integration/cleanup.test.ts` (progi: tuż przed, na i tuż za; partie; dwa równoległe przebiegi; idempotencja; `runCleanup`; `npm run -s db:cleanup` jako proces, kod `0` i `1`).
+- **Krok 4 planu:** README, sekcja „Sprzątanie wygasłych rekordów”; wpis `cron` w formie `/etc/cron.d/gomoku-cleanup` z `flock -n` i logiem (nie `docker exec` w gołym `crontab`). Obraz produkcyjny nie wymagał zmian — `tsx` i pakiet `db` są w obrazie (sprawdzone lokalnie: `docker build`, `docker exec … npm run -s db:cleanup` → kod `0` i JSON, kod `1` przy nieosiągalnej bazie).
+- **Nadal niedostępne:** `unverifiedUsers` (reguła BR-28) — `null` do czasu tabel partii (#29).
+- **Do wykonania ręcznie na serwerze po wdrożeniu:** dodać `/etc/cron.d/gomoku-cleanup` (treść w README).

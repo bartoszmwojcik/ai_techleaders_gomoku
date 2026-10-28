@@ -9,9 +9,9 @@ export type CleanupRule = {
   readonly key: "sessions" | "rateLimitBuckets" | "emailVerificationTokens" | "passwordResetTokens";
   readonly table: string;
   readonly primaryKey: string;
-  /** SQL condition over the table's columns; `$1` is the cutoff timestamp. Static text only. */
+  /** SQL condition over the table's columns; each `?` is bound to the cutoff timestamp. Static text only. */
   readonly condition: string;
-  /** Rows matching the condition for `$1 = now - graceMs` are deleted. */
+  /** Rows matching the condition for cutoff = now - graceMs` are deleted. */
   readonly graceMs: number;
 };
 
@@ -21,7 +21,7 @@ export const CLEANUP_RULES: readonly CleanupRule[] = [
     key: "sessions",
     table: "sessions",
     primaryKey: "id",
-    condition: "expires_at < $1",
+    condition: "expires_at < ?",
     graceMs: HOUR_MS,
   },
   {
@@ -29,21 +29,21 @@ export const CLEANUP_RULES: readonly CleanupRule[] = [
     key: "rateLimitBuckets",
     table: "rate_limit_buckets",
     primaryKey: "key",
-    condition: "window_start < $1",
+    condition: "window_start < ?",
     graceMs: 24 * HOUR_MS,
   },
   {
     key: "emailVerificationTokens",
     table: "email_verification_tokens",
     primaryKey: "id",
-    condition: "expires_at < $1 or used_at < $1",
+    condition: "expires_at < ? or used_at < ?",
     graceMs: 24 * HOUR_MS,
   },
   {
     key: "passwordResetTokens",
     table: "password_reset_tokens",
     primaryKey: "id",
-    condition: "expires_at < $1 or used_at < $1",
+    condition: "expires_at < ? or used_at < ?",
     graceMs: 24 * HOUR_MS,
   },
 ];

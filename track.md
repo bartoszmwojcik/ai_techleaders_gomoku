@@ -98,7 +98,7 @@ Ręczny test po fazie: `npm run db:cleanup` na bazie ze starymi rekordami.
 
 - [x] 9.1 `cleanupExpired` (+ reguły dla sesji, liczników, tokenów)
 - [x] 9.2 `cleanup-cli.ts`, `db:cleanup`
-- [ ] 9.3 Testy integracyjne progów, README (cron)
+- [x] 9.3 Testy integracyjne progów (`tests/integration/cleanup.test.ts`; wykryły i naprawiły błąd `$n` → `?` w `cleanupExpired`), README (cron). **Do wykonania ręcznie na serwerze po wdrożeniu: dodać `/etc/cron.d/gomoku-cleanup`** (treść w README, sekcja „Sprzątanie wygasłych rekordów”)
 - [!] 9.4 Reguła „niepotwierdzone konto bez partii po 14 dniach” — zablokowana do #29 (tabela uczestników partii)
 
 ## Faza 10 — Usunięcie konta (#37)

@@ -38,15 +38,19 @@ describe("cleanupExpired", () => {
       email_verification_tokens: NOW.getTime() - 24 * HOUR,
       password_reset_tokens: NOW.getTime() - 24 * HOUR,
     });
-    expect(execute.mock.calls[0]).toEqual([expect.stringContaining("expires_at < $1"), [expect.any(Date), 1000], "run"]);
+    expect(execute.mock.calls[0]).toEqual([expect.stringContaining("expires_at < ?"), [expect.any(Date), 1000], "run"]);
   });
 
   it("covers used and expired tokens, and skips locked rows", async () => {
     const { em, execute } = fakeEm(() => 0);
     await cleanupExpired({ em, now: NOW });
     const sqls = execute.mock.calls.map(([sql]) => sql);
-    expect(sqls.filter((s) => s.includes("expires_at < $1 or used_at < $1"))).toHaveLength(2);
+    expect(sqls.filter((s) => s.includes("expires_at < ? or used_at < ?"))).toHaveLength(2);
     expect(sqls.every((s) => s.includes("for update skip locked"))).toBe(true);
+    // One bound cutoff per `?` of the condition (MikroORM binds `?`, not `$n`), then the limit.
+    const tokenCall = execute.mock.calls.find(([sql]) => sql.includes("from password_reset_tokens"));
+    expect(tokenCall?.[1]).toEqual([expect.any(Date), expect.any(Date), 1000]);
+    expect(tokenCall?.[1]?.[0]).toEqual(tokenCall?.[1]?.[1]);
   });
 
   it("repeats full batches until a short one", async () => {

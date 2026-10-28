@@ -28,8 +28,9 @@ export type CleanupOptions = {
 };
 
 // Identifiers come from the static rules, never from callers; values are bound parameters.
+// MikroORM's `em.execute` binds `?` placeholders (not `$n`): one cutoff per `?` of the condition, then the limit.
 function batchSql({ table, primaryKey, condition }: CleanupRule): string {
-  return `delete from ${table} where ${primaryKey} in (select ${primaryKey} from ${table} where ${condition} limit $2 for update skip locked)`;
+  return `delete from ${table} where ${primaryKey} in (select ${primaryKey} from ${table} where ${condition} limit ? for update skip locked)`;
 }
 
 /**
@@ -53,10 +54,11 @@ export async function cleanupExpired({
   for (const rule of CLEANUP_RULES) {
     const sql = batchSql(rule);
     const cutoff = new Date(now.getTime() - rule.graceMs);
+    const cutoffs = Array.from({ length: rule.condition.split("?").length - 1 }, () => cutoff);
     let deleted = 0;
     try {
       while (clock() < deadline.getTime()) {
-        const { affectedRows } = await em.execute<{ affectedRows: number }>(sql, [cutoff, batchSize], "run");
+        const { affectedRows } = await em.execute<{ affectedRows: number }>(sql, [...cutoffs, batchSize], "run");
         deleted += affectedRows;
         if (affectedRows < batchSize) break;
       }

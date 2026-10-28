@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 #
-# One image for the app, the migrations and (later) the cleanup command: the workspace packages export
+# One image for the app, the migrations and the cleanup command (`npm run -s db:cleanup` via `docker exec`): the workspace packages export
 # TypeScript sources and the MikroORM CLI needs the dev dependencies, so nothing is pruned here.
 # The image is built once in CI or on the server (see "Wdrożenie na mikr.us" in README.md).
 FROM node:22-slim

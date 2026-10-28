@@ -239,7 +239,41 @@ curl https://gomoku.byst.re/api/health           # {"status":"ok",...}
 - **Konta (`APP_ORIGIN`, `TRUST_PROXY_HOPS`, `CLIENT_IP_HEADER`):** `compose.prod.yaml` wymaga `APP_ORIGIN` i `TRUST_PROXY_HOPS` z `.env.production` (bez nich `docker compose` odmawia startu). Aplikacja w produkcji bez poprawnych wartości działa tylko częściowo: `/api/health` odpowiada, ale route'y domenowe (`/api/auth/*`) zwracają `500` (fail closed), a `/` pokazuje widok gościa. `APP_ORIGIN` to dokładny adres subdomeny z `https://` (np. `https://gomoku.byst.re`). `TRUST_PROXY_HOPS` to liczba proxy, które dopisują adres klienta do `CLIENT_IP_HEADER`; zła wartość pozwala podszyć się pod adres (za duża) albo wrzuca wszystkich pod adres proxy (za mała), więc po wdrożeniu sprawdź na serwerze, jaki adres trafia do nagłówka. Czy proxy mikr.us w ogóle go przekazuje, wyjaśnia spike #30 — jeśli nie, rejestracja zwraca `500` do czasu przejścia na Cloudflare (wtedy `CLIENT_IP_HEADER=cf-connecting-ip`). `SESSION_COOKIE_SECURE` w produkcji zostaw nieustawione.
 - **Nasłuch na IPv6:** subdomena wymaga odpowiedzi na IPv6. Aplikacja w kontenerze słucha na `0.0.0.0` (IPv4), a Docker publikuje port także na adresie IPv6 hosta; jeśli publikacja IPv6 nie działa, uruchom aplikację z `-H ::` (nasłuch na obu stosach) albo włącz IPv6 w demonie Docker. Zawsze sprawdź `curl -6 https://<subdomena>/api/health`.
 - **Kolejne zmienne:** `SMTP_*` (poczta, #38) dojdą z tą funkcją; produkcyjny start bez nich ma przerywać, zgodnie ze specyfikacją.
-- **Czyszczenie wygasłych rekordów** (#39) będzie wpisem `cron` na serwerze: `docker compose … run --rm app npm run db:cleanup`.
+- **Czyszczenie wygasłych rekordów** (#39, BR-18): wpis `cron` na serwerze, opis w sekcji [Sprzątanie wygasłych rekordów](#sprzątanie-wygasłych-rekordów).
+
+## Sprzątanie wygasłych rekordów
+
+Wygasłe sesje, liczniki limitów i tokeny nie wpływają na poprawność (są filtrowane przy odczycie), ale tabele rosną, więc BR-18 wymaga ich usuwania bez udziału człowieka. Robi to komenda `npm run db:cleanup` (`packages/db/src/cleanup`), uruchamiana z `cron` na serwerze, a nie przez proces aplikacji.
+
+**Co usuwa** (progi liczone od chwili uruchomienia; wiersz dokładnie na progu zostaje):
+
+| Tabela | Usuwane, gdy |
+| --- | --- |
+| `sessions` | `expires_at` starsze niż 1 godzina (margines na partię trwającą po wygaśnięciu sesji) |
+| `rate_limit_buckets` | `window_start` starsze niż 24 godziny (najdłuższe okno limitu to 1 godzina) |
+| `email_verification_tokens` | `expires_at` **lub** `used_at` starsze niż 24 godziny |
+| `password_reset_tokens` | `expires_at` **lub** `used_at` starsze niż 24 godziny |
+
+Użytkownicy nie są usuwani. Reguła BR-28 (niepotwierdzone konto bez partii po 14 dniach) czeka na tabele partii z Epiku 02 (#29), więc `unverifiedUsers` jest na razie zawsze `null`. Usuwanie idzie partiami po 1000 wierszy (krótkie transakcje, `for update skip locked`), przebieg kończy się po 60 sekundach — resztę zabierze następny. Dwa przebiegi naraz są bezpieczne.
+
+**Wynik i kody wyjścia.** Sukces: kod `0` i jedna linia JSON na stdout, liczba usuniętych wierszy lub `null` (tabela nie istnieje):
+
+```json
+{"sessions":3,"rateLimitBuckets":0,"emailVerificationTokens":1,"passwordResetTokens":0,"unverifiedUsers":null}
+```
+
+Błąd (np. baza niedostępna): kod `1`, na stderr `{"ok":false,"error":"…"}` z zamaskowanym hasłem w adresie bazy; następny przebieg `cron` spróbuje ponownie. Komenda nigdy nie tworzy brakującej bazy.
+
+> **Uwaga:** na bazie deweloperskiej `npm run db:cleanup` naprawdę kasuje wygasłe dane z bazy z `DATABASE_URL` (pliki `.env*`). Przed uruchomieniem sprawdź, na jaką bazę wskazuje. Testy integracyjne sprawdzają komendę wyłącznie na bazie z Testcontainers.
+
+**Cron na mikr.us.** Obraz produkcyjny zawiera `tsx` i kod pakietu `db` (zależności nie są czyszczone), a `DATABASE_URL` jest w środowisku kontenera, więc komenda działa przez `docker exec`. Na serwerze (nie w repozytorium) utwórz osobny plik `/etc/cron.d/gomoku-cleanup`:
+
+```cron
+# Co godzinę; flock -n pomija przebieg, gdy poprzedni jeszcze trwa. Błędy (kod 1) lądują w logu.
+0 * * * * root flock -n /tmp/gomoku-cleanup.lock docker exec gomoku_prod-app-1 npm run -s db:cleanup >> /var/log/gomoku-cleanup.log 2>&1
+```
+
+Nazwę kontenera sprawdź przez `docker compose -f compose.prod.yaml ps` (przy `name: gomoku_prod` to zwykle `gomoku_prod-app-1`). Kontrola: `docker exec gomoku_prod-app-1 npm run -s db:cleanup; echo $?` oraz `tail /var/log/gomoku-cleanup.log`. Rollback: usunięcie pliku `/etc/cron.d/gomoku-cleanup`.
 
 ## Komendy
 
@@ -261,6 +295,7 @@ Uruchamiane z katalogu głównego:
 | `npm run db:migration:up` / `db:migration:down` | Zastosowanie / cofnięcie migracji |
 | `npm run db:migration:list` | Lista wykonanych migracji |
 | `npm run db:status` | Czy baza z `DATABASE_URL` odpowiada i ile migracji czeka (JSON) |
+| `npm run db:cleanup` | Usuwa wygasłe sesje, liczniki limitów i tokeny z bazy z `DATABASE_URL` (JSON z liczbami; **kasuje dane**, zob. [Sprzątanie](#sprzątanie-wygasłych-rekordów)) |
 
 ## Testy i CI
 
