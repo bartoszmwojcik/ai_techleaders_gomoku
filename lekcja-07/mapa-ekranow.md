@@ -102,7 +102,7 @@ Prototypowa „skrzynka” do otwierania s06 jest kontrolką prototypu (P01), ni
 |---|---|---|
 | s04.1 | Podgląd planszy, jedna główna akcja „Załóż konto” oraz „Zaloguj się” | #19, #20, DS permissions (zasada 3) |
 | s04.2 | „Zalogowano jako {nazwa}”, **zamykalny baner nieblokujący** „Potwierdź adres e-mail”: „Bez potwierdzonego adresu nie odzyskasz konta, jeśli zapomnisz hasła. Link wysyłamy na {adres} — sprawdź też folder spam.” z „Wyślij ponownie” i „Zamknij”; akcje gry i Lobby/Historia w nagłówku **aktywne** | BR-26, D-24 |
-| s04.3 | „Zalogowano jako {nazwa}”, brak banera, link „Konto”; akcje gry z E02/E03 pokazane jak w DS, ale nieaktywne (decyzja L17) | #34/K2, #20 UI |
+| s04.3 | „Zalogowano jako {nazwa}”, brak banera, link „Konto” i przycisk „Wyloguj” (decyzja właściciela 2026-10-27, jak na s05); akcje gry z E02/E03 pokazane jak w DS, ale nieaktywne (decyzja L17) | #34/K2, #20 UI |
 | s04.4–s04.10 | Stany banera: wysyłanie, wysłano, limit z czasem i zablokowanym przyciskiem, błąd wysyłki, dzienny limit poczty ⚠, już potwierdzony (409) ⚠, sesja wygasła (401) ⚠ | #34/K4, Q4, Q6, Q10; L11 |
 | s04.13 | Baner zamknięty: nie pokazuje się przez 7 dni (pamięć po stronie przeglądarki); po 7 dniach wraca; błąd odczytu pamięci = baner widoczny | decyzja Q5 specyfikacji zmiany |
 | s04.11 | Błąd odczytu sesji (baza) daje widok niezalogowany, nie 500 | #19 Architecture |

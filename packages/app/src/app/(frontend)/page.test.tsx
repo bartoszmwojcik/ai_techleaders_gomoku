@@ -1,17 +1,13 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { connection, getCurrentUser, hasActiveGame } = vi.hoisted(() => ({
+const { connection, getCurrentUserWith, hasActiveGame } = vi.hoisted(() => ({
   connection: vi.fn(),
-  getCurrentUser: vi.fn(),
+  getCurrentUserWith: vi.fn(),
   hasActiveGame: vi.fn(),
 }));
 vi.mock("next/server", () => ({ connection }));
-vi.mock("@/server/http/auth", () => ({ getCurrentUser }));
-vi.mock("@/server/container", () => ({
-  withRequestScope: async (fn: (scope: unknown) => unknown) =>
-    fn({ cradle: { activeGameCheck: { hasActiveGame } } }),
-}));
+vi.mock("@/server/http/auth", () => ({ getCurrentUserWith }));
 vi.mock("@/components/auth/logout-button", () => ({
   LogoutButton: ({ hasActiveGame }: { hasActiveGame: boolean }) => (
     <button data-testid="logout" data-active={String(hasActiveGame)}>
@@ -22,19 +18,30 @@ vi.mock("@/components/auth/logout-button", () => ({
 
 import HomePage from "./page";
 
+let current: { id: string; displayName: string; emailVerifiedAt: null } | null = null;
+function signedOut() {
+  current = null;
+  getCurrentUserWith.mockReset().mockImplementation(async (read: (u: unknown, c: unknown) => Promise<boolean>) =>
+    current ? { user: current, data: await read(current, { gameParticipation: { hasActiveGame } }) } : null,
+  );
+}
+function signedIn() {
+  current = { id: "u1", displayName: "Ala_7", emailVerifiedAt: null };
+}
+
 const count = (html: string, fragment: string) => html.split(fragment).length - 1;
 
 beforeEach(() => {
   connection.mockReset().mockResolvedValue(undefined);
-  getCurrentUser.mockReset().mockResolvedValue(null);
   hasActiveGame.mockReset().mockResolvedValue(false);
+  signedOut();
 });
 
 describe("HomePage", () => {
   it("is dynamic: waits for the request before reading the session", async () => {
     await HomePage();
     expect(connection).toHaveBeenCalledOnce();
-    expect(getCurrentUser).toHaveBeenCalledOnce();
+    expect(getCurrentUserWith).toHaveBeenCalledOnce();
   });
 
   it("introduces the game and its rules", async () => {
@@ -66,7 +73,7 @@ describe("HomePage", () => {
   });
 
   it("shows the name of a signed-in player instead of the registration link", async () => {
-    getCurrentUser.mockResolvedValue({ id: "u1", displayName: "Ala_7", emailVerifiedAt: null });
+    signedIn();
     const html = renderToStaticMarkup(await HomePage());
     expect(html).toContain("Zalogowano jako <strong");
     expect(html).toContain("Ala_7");
@@ -75,7 +82,7 @@ describe("HomePage", () => {
   });
 
   it("links a signed-in player to the account and offers logout", async () => {
-    getCurrentUser.mockResolvedValue({ id: "u1", displayName: "Ala_7", emailVerifiedAt: null });
+    signedIn();
     const html = renderToStaticMarkup(await HomePage());
     expect(html).toContain('href="/account"');
     expect(html).toContain("Konto</a>");
@@ -84,7 +91,7 @@ describe("HomePage", () => {
   });
 
   it("tells the logout button about a running game", async () => {
-    getCurrentUser.mockResolvedValue({ id: "u1", displayName: "Ala_7", emailVerifiedAt: null });
+    signedIn();
     hasActiveGame.mockResolvedValue(true);
     expect(renderToStaticMarkup(await HomePage())).toContain('data-active="true"');
   });

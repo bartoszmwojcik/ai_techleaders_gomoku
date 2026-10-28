@@ -24,7 +24,7 @@ Po wdrożeniu #20 (zachowanie przyszłe): strona `/login` (e-mail + hasło, powr
 | H1 Limit na e-mail (przesłuchanie, 2026-10-24) | Q2 doprecyzowane: limit na sam e-mail pozwalałby każdemu, kto zna e-mail, trwale odciąć właściciela (10 prób co 15 min z jednego komputera). Zamiast niego: **10 nieudanych na parę e-mail + adres w 15 min** oraz **100 nieudanych na sam e-mail w godzinę** (przeciw atakowi rozproszonemu); 30 prób na adres w godzinę bez zmian. |
 | H2 „Pokaż hasło” (przesłuchanie, 2026-10-24) | Przycisk „Pokaż hasło” (ikona oka z etykietą dostępności) w polu hasła na `/login` i `/register` (także #19), domyślnie ukryte, po wysłaniu znów ukryte. Wspólna kontrolka `PasswordField` w `app/src/components/forms/` — użyją jej #35 i #36. Pola mają `autocomplete` (`email`, `current-password`, `new-password`). |
 | H3 Język adresów (przesłuchanie, 2026-10-24) | Adresy stron i API po angielsku (`/login`, `/account`, `/register`, `/invite/…`), teksty interfejsu po polsku — bez zmian w dokumentach. |
-| Q4 Wylogowanie w trakcie partii | Potwierdzenie „Trwa partia — po wylogowaniu zegar biegnie dalej. Wylogować?”. W #20 partii nie ma — strona `/account` podaje do `LogoutButton` prop `hasActiveGame` z wstrzykiwanej funkcji `activeGameCheck.hasActiveGame(userId)` (tu zawsze `false`; to inna funkcja niż w G5, która pyta o partię trwającą od przed `expiresAt`). |
+| Q4 Wylogowanie w trakcie partii | Potwierdzenie „Trwa partia — po wylogowaniu zegar biegnie dalej. Wylogować?”. W #20 partii nie ma — strona `/account` podaje do `LogoutButton` prop `hasActiveGame` z wstrzykiwanej funkcji `gameParticipation.hasActiveGame(userId)` (tu zawsze `false`; to inna funkcja niż w G5, która pyta o partię trwającą od przed `expiresAt`). |
 
 ## 📝 Problem Statement
 
@@ -62,7 +62,7 @@ flowchart LR
 ```
 
 - **`auth.ts` (rozszerzony):** `requireSession()` → aktualny użytkownik albo `UnauthorizedError` (route'y, `401`); `requirePageSession(path)` → aktualny użytkownik albo `redirect("/login?next=" + encodeURIComponent(path))` z `next/navigation` (strony). Obie oparte na `getCurrentUser()` z #19, więc dziedziczą fail closed i wyjątek G5. `redirect()` w Next 16 działa przez rzucenie wyjątku — wywołujemy go **poza** `try/catch` w `getCurrentUser` (`node_modules/next/dist/docs/01-app/03-api-reference/04-functions/redirect.md`). Server component nie zna własnej ścieżki — strona podaje ją jawnie (`requirePageSession("/account")`). Strony czytające sesję wołają najpierw `await connection()`.
-- **`activeGameCheck`** (nowy wpis w kontenerze, scoped): `hasActiveGame(userId)` → `false` do czasu modelu partii (#21/#22), które podmienią implementację.
+- **`gameParticipation`** (nowy wpis w kontenerze, scoped): `hasActiveGame(userId)` → `false` do czasu modelu partii (#21/#22), które podmienią implementację.
 - **`RateLimiter` (rozszerzony):** `hit(key, limit, windowMs)` atomowo zwiększa licznik (jeden upsert we własnej, od razu zatwierdzonej transakcji) i zwraca `{ count, retryAfterSec }`; powyżej limitu rzuca `TooManyRequestsError` z `retryAfterSec` (dla `Retry-After`). `reset(key)` usuwa licznik. Istniejące `consume` z #19 = `hit`. **Limity e-mailowe liczą tylko nieudane próby** (Q2, H1) przez kompensację: liczniki rosną **przed** weryfikacją hasła (atomowo — równoległe żądania nie przejdą razem przez sprawdzenie w trakcie ~0,25 s bcrypt), a udane logowanie robi `reset` obu kluczy e-mailowych.
 - **`PasswordHasher` (rozszerzony):** atrapowy hash liczony raz przy tworzeniu singletonu (losowy ciąg, ten sam koszt) do porównania przy nieznanym e-mailu — czas odpowiedzi nie zdradza istnienia konta, także przy pierwszym takim żądaniu.
 - **`UserService.authenticate(email, password)`** → użytkownik albo `null`; nigdy nie rozróżnia nieznanego e-maila od złego hasła na zewnątrz. Normalizacja e-maila ta sama co w rejestracji (`normalizeEmail` z `core/src/validators/auth/`, wydzielona z `registerSchema`).
@@ -115,9 +115,9 @@ Kontrakty są addytywne (`BACKWARD_COMPATIBILITY.md` §2). Nowe adresy stron `/l
 
 **`/account`** (chroniona, `requirePageSession("/account")`):
 - nazwa gracza, e-mail, stan potwierdzenia („Potwierdź e-mail, aby grać” przy `emailVerifiedAt = NULL`, BR-23), przycisk „Wyloguj”; **[BR-23 zastąpione przez BR-26 (2026-10-26)]**
-- „Wyloguj” → przy `hasActiveGame` (prop ze strony, z `activeGameCheck`; w #20 zawsze `false`) okno potwierdzenia „Trwa partia — po wylogowaniu zegar biegnie dalej. Wylogować?” (Q4) → `POST /api/auth/logout` → `router.replace("/")`.
+- „Wyloguj” → przy `hasActiveGame` (prop ze strony, z `gameParticipation`; w #20 zawsze `false`) okno potwierdzenia „Trwa partia — po wylogowaniu zegar biegnie dalej. Wylogować?” (Q4) → `POST /api/auth/logout` → `router.replace("/")`.
 
-**`/`**: przy zalogowanym link „Konto” → `/account`; przy niezalogowanym linki „Zaloguj się” i „Załóż konto”.
+**`/`**: przy zalogowanym link „Konto” → `/account` oraz przycisk „Wyloguj” (to samo `LogoutButton` co na `/account`, z potwierdzeniem Q4); **[zmienione 2026-10-27: decyzja właściciela po przeglądzie Fazy 4 — „Wyloguj” zostaje także na stronie głównej; dotyczy prototypu `konta-i-role` s04 i mapy ekranów]**; przy niezalogowanym linki „Zaloguj się” i „Załóż konto”.
 
 ## 📝 Edge Cases & Failure Scenarios
 
@@ -175,5 +175,5 @@ Jeden PR (Q1), `Closes #20`. Każdy krok zostawia działającą aplikację z zie
 ### Faza 2 — Wylogowanie i strażnik
 
 6. **`SessionService.revoke` i route `api/auth/logout/route.ts`.** Testy: unieważnienie bieżącej sesji (inne sesje tego użytkownika zostają), idempotencja, koperta `200`, usunięcie ciasteczka w obu trybach nazwy (`__Host-` / zwykła, przez `set` z `maxAge: 0`), usunięcie ciasteczka mimo błędu bazy, `403` bez nagłówków CSRF.
-7. **`requireSession` / `requirePageSession`, `activeGameCheck`, strona `/account`, `LogoutButton`, linki na `/`.** Testy: `401` / przekierowanie z zakodowanym `next` (`redirect` poza `try/catch`), ostrzeżenie Q4 przy `hasActiveGame = true`, brak przy `false`. Test integracyjny agent-browser: wejście na `/account` bez sesji → `/login?next=%2Faccount` → logowanie → `/account` → „Wyloguj” → `/account` znów przekierowuje na logowanie.
+7. **`requireSession` / `requirePageSession`, `gameParticipation`, strona `/account`, `LogoutButton`, linki na `/`.** Testy: `401` / przekierowanie z zakodowanym `next` (`redirect` poza `try/catch`), ostrzeżenie Q4 przy `hasActiveGame = true`, brak przy `false`. Test integracyjny agent-browser: wejście na `/account` bez sesji → `/login?next=%2Faccount` → logowanie → `/account` → „Wyloguj” → `/account` znów przekierowuje na logowanie.
 8. **Dokumentacja.** README (logowanie, limity), sekcja „Where Code Goes” w standardach bez zmian; komentarz w #20 z linkiem do PR.

@@ -3,8 +3,7 @@ import { Button } from "@gomoku/ui/game/button";
 import { connection } from "next/server";
 
 import { LogoutButton } from "@/components/auth/logout-button";
-import { withRequestScope } from "@/server/container";
-import { getCurrentUser } from "@/server/http/auth";
+import { getCurrentUserWith } from "@/server/http/auth";
 
 // Static preview position: a few stones near the centre of the board.
 const PREVIEW_STONES = new Map<string, "black" | "white">([
@@ -19,10 +18,12 @@ const PREVIEW_STONES = new Map<string, "black" | "white">([
 export default async function HomePage() {
   // Reads the session cookie, so the page is rendered per request.
   await connection();
-  const user = await getCurrentUser();
-  const hasActiveGame = user
-    ? await withRequestScope(({ cradle }) => cradle.activeGameCheck.hasActiveGame(user.id))
-    : false;
+  // One request scope reads the session and the game state together.
+  const session = await getCurrentUserWith(({ id }, { gameParticipation }) =>
+    gameParticipation.hasActiveGame(id),
+  );
+  const user = session?.user ?? null;
+  const hasActiveGame = session?.data ?? false;
 
   const cells = Array.from({ length: BOARD_SIZE * BOARD_SIZE }, (_, i) => {
     const row = Math.floor(i / BOARD_SIZE);

@@ -40,7 +40,7 @@ describe("LogoutButton", () => {
   });
 
   it("shows an error and lets the player retry when logout fails", async () => {
-    apiCall.mockResolvedValueOnce({ ok: false, error: { code: "INTERNAL", message: "x" } });
+    apiCall.mockResolvedValueOnce({ ok: false, error: { code: "network", message: "x" } });
     render(<LogoutButton />);
     await userEvent.click(screen.getByRole("button", { name: "Wyloguj" }));
 
@@ -71,6 +71,46 @@ describe("LogoutButton", () => {
     await userEvent.click(confirm);
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/"));
     expect(apiCall).toHaveBeenCalledOnce();
+  });
+
+  it("treats a 500 as logged out: the cookie is already cleared", async () => {
+    apiCall.mockResolvedValue({ ok: false, error: { code: "INTERNAL", message: "x" } });
+    render(<LogoutButton />);
+    await userEvent.click(screen.getByRole("button", { name: "Wyloguj" }));
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/"));
+    expect(screen.queryByTestId("logout-error")).toBeNull();
+  });
+
+  it("returns focus to the logout button after Cancel", async () => {
+    render(<LogoutButton hasActiveGame />);
+    await userEvent.click(screen.getByRole("button", { name: "Wyloguj" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Zostań zalogowany" }));
+
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Wyloguj" })));
+  });
+
+  it("returns focus to the logout button after Escape", async () => {
+    render(<LogoutButton hasActiveGame />);
+    await userEvent.click(screen.getByRole("button", { name: "Wyloguj" }));
+    await screen.findByRole("alertdialog");
+    await userEvent.keyboard("{Escape}");
+
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Wyloguj" })));
+  });
+
+  it("returns focus to the logout button after a failed logout", async () => {
+    apiCall.mockResolvedValue({ ok: false, error: { code: "network", message: "x" } });
+    render(<LogoutButton hasActiveGame />);
+    await userEvent.click(screen.getByRole("button", { name: "Wyloguj" }));
+    const confirm = within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Wyloguj" });
+    await userEvent.click(confirm);
+
+    await screen.findByTestId("logout-error");
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Wyloguj" })));
   });
 
   it("closes the dialog and shows the error when confirmed logout fails", async () => {

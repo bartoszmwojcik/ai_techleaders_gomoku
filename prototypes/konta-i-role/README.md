@@ -91,7 +91,7 @@ Rejestracja ma też prawdziwy limit w symulacji: 6. próba w jednej sesji daje �
 - Prototyp nie rozstrzyga otwartych luk z mapy (m.in. L01, L04, L05, L10–L13, L18, L19, L20, L21, L24); ich lista jest w `lekcja-07/mapa-ekranow.md`.
 - Konto A5 jest zasiane jako utworzone 6 dni temu, żeby po „+14 dni” znikało (BR-28: niepotwierdzone konto bez partii); data z mapy (2026-10-17) dawałaby konto starsze niż 14 dni już na starcie.
 - Przycisk „Zaloguj się” w nagłówku ekranu logowania wysyła formularz (uwaga z przeglądu); na pozostałych ekranach jest linkiem.
-- Lobby i Historia są w nagłówku każdego zalogowanego (BR-26). „Wyloguj” jest na koncie, nie w nagłówku (do rozstrzygnięcia).
+- Lobby i Historia są w nagłówku każdego zalogowanego (BR-26). „Wyloguj” jest na koncie (s05) i na stronie głównej zalogowanego (s04), nie w nagłówku (decyzja właściciela 2026-10-27).
 - Prototyp nie dowodzi popytu ani gotowości produkcyjnej.
 
 ## Dla developera

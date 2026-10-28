@@ -15,6 +15,7 @@ import {
   SESSION_COOKIE_MAX_AGE_SECONDS,
   clearSessionCookie,
   getCurrentUser,
+  getCurrentUserWith,
   requirePageSession,
   requireSession,
   sessionCookieName,
@@ -123,6 +124,23 @@ describe("getCurrentUser", () => {
     expect(findValid).toHaveBeenCalledWith("tok");
   });
 
+  it("reads extra data for the user in the same request scope", async () => {
+    scope(vi.fn(async () => ({ user: { id: "u1", displayName: "Ala", email: "a@b.c" } })));
+    store.get.mockReturnValue({ value: "tok" });
+    const read = vi.fn(async () => "extra");
+    expect(await getCurrentUserWith(read)).toMatchObject({ user: { id: "u1" }, data: "extra" });
+    expect(withRequestScope).toHaveBeenCalledOnce();
+    expect(read).toHaveBeenCalledWith(expect.objectContaining({ id: "u1" }), expect.anything());
+  });
+
+  it("does not read extra data without a session", async () => {
+    scope(vi.fn(async () => null));
+    store.get.mockReturnValue({ value: "tok" });
+    const read = vi.fn();
+    expect(await getCurrentUserWith(read)).toBeNull();
+    expect(read).not.toHaveBeenCalled();
+  });
+
   it("keeps a verification date", async () => {
     const at = new Date();
     scope(
@@ -201,6 +219,12 @@ describe("session guards", () => {
     await expect(requirePageSession("/account?a=b&c")).rejects.toThrow(
       "NEXT_REDIRECT /login?next=%2Faccount%3Fa%3Db%26c",
     );
+  });
+
+  it("requirePageSession never redirects to an unsafe next (open redirect guard)", async () => {
+    signedIn(false);
+    await expect(requirePageSession("//evil.com")).rejects.toThrow("NEXT_REDIRECT /login?next=%2F");
+    await expect(requirePageSession("https://evil.com")).rejects.toThrow("NEXT_REDIRECT /login?next=%2F");
   });
 
   it("requirePageSession redirects when the session lookup fails (fail closed)", async () => {

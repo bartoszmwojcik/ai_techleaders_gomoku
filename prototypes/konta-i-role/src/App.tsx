@@ -75,7 +75,7 @@ export function App() {
         notes={[
           "Historia: #20 (E01-S02), kryteria K1 i K3; Q4 (potwierdzenie przy aktywnej partii). Stany: s05.1–s05.9.",
           "Symulacja: konto A3 (Marek_Z) ma aktywną partię, więc „Wyloguj” pyta o potwierdzenie. Sesja w tej przeglądarce kończy się też wtedy, gdy serwer nie potwierdzi wylogowania (założenie, L20). Zmiana hasła i usunięcie konta są poza prototypem (L19).",
-          "Nie rozstrzyga: L06 (przycisk „Wyloguj” w nagłówku czy tylko na koncie), L20 (stan „w toku” i błąd wylogowania), L18.",
+          "Nie rozstrzyga: L06 (czy „Wyloguj” także w nagłówku; dziś jest na koncie i na stronie głównej), L20 (stan „w toku” i błąd wylogowania), L18.",
         ]}
       >
         <S05Account key={epoch} />

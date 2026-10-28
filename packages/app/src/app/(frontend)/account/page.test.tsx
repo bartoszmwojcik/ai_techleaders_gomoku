@@ -29,7 +29,7 @@ beforeEach(() => {
   withRequestScope
     .mockReset()
     .mockImplementation(async (fn: (scope: unknown) => unknown) =>
-      fn({ cradle: { activeGameCheck: { hasActiveGame } } }),
+      fn({ cradle: { gameParticipation: { hasActiveGame } } }),
     );
 });
 

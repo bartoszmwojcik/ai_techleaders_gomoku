@@ -11,7 +11,7 @@ export default async function AccountPage() {
   await connection();
   const user = await requirePageSession("/account");
   const hasActiveGame = await withRequestScope(({ cradle }) =>
-    cradle.activeGameCheck.hasActiveGame(user.id),
+    cradle.gameParticipation.hasActiveGame(user.id),
   );
 
   return (

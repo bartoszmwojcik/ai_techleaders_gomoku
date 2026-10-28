@@ -1,9 +1,9 @@
-import { UnauthorizedError } from "@gomoku/core";
+import { safeNextPath, UnauthorizedError } from "@gomoku/core";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import type { ServerConfig } from "../config";
-import { withRequestScope } from "../container";
+import { type RequestCradle, withRequestScope } from "../container";
 import { SESSION_TTL_MS } from "../services/auth/session-service";
 import { describeError } from "./describe-error";
 
@@ -59,11 +59,14 @@ export async function clearSessionCookie(config: CookieConfig): Promise<void> {
 }
 
 /**
- * The user behind the session cookie, or `null` when there is no valid session. Any
- * failure (e.g. unavailable database, invalid configuration) also yields `null`: fail
- * closed, so pages never show someone else's identity and never crash because of it.
+ * The user behind the session cookie plus whatever `read` fetches for that user in the same
+ * request scope (one scope, one forked `EntityManager`), or `null` when there is no valid
+ * session. Any failure (e.g. unavailable database, invalid configuration) also yields `null`:
+ * fail closed, so pages never show someone else's identity and never crash because of it.
  */
-export async function getCurrentUser(): Promise<CurrentUser | null> {
+export async function getCurrentUserWith<T>(
+  read: (user: CurrentUser, cradle: RequestCradle) => Promise<T>,
+): Promise<{ user: CurrentUser; data: T } | null> {
   try {
     return await withRequestScope(async ({ cradle }) => {
       const token = (await cookies()).get(
@@ -73,17 +76,23 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       const session = await cradle.sessionService.findValid(token);
       if (!session) return null;
       const { id, displayName, email, emailVerifiedAt } = session.user;
-      return {
+      const user = {
         id,
         displayName,
         email,
         emailVerifiedAt: emailVerifiedAt ?? null,
       };
+      return { user, data: await read(user, cradle) };
     });
   } catch (error) {
     console.error("Session lookup failed", describeError(error));
     return null;
   }
+}
+
+/** The user behind the session cookie, or `null` when there is no valid session (fail closed). */
+export async function getCurrentUser(): Promise<CurrentUser | null> {
+  return (await getCurrentUserWith(async () => undefined))?.user ?? null;
 }
 
 /** Guard for route handlers: the current user, or a `401` (via `apiHandler`) without a valid session. */
@@ -95,11 +104,12 @@ export async function requireSession(): Promise<CurrentUser> {
 
 /**
  * Guard for pages: the current user, or a redirect to `/login?next=<path>`. A server
- * component does not know its own path, so the page passes it. `redirect` throws, hence it
- * is called here, outside the `try/catch` of `getCurrentUser`.
+ * component does not know its own path, so the page passes it; it goes through
+ * `safeNextPath` (G8) so a wrong argument can never become an open redirect. `redirect`
+ * throws, hence it is called here, outside the `try/catch` of `getCurrentUser`.
  */
 export async function requirePageSession(path: string): Promise<CurrentUser> {
   const user = await getCurrentUser();
-  if (!user) redirect(`/login?next=${encodeURIComponent(path)}`);
+  if (!user) redirect(`/login?next=${encodeURIComponent(safeNextPath(path))}`);
   return user;
 }

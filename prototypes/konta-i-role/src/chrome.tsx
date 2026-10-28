@@ -71,7 +71,7 @@ export function SiteHeader({ submitForm }: { submitForm?: string } = {}) {
       </PageHeader>
     );
   }
-  // BR-26: every signed-in player sees Lobby and Historia, with or without a confirmed e-mail. "Wyloguj" stays on /account (map L06 note).
+  // BR-26: every signed-in player sees Lobby and Historia, with or without a confirmed e-mail. "Wyloguj" is not in the header; it is on /account and on the home page (owner decision 2026-10-27).
   return (
     <PageHeader
       brand="Gomoku"
