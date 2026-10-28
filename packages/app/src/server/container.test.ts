@@ -127,6 +127,20 @@ describe("auth services", () => {
     expect(() => container.cradle.serverConfig).toThrow(/TRUST_PROXY_HOPS/);
   });
 
+  it("takes the bcrypt cost from PASSWORD_HASH_COST", async () => {
+    const { orm } = fakeOrm();
+    createOrm.mockResolvedValue(orm);
+    vi.stubEnv("PASSWORD_HASH_COST", "4");
+    const { getContainer } = await loadContainer();
+
+    const container = await getContainer();
+
+    expect(container.cradle.passwordHashCost).toBe(4);
+    expect(await container.cradle.passwordHasher.hash("secret123")).toMatch(
+      /^\$2[aby]\$04\$/,
+    );
+  });
+
   it("provides the server configuration outside production", async () => {
     const { orm } = fakeOrm();
     createOrm.mockResolvedValue(orm);

@@ -93,6 +93,12 @@ describe("POST /api/auth/login", () => {
       ok: true,
       data: { user: { id: "u1", displayName: "Ala_7" } },
     });
+    expect(hit.mock.invocationCallOrder[0]).toBeLessThan(
+      getCurrentUser.mock.invocationCallOrder[0] as number,
+    );
+    expect(getCurrentUser.mock.invocationCallOrder[0]).toBeLessThan(
+      hit.mock.invocationCallOrder[1] as number,
+    );
     expect(authenticate).toHaveBeenCalledWith("ala@example.com", "secret123");
     expect(setSessionCookie).toHaveBeenCalledWith(serverConfig, "tok");
     const [ipKey, emailIpKey, emailKey] = keys();
@@ -146,10 +152,11 @@ describe("POST /api/auth/login", () => {
 
   it("answers 400 for a body that is not JSON", async () => {
     expect((await POST(post("{"))).status).toBe(400);
-    expect(hit).not.toHaveBeenCalled();
+    expect(keys()).toHaveLength(1);
+    expect(keys()[0]).toMatch(/^login:ip:/);
   });
 
-  it("answers 409 ALREADY_AUTHENTICATED before spending any budget", async () => {
+  it("answers 409 ALREADY_AUTHENTICATED after counting the address, without e-mail counters", async () => {
     getCurrentUser.mockResolvedValue({ id: "u1" });
 
     const response = await POST(post(valid));
@@ -158,8 +165,22 @@ describe("POST /api/auth/login", () => {
     expect(
       ((await response.json()) as { error: { code: string } }).error.code,
     ).toBe("ALREADY_AUTHENTICATED");
-    expect(hit).not.toHaveBeenCalled();
+    expect(keys()).toHaveLength(1);
+    expect(keys()[0]).toMatch(/^login:ip:/);
     expect(authenticate).not.toHaveBeenCalled();
+  });
+
+  it("answers 429 for the address before looking at the session", async () => {
+    getCurrentUser.mockResolvedValue({ id: "u1" });
+    hit.mockRejectedValueOnce(
+      new TooManyRequestsError("Zbyt wiele.", { retryAfterSeconds: 7 }),
+    );
+
+    const response = await POST(post(valid));
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("7");
+    expect(getCurrentUser).not.toHaveBeenCalled();
   });
 
   it.each([0, 1, 2])(

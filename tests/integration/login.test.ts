@@ -5,7 +5,11 @@ const baseUrl = inject("baseUrl");
 // Every test uses its own client address (X-Forwarded-For, one trusted hop) and its own
 // e-mail: the limits are per address and per e-mail, so tests cannot exhaust each other.
 let addressCounter = 0;
-const nextAddress = () => `192.0.2.${++addressCounter}`;
+// Hundreds of addresses are needed (the e-mail limit test), so the counter spans two octets.
+const nextAddress = () => {
+  const n = ++addressCounter;
+  return `198.51.${Math.floor(n / 250)}.${(n % 250) + 1}`;
+};
 let userCounter = 0;
 const uniqueUser = () => {
   const n = `${Date.now().toString(36)}${++userCounter}`;
@@ -211,5 +215,62 @@ describe("POST /api/auth/login", () => {
     // Without the reset the 11th attempt would be blocked.
     for (let i = 0; i < 9; i++) expect((await attempt("zle")).status).toBe(401);
     expect((await attempt(user.password)).status).toBe(200);
+  });
+
+  it("answers 429 for a new address after 100 failed attempts on one e-mail, even with the right password", async () => {
+    const user = await registerUser();
+    // Every attempt comes from its own address, so neither the pair limit (10) nor the
+    // address limit (30) is reached: only the per-e-mail limit (100 per hour) can trigger.
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const failed = await login({ email: user.email, password: "zle-haslo" });
+      expect(failed.status).toBe(401);
+    }
+
+    const blocked = await login({ email: user.email, password: user.password });
+
+    expect(blocked.status).toBe(429);
+    expect(Number(blocked.headers.get("retry-after"))).toBeGreaterThan(0);
+    expect(((await blocked.json()) as ErrorBody).error.code).toBe(
+      "RATE_LIMITED",
+    );
+    expect(blocked.headers.get("set-cookie")).toBeNull();
+  }, 120_000);
+
+  it("answers 429 with Retry-After after 30 requests from one address for different e-mails", async () => {
+    const address = nextAddress();
+    const unknown = (n: number) => ({
+      email: `nikt-${Date.now().toString(36)}-${n}@example.com`,
+      password: "zle-haslo",
+    });
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const failed = await login(unknown(attempt), { address });
+      expect(failed.status).toBe(401);
+    }
+
+    const blocked = await login(unknown(30), { address });
+
+    expect(blocked.status).toBe(429);
+    expect(Number(blocked.headers.get("retry-after"))).toBeGreaterThan(0);
+    expect(((await blocked.json()) as ErrorBody).error.code).toBe(
+      "RATE_LIMITED",
+    );
+    // Another address is unaffected.
+    const other = await login(unknown(31));
+    expect(other.status).toBe(401);
+  }, 60_000);
+
+  it("lets exactly 10 parallel attempts on one e-mail and address reach the password check", async () => {
+    const user = await registerUser();
+    const address = nextAddress();
+
+    const responses = await Promise.all(
+      Array.from({ length: 15 }, () =>
+        login({ email: user.email, password: "zle-haslo" }, { address }),
+      ),
+    );
+
+    const statuses = responses.map((response) => response.status);
+    expect(statuses.filter((status) => status === 401)).toHaveLength(10);
+    expect(statuses.filter((status) => status === 429)).toHaveLength(5);
   });
 });

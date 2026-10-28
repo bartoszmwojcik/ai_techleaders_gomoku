@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import type { ServerConfig } from "../config";
 import { withRequestScope } from "../container";
 import { SESSION_TTL_MS } from "../services/auth/session-service";
+import { describeError } from "./describe-error";
 
 type CookieConfig = Pick<ServerConfig, "sessionCookieSecure">;
 
@@ -72,7 +73,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       return { id, displayName, emailVerifiedAt: emailVerifiedAt ?? null };
     });
   } catch (error) {
-    console.error("Session lookup failed", error);
+    console.error("Session lookup failed", describeError(error));
     return null;
   }
 }

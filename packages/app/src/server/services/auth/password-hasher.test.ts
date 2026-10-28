@@ -74,6 +74,19 @@ describe("PasswordHasher", () => {
     await expect(created.verify("anything", dummy)).resolves.toBe(false);
   });
 
+  it("does not leave a failed dummy hash unhandled, and still reports it when used", async () => {
+    const unhandled = vi.fn();
+    process.on("unhandledRejection", unhandled);
+    vi.spyOn(bcrypt, "hash").mockRejectedValueOnce(new Error("no entropy"));
+
+    const failing = new PasswordHasher({ passwordHashCost: 4 });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    process.off("unhandledRejection", unhandled);
+
+    expect(unhandled).not.toHaveBeenCalled();
+    await expect(failing.dummyHash).rejects.toThrow("no entropy");
+  });
+
   it("uses a different dummy hash per instance", async () => {
     const other = new PasswordHasher({ passwordHashCost: 4 });
     expect(await other.dummyHash).not.toBe(await hasher.dummyHash);

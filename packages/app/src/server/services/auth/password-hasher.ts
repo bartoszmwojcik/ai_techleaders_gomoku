@@ -22,6 +22,9 @@ export class PasswordHasher {
   constructor({ passwordHashCost }: Deps) {
     this.#cost = passwordHashCost;
     this.dummyHash = this.hash(randomBytes(32).toString("base64url"));
+    // A failed computation must not be an unhandled rejection of the process: this no-op
+    // handler only marks it as handled, the error still surfaces where `verify` awaits it.
+    this.dummyHash.catch(() => undefined);
   }
 
   hash(password: string): Promise<string> {

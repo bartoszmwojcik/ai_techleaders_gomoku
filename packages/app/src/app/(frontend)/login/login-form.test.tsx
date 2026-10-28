@@ -31,7 +31,7 @@ afterEach(cleanup);
 describe("LoginForm", () => {
   it("shows the fields with the right autocomplete and a link to register", () => {
     render(<LoginForm nextPath="/" />);
-    expect(screen.getByLabelText(/E-mail/).getAttribute("autocomplete")).toBe("username");
+    expect(screen.getByLabelText(/E-mail/).getAttribute("autocomplete")).toBe("email");
     expect(screen.getByLabelText(/^Hasło/).getAttribute("autocomplete")).toBe("current-password");
     expect(screen.getByRole("link", { name: "Załóż konto" }).getAttribute("href")).toBe("/register");
     expect(screen.queryByTestId("login-error")).toBeNull();
@@ -142,13 +142,30 @@ describe("LoginForm", () => {
     expect(alert.querySelector("a")?.getAttribute("href")).toBe("/account");
   });
 
-  it("explains a network failure and keeps the e-mail", async () => {
+  it("explains a network failure and keeps the e-mail and the password", async () => {
     apiCall.mockResolvedValue(failure({ code: "network" }));
     render(<LoginForm nextPath="/" />);
     await fillAndSubmit();
     expect(screen.getByTestId("login-error").textContent).toContain("Brak połączenia");
     expect((screen.getByLabelText(/E-mail/) as HTMLInputElement).value).toBe("ala@example.com");
-    expect((screen.getByLabelText(/^Hasło/) as HTMLInputElement).value).toBe("");
+    const input = screen.getByLabelText(/^Hasło/) as HTMLInputElement;
+    expect(input.value).toBe("secret123");
+    await waitFor(() => expect(document.activeElement).toBe(input));
+  });
+
+  it("keeps the typed password and its visibility when the limit is hit", async () => {
+    apiCall.mockResolvedValue(failure({ code: "RATE_LIMITED", retryAfterSeconds: 60 }));
+    const user = userEvent.setup();
+    render(<LoginForm nextPath="/" />);
+    await user.type(screen.getByLabelText(/E-mail/), "ala@example.com");
+    await user.type(screen.getByLabelText(/^Hasło/), "secret123");
+    await user.click(screen.getByRole("button", { name: "Pokaż hasło" }));
+    await user.click(screen.getByRole("button", { name: "Zaloguj się" }));
+
+    const input = screen.getByLabelText(/^Hasło/) as HTMLInputElement;
+    expect(input.value).toBe("secret123");
+    expect(input.type).toBe("text");
+    await waitFor(() => expect(document.activeElement).toBe(input));
   });
 
   it.each(["INTERNAL", "FORBIDDEN", "VALIDATION"])("shows a generic message for %s", async (code) => {
@@ -158,5 +175,6 @@ describe("LoginForm", () => {
     const alert = screen.getByTestId("login-error");
     expect(alert.textContent).toContain("Nie udało się zalogować");
     expect(alert.textContent).toContain("Spróbuj ponownie.");
+    expect((screen.getByLabelText(/^Hasło/) as HTMLInputElement).value).toBe("secret123");
   });
 });

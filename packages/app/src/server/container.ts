@@ -24,9 +24,6 @@ import { UserService } from "./services/auth/user-service";
 import { HealthService } from "./services/health-service";
 import { RateLimiter } from "./services/rate-limit/rate-limiter";
 
-/** bcrypt cost factor used by the application (tests inject a lower one). */
-const PASSWORD_HASH_COST = 12;
-
 /** Application-wide (singleton) dependencies. */
 export type AppCradle = {
   orm: Orm;
@@ -84,7 +81,10 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
   container.register({
     orm: asValue(await getOrm()),
     healthService: asClass(HealthService).singleton(),
-    passwordHashCost: asValue(PASSWORD_HASH_COST),
+    // From PASSWORD_HASH_COST (default 12); lazy like the rest of the config.
+    passwordHashCost: asFunction(
+      ({ serverConfig }: AppCradle) => serverConfig.passwordHashCost,
+    ).singleton(),
     passwordHasher: asClass(PasswordHasher).singleton(),
     serverConfig: asFunction(() => readServerConfig(process.env)).singleton(),
     hasActiveGame: asValue<HasActiveGame>(async () => false),

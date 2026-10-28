@@ -167,7 +167,9 @@ describe("apiHandler", () => {
 
   it("hides unknown errors behind a generic 500 and logs them", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const failure = new Error("secret internals");
+    const failure = Object.assign(new Error("secret internals"), {
+      code: "57P01",
+    });
     const response = await apiHandler(async () => {
       throw failure;
     })(post());
@@ -175,6 +177,10 @@ describe("apiHandler", () => {
     const text = await response.text();
     expect(text).not.toContain("secret internals");
     expect(JSON.parse(text).error.code).toBe("INTERNAL");
-    expect(log).toHaveBeenCalledWith("Unhandled API error", failure);
+    expect(log).toHaveBeenCalledWith("Unhandled API error", {
+      name: "Error",
+      code: "57P01",
+    });
+    expect(JSON.stringify(log.mock.calls)).not.toContain("secret internals");
   });
 });

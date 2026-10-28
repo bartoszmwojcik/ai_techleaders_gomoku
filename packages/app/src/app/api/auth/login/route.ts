@@ -18,18 +18,21 @@ export const LOGIN_EMAIL_LIMIT = 100;
 export const LOGIN_EMAIL_WINDOW_MS = 60 * 60 * 1000;
 
 const login = apiHandler(async (request) => {
-  const body = await readJsonBody(request);
-  // A signed-in client gets a dedicated code and does not spend any attempt budget.
-  if (await getCurrentUser()) {
-    throw new ConflictError("Jesteś już zalogowany.", {
-      code: "ALREADY_AUTHENTICATED",
-    });
-  }
   return withRequestScope(async ({ cradle }) => {
     const { rateLimiter } = cradle;
+    // Order (spec: kolejność w route): the address limit comes first, before the session
+    // check and before parsing, so every request (also a signed-in one or a malformed one)
+    // spends the address budget and cannot be used to probe for free. The 409 and 400 answers
+    // spend no e-mail counters.
     const ipKey = clientKey(request.headers, "login", cradle.serverConfig);
     await rateLimiter.hit(ipKey, LOGIN_IP_LIMIT, LOGIN_IP_WINDOW_MS);
-    const { email, password } = loginSchema.parse(body);
+    // A signed-in client gets a dedicated code.
+    if (await getCurrentUser()) {
+      throw new ConflictError("Jesteś już zalogowany.", {
+        code: "ALREADY_AUTHENTICATED",
+      });
+    }
+    const { email, password } = loginSchema.parse(await readJsonBody(request));
     // Keys are hashes: no e-mail or address in the table. The e-mail counters grow before
     // the (slow) password check, so parallel guesses cannot slip past the limit; a
     // successful login gives the attempt back, so only failures stay counted.

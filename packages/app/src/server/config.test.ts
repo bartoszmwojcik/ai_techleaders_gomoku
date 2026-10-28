@@ -16,6 +16,7 @@ describe("readServerConfig", () => {
       clientIpHeader: "x-forwarded-for",
       appOrigin: undefined,
       sessionCookieSecure: true,
+      passwordHashCost: 12,
     });
     expect(
       readServerConfig({
@@ -38,6 +39,7 @@ describe("readServerConfig", () => {
       clientIpHeader: "cf-connecting-ip",
       appOrigin: "https://gomoku.byst.re",
       sessionCookieSecure: true,
+      passwordHashCost: 12,
     });
   });
 
@@ -51,6 +53,20 @@ describe("readServerConfig", () => {
     expect(() =>
       readServerConfig({ ...env, SESSION_COOKIE_SECURE: undefined }),
     ).toThrow(/https/);
+  });
+
+  it("reads the bcrypt cost and rejects values outside 4-31", () => {
+    expect(readServerConfig({ PASSWORD_HASH_COST: "4" })).toMatchObject({
+      passwordHashCost: 4,
+    });
+    expect(readServerConfig({ PASSWORD_HASH_COST: "" })).toMatchObject({
+      passwordHashCost: 12,
+    });
+    for (const bad of ["3", "32", "abc", "12.5", "-4", "004", "1e1"]) {
+      expect(() => readServerConfig({ PASSWORD_HASH_COST: bad })).toThrow(
+        /PASSWORD_HASH_COST/,
+      );
+    }
   });
 
   it("rejects an insecure cookie with an https origin", () => {

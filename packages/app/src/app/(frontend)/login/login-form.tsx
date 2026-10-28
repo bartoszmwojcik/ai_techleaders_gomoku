@@ -42,7 +42,7 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  // Remounting the password field hides the password again after every attempt.
+  // Remounting the password field hides the password again after a wrong one.
   const [passwordKey, setPasswordKey] = useState(0);
   const [errors, setErrors] = useState<FieldMessages>({});
   const [general, setGeneral] = useState<GeneralError | null>(null);
@@ -81,10 +81,11 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
     }
 
     setPending(false);
-    setPassword("");
-    setPasswordKey((key) => key + 1);
     const { code, retryAfterSeconds } = result.error;
     if (code === "INVALID_CREDENTIALS") {
+      // Only a wrong password is cleared (and hidden again); other failures keep what was typed.
+      setPassword("");
+      setPasswordKey((key) => key + 1);
       // One message for an unknown e-mail and a wrong password: no field is blamed.
       setGeneral({ title: "Nieprawidłowy e-mail lub hasło", details: "Sprawdź dane i spróbuj ponownie." });
     } else if (code === "RATE_LIMITED") {
@@ -101,12 +102,12 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
     } else if (code === "network") {
       setGeneral({
         title: "Brak połączenia",
-        details: "Nie udało się połączyć z serwerem. Wpisany e-mail został zachowany. Spróbuj ponownie.",
+        details: "Nie udało się połączyć z serwerem. Wpisane dane zostały zachowane. Spróbuj ponownie.",
       });
     } else {
       setGeneral(GENERIC_ERROR);
     }
-    // The password field was remounted empty and the error has no field of its own: focus the password.
+    // The error has no field of its own: focus the password (empty after a wrong one).
     setFocusTarget({ id: FIELD_IDS.password });
   }
 
@@ -124,7 +125,7 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
           id={FIELD_IDS.email}
           name="email"
           type="email"
-          autoComplete="username"
+          autoComplete="email"
           label="E-mail"
           error={errors.email}
           required
