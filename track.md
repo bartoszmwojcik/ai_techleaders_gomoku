@@ -88,7 +88,7 @@ Ręczny test po fazie: `/forgot-password` → link ze skrzynki → `/reset-passw
 - [x] 8.2 `newPasswordSchema` + schematy resetu
 - [x] 8.3 `PasswordResetService` + szablon (dopiąć: w `container.ts` zastąpić no-op `invalidateResetTokens` (z 5.2) funkcją `(userId, em)` usuwającą/unieważniającą niewykorzystane tokeny resetu użytkownika wyłącznie przez przekazany `em` (`tx` transakcji zmiany hasła, nie wstrzyknięty `em`), z testami; sygnatura jest już gotowa od 5.5)
 - [x] 8.4 Route `…/request` i `…/confirm`
-- [ ] 8.5 Strony `/forgot-password`, `/reset-password`, link na `/login`
+- [x] 8.5 Strony `/forgot-password`, `/reset-password`, link na `/login`
 - [ ] 8.6 Dokumentacja
 
 ## Faza 9 — Sprzątanie wygasłych rekordów (#39, z regułą 14 dni dla niepotwierdzonych kont)
