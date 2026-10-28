@@ -47,7 +47,7 @@ Ręczny test po fazie: wylogowanie, `/account` bez sesji przekierowuje na `/logi
 
 - [x] 4.1 `SessionService.revoke` i `POST /api/auth/logout`
 - [x] 4.2 `requireSession` / `requirePageSession`, `activeGameCheck`, `/account`, `LogoutButton`, linki na `/`
-- [ ] 4.3 Dokumentacja (README: logowanie, limity)
+- [x] 4.3 Dokumentacja (README: logowanie, limity)
 
 ## Faza 5 — Zmiana hasła (#36)
 
