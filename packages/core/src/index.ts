@@ -4,5 +4,6 @@ export * from "./http/api-result";
 export * from "./http/errors";
 export * from "./http/safe-next-path";
 export * from "./http/zod-error";
+export * from "./validators/auth/login-schema";
 export * from "./validators/auth/normalize";
 export * from "./validators/auth/register-schema";
