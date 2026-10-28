@@ -94,7 +94,9 @@ export class UserService {
     const hash = user?.passwordHash ?? (await this.#passwordHasher.dummyHash);
     const matches = await this.#passwordHasher.verify(password, hash);
     if (!user || !matches) {
-      throw new UnauthorizedError(INVALID_CREDENTIALS_MESSAGE);
+      throw new UnauthorizedError(INVALID_CREDENTIALS_MESSAGE, {
+        code: "INVALID_CREDENTIALS",
+      });
     }
     return { id: user.id, displayName: user.displayName };
   }

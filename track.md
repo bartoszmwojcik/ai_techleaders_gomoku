@@ -37,7 +37,7 @@ Ręczny test po fazie: `/login` (poprawne dane, złe hasło ten sam komunikat, `
 - [x] 3.1 `RateLimiter.hit` i `reset`
 - [x] 3.2 `normalizeEmail`, `loginSchema`
 - [x] 3.3 Atrapowy hash i `UserService.authenticate`
-- [ ] 3.4 Route `POST /api/auth/login`
+- [x] 3.4 Route `POST /api/auth/login`
 - [ ] 3.5 `PasswordField`, strona `/login` (przywrócić linki do `/login` w `register-form`: komunikat przy `CONFLICT` i „Masz już konto? Zaloguj się”, usunięte w 2.4)
 
 ## Faza 4 — Wylogowanie, strażnik sesji i konto (#20, kroki 6–8)

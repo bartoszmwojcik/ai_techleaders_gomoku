@@ -219,6 +219,7 @@ describe("UserService.authenticate", () => {
       .authenticate("ala@example.com", "wrong")
       .catch((e: unknown) => e);
     expect(error).toBeInstanceOf(UnauthorizedError);
+    expect((error as UnauthorizedError).code).toBe("INVALID_CREDENTIALS");
     expect((error as UnauthorizedError).message).toBe(
       INVALID_CREDENTIALS_MESSAGE,
     );
