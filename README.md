@@ -51,7 +51,7 @@ Aplikacja Next.js z App Routerem (`packages/app/src/app`). Ma dwie części, ka�
 
 | Część | Katalog | Adres | Style |
 | --- | --- | --- | --- |
-| Frontend — strony dla graczy | `src/app/(frontend)` | `/` | Tailwind CSS z własnym motywem gry (`frontend.css`) |
+| Frontend — strony dla graczy | `src/app/(frontend)` | `/`, `/register` | Tailwind CSS z własnym motywem gry (`frontend.css`) |
 | Backend — panel administracyjny | `src/app/(backend)` | `/backend` | shadcn/ui z `@gomoku/ui` |
 | API | `src/app/api` | `/api/*` | — |
 
@@ -68,6 +68,17 @@ const report = await withRequestScope(({ cradle }) => cradle.healthService.check
 ```
 
 `GET /api/health` zwraca stan połączenia z bazą: `200` albo `503`.
+
+#### Konta i sesje
+
+Gracz zakłada konto na `/register` (e-mail, nazwa gracza, hasło co najmniej 8 znaków) i jest od razu zalogowany; strona `/` pokazuje „Zalogowano jako …”, a zalogowany wchodzący na `/register` trafia na `/`. Parametr `?next=` wskazuje ścieżkę powrotu po rejestracji (tylko ścieżki względne w obrębie serwisu, inne wartości dają `/`). Formularz wywołuje `POST /api/auth/register`:
+
+- **Uwierzytelnianie:** własne, bez biblioteki. Hasło jest hashowane przez `bcryptjs` (koszt 12), sesja leży w tabeli `sessions` (30 dni), a w ciasteczku `httpOnly` jest losowy token (w bazie tylko jego SHA-256). W produkcji ciasteczko nazywa się `__Host-gomoku_session` (`Secure`, bez `Domain`), poza produkcją `gomoku_session`.
+- **CSRF:** każde żądanie zmieniające stan musi mieć nagłówek `Origin` równy `APP_ORIGIN` oraz `X-Gomoku-Request: 1` (dodaje go klient `apiCall`); inaczej `403`.
+- **Limit prób:** 5 prób rejestracji na godzinę na adres klienta (`429` z nagłówkiem `Retry-After`). Adres pochodzi z nagłówka `CLIENT_IP_HEADER`, liczony od prawej według `TRUST_PROXY_HOPS`; IPv6 jest skracany do prefiksu /64.
+- **Odpowiedzi:** zajęty e-mail daje jednolite `409` bez wskazania pola (brak ujawniania kont), zajęta nazwa gracza jest zgłaszana przy swoim polu, zalogowany klient dostaje `409 ALREADY_AUTHENTICATED`.
+
+Specyfikacja i kontrakt API: [`.ai/specs/2026-10-24-account-registration.md`](.ai/specs/2026-10-24-account-registration.md).
 
 ### `@gomoku/core` — części wielokrotnego użytku
 
@@ -125,8 +136,12 @@ Zmienne środowiskowe czytane są z plików `.env*` w katalogu głównym repozyt
 | --- | --- | --- |
 | `DATABASE_URL` | `postgresql://gomoku:gomoku@localhost:5432/gomoku` | Adres bazy PostgreSQL |
 | `DATABASE_POOL_MIN` | `0` | Minimalna liczba połączeń w puli |
-| `DATABASE_POOL_MAX` | `10` | Maksymalna liczba połączeń w puli |
+| `DATABASE_POOL_MAX` | `10` | Maksymalna liczba połączeń w puli; build produkcyjny ma dwie pule (strony i route'y), więc realnie do dwukrotności |
 | `DATABASE_DEBUG` | `false` | Logowanie zapytań SQL |
+| `APP_ORIGIN` | brak (dev: `http://localhost:<port>`) | Dokładny origin aplikacji, np. `https://gomoku.byst.re`; porównywany z nagłówkiem `Origin` (CSRF). **Wymagany w produkcji** |
+| `TRUST_PROXY_HOPS` | brak (dev: wspólny klucz `local`) | Liczba własnych proxy przed aplikacją (liczba całkowita ≥ 1). **Wymagana w produkcji** |
+| `CLIENT_IP_HEADER` | `x-forwarded-for` | Nagłówek z adresem klienta: `x-forwarded-for`, `x-real-ip` albo `cf-connecting-ip` |
+| `SESSION_COOKIE_SECURE` | `true` | `false` tylko dla testów integracyjnych (HTTP bez TLS); przy `APP_ORIGIN` z `https://` przerywa start |
 
 ## Wdrożenie na mikr.us
 
@@ -134,7 +149,7 @@ Aplikacja działa w kontenerach Docker na VPS mikr.us (plan z Dockerem, ≥ 2.1)
 
 ```bash
 git clone https://github.com/bartoszmwojcik/ai_techleaders_gomoku.git && cd ai_techleaders_gomoku
-cp .env.production.example .env.production      # ustaw POSTGRES_PASSWORD (openssl rand -hex 24)
+cp .env.production.example .env.production      # ustaw POSTGRES_PASSWORD (openssl rand -hex 24) i APP_ORIGIN
 docker compose --env-file .env.production -f compose.prod.yaml up -d --build
 domena gomoku.byst.re 3000                       # subdomena na porcie aplikacji (HTTPS automatycznie)
 curl https://gomoku.byst.re/api/health           # {"status":"ok",...}
@@ -145,7 +160,9 @@ curl https://gomoku.byst.re/api/health           # {"status":"ok",...}
 - **IPv6:** subdomeny mikr.us wymagają, żeby usługa odpowiadała na IPv6. Aplikacja słucha w kontenerze na IPv4, a Docker publikuje port także na adresie IPv6 hosta; komenda `domena` sprawdza, czy port odpowiada, zanim utworzy subdomenę.
 - **Aktualizacja:** `git pull`, potem to samo polecenie `docker compose … up -d --build` (migracje wykonują się przy każdym starcie).
 - **Logi i stan:** `docker compose -f compose.prod.yaml logs -f app`, `docker compose -f compose.prod.yaml ps`.
-- **Kolejne zmienne:** `APP_ORIGIN` i `TRUST_PROXY_HOPS` (konta, #19) oraz `SMTP_*` (poczta, #38) dojdą z tymi funkcjami; produkcyjny start bez nich ma przerywać, zgodnie ze specyfikacjami.
+- **Konta (`APP_ORIGIN`, `TRUST_PROXY_HOPS`, `CLIENT_IP_HEADER`):** `compose.prod.yaml` wymaga `APP_ORIGIN` i `TRUST_PROXY_HOPS` z `.env.production` (bez nich `docker compose` odmawia startu). Aplikacja w produkcji bez poprawnych wartości działa tylko częściowo: `/api/health` odpowiada, ale route'y domenowe (`/api/auth/*`) zwracają `500` (fail closed), a `/` pokazuje widok gościa. `APP_ORIGIN` to dokładny adres subdomeny z `https://` (np. `https://gomoku.byst.re`). `TRUST_PROXY_HOPS` to liczba proxy, które dopisują adres klienta do `CLIENT_IP_HEADER`; zła wartość pozwala podszyć się pod adres (za duża) albo wrzuca wszystkich pod adres proxy (za mała), więc po wdrożeniu sprawdź na serwerze, jaki adres trafia do nagłówka. Czy proxy mikr.us w ogóle go przekazuje, wyjaśnia spike #30 — jeśli nie, rejestracja zwraca `500` do czasu przejścia na Cloudflare (wtedy `CLIENT_IP_HEADER=cf-connecting-ip`). `SESSION_COOKIE_SECURE` w produkcji zostaw nieustawione.
+- **Nasłuch na IPv6:** subdomena wymaga odpowiedzi na IPv6. Aplikacja w kontenerze słucha na `0.0.0.0` (IPv4), a Docker publikuje port także na adresie IPv6 hosta; jeśli publikacja IPv6 nie działa, uruchom aplikację z `-H ::` (nasłuch na obu stosach) albo włącz IPv6 w demonie Docker. Zawsze sprawdź `curl -6 https://<subdomena>/api/health`.
+- **Kolejne zmienne:** `SMTP_*` (poczta, #38) dojdą z tą funkcją; produkcyjny start bez nich ma przerywać, zgodnie ze specyfikacją.
 - **Czyszczenie wygasłych rekordów** (#39) będzie wpisem `cron` na serwerze: `docker compose … run --rm app npm run db:cleanup`.
 
 ## Komendy
@@ -173,7 +190,7 @@ Uruchamiane z katalogu głównego:
 
 **Testy jednostkowe** (Vitest 5) leżą obok kodu jako `*.test.ts(x)`. Każdy pakiet z `packages/*` to osobny projekt Vitest. Próg pokrycia wynosi 100% (instrukcje, gałęzie, funkcje, linie) dla każdego pliku. Poza progiem są tylko komponenty shadcn/ui (lista `SHADCN_COMPONENTS` w `vitest.config.ts`) i wygenerowane migracje.
 
-**Testy integracyjne** (`tests/integration`) uruchamiają produkcyjny build aplikacji na tymczasowym PostgreSQL w kontenerze ([Testcontainers](https://testcontainers.com/)) i sprawdzają strony w prawdziwej przeglądarce przez [agent-browser](https://agent-browser.dev). Wymagają Dockera i jednorazowej instalacji Chrome:
+**Testy integracyjne** (`tests/integration`) uruchamiają produkcyjny build aplikacji na tymczasowym PostgreSQL w kontenerze ([Testcontainers](https://testcontainers.com/)) i sprawdzają strony i przepływy (np. rejestrację) w prawdziwej przeglądarce przez [agent-browser](https://agent-browser.dev). Wymagają Dockera i jednorazowej instalacji Chrome:
 
 ```bash
 npx agent-browser install        # Chrome for Testing (raz; albo npm run setup -- --with-browser)

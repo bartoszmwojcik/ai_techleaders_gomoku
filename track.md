@@ -25,9 +25,10 @@ Ręczny test po fazie: `curl` (z nagłówkami `Origin` i `X-Gomoku-Request`) na 
 
 Ręczny test po fazie: `npm run dev` → `/register`: rejestracja, przekierowanie na `/`, widoczne „Zalogowano jako …”, błędy pól, telefon 360 px.
 
-- [ ] 2.1 `apiCall` i `safeNextPath`
-- [ ] 2.2 Komponenty formularza (`FormField`, `SubmitButton`, `ErrorMessage`, jsdom + Testing Library)
-- [ ] 2.3 Strona `/register`, `/` ze stanem zalogowania, dokumentacja (README, standardy)
+- [x] 2.1 `apiCall` i `safeNextPath`
+- [x] 2.2 Komponenty formularza (`FormField`, `SubmitButton`, `ErrorMessage`, jsdom + Testing Library)
+- [x] 2.3 Strona `/register`, `/` ze stanem zalogowania, dokumentacja (README, standardy)
+- [x] 2.4 Poprawki po code review Fazy 2 (M1 CI `docker` + krok curl, M2 martwe linki `/login`, M3 podpis o wysyłce, L1 log w `getCurrentUser`, L3 fokus po błędzie, L4 cel dotykowy linku, L6 `.env.production.example`)
 
 ## Faza 3 — Logowanie (#20, kroki 1–5)
 
@@ -37,7 +38,7 @@ Ręczny test po fazie: `/login` (poprawne dane, złe hasło ten sam komunikat, `
 - [ ] 3.2 `normalizeEmail`, `loginSchema`
 - [ ] 3.3 Atrapowy hash i `UserService.authenticate`
 - [ ] 3.4 Route `POST /api/auth/login`
-- [ ] 3.5 `PasswordField`, strona `/login`
+- [ ] 3.5 `PasswordField`, strona `/login` (przywrócić linki do `/login` w `register-form`: komunikat przy `CONFLICT` i „Masz już konto? Zaloguj się”, usunięte w 2.4)
 
 ## Faza 4 — Wylogowanie, strażnik sesji i konto (#20, kroki 6–8)
 
@@ -63,7 +64,7 @@ Ręczny test po fazie: rejestracja → plik-skrzynka (`EMAIL_TRANSPORT=file`) �
 - [ ] 6.1 Encja i migracja `email_verification_tokens`
 - [ ] 6.2 `EmailSender`, `FileEmailSender`, `UnconfiguredEmailSender`, `clock`, wybór w `container.ts`
 - [ ] 6.3 Szablon wiadomości
-- [ ] 6.4 `EmailVerificationService.issue/confirm`, wywołanie po rejestracji
+- [ ] 6.4 `EmailVerificationService.issue/confirm`, wywołanie po rejestracji (przywrócić podpis pod e-mailem w `register-form` o linku do potwierdzenia; usunięty w 2.4, bo wysyłki jeszcze nie ma)
 - [ ] 6.5 Route `…/confirm` i strona `/verify-email`
 
 ## Faza 7 — Ponowne wysłanie i baner (#34, Faza 2: kroki 6–8)

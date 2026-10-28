@@ -1,14 +1,21 @@
 import { ConflictError, TooManyRequestsError } from "@gomoku/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { connection, consume, register, setSessionCookie, getContainer } =
-  vi.hoisted(() => ({
-    connection: vi.fn(),
-    consume: vi.fn(),
-    register: vi.fn(),
-    setSessionCookie: vi.fn(),
-    getContainer: vi.fn(),
-  }));
+const {
+  connection,
+  consume,
+  register,
+  setSessionCookie,
+  getCurrentUser,
+  getContainer,
+} = vi.hoisted(() => ({
+  connection: vi.fn(),
+  consume: vi.fn(),
+  register: vi.fn(),
+  setSessionCookie: vi.fn(),
+  getCurrentUser: vi.fn(),
+  getContainer: vi.fn(),
+}));
 const serverConfig = {
   production: true,
   trustProxyHops: 1,
@@ -17,7 +24,7 @@ const serverConfig = {
   sessionCookieSecure: true,
 };
 vi.mock("next/server", () => ({ connection }));
-vi.mock("@/server/http/auth", () => ({ setSessionCookie }));
+vi.mock("@/server/http/auth", () => ({ setSessionCookie, getCurrentUser }));
 vi.mock("@/server/container", () => ({
   getContainer,
   withRequestScope: (fn: (scope: unknown) => unknown) =>
@@ -56,6 +63,7 @@ beforeEach(() => {
   consume.mockReset().mockResolvedValue(undefined);
   register.mockReset();
   setSessionCookie.mockReset().mockResolvedValue(undefined);
+  getCurrentUser.mockReset().mockResolvedValue(null);
   getContainer.mockReset().mockResolvedValue({ cradle: { serverConfig } });
 });
 
@@ -124,6 +132,19 @@ describe("POST /api/auth/register", () => {
     expect(response.status).toBe(429);
     expect(response.headers.get("retry-after")).toBe("42");
     expect(register).not.toHaveBeenCalled();
+  });
+
+  it("answers 409 ALREADY_AUTHENTICATED for a signed-in client without spending the budget", async () => {
+    getCurrentUser.mockResolvedValue({ id: "u1", displayName: "Ala_7" });
+
+    const response = await POST(post(valid));
+
+    expect(response.status).toBe(409);
+    const body = (await response.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("ALREADY_AUTHENTICATED");
+    expect(consume).not.toHaveBeenCalled();
+    expect(register).not.toHaveBeenCalled();
+    expect(setSessionCookie).not.toHaveBeenCalled();
   });
 
   it("rejects a foreign origin before touching the limiter", async () => {

@@ -123,7 +123,11 @@ describe("getCurrentUser", () => {
   });
 
   it("fails closed to null on any error", async () => {
-    withRequestScope.mockRejectedValue(new Error("db down"));
+    const error = new Error("db down");
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    withRequestScope.mockRejectedValue(error);
     expect(await getCurrentUser()).toBeNull();
+    expect(log).toHaveBeenCalledWith("Session lookup failed", error);
+    log.mockRestore();
   });
 });

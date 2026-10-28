@@ -1,9 +1,9 @@
-import { registerSchema } from "@gomoku/core";
+import { ConflictError, registerSchema } from "@gomoku/core";
 import { connection } from "next/server";
 
 import { withRequestScope } from "@/server/container";
 import { apiHandler, readJsonBody } from "@/server/http/api-handler";
-import { setSessionCookie } from "@/server/http/auth";
+import { getCurrentUser, setSessionCookie } from "@/server/http/auth";
 import { clientKey } from "@/server/http/client-address";
 
 /** 5 attempts (successful or not) per hour and client address (spec: Limit prób). */
@@ -12,6 +12,13 @@ export const REGISTER_WINDOW_MS = 60 * 60 * 1000;
 
 const register = apiHandler(async (request) => {
   const body = await readJsonBody(request);
+  // A signed-in client (e.g. logged in from another tab while filling in the form) gets a
+  // dedicated code and does not spend the attempt budget.
+  if (await getCurrentUser()) {
+    throw new ConflictError("Jesteś już zalogowany.", {
+      code: "ALREADY_AUTHENTICATED",
+    });
+  }
   return withRequestScope(async ({ cradle }) => {
     // Counted before validation and hashing, in its own committed transaction, so a `400`
     // or `409` outcome never gives the attempt back.

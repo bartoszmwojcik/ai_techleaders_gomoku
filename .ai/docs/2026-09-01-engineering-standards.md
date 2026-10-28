@@ -19,12 +19,13 @@ document.
 
 These are deliberately left open. Do not implement around them with an ad-hoc choice —
 raise them with the project owner and record the outcome in a spec under `.ai/specs/`.
+Resolved decisions stay in the table with their outcome.
 
 | ID | Decision | Why it matters |
 |---|---|---|
 | OD-1 | Real-time transport for games and lobby: WebSocket, SSE or polling. | Brief lists it as the next blocking uncertainty. Determines whether an in-process event emitter is enough (single instance) or a cross-instance fan-out (e.g. Postgres `LISTEN/NOTIFY`) is needed. |
-| OD-2 | Authentication mechanism: own credentials + session cookie/JWT, or an auth library. | Decides the hashing, session and CSRF details. The security *requirements* in Section 1 apply regardless of the mechanism. |
-| OD-3 | New dependencies: `zod` (shared validation), `pino` (logging), env validation. | `AGENTS.md` requires explicit approval for new libraries. Until approved, "schema" below means "the shared validator for that input" and "logger" means the shared logging helper. |
+| OD-2 | Authentication mechanism: own credentials + session cookie/JWT, or an auth library. | **Resolved 2026-10-24** (`.ai/specs/2026-10-24-account-registration.md`, Q1/Q2): own credentials, password hashed with `bcryptjs` (cost 12), session stored in PostgreSQL (`sessions`; random 32-byte token in an `httpOnly` cookie, only its SHA-256 in the database), CSRF through a mandatory `Origin` equal to `APP_ORIGIN` plus the `X-Gomoku-Request` header. No auth library. |
+| OD-3 | New dependencies: `zod` (shared validation), `pino` (logging), env validation. | **Partly resolved 2026-10-24** (Q3): `zod` is approved and used for the shared schemas in `@gomoku/core`; `bcryptjs` is approved with OD-2. `pino` (logging) and env validation stay open: until approved, "logger" means the shared logging helper. |
 
 ---
 
@@ -228,7 +229,11 @@ Mechanism-specific details depend on OD-2; the requirements below do not.
 - **Secrets & logging:** secrets only via env (list in `.env.example`), `.env*` with
   real values never committed; logs never contain passwords, tokens or session IDs.
 - **Auth error messages:** generic ("invalid credentials"); never reveal whether an
-  email is registered.
+  email is registered. Registration follows the same rule: a taken e-mail (also when the
+  display name is taken too) gets one uniform `409` without `fieldErrors`; only a taken
+  display name, which is public anyway, is reported at its field. The hash is computed
+  before the write on both paths, so response time does not depend on whether the e-mail
+  exists.
 - **IDs:** UUIDs for user-visible records — no sequential enumeration of games or users.
 - **Dependency hygiene:** `npm audit` in the validation gate; no dependency for what 20
   lines of local code cover; new libraries need approval (OD-3).
@@ -429,7 +434,7 @@ One buildable step at a time; `npm run check` after each.
    together with the first domain route, which becomes the reference example later
    routes copy. `/api/health` keeps its own response shape (`{ status, database }`,
    used by `npm run smoke`) and is not moved onto the envelope.
-3. Resolve OD-2 and OD-3 in specs before implementing auth; resolve OD-1 before the
+3. OD-2 and OD-3 (`zod`) are resolved (section 0); resolve OD-1 before the
    lobby and live game screens.
 4. Add `core/src/events/` with the first feature that emits an event — not before.
 5. Add the backend panel components in `ui/src/components/backend/` with the first
