@@ -1,6 +1,7 @@
 import {
   ConflictError,
   UnauthorizedError,
+  ValidationError,
   normalizeDisplayName,
   normalizeEmail,
   type RegisterInput,
@@ -14,10 +15,20 @@ import {
 import type { PasswordHasher } from "./password-hasher";
 import type { SessionService } from "./session-service";
 
+/**
+ * Invalidates the user's unused password reset tokens (#35). Called inside the password
+ * change transaction with the transaction's `em` (`tx`): an implementation must write only
+ * through it, never through an injected `em` (that fork does not join the transaction).
+ * The `password_reset_tokens` table does not exist yet, so the container registers a no-op
+ * until the reset feature replaces the registration.
+ */
+export type InvalidateResetTokens = (userId: string, em: EntityManager) => Promise<void>;
+
 type Deps = {
   em: EntityManager;
   passwordHasher: PasswordHasher;
   sessionService: SessionService;
+  invalidateResetTokens: InvalidateResetTokens;
 };
 
 export type RegisteredUser = {
@@ -33,17 +44,28 @@ export const DISPLAY_NAME_TAKEN_MESSAGE = "Ta nazwa gracza jest już zajęta.";
 /** One answer for an unknown e-mail and a wrong password (never reveals which). */
 export const INVALID_CREDENTIALS_MESSAGE = "Nieprawidłowy e-mail lub hasło.";
 
+/** Answer for a wrong current password, also when a concurrent change got there first. */
+export const INVALID_CURRENT_PASSWORD_MESSAGE =
+  "Obecne hasło jest nieprawidłowe.";
+
 const DISPLAY_NAME_KEY_CONSTRAINT = "users_display_name_key_unique";
 
 export class UserService {
   readonly #em: EntityManager;
   readonly #passwordHasher: PasswordHasher;
   readonly #sessionService: SessionService;
+  readonly #invalidateResetTokens: InvalidateResetTokens;
 
-  constructor({ em, passwordHasher, sessionService }: Deps) {
+  constructor({
+    em,
+    passwordHasher,
+    sessionService,
+    invalidateResetTokens,
+  }: Deps) {
     this.#em = em;
     this.#passwordHasher = passwordHasher;
     this.#sessionService = sessionService;
+    this.#invalidateResetTokens = invalidateResetTokens;
   }
 
   /**
@@ -57,15 +79,20 @@ export class UserService {
     const passwordHash = await this.#passwordHasher.hash(input.password);
     try {
       // One transaction: a failure to create the session leaves no account without one.
-      return await this.#em.transactional(async () => {
-        const user = this.#em.create(User, {
+      // Writes go through `tx`; the injected fork (`useContext = false`) is outside it.
+      return await this.#em.transactional(async (tx) => {
+        const user = tx.create(User, {
           email: input.email,
           displayName: input.displayName,
           displayNameKey: normalizeDisplayName(input.displayName),
           passwordHash,
         });
-        await this.#em.flush();
-        const session = await this.#sessionService.create(user.id);
+        await tx.flush();
+        const session = await this.#sessionService.create(
+          user.id,
+          new Date(),
+          tx,
+        );
         return {
           user: { id: user.id, displayName: user.displayName },
           session,
@@ -102,6 +129,48 @@ export class UserService {
   }
 
   /**
+   * Changes the password of a signed-in user. `newPassword` must come from
+   * `passwordChangeSchema`. The current password is verified against the stored hash and the
+   * new one hashed before the transaction (bcrypt must not hold a connection); the
+   * transaction then replaces the hash only if it is still the one that was verified
+   * (`UPDATE ... WHERE password_hash = <verified>`, so of two parallel changes only the first
+   * wins), removes the user's other sessions (all but `currentSessionId`) and invalidates
+   * unused reset tokens, all or nothing.
+   * @throws ValidationError `INVALID_CURRENT_PASSWORD` (`fieldErrors.currentPassword`) for a
+   * wrong current password or a lost race; UnauthorizedError when the user no longer exists.
+   */
+  async changePassword(
+    userId: string,
+    currentSessionId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const user = await this.#em.findOne(User, { id: userId });
+    if (!user) {
+      throw new UnauthorizedError("Zaloguj się, aby kontynuować.");
+    }
+    const previousHash = user.passwordHash;
+    if (!(await this.#passwordHasher.verify(currentPassword, previousHash))) {
+      throw invalidCurrentPassword();
+    }
+    const newHash = await this.#passwordHasher.hash(newPassword);
+    await this.#em.transactional(async (tx) => {
+      const updated = await tx.nativeUpdate(
+        User,
+        { id: userId, passwordHash: previousHash },
+        { passwordHash: newHash },
+      );
+      if (updated === 0) throw invalidCurrentPassword();
+      await this.#sessionService.revokeOthers(
+        userId,
+        currentSessionId,
+        tx,
+      );
+      await this.#invalidateResetTokens(userId, tx);
+    });
+  }
+
+  /**
    * PostgreSQL reports only the first violated index, so when the name index fired the
    * e-mail may be taken as well; it is looked up so that the uniform e-mail answer wins
    * and a name conflict never confirms an e-mail.
@@ -122,4 +191,11 @@ export class UserService {
     }
     return new ConflictError(EMAIL_TAKEN_MESSAGE);
   }
+}
+
+function invalidCurrentPassword(): ValidationError {
+  return new ValidationError(INVALID_CURRENT_PASSWORD_MESSAGE, {
+    code: "INVALID_CURRENT_PASSWORD",
+    fieldErrors: { currentPassword: [INVALID_CURRENT_PASSWORD_MESSAGE] },
+  });
 }

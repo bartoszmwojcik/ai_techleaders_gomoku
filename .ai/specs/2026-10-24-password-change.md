@@ -57,6 +57,8 @@ Sekcja „Zmień hasło” na `/account`: dwa `PasswordField` z „Pokaż hasło
 | Dwie równoległe zmiany | Obie mogą przejść bcrypt na starym hashu, ale warunkowy `UPDATE … WHERE password_hash = <odczytany>` przepuszcza tylko pierwszą; druga → `INVALID_CURRENT_PASSWORD`. |
 | Otwarty link resetu (#35) wysłany przed zmianą | Unieważniony w tej samej transakcji. |
 | Inne urządzenie w trakcie partii | Traci sesję (Q4) — zegar biegnie (BR-06). |
+| Wygaśnięcie sesji w trakcie żądania zmiany hasła (L3, świadomie bez obsługi) | Żądanie z już sprawdzoną sesją kończy się normalnie; wygaśnięcie widać przy następnym żądaniu. |
+| Brak sprzątania limitu po wyłączeniu konta (L4, uwaga) | Licznik prób zmiany hasła jest na konto i wygasa sam po 15 minutach. |
 | Baza niedostępna | `500 INTERNAL`; hasło bez zmian (jedna transakcja: hash + unieważnienie sesji). |
 
 ## 📝 Risks & Impact Review

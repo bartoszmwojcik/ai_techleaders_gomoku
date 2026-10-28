@@ -65,7 +65,11 @@ export async function clearSessionCookie(config: CookieConfig): Promise<void> {
  * fail closed, so pages never show someone else's identity and never crash because of it.
  */
 export async function getCurrentUserWith<T>(
-  read: (user: CurrentUser, cradle: RequestCradle) => Promise<T>,
+  read: (
+    user: CurrentUser,
+    cradle: RequestCradle,
+    session: { id: string },
+  ) => Promise<T>,
 ): Promise<{ user: CurrentUser; data: T } | null> {
   try {
     return await withRequestScope(async ({ cradle }) => {
@@ -82,7 +86,7 @@ export async function getCurrentUserWith<T>(
         email,
         emailVerifiedAt: emailVerifiedAt ?? null,
       };
-      return { user, data: await read(user, cradle) };
+      return { user, data: await read(user, cradle, { id: session.id }) };
     });
   } catch (error) {
     console.error("Session lookup failed", describeError(error));
@@ -100,6 +104,21 @@ export async function requireSession(): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user) throw new UnauthorizedError("Zaloguj się, aby kontynuować.");
   return user;
+}
+
+/**
+ * Like `requireSession`, plus the id of the current session, so an operation can spare it
+ * (e.g. revoking the user's other sessions after a password change).
+ */
+export async function requireSessionWithId(): Promise<{
+  user: CurrentUser;
+  sessionId: string;
+}> {
+  const current = await getCurrentUserWith(
+    async (_user, _cradle, session) => session.id,
+  );
+  if (!current) throw new UnauthorizedError("Zaloguj się, aby kontynuować.");
+  return { user: current.user, sessionId: current.data };
 }
 
 /**

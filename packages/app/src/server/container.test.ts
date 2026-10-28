@@ -112,6 +112,7 @@ describe("auth services", () => {
       expect(cradle.gameParticipation).toBe(cradle.gameParticipation);
       expect(await cradle.gameParticipation.hasActiveGame("user")).toBe(false);
       expect(await cradle.hasActiveGame("user", new Date())).toBe(false);
+      expect(await cradle.invalidateResetTokens("user", forkedEm as never)).toBeUndefined();
       expect(forkedEm).toBeDefined();
     });
   });

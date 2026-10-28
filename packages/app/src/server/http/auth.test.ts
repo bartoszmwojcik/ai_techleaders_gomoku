@@ -18,6 +18,7 @@ import {
   getCurrentUserWith,
   requirePageSession,
   requireSession,
+  requireSessionWithId,
   sessionCookieName,
   setSessionCookie,
 } from "./auth";
@@ -125,12 +126,23 @@ describe("getCurrentUser", () => {
   });
 
   it("reads extra data for the user in the same request scope", async () => {
-    scope(vi.fn(async () => ({ user: { id: "u1", displayName: "Ala", email: "a@b.c" } })));
+    scope(
+      vi.fn(async () => ({
+        user: { id: "u1", displayName: "Ala", email: "a@b.c" },
+      })),
+    );
     store.get.mockReturnValue({ value: "tok" });
     const read = vi.fn(async () => "extra");
-    expect(await getCurrentUserWith(read)).toMatchObject({ user: { id: "u1" }, data: "extra" });
+    expect(await getCurrentUserWith(read)).toMatchObject({
+      user: { id: "u1" },
+      data: "extra",
+    });
     expect(withRequestScope).toHaveBeenCalledOnce();
-    expect(read).toHaveBeenCalledWith(expect.objectContaining({ id: "u1" }), expect.anything());
+    expect(read).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "u1" }),
+      expect.anything(),
+      expect.objectContaining({ id: undefined }),
+    );
   });
 
   it("does not read extra data without a session", async () => {
@@ -157,7 +169,9 @@ describe("getCurrentUser", () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     withRequestScope.mockRejectedValue(error);
     expect(await getCurrentUser()).toBeNull();
-    expect(log).toHaveBeenCalledWith("Session lookup failed", { name: "Error" });
+    expect(log).toHaveBeenCalledWith("Session lookup failed", {
+      name: "Error",
+    });
     expect(JSON.stringify(log.mock.calls)).not.toContain("ala@example.com");
     log.mockRestore();
   });
@@ -174,6 +188,7 @@ describe("session guards", () => {
               findValid: async () =>
                 signed
                   ? {
+                      id: "s1",
                       user: {
                         id: "u1",
                         displayName: "Ala",
@@ -200,6 +215,22 @@ describe("session guards", () => {
     expect(await requireSession()).toMatchObject({ id: "u1" });
   });
 
+  it("requireSessionWithId returns the user and the current session id", async () => {
+    signedIn(true);
+    expect(await requireSessionWithId()).toMatchObject({
+      user: { id: "u1" },
+      sessionId: "s1",
+    });
+  });
+
+  it("requireSessionWithId rejects with a 401 without a session", async () => {
+    signedIn(false);
+    await expect(requireSessionWithId()).rejects.toMatchObject({
+      status: 401,
+      code: "UNAUTHORIZED",
+    });
+  });
+
   it("requireSession rejects with a 401 without a session", async () => {
     signedIn(false);
     await expect(requireSession()).rejects.toMatchObject({
@@ -223,8 +254,12 @@ describe("session guards", () => {
 
   it("requirePageSession never redirects to an unsafe next (open redirect guard)", async () => {
     signedIn(false);
-    await expect(requirePageSession("//evil.com")).rejects.toThrow("NEXT_REDIRECT /login?next=%2F");
-    await expect(requirePageSession("https://evil.com")).rejects.toThrow("NEXT_REDIRECT /login?next=%2F");
+    await expect(requirePageSession("//evil.com")).rejects.toThrow(
+      "NEXT_REDIRECT /login?next=%2F",
+    );
+    await expect(requirePageSession("https://evil.com")).rejects.toThrow(
+      "NEXT_REDIRECT /login?next=%2F",
+    );
   });
 
   it("requirePageSession redirects when the session lookup fails (fail closed)", async () => {

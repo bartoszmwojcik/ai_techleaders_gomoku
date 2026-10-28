@@ -54,10 +54,11 @@ Ręczny test po fazie: wylogowanie, `/account` bez sesji przekierowuje na `/logi
 
 Ręczny test po fazie: `/account` → zmiana hasła; stare hasło nie loguje; druga sesja wylogowana.
 
-- [ ] 5.1 `passwordChangeSchema` (+ `newPasswordSchema`)
-- [ ] 5.2 `UserService.changePassword`, `SessionService.revokeOthers`
-- [ ] 5.3 Route `POST /api/auth/password`
-- [ ] 5.4 Formularz na `/account`
+- [x] 5.1 `passwordChangeSchema` (+ `newPasswordSchema`)
+- [x] 5.2 `UserService.changePassword`, `SessionService.revokeOthers`
+- [x] 5.3 Route `POST /api/auth/password`
+- [x] 5.4 Formularz na `/account`
+- [x] 5.5 Poprawki po code review Fazy 5 (C1 atomowość: zapisy w `em.transactional` przez przekazany `tx` w `changePassword` ORAZ w `register`, `revokeOthers` i `invalidateResetTokens` przyjmują `em`, test na PostgreSQL wymuszonej awarii; M1 obsługa 401 w formularzu; M2 sygnatura `invalidateResetTokens(userId, em)` + test kontraktu; L1 testy równoległych zmian; L5 README; L6 a11y statusu; lekcja o `em.transactional`)
 
 ## Faza 6 — Potwierdzenie e-maila (#34, Faza 1: kroki 1–5; port poczty z #38)
 
@@ -83,7 +84,7 @@ Ręczny test po fazie: `/forgot-password` → link ze skrzynki → `/reset-passw
 
 - [ ] 8.1 Encja i migracja `password_reset_tokens`
 - [ ] 8.2 `newPasswordSchema` + schematy resetu
-- [ ] 8.3 `PasswordResetService` + szablon
+- [ ] 8.3 `PasswordResetService` + szablon (dopiąć: w `container.ts` zastąpić no-op `invalidateResetTokens` (z 5.2) funkcją `(userId, em)` usuwającą/unieważniającą niewykorzystane tokeny resetu użytkownika wyłącznie przez przekazany `em` (`tx` transakcji zmiany hasła, nie wstrzyknięty `em`), z testami; sygnatura jest już gotowa od 5.5)
 - [ ] 8.4 Route `…/request` i `…/confirm`
 - [ ] 8.5 Strony `/forgot-password`, `/reset-password`, link na `/login`
 - [ ] 8.6 Dokumentacja
@@ -100,6 +101,17 @@ Ręczny test po fazie: `npm run db:cleanup` na bazie ze starymi rekordami.
 ## Faza 10 — Usunięcie konta (#37)
 
 - [!] Zablokowana: wymaga #29 (tabele partii) i prawdziwego `gameParticipation` (E02). Po E02-S01 kroki 1–5 ze specyfikacji `account-deletion`.
+
+## Faza 11 — Przełącznik motywu jasny/ciemny (dodane 2026-10-28, decyzja właściciela; poza specyfikacjami E01)
+
+Dziś strony gracza mają zawsze motyw ciemny (`:root`), jasny włącza `data-theme="light"` na `<html>` (`packages/ui/src/styles/game-tokens.css`); aplikacja nie ma przełącznika. Propozycja robocza do potwierdzenia w mini-specyfikacji: `data-theme` ustawiany na `<html>` według `prefers-color-scheme`, z ręcznym wyborem zapamiętanym w ciasteczku (bez migotania przy ładowaniu), przełącznik w nagłówku stron gracza.
+
+Ręczny test po fazie: przełączenie motywu na `/`, `/register`, `/login`, `/account`; zapamiętanie wyboru po odświeżeniu; zgodność z ustawieniem systemu przy pierwszej wizycie; kontrast i fokus w obu motywach; 360 px.
+
+- [ ] 11.1 Mini-specyfikacja `.ai/specs/YYYY-MM-DD-theme-switcher.md` (zachowanie, miejsce przełącznika, ciasteczko vs `localStorage`, brak migotania, dostępność, testy); pytania do właściciela przed kodem
+- [ ] 11.2 Mechanizm motywu (czysta logika w `core`/`ui`, ustawienie `data-theme` w layoucie `(frontend)`, ciasteczko)
+- [ ] 11.3 Komponent przełącznika w `@gomoku/ui/game/*` (Storybook, oba motywy) i użycie w nagłówku stron gracza
+- [ ] 11.4 Testy jednostkowe, integracyjne (agent-browser) i przegląd obu motywów wszystkich ekranów E01 (w tym jasny motyw, dotąd nieoglądany)
 
 ## Poza zakresem tego przebiegu
 

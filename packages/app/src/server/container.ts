@@ -7,12 +7,7 @@ import {
   createAppContainer,
   type AwilixContainer,
 } from "@gomoku/core";
-import {
-  createOrm,
-  entities,
-  type EntityManager,
-  type Orm,
-} from "@gomoku/db";
+import { createOrm, entities, type EntityManager, type Orm } from "@gomoku/db";
 
 import { readServerConfig, type ServerConfig } from "./config";
 import { PasswordHasher } from "./services/auth/password-hasher";
@@ -21,7 +16,10 @@ import {
   type HasActiveGame,
 } from "./services/auth/session-service";
 import { GameParticipation } from "./services/auth/game-participation";
-import { UserService } from "./services/auth/user-service";
+import {
+  UserService,
+  type InvalidateResetTokens,
+} from "./services/auth/user-service";
 import { HealthService } from "./services/health-service";
 import { RateLimiter } from "./services/rate-limit/rate-limiter";
 
@@ -35,6 +33,8 @@ export type AppCradle = {
   serverConfig: ServerConfig;
   /** Games do not exist yet (G5); the games feature replaces this registration. */
   hasActiveGame: HasActiveGame;
+  /** Reset tokens (#35) do not exist yet; the reset feature replaces this registration. */
+  invalidateResetTokens: InvalidateResetTokens;
   /** Request-scoped (needs `em`): resolve only from a `withRequestScope` scope. */
   sessionService: SessionService;
   gameParticipation: GameParticipation;
@@ -90,6 +90,9 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     passwordHasher: asClass(PasswordHasher).singleton(),
     serverConfig: asFunction(() => readServerConfig(process.env)).singleton(),
     hasActiveGame: asValue<HasActiveGame>(async () => false),
+    invalidateResetTokens: asValue<InvalidateResetTokens>(
+      async () => undefined,
+    ),
     sessionService: asClass(SessionService).scoped(),
     gameParticipation: asClass(GameParticipation).singleton(),
     rateLimiter: asClass(RateLimiter).scoped(),

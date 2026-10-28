@@ -18,6 +18,10 @@ vi.mock("@/components/auth/logout-button", () => ({
   ),
 }));
 
+vi.mock("./change-password-form", () => ({
+  ChangePasswordForm: () => <form data-testid="change-password-form" />,
+}));
+
 import AccountPage from "./page";
 
 beforeEach(() => {
@@ -45,6 +49,12 @@ describe("AccountPage", () => {
     expect(html).toContain("Konto</h1>");
     expect(html).toContain("Ala_7");
     expect(html).toContain("ala@example.com");
+  });
+
+  it("has a change password section", async () => {
+    const html = renderToStaticMarkup(await AccountPage());
+    expect(html).toContain("Zmień hasło</h2>");
+    expect(html).toContain('data-testid="change-password-form"');
   });
 
   it("passes no active game to the logout button", async () => {

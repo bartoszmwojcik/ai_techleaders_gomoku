@@ -6,6 +6,8 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { withRequestScope } from "@/server/container";
 import { requirePageSession } from "@/server/http/auth";
 
+import { ChangePasswordForm } from "./change-password-form";
+
 export default async function AccountPage() {
   // Reads the session cookie and the database, so the page is rendered per request.
   await connection();
@@ -25,6 +27,9 @@ export default async function AccountPage() {
           E-mail: <strong className="font-strong" data-testid="account-email">{user.email}</strong>
         </p>
         <LogoutButton hasActiveGame={hasActiveGame} />
+      </Panel>
+      <Panel title="Zmień hasło">
+        <ChangePasswordForm />
       </Panel>
       <TextLink href="/" placement="standalone">
         Wróć na stronę główną

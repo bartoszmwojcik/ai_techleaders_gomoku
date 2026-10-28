@@ -1,4 +1,8 @@
-import { ConflictError, UnauthorizedError } from "@gomoku/core";
+import {
+  ConflictError,
+  UnauthorizedError,
+  ValidationError,
+} from "@gomoku/core";
 import {
   UniqueConstraintViolationException,
   User,
@@ -12,6 +16,7 @@ import {
   DISPLAY_NAME_TAKEN_MESSAGE,
   EMAIL_TAKEN_MESSAGE,
   INVALID_CREDENTIALS_MESSAGE,
+  INVALID_CURRENT_PASSWORD_MESSAGE,
   UserService,
 } from "./user-service";
 
@@ -29,7 +34,9 @@ function uniqueViolation(constraint: string) {
 
 function setup(options: { flushError?: unknown; emailCount?: number } = {}) {
   const calls: string[] = [];
-  const em = {
+  // The transaction's em differs from the injected one, like in MikroORM 7 (the fork has
+  // `useContext = false`): only writes through `tx` are part of the transaction.
+  const tx = {
     create: vi.fn((_entity: unknown, data: object) => ({
       id: "user-1",
       ...data,
@@ -38,11 +45,15 @@ function setup(options: { flushError?: unknown; emailCount?: number } = {}) {
       calls.push("flush");
       if (options.flushError) throw options.flushError;
     }),
+  };
+  const em = {
+    create: vi.fn(),
+    flush: vi.fn(),
     clear: vi.fn(() => calls.push("clear")),
-    transactional: vi.fn(async (work: () => Promise<unknown>) => {
+    transactional: vi.fn(async (work: (tx: unknown) => Promise<unknown>) => {
       calls.push("begin");
       try {
-        return await work();
+        return await work(tx);
       } finally {
         calls.push("end");
       }
@@ -61,24 +72,39 @@ function setup(options: { flushError?: unknown; emailCount?: number } = {}) {
     em: em as unknown as EntityManager,
     passwordHasher: passwordHasher as unknown as PasswordHasher,
     sessionService: sessionService as unknown as SessionService,
+    invalidateResetTokens: vi.fn(async () => undefined),
   });
-  return { em, passwordHasher, sessionService, service, session, calls };
+  return {
+    em,
+    tx,
+    passwordHasher,
+    sessionService,
+    service,
+    session,
+    calls,
+  };
 }
 
 describe("UserService.register", () => {
   it("hashes first, inserts only the schema fields and starts a session", async () => {
-    const { em, sessionService, service, session, calls } = setup();
+    const { em, tx, sessionService, service, session, calls } = setup();
 
     const result = await service.register(input);
 
     expect(calls).toEqual(["hash", "begin", "flush", "end"]);
-    expect(em.create).toHaveBeenCalledWith(User, {
+    expect(em.create).not.toHaveBeenCalled();
+    expect(em.flush).not.toHaveBeenCalled();
+    expect(tx.create).toHaveBeenCalledWith(User, {
       email: "ala@example.com",
       displayName: "Łukasz_7",
       displayNameKey: "lukasz7",
       passwordHash: "hashed",
     });
-    expect(sessionService.create).toHaveBeenCalledWith("user-1");
+    expect(sessionService.create).toHaveBeenCalledExactlyOnceWith(
+      "user-1",
+      expect.any(Date),
+      tx,
+    );
     expect(result).toEqual({
       user: { id: "user-1", displayName: "Łukasz_7" },
       session,
@@ -173,6 +199,7 @@ describe("UserService.authenticate", () => {
       em: em as unknown as EntityManager,
       passwordHasher: passwordHasher as unknown as PasswordHasher,
       sessionService: sessionService as unknown as SessionService,
+      invalidateResetTokens: vi.fn(async () => undefined),
     });
     return { em, passwordHasher, sessionService, service };
   }
@@ -247,5 +274,165 @@ describe("UserService.authenticate", () => {
     await expect(
       service.authenticate("nobody@example.com", "x"),
     ).rejects.toBeInstanceOf(UnauthorizedError);
+  });
+});
+
+describe("UserService.changePassword", () => {
+  function changeSetup(
+    options: { user?: object | null; matches?: boolean; updated?: number } = {},
+  ) {
+    const calls: string[] = [];
+    const user =
+      options.user === undefined
+        ? { id: "user-1", passwordHash: "old-hash" }
+        : options.user;
+    // Differs from the injected `em`: only writes through `tx` are transactional.
+    const tx = {
+      nativeUpdate: vi.fn(async () => {
+        calls.push("update");
+        return options.updated ?? 1;
+      }),
+    };
+    const em = {
+      findOne: vi.fn(async () => user),
+      nativeUpdate: vi.fn(),
+      transactional: vi.fn(async (work: (tx: unknown) => Promise<unknown>) => {
+        calls.push("begin");
+        try {
+          return await work(tx);
+        } finally {
+          calls.push("end");
+        }
+      }),
+    };
+    const passwordHasher = {
+      verify: vi.fn(async () => {
+        calls.push("verify");
+        return options.matches ?? true;
+      }),
+      hash: vi.fn(async () => {
+        calls.push("hash");
+        return "new-hash";
+      }),
+    };
+    const sessionService = {
+      revokeOthers: vi.fn(async () => {
+        calls.push("revokeOthers");
+        return 2;
+      }),
+    };
+    const invalidateResetTokens = vi.fn(async () => {
+      calls.push("invalidateResetTokens");
+    });
+    const service = new UserService({
+      em: em as unknown as EntityManager,
+      passwordHasher: passwordHasher as unknown as PasswordHasher,
+      sessionService: sessionService as unknown as SessionService,
+      invalidateResetTokens,
+    });
+    return {
+      em,
+      tx,
+      passwordHasher,
+      sessionService,
+      invalidateResetTokens,
+      service,
+      calls,
+    };
+  }
+
+  it("verifies, hashes, then updates conditionally and revokes others in one transaction", async () => {
+    const { em, tx, sessionService, invalidateResetTokens, service, calls } =
+      changeSetup();
+
+    await expect(
+      service.changePassword("user-1", "sess-1", "old-pass", "new-pass-1"),
+    ).resolves.toBeUndefined();
+
+    expect(em.findOne).toHaveBeenCalledWith(User, { id: "user-1" });
+    expect(em.nativeUpdate).not.toHaveBeenCalled();
+    expect(tx.nativeUpdate).toHaveBeenCalledExactlyOnceWith(
+      User,
+      { id: "user-1", passwordHash: "old-hash" },
+      { passwordHash: "new-hash" },
+    );
+    expect(sessionService.revokeOthers).toHaveBeenCalledExactlyOnceWith(
+      "user-1",
+      "sess-1",
+      tx,
+    );
+    expect(invalidateResetTokens).toHaveBeenCalledExactlyOnceWith(
+      "user-1",
+      tx,
+    );
+    expect(calls).toEqual([
+      "verify",
+      "hash",
+      "begin",
+      "update",
+      "revokeOthers",
+      "invalidateResetTokens",
+      "end",
+    ]);
+  });
+
+  it("rejects a wrong current password before hashing or writing anything", async () => {
+    const {
+      em,
+      passwordHasher,
+      sessionService,
+      invalidateResetTokens,
+      service,
+    } = changeSetup({ matches: false });
+
+    const error = await service
+      .changePassword("user-1", "sess-1", "wrong", "new-pass-1")
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ValidationError);
+    expect(error).toMatchObject({
+      status: 400,
+      code: "INVALID_CURRENT_PASSWORD",
+      fieldErrors: { currentPassword: [INVALID_CURRENT_PASSWORD_MESSAGE] },
+    });
+    expect(passwordHasher.hash).not.toHaveBeenCalled();
+    expect(em.transactional).not.toHaveBeenCalled();
+    expect(sessionService.revokeOthers).not.toHaveBeenCalled();
+    expect(invalidateResetTokens).not.toHaveBeenCalled();
+  });
+
+  it("answers INVALID_CURRENT_PASSWORD and revokes nothing when a parallel change won (0 rows)", async () => {
+    const { sessionService, invalidateResetTokens, service, calls } =
+      changeSetup({ updated: 0 });
+
+    await expect(
+      service.changePassword("user-1", "sess-1", "old-pass", "new-pass-1"),
+    ).rejects.toMatchObject({
+      status: 400,
+      code: "INVALID_CURRENT_PASSWORD",
+      fieldErrors: { currentPassword: [INVALID_CURRENT_PASSWORD_MESSAGE] },
+    });
+    expect(sessionService.revokeOthers).not.toHaveBeenCalled();
+    expect(invalidateResetTokens).not.toHaveBeenCalled();
+    expect(calls.slice(-2)).toEqual(["update", "end"]);
+  });
+
+  it("propagates a failure of the later steps (the transaction rolls back)", async () => {
+    const failure = new Error("reset tokens failed");
+    const { invalidateResetTokens, service } = changeSetup();
+    invalidateResetTokens.mockRejectedValue(failure);
+
+    await expect(
+      service.changePassword("user-1", "sess-1", "old-pass", "new-pass-1"),
+    ).rejects.toBe(failure);
+  });
+
+  it("answers 401 when the user no longer exists", async () => {
+    const { passwordHasher, service } = changeSetup({ user: null });
+
+    await expect(
+      service.changePassword("user-1", "sess-1", "old-pass", "new-pass-1"),
+    ).rejects.toBeInstanceOf(UnauthorizedError);
+    expect(passwordHasher.verify).not.toHaveBeenCalled();
   });
 });
