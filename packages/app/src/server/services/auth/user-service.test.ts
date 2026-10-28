@@ -20,8 +20,8 @@ import {
   INVALID_CREDENTIALS_MESSAGE,
   INVALID_CURRENT_PASSWORD_MESSAGE,
   UserService,
-  VERIFICATION_SEND_TIMEOUT_MS,
 } from "./user-service";
+import { VERIFICATION_SEND_TIMEOUT_MS } from "./email-verification-service";
 
 const input = {
   email: "ala@example.com",

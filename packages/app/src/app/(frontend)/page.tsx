@@ -3,6 +3,7 @@ import { Button } from "@gomoku/ui/game/button";
 import { connection } from "next/server";
 
 import { LogoutButton } from "@/components/auth/logout-button";
+import { VerifyEmailNotice } from "@/components/auth/verify-email-banner";
 import { getCurrentUserWith } from "@/server/http/auth";
 
 // Static preview position: a few stones near the centre of the board.
@@ -32,58 +33,76 @@ export default async function HomePage() {
   });
 
   return (
-    <main className="mx-auto flex min-h-svh max-w-5xl flex-col items-center justify-center gap-section px-panel py-section md:flex-row">
-      <section className="max-w-sm space-y-4 text-center md:text-left">
-        <h1 className="text-title font-strong tracking-(--letter-spacing-title)">Gomoku</h1>
-        <p className="text-lead text-text-secondary">
-          Pięć w linii wygrywa. Zagraj ze znajomym albo znajdź przeciwnika w lobby.
-        </p>
-        <p className="text-meta text-text-muted">
-          Swobodne zasady · plansza {BOARD_SIZE}×{BOARD_SIZE} · 10 minut na gracza
-        </p>
-        {user ? (
-          <div className="flex flex-col items-center gap-stack md:items-start">
-            <p className="m-0 text-body text-text-primary" data-testid="signed-in-as">
-              Zalogowano jako <strong className="font-strong">{user.displayName}</strong>
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-group md:justify-start">
-              <Button asChild>
-                <a href="/account">Konto</a>
-              </Button>
-              <LogoutButton hasActiveGame={hasActiveGame} />
+    <main className="mx-auto flex min-h-svh max-w-5xl flex-col items-center justify-center gap-section px-panel py-section">
+      {user && !user.emailVerifiedAt && (
+        <VerifyEmailNotice userId={user.id} email={user.email} />
+      )}
+      <div className="flex w-full flex-col items-center justify-center gap-section md:flex-row">
+        <section className="max-w-sm space-y-4 text-center md:text-left">
+          <h1 className="text-title font-strong tracking-(--letter-spacing-title)">
+            Gomoku
+          </h1>
+          <p className="text-lead text-text-secondary">
+            Pięć w linii wygrywa. Zagraj ze znajomym albo znajdź przeciwnika w
+            lobby.
+          </p>
+          <p className="text-meta text-text-muted">
+            Swobodne zasady · plansza {BOARD_SIZE}×{BOARD_SIZE} · 10 minut na
+            gracza
+          </p>
+          {user ? (
+            <div className="flex flex-col items-center gap-stack md:items-start">
+              <p
+                className="m-0 text-body text-text-primary"
+                data-testid="signed-in-as"
+              >
+                Zalogowano jako{" "}
+                <strong className="font-strong">{user.displayName}</strong>
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-group md:justify-start">
+                <Button asChild>
+                  <a href="/account">Konto</a>
+                </Button>
+                <LogoutButton hasActiveGame={hasActiveGame} />
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="flex flex-wrap justify-center gap-group md:justify-start">
-            <Button asChild>
-              <a href="/register">Załóż konto</a>
-            </Button>
-            <Button asChild variant="secondary">
-              <a href="/login">Zaloguj się</a>
-            </Button>
-          </div>
-        )}
-      </section>
+          ) : (
+            <div className="flex flex-wrap justify-center gap-group md:justify-start">
+              <Button asChild>
+                <a href="/register">Załóż konto</a>
+              </Button>
+              <Button asChild variant="secondary">
+                <a href="/login">Zaloguj się</a>
+              </Button>
+            </div>
+          )}
+        </section>
 
-      <div
-        aria-hidden="true"
-        data-testid="board"
-        className="grid aspect-square w-full max-w-md rounded-base bg-board-surface p-(--board-padding) shadow-board"
-        style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, minmax(0, 1fr))` }}
-      >
-        {cells.map(({ key, stone }) => (
-          <div key={key} className="relative flex items-center justify-center">
-            <span className="absolute inset-x-0 top-1/2 h-px bg-board-line" />
-            <span className="absolute inset-y-0 left-1/2 w-px bg-board-line" />
-            {stone && (
-              <span
-                className={`relative z-10 size-(--piece-size) rounded-piece shadow-piece ${
-                  stone === "black" ? "bg-piece-black" : "bg-piece-white"
-                }`}
-              />
-            )}
-          </div>
-        ))}
+        <div
+          aria-hidden="true"
+          data-testid="board"
+          className="grid aspect-square w-full max-w-md rounded-base bg-board-surface p-(--board-padding) shadow-board"
+          style={{
+            gridTemplateColumns: `repeat(${BOARD_SIZE}, minmax(0, 1fr))`,
+          }}
+        >
+          {cells.map(({ key, stone }) => (
+            <div
+              key={key}
+              className="relative flex items-center justify-center"
+            >
+              <span className="absolute inset-x-0 top-1/2 h-px bg-board-line" />
+              <span className="absolute inset-y-0 left-1/2 w-px bg-board-line" />
+              {stone && (
+                <span
+                  className={`relative z-10 size-(--piece-size) rounded-piece shadow-piece ${
+                    stone === "black" ? "bg-piece-black" : "bg-piece-white"
+                  }`}
+                />
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </main>
   );

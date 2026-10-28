@@ -18,6 +18,14 @@ vi.mock("@/components/auth/logout-button", () => ({
   ),
 }));
 
+vi.mock("@/components/auth/verify-email-banner", () => ({
+  VerifyEmailNotice: ({ userId, email }: { userId: string; email: string }) => (
+    <aside data-testid="banner" data-user={userId}>
+      {email}
+    </aside>
+  ),
+}));
+
 vi.mock("./change-password-form", () => ({
   ChangePasswordForm: () => <form data-testid="change-password-form" />,
 }));
@@ -49,6 +57,27 @@ describe("AccountPage", () => {
     expect(html).toContain("Konto</h1>");
     expect(html).toContain("Ala_7");
     expect(html).toContain("ala@example.com");
+  });
+
+  it("marks an unconfirmed address and shows the banner above the account data", async () => {
+    const html = renderToStaticMarkup(await AccountPage());
+    expect(html).toContain("Niepotwierdzony");
+    expect(html).not.toContain("Potwierdzony<");
+    expect(html).toContain('data-testid="banner" data-user="u1"');
+    expect(html.indexOf('data-testid="banner"')).toBeLessThan(html.indexOf("Dane konta"));
+  });
+
+  it("marks a confirmed address and shows no banner", async () => {
+    requirePageSession.mockResolvedValue({
+      id: "u1",
+      displayName: "Ala_7",
+      email: "ala@example.com",
+      emailVerifiedAt: new Date(),
+    });
+    const html = renderToStaticMarkup(await AccountPage());
+    expect(html).toContain("Potwierdzony");
+    expect(html).not.toContain("Niepotwierdzony");
+    expect(html).not.toContain('data-testid="banner"');
   });
 
   it("has a change password section", async () => {

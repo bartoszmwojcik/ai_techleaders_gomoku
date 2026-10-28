@@ -13,7 +13,10 @@ import {
 } from "@gomoku/db";
 
 import { describeError } from "../../http/describe-error";
-import type { EmailVerificationService } from "./email-verification-service";
+import {
+  VERIFICATION_SEND_TIMEOUT_MS,
+  type EmailVerificationService,
+} from "./email-verification-service";
 import type { PasswordHasher } from "./password-hasher";
 import type { SessionService } from "./session-service";
 
@@ -43,9 +46,6 @@ export type RegisteredUser = {
 };
 
 /** Uniform answer for a taken e-mail: it must not reveal whether the account exists (Q7). */
-/** How long registration waits for the verification e-mail to be handed to the transport. */
-export const VERIFICATION_SEND_TIMEOUT_MS = 5_000;
-
 export const EMAIL_TAKEN_MESSAGE =
   "Nie udało się założyć konta. Jeśli masz już konto, zaloguj się.";
 export const DISPLAY_NAME_TAKEN_MESSAGE = "Ta nazwa gracza jest już zajęta.";

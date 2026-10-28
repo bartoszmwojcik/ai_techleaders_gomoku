@@ -7,12 +7,17 @@ import { hashOpaqueToken } from "../../http/opaque-token";
 import type { EmailSender } from "../email/email-sender";
 import type { RateLimiter } from "../rate-limit/rate-limiter";
 import {
+  ALREADY_VERIFIED_MESSAGE,
   DAILY_WINDOW_MS,
   EMAIL_QUOTA_EXCEEDED_MESSAGE,
   EMAIL_SEND_FAILED_MESSAGE,
   EmailVerificationService,
   INVALID_TOKEN_MESSAGE,
+  RESEND_IP_LIMIT,
+  RESEND_USER_LIMIT,
+  RESEND_WINDOW_MS,
   VERIFICATION_DAILY_KEY,
+  VERIFICATION_SEND_TIMEOUT_MS,
   VERIFICATION_TOKEN_TTL_MS,
   verificationDailyBudget,
 } from "./email-verification-service";
@@ -225,6 +230,28 @@ describe("EmailVerificationService.issue", () => {
     expect(emailSender.send).not.toHaveBeenCalled();
   });
 
+  it("logs only the name and code of the send failure, never the address or the token", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const cause = Object.assign(new Error("550 rejected ala@example.com"), {
+      code: "EENVELOPE",
+    });
+    const { service } = setup({ sendError: cause });
+
+    await expect(service.issue(recipient)).rejects.toMatchObject({
+      status: 502,
+      code: "EMAIL_SEND_FAILED",
+    });
+
+    expect(log).toHaveBeenCalledWith("Verification e-mail send failed", {
+      name: "Error",
+      code: "EENVELOPE",
+    });
+    const logged = JSON.stringify(log.mock.calls);
+    expect(logged).not.toContain("ala@example.com");
+    expect(logged).not.toContain("token=");
+    log.mockRestore();
+  });
+
   it("rethrows unexpected limiter failures", async () => {
     const failure = new Error("db down");
     const { service } = setup({
@@ -232,6 +259,90 @@ describe("EmailVerificationService.issue", () => {
       hitError: failure,
     });
     await expect(service.issue(recipient)).rejects.toBe(failure);
+  });
+});
+
+describe("EmailVerificationService.resend", () => {
+  const unverified = { ...recipient, emailVerifiedAt: null };
+
+  it("counts the account and the address, then issues with a bounded send", async () => {
+    const { rateLimiter, emailSender, calls, service } = setup();
+
+    await service.resend(unverified, "verification-resend:ip:abc");
+
+    expect(rateLimiter.hit).toHaveBeenNthCalledWith(
+      1,
+      `verification-resend:user:${hashOpaqueToken("user-1")}`,
+      RESEND_USER_LIMIT,
+      RESEND_WINDOW_MS,
+    );
+    expect(rateLimiter.hit).toHaveBeenNthCalledWith(
+      2,
+      "verification-resend:ip:abc",
+      RESEND_IP_LIMIT,
+      RESEND_WINDOW_MS,
+    );
+    expect([RESEND_USER_LIMIT, RESEND_IP_LIMIT, RESEND_WINDOW_MS]).toEqual([
+      3, 10, 3_600_000,
+    ]);
+    expect(calls).toEqual(["hit", "hit", "flush", "send", "invalidate"]);
+    const options = emailSender.send.mock.calls[0]?.[1];
+    expect(options?.signal).toBeInstanceOf(AbortSignal);
+    expect(VERIFICATION_SEND_TIMEOUT_MS).toBe(5000);
+  });
+
+  it("answers 409 ALREADY_VERIFIED before spending any counter", async () => {
+    const { rateLimiter, emailSender, service } = setup();
+
+    const error = await service
+      .resend({ ...recipient, emailVerifiedAt: NOW }, "k")
+      .catch((e: unknown) => e);
+
+    expect((error as AppError).status).toBe(409);
+    expect((error as AppError).code).toBe("ALREADY_VERIFIED");
+    expect((error as AppError).message).toBe(ALREADY_VERIFIED_MESSAGE);
+    expect(rateLimiter.hit).not.toHaveBeenCalled();
+    expect(emailSender.send).not.toHaveBeenCalled();
+  });
+
+  it("stops at the account limit before the address counter and before any work", async () => {
+    const { rateLimiter, em, service } = setup({
+      hitError: new TooManyRequestsError("limit"),
+    });
+
+    await expect(service.resend(unverified, "k")).rejects.toMatchObject({
+      status: 429,
+      code: "RATE_LIMITED",
+    });
+
+    expect(rateLimiter.hit).toHaveBeenCalledOnce();
+    expect(em.create).not.toHaveBeenCalled();
+  });
+
+  it("stops at the address limit before any work", async () => {
+    const { rateLimiter, em, service } = setup();
+    rateLimiter.hit
+      .mockResolvedValueOnce({ count: 1, retryAfterSeconds: 1 })
+      .mockRejectedValueOnce(new TooManyRequestsError("limit"));
+
+    await expect(service.resend(unverified, "k")).rejects.toMatchObject({
+      status: 429,
+    });
+
+    expect(rateLimiter.hit).toHaveBeenCalledTimes(2);
+    expect(em.create).not.toHaveBeenCalled();
+  });
+
+  it("keeps the counters and answers 502 when the send fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { rateLimiter, service } = setup({ sendError: new Error("down") });
+
+    await expect(service.resend(unverified, "k")).rejects.toMatchObject({
+      status: 502,
+      code: "EMAIL_SEND_FAILED",
+    });
+
+    expect(rateLimiter.hit).toHaveBeenCalledTimes(2);
   });
 });
 

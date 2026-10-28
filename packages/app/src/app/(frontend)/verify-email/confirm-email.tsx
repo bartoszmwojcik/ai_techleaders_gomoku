@@ -6,6 +6,12 @@ import { TextLink } from "@gomoku/ui/game/text-link";
 import { useEffect, useRef, useState } from "react";
 
 import { apiCall } from "@/lib/api-client";
+import {
+  LOGIN_TO_RESEND_HREF,
+  requestNewLink,
+  resendFeedback,
+  type ResendState,
+} from "@/components/auth/resend-verification";
 
 type Phase = "before" | "confirming" | "done" | "invalid" | "server" | "network";
 
@@ -30,6 +36,8 @@ export function ConfirmEmail({ token, nextPath, signedIn, alreadyVerified }: Con
   const headingRef = useRef<HTMLHeadingElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
   const [focusResult, setFocusResult] = useState(false);
+  const [resend, setResend] = useState<ResendState>({ kind: "idle" });
+  const resendRef = useRef<HTMLParagraphElement>(null);
 
   // Entering the page from a mail link: start at the heading, so a screen reader reads it.
   useEffect(() => {
@@ -40,6 +48,16 @@ export function ConfirmEmail({ token, nextPath, signedIn, alreadyVerified }: Con
   useEffect(() => {
     if (focusResult) resultRef.current?.focus();
   }, [focusResult, phase]);
+
+  // After a resend attempt the outcome text gets the focus, so it is announced and read.
+  useEffect(() => {
+    if (resend.kind !== "idle" && resend.kind !== "sending") resendRef.current?.focus();
+  }, [resend]);
+
+  async function onResend() {
+    setResend({ kind: "sending" });
+    setResend(await requestNewLink());
+  }
 
   async function onConfirm() {
     setPhase("confirming");
@@ -58,6 +76,7 @@ export function ConfirmEmail({ token, nextPath, signedIn, alreadyVerified }: Con
     else setPhase(code === "network" ? "network" : "server");
   }
 
+  const feedback = resendFeedback(resend);
   const loginHref = next === "/" ? "/login" : `/login?next=${encodeURIComponent(next)}`;
 
   return (
@@ -108,11 +127,36 @@ export function ConfirmEmail({ token, nextPath, signedIn, alreadyVerified }: Con
               </div>
             </>
           )}
-          {!alreadyVerified && (
-            <TextLink href="/" placement="standalone">
-              Wróć na stronę główną
-            </TextLink>
-          )}
+          {!alreadyVerified &&
+            (signedIn ? (
+              <>
+                <div>
+                  <Button
+                    variant="secondary"
+                    loading={resend.kind === "sending"}
+                    disabled={resend.kind === "limited"}
+                    onClick={onResend}
+                  >
+                    Wyślij nowy link
+                  </Button>
+                </div>
+                {feedback && (
+                  <p
+                    ref={resendRef}
+                    tabIndex={-1}
+                    role={feedback.role}
+                    className={`m-0 text-meta text-text-secondary ${FOCUS_TARGET}`}
+                    data-testid="resend-feedback"
+                  >
+                    {feedback.content}
+                  </p>
+                )}
+              </>
+            ) : (
+              <TextLink href={LOGIN_TO_RESEND_HREF} placement="standalone">
+                Zaloguj się, aby wysłać nowy link
+              </TextLink>
+            ))}
         </div>
       ) : (
         <>

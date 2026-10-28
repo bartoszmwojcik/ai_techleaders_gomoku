@@ -86,7 +86,10 @@ describe("ConfirmEmail", () => {
     expect(await screen.findByText("Link wygasł lub został już użyty.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Potwierdź e-mail" })).toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(screen.getByTestId("verify-invalid")));
-    expect(screen.getByRole("link", { name: "Wróć na stronę główną" }).getAttribute("href")).toBe("/");
+    expect(screen.getByRole("link", { name: "Zaloguj się, aby wysłać nowy link" }).getAttribute("href")).toBe(
+      "/login?next=/account",
+    );
+    expect(screen.queryByRole("button", { name: "Wyślij nowy link" })).toBeNull();
   });
 
   it("without a token shows the same message straight away", () => {
@@ -102,7 +105,8 @@ describe("ConfirmEmail", () => {
 
     expect(screen.getByText("Adres jest już potwierdzony.")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Przejdź dalej" }).getAttribute("href")).toBe("/account");
-    expect(screen.queryByRole("link", { name: "Wróć na stronę główną" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Wyślij nowy link" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Zaloguj się, aby/ })).toBeNull();
   });
 
   it("a server error offers a retry that posts again", async () => {
@@ -127,5 +131,97 @@ describe("ConfirmEmail", () => {
 
     expect(await screen.findByText("Brak połączenia")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Spróbuj ponownie" })).toBeTruthy();
+  });
+
+  describe("new link (invalid link, signed in, unconfirmed)", () => {
+    const signedIn = { ...base, token: undefined, signedIn: true };
+
+    async function resend() {
+      const user = userEvent.setup();
+      await user.click(screen.getByRole("button", { name: "Wyślij nowy link" }));
+      return user;
+    }
+
+    it("posts without a body, shows a status and moves the focus to it", async () => {
+      let resolve!: (value: unknown) => void;
+      apiCall.mockReturnValue(new Promise((r) => (resolve = r)));
+      render(<ConfirmEmail {...signedIn} />);
+
+      await resend();
+
+      expect(apiCall).toHaveBeenCalledWith("/api/auth/email-verification/resend");
+      expect((screen.getByRole("button", { name: "Wyślij nowy link" }) as HTMLButtonElement).disabled).toBe(true);
+      resolve({ ok: true, data: null });
+      const status = await screen.findByTestId("resend-feedback");
+      expect(status.textContent).toBe("Wysłano. Nowy link zastępuje poprzedni.");
+      await waitFor(() => expect(document.activeElement).toBe(status));
+      expect((screen.getByRole("button", { name: "Wyślij nowy link" }) as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    it.each([
+      [3600, "Za wiele prób. Spróbuj za 60 min."],
+      [2461, "Za wiele prób. Spróbuj za 42 min."],
+      [5, "Za wiele prób. Spróbuj za 1 min."],
+      [undefined, "Za wiele prób. Spróbuj później."],
+    ])("a limit (retry after %s s) says when to come back and blocks the button", async (retryAfterSeconds, text) => {
+      apiCall.mockResolvedValue({ ok: false, error: { code: "RATE_LIMITED", message: "x", retryAfterSeconds } });
+      render(<ConfirmEmail {...signedIn} />);
+
+      await resend();
+
+      const alert = await screen.findByTestId("resend-feedback");
+      expect(alert.textContent).toBe(text);
+      await waitFor(() => expect(document.activeElement).toBe(alert));
+      expect((screen.getByRole("button", { name: "Wyślij nowy link" }) as HTMLButtonElement).disabled).toBe(true);
+    });
+
+    it.each([
+      ["EMAIL_SEND_FAILED", "Nie udało się wysłać wiadomości. Spróbuj później."],
+      ["INTERNAL", "Nie udało się wysłać wiadomości. Spróbuj później."],
+      ["EMAIL_QUOTA_EXCEEDED", "Wysyłka wiadomości jest chwilowo niedostępna. Spróbuj jutro. Gra nie zależy od potwierdzenia."],
+      ["network", "Nie udało się połączyć z serwerem. Spróbuj ponownie."],
+    ])("%s shows an alert and allows another try", async (code, text) => {
+      apiCall.mockResolvedValue(failure(code));
+      render(<ConfirmEmail {...signedIn} />);
+
+      await resend();
+
+      expect((await screen.findByTestId("resend-feedback")).textContent).toBe(text);
+      expect((screen.getByRole("button", { name: "Wyślij nowy link" }) as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    it("an already confirmed address offers a page refresh", async () => {
+      apiCall.mockResolvedValue(failure("ALREADY_VERIFIED"));
+      const reload = vi.fn();
+      vi.stubGlobal("location", { ...window.location, reload });
+      render(<ConfirmEmail {...signedIn} />);
+
+      const user = await resend();
+      expect((await screen.findByTestId("resend-feedback")).textContent).toContain("Ten adres jest już potwierdzony.");
+      await user.click(screen.getByRole("button", { name: "Odśwież stronę" }));
+
+      expect(reload).toHaveBeenCalledOnce();
+      vi.unstubAllGlobals();
+    });
+
+    it("an expired session links to logging in", async () => {
+      apiCall.mockResolvedValue(failure("UNAUTHORIZED"));
+      render(<ConfirmEmail {...signedIn} />);
+
+      await resend();
+
+      expect((await screen.findByTestId("resend-feedback")).textContent).toContain("Sesja wygasła.");
+      expect(screen.getByRole("link", { name: "Zaloguj się" }).getAttribute("href")).toBe("/login?next=/account");
+    });
+
+    it("also works after a failed confirmation of a real token", async () => {
+      apiCall.mockResolvedValueOnce(failure("INVALID_TOKEN")).mockResolvedValueOnce({ ok: true, data: null });
+      render(<ConfirmEmail {...base} signedIn />);
+
+      const user = await confirm();
+      await user.click(await screen.findByRole("button", { name: "Wyślij nowy link" }));
+
+      expect((await screen.findByTestId("resend-feedback")).textContent).toContain("Wysłano.");
+    });
   });
 });

@@ -16,9 +16,17 @@ vi.mock("@/components/auth/logout-button", () => ({
   ),
 }));
 
+vi.mock("@/components/auth/verify-email-banner", () => ({
+  VerifyEmailNotice: ({ userId, email }: { userId: string; email: string }) => (
+    <aside data-testid="banner" data-user={userId}>
+      {email}
+    </aside>
+  ),
+}));
+
 import HomePage from "./page";
 
-let current: { id: string; displayName: string; emailVerifiedAt: null } | null = null;
+let current: { id: string; displayName: string; email: string; emailVerifiedAt: Date | null } | null = null;
 function signedOut() {
   current = null;
   getCurrentUserWith.mockReset().mockImplementation(async (read: (u: unknown, c: unknown) => Promise<boolean>) =>
@@ -26,7 +34,7 @@ function signedOut() {
   );
 }
 function signedIn() {
-  current = { id: "u1", displayName: "Ala_7", emailVerifiedAt: null };
+  current = { id: "u1", displayName: "Ala_7", email: "ala@example.com", emailVerifiedAt: null };
 }
 
 const count = (html: string, fragment: string) => html.split(fragment).length - 1;
@@ -94,5 +102,21 @@ describe("HomePage", () => {
     signedIn();
     hasActiveGame.mockResolvedValue(true);
     expect(renderToStaticMarkup(await HomePage())).toContain('data-active="true"');
+  });
+
+  it("shows the e-mail banner to a player with an unconfirmed address", async () => {
+    signedIn();
+    const html = renderToStaticMarkup(await HomePage());
+    expect(html).toContain('data-testid="banner" data-user="u1">ala@example.com');
+  });
+
+  it("shows no banner to a player with a confirmed address", async () => {
+    signedIn();
+    current!.emailVerifiedAt = new Date();
+    expect(renderToStaticMarkup(await HomePage())).not.toContain('data-testid="banner"');
+  });
+
+  it("shows no banner to a guest", async () => {
+    expect(renderToStaticMarkup(await HomePage())).not.toContain('data-testid="banner"');
   });
 });
