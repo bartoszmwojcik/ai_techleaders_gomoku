@@ -45,7 +45,7 @@ Ręczny test po fazie: `/login` (poprawne dane, złe hasło ten sam komunikat, `
 
 Ręczny test po fazie: wylogowanie, `/account` bez sesji przekierowuje na `/login?next=…`, linki na `/`.
 
-- [ ] 4.1 `SessionService.revoke` i `POST /api/auth/logout`
+- [x] 4.1 `SessionService.revoke` i `POST /api/auth/logout`
 - [ ] 4.2 `requireSession` / `requirePageSession`, `activeGameCheck`, `/account`, `LogoutButton`, linki na `/`
 - [ ] 4.3 Dokumentacja (README: logowanie, limity)
 

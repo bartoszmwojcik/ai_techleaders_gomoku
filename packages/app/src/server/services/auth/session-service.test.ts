@@ -13,6 +13,7 @@ function setup(found: unknown = null, activeGame = false) {
     getReference: vi.fn((_entity: unknown, id: string) => ({ ref: id })),
     flush: vi.fn(async () => undefined),
     findOne: vi.fn(async () => found),
+    nativeDelete: vi.fn(async () => 0),
   };
   const hasActiveGame = vi.fn(async () => activeGame);
   const service = new SessionService({
@@ -99,5 +100,23 @@ describe("SessionService.findValid", () => {
     };
     const { service } = setup(session);
     expect(await service.findValid("tok")).toBe(session);
+  });
+});
+
+describe("SessionService.revoke", () => {
+  it("deletes only the session with the token hash", async () => {
+    const { em, service } = setup();
+    await service.revoke("tok");
+    expect(em.nativeDelete).toHaveBeenCalledExactlyOnceWith(Session, {
+      tokenHash: hashOpaqueToken("tok"),
+    });
+  });
+
+  it("is idempotent: an unknown or already revoked token is not an error", async () => {
+    const { em, service } = setup();
+    em.nativeDelete.mockResolvedValue(0);
+    await expect(service.revoke("tok")).resolves.toBeUndefined();
+    await expect(service.revoke("tok")).resolves.toBeUndefined();
+    expect(em.nativeDelete).toHaveBeenCalledTimes(2);
   });
 });
