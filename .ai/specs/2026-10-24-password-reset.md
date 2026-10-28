@@ -5,6 +5,13 @@
 > - Komunikat po prośbie: „Jeśli konto z tym adresem istnieje i adres jest potwierdzony, wysłaliśmy link (ważny 1 godzinę). Sprawdź też folder spam.”
 > - Hasło: `newPasswordSchema` 8–72 bajty (BR-28), nie 16.
 
+> **Odstępstwa wdrożenia (2026-10-29):**
+> - Pole hasła w `confirm` to `newPassword` (`fieldErrors.newPassword`), nie `password`.
+> - Limit adresu klienta (10/h) w `request` jest sprawdzany przed walidacją kształtu: odpowiedź `400 VALIDATION` też zużywa limit.
+> - `PasswordResetService.request` połyka błędy wysyłki i limity (zwraca `void`, błąd tylko w logu), a `after()` łapie resztę; klient zawsze dostaje `200`.
+> - Limit 3/h na skrót e-maila zlicza próby wysyłki, także nieudane.
+> - Po sukcesie `/reset-password` pokazuje komunikat „Hasło zmienione” z linkiem do `/login` (bez przekierowania).
+> - Zalogowany wchodzący na `/forgot-password` jest przekierowany na `/account` (zmiana hasła po zalogowaniu: #36).
 
 > Status: **zatwierdzona** (`om-auto-write-spec`, 2026-10-24; założenia potwierdzone przez właściciela — Bartosz Wójcik, „a” — 2026-10-24).
 
@@ -59,7 +66,7 @@ flowchart LR
 
 `POST /api/auth/password-reset/request` — `{ "email": "…" }` → zawsze `200 { ok: true, data: null }` (także dla nieznanego e-maila i przy błędzie wysyłki, który jest tylko logowany bez adresu); `400 VALIDATION` dla złego kształtu; `429` po limicie (Q4); `403` CSRF.
 
-`POST /api/auth/password-reset/confirm` — `{ "token": "…", "password": "…" }` → `200 { ok: true, data: null }`; `400 INVALID_TOKEN` („Link wygasł lub został już użyty.”); `400 VALIDATION` (`fieldErrors.password` — reguła G3); `429`; `403` CSRF.
+`POST /api/auth/password-reset/confirm` — `{ "token": "…", "newPassword": "…" }` → `200 { ok: true, data: null }`; `400 INVALID_TOKEN` („Link wygasł lub został już użyty.”); `400 VALIDATION` (`fieldErrors.newPassword` — reguła G3); `429`; `403` CSRF.
 
 Nowe adresy `/forgot-password` i `/reset-password` (ten drugi trafia do wiadomości — po wdrożeniu chroniony jak linki zaproszeń, `BACKWARD_COMPATIBILITY.md` §3).
 
