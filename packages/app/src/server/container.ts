@@ -20,6 +20,13 @@ import {
   UserService,
   type InvalidateResetTokens,
 } from "./services/auth/user-service";
+import {
+  systemClock,
+  type Clock,
+  type EmailSender,
+} from "./services/email/email-sender";
+import { FileEmailSender } from "./services/email/file-email-sender";
+import { UnconfiguredEmailSender } from "./services/email/unconfigured-email-sender";
 import { HealthService } from "./services/health-service";
 import { RateLimiter } from "./services/rate-limit/rate-limiter";
 
@@ -35,6 +42,9 @@ export type AppCradle = {
   hasActiveGame: HasActiveGame;
   /** Reset tokens (#35) do not exist yet; the reset feature replaces this registration. */
   invalidateResetTokens: InvalidateResetTokens;
+  clock: Clock;
+  /** Chosen by EMAIL_TRANSPORT; resolved lazily, so a bad setting fails only the routes that send mail. */
+  emailSender: EmailSender;
   /** Request-scoped (needs `em`): resolve only from a `withRequestScope` scope. */
   sessionService: SessionService;
   gameParticipation: GameParticipation;
@@ -93,6 +103,17 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     invalidateResetTokens: asValue<InvalidateResetTokens>(
       async () => undefined,
     ),
+    clock: asValue(systemClock),
+    emailSender: asFunction(
+      ({ serverConfig, clock }: AppCradle): EmailSender =>
+        serverConfig.emailTransport === "file"
+          ? new FileEmailSender({
+              outboxPath: serverConfig.emailOutboxPath,
+              from: serverConfig.emailFrom,
+              clock,
+            })
+          : new UnconfiguredEmailSender(),
+    ).singleton(),
     sessionService: asClass(SessionService).scoped(),
     gameParticipation: asClass(GameParticipation).singleton(),
     rateLimiter: asClass(RateLimiter).scoped(),
