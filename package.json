@@ -21,6 +21,7 @@
     "db:migration:down": "npm run migration:down -w @gomoku/db",
     "db:migration:list": "npm run migration:list -w @gomoku/db",
     "db:status": "npm run status -w @gomoku/db --silent",
+    "db:cleanup": "npm run cleanup -w @gomoku/db --silent",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.ts",
