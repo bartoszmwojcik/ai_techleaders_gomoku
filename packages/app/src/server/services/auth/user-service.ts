@@ -1,6 +1,8 @@
 import {
   ConflictError,
+  UnauthorizedError,
   normalizeDisplayName,
+  normalizeEmail,
   type RegisterInput,
 } from "@gomoku/core";
 import {
@@ -27,6 +29,9 @@ export type RegisteredUser = {
 export const EMAIL_TAKEN_MESSAGE =
   "Nie udało się założyć konta. Jeśli masz już konto, zaloguj się.";
 export const DISPLAY_NAME_TAKEN_MESSAGE = "Ta nazwa gracza jest już zajęta.";
+
+/** One answer for an unknown e-mail and a wrong password (never reveals which). */
+export const INVALID_CREDENTIALS_MESSAGE = "Nieprawidłowy e-mail lub hasło.";
 
 const DISPLAY_NAME_KEY_CONSTRAINT = "users_display_name_key_unique";
 
@@ -72,6 +77,26 @@ export class UserService {
       }
       throw error;
     }
+  }
+
+  /**
+   * Checks credentials and returns the user; it does not create a session (the route
+   * resets the e-mail rate limits first). The e-mail is normalized like at registration.
+   * `verify` always runs - for an unknown e-mail against the dummy hash - so response time
+   * does not reveal whether the account exists. An unconfirmed e-mail does not matter (BR-26).
+   * @throws UnauthorizedError with the same message for an unknown e-mail and a wrong password.
+   */
+  async authenticate(
+    email: string,
+    password: string,
+  ): Promise<{ id: string; displayName: string }> {
+    const user = await this.#em.findOne(User, { email: normalizeEmail(email) });
+    const hash = user?.passwordHash ?? (await this.#passwordHasher.dummyHash);
+    const matches = await this.#passwordHasher.verify(password, hash);
+    if (!user || !matches) {
+      throw new UnauthorizedError(INVALID_CREDENTIALS_MESSAGE);
+    }
+    return { id: user.id, displayName: user.displayName };
   }
 
   /**

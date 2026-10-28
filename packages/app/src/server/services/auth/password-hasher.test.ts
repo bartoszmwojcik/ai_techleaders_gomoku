@@ -19,8 +19,12 @@ describe("PasswordHasher", () => {
   });
 
   it("encodes the injected cost in the hash", async () => {
-    const low = await new PasswordHasher({ passwordHashCost: 4 }).hash("secret123");
-    const high = await new PasswordHasher({ passwordHashCost: 5 }).hash("secret123");
+    const low = await new PasswordHasher({ passwordHashCost: 4 }).hash(
+      "secret123",
+    );
+    const high = await new PasswordHasher({ passwordHashCost: 5 }).hash(
+      "secret123",
+    );
 
     expect(low).toMatch(/^\$2[aby]\$04\$/);
     expect(high).toMatch(/^\$2[aby]\$05\$/);
@@ -55,5 +59,23 @@ describe("PasswordHasher", () => {
     clearInterval(timer);
 
     expect(ticks).toBeGreaterThan(0);
+  });
+
+  it("computes the dummy hash once, at creation, with the injected cost", async () => {
+    const hashSpy = vi.spyOn(bcrypt, "hash");
+    const created = new PasswordHasher({ passwordHashCost: 4 });
+    expect(hashSpy).toHaveBeenCalledTimes(1);
+
+    const dummy = await created.dummyHash;
+    await created.dummyHash;
+
+    expect(hashSpy).toHaveBeenCalledTimes(1);
+    expect(dummy).toMatch(/^\$2[aby]\$04\$/);
+    await expect(created.verify("anything", dummy)).resolves.toBe(false);
+  });
+
+  it("uses a different dummy hash per instance", async () => {
+    const other = new PasswordHasher({ passwordHashCost: 4 });
+    expect(await other.dummyHash).not.toBe(await hasher.dummyHash);
   });
 });
