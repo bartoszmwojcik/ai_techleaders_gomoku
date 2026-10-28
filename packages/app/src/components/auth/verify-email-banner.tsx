@@ -42,16 +42,19 @@ function focusQuietly(element: HTMLElement | null | undefined) {
 
 /**
  * The "Potwierdź adres e-mail" banner of `/` and `/account` for an unconfirmed address (BR-26): it
- * blocks nothing, can be closed and returns after 7 days. Rendering decisions: the server renders
- * nothing (no stored choice to read there) and the browser shows the banner after hydration, so
- * markup never differs between the two and a closed banner never flashes. The choice is read from
- * `localStorage` through `useSyncExternalStore` (server snapshot: hidden); unreadable storage means visible.
+ * blocks nothing, can be closed and returns after 7 days. Rendering decisions: the server always
+ * renders it open (the pages mount it only for an unconfirmed address) and the first browser render
+ * uses the same server snapshot, so hydration never mismatches. After hydration the choice is read
+ * from `localStorage` through `useSyncExternalStore` and a banner closed less than 7 days ago is
+ * hidden. Trade-off, accepted on purpose (review 7.4): whoever closed the banner may see it flash
+ * briefly before it disappears, instead of everybody getting a layout shift when it appears after
+ * hydration (CLS on `/` and `/account`). Unreadable storage means visible (fail open).
  */
 export function VerifyEmailNotice({ userId, email }: VerifyEmailNoticeProps) {
   const open = useSyncExternalStore(
     subscribeToBannerMemory,
     () => isBannerVisible(readClosedAt(userId), Date.now()),
-    () => false,
+    () => true,
   );
   // When storage refuses the write, the banner is still hidden until the next page load.
   const [closedHere, setClosedHere] = useState(false);

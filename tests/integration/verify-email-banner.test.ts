@@ -19,6 +19,23 @@ const uniqueUser = () => {
   return { email: `vb-${n}@example.com`, displayName: `Vb_${n}`, password: "secret123" };
 };
 
+const apiHeaders = { "content-type": "application/json", origin: baseUrl, "x-gomoku-request": "1" };
+
+/** HTML of a page as the server sends it (before any script runs) for a freshly registered account. */
+async function serverHtmlFor(paths: string[]) {
+  const user = uniqueUser();
+  const response = await fetch(`${baseUrl}/api/auth/register`, {
+    method: "POST",
+    headers: { ...apiHeaders, "x-forwarded-for": nextAddress() },
+    body: JSON.stringify(user),
+  });
+  expect(response.status).toBe(201);
+  const cookie = (response.headers.get("set-cookie") ?? "").split(";")[0] ?? "";
+  return Promise.all(
+    paths.map(async (path) => (await fetch(`${baseUrl}${path}`, { headers: { cookie } })).text()),
+  );
+}
+
 const BANNER = "[data-testid=verify-email-banner]";
 
 async function registerInBrowser(user: ReturnType<typeof uniqueUser>) {
@@ -89,6 +106,10 @@ describe("verify email banner", () => {
     await new Promise((r) => setTimeout(r, 500));
     expect(await browser.count(BANNER)).toBe(0);
 
+    // The server sends the banner open; a closed one is hidden only after hydration.
+    await browser.open(`${baseUrl}/`);
+    await browser.waitForFn(`document.querySelector("${BANNER}") === null`);
+
     // A closing older than 7 days no longer counts: the banner is back.
     await browser.evaluate(
       `Object.keys(localStorage).forEach((k) => { if (k.startsWith('gomoku:verify-email-banner-closed:')) localStorage.setItem(k, String(Date.now() - 8 * 24 * 3600 * 1000)); })`,
@@ -110,6 +131,27 @@ describe("verify email banner", () => {
     await browser.waitFor("[data-testid=signed-in-as]");
     await new Promise((r) => setTimeout(r, 500));
     expect(await browser.count(BANNER)).toBe(0);
+  });
+
+  it("is in the HTML sent by the server on / and /account, so the page has nothing to shift", async () => {
+    const [home, account] = await serverHtmlFor(["/", "/account"]);
+    for (const html of [home!, account!]) {
+      expect(html).toContain("data-testid=\"verify-email-banner\"");
+      expect(html).toContain("Potwierdź adres e-mail");
+    }
+  });
+
+  it("does not shift the layout while hydrating when the banner stays", async () => {
+    const user = uniqueUser();
+    await registerInBrowser(user);
+    for (const path of ["/", "/account"]) {
+      await browser.open(`${baseUrl}${path}`);
+      await browser.waitFor(BANNER);
+      const shift = await browser.evaluate<number>(
+        `new Promise((resolve) => { let total = 0; new PerformanceObserver((list) => { for (const e of list.getEntries()) if (!e.hadRecentInput) total += e.value; resolve(total); }).observe({ type: 'layout-shift', buffered: true }); setTimeout(() => resolve(total), 300); })`,
+      );
+      expect(shift).toBe(0);
+    }
   });
 
   it("shows the banner when the browser storage cannot be read", async () => {

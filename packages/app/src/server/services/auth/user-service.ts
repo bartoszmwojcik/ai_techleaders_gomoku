@@ -45,9 +45,6 @@ export type RegisteredUser = {
   session: { token: string; expiresAt: Date };
 };
 
-/** How long registration waits for the verification e-mail (shared with `resend`). */
-export { VERIFICATION_SEND_TIMEOUT_MS };
-
 /** Uniform answer for a taken e-mail: it must not reveal whether the account exists (Q7). */
 export const EMAIL_TAKEN_MESSAGE =
   "Nie udało się założyć konta. Jeśli masz już konto, zaloguj się.";

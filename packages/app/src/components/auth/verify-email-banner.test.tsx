@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -37,8 +38,47 @@ afterEach(() => {
 });
 
 describe("VerifyEmailNotice", () => {
-  it("renders nothing on the server, so there is nothing to mismatch while hydrating", () => {
-    expect(renderToString(<VerifyEmailNotice userId="u1" email="ala@example.com" />)).toBe("");
+  it("renders the banner open on the server, so the layout does not shift", () => {
+    const html = renderToString(<VerifyEmailNotice userId="u1" email="ala@example.com" />);
+    expect(html).toContain("Potwierdź adres e-mail");
+    expect(html).toContain("ala@example.com");
+  });
+
+  it("hydrates the server markup without a mismatch and hides a banner closed earlier", async () => {
+    const html = renderToString(<VerifyEmailNotice userId="u1" email="ala@example.com" />);
+    window.localStorage.setItem(KEY, String(NOW.getTime()));
+    const container = document.createElement("div");
+    container.innerHTML = html;
+    document.body.append(container);
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    let root!: ReturnType<typeof hydrateRoot>;
+    await act(async () => {
+      root = hydrateRoot(container, <VerifyEmailNotice userId="u1" email="ala@example.com" />);
+    });
+
+    expect(consoleError).not.toHaveBeenCalled();
+    expect(container.querySelector("[data-testid=verify-email-banner]")).toBeNull();
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it("keeps the server banner after hydration when it was never closed", async () => {
+    const html = renderToString(<VerifyEmailNotice userId="u1" email="ala@example.com" />);
+    const container = document.createElement("div");
+    container.innerHTML = html;
+    document.body.append(container);
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    let root!: ReturnType<typeof hydrateRoot>;
+    await act(async () => {
+      root = hydrateRoot(container, <VerifyEmailNotice userId="u1" email="ala@example.com" />);
+    });
+
+    expect(consoleError).not.toHaveBeenCalled();
+    expect(container.querySelector("[data-testid=verify-email-banner]")).not.toBeNull();
+    act(() => root.unmount());
+    container.remove();
   });
 
   it("shows the banner with the reason and the address", () => {
