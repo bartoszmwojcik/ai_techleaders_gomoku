@@ -77,7 +77,7 @@ Ręczny test po fazie: baner „Potwierdź adres e-mail” na `/` i `/account`, 
 
 - [x] 7.1 `resend` i limity (dodatkowo: `EmailVerificationService.issue` połyka przyczynę błędu wysyłki w `catch {` — zaloguj bez danych osobowych nazwę i kod przyczyny (np. przez `describeError(cause)`), a sam `AppError` 502 zachowaj bez ujawniania przyczyny klientowi; test, że log nie zawiera adresu ani tokenu — zob. lekcja `2026-10-28-next-env-root-env-not-loaded-in-dev.md`) (dopiąć na `/verify-email` w `confirm-email.tsx`, stan „link nieważny”: przycisk „Wyślij nowy link” dla zalogowanego z niepotwierdzonym kontem (s03.5, 9–12) i link „Zaloguj się, aby wysłać nowy link” (`/login?next=/account`) dla niezalogowanego (s03.6); w 6.5 jest tylko „Wróć na stronę główną”)
 - [x] 7.2 `VerifyEmailBanner` (zamykalny, powrót po 7 dniach)
-- [ ] 7.3 Dokumentacja
+- [x] 7.3 Dokumentacja (README: ponowne wysyłanie, baner, znacznik, limit 5 s, logi, ręczny test w dev, wdrożenie z #38). Do wykonania po scaleniu PR (ręcznie): komentarz w #38 o porcie `EmailSender` (`SendOptions`/`signal`, timeout 5 s, adres klienta nie jest przekazywany, kontrakt wiadomości) i zamknięcie #34
 
 ## Faza 8 — Reset hasła (#35)
 
