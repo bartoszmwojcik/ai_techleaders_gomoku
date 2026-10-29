@@ -191,7 +191,7 @@ export function PlayField({ gameId, game, pollFails, onState, onRefresh, onGone 
         {myTurn && lastMove !== undefined && (
           // The opponent's stone appears on its own; a screen reader hears where (visually hidden).
           <p role="status" className="sr-only" data-testid="opponent-move">
-            Przeciwnik: {cellName(lastMove).toLowerCase()}
+            Przeciwnik: {cellName(lastMove).replace(/^K/, "k")}
           </p>
         )}
         <ClockSlot name={`Ty (${playerName(mine)})`} active={myTurn} activeLabel="Twój ruch" />
