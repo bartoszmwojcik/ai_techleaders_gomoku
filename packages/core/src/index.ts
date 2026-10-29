@@ -12,3 +12,7 @@ export * from "./validators/auth/register-schema";
 export * from "./validators/auth/email-verification-confirm-schema";
 export * from "./validators/auth/password-reset-schema";
 export * from "./theme/theme";
+export * from "./games/constants";
+export * from "./games/invitation-code";
+export * from "./games/types";
+export * from "./validators/games/accept-invitation-schema";

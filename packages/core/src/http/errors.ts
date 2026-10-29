@@ -51,6 +51,12 @@ export class ForbiddenError extends AppError {
   }
 }
 
+export class NotFoundError extends AppError {
+  constructor(message: string, options: AppErrorOptions = {}) {
+    super(404, options.code ?? "NOT_FOUND", message, options.fieldErrors);
+  }
+}
+
 export class ConflictError extends AppError {
   constructor(message: string, options: AppErrorOptions = {}) {
     super(409, options.code ?? "CONFLICT", message, options.fieldErrors);
