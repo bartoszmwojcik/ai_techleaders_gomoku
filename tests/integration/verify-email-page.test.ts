@@ -140,7 +140,7 @@ describe("/verify-email page", () => {
 
     await browser.open(link);
     expect(await browser.text("h1")).toBe("Potwierdź adres e-mail");
-    expect(await browser.count("button")).toBe(1);
+    expect(await browser.count("main button")).toBe(1);
     // Mail scanners and link previews only GET: the account and the token stay untouched.
     await fetch(link);
     expect(await verifiedAt(userId)).toBeNull();
@@ -148,7 +148,7 @@ describe("/verify-email page", () => {
       await orm.em.fork().count(EmailVerificationToken, { user: userId, usedAt: null }),
     ).toBe(1);
 
-    await browser.click("button");
+    await browser.click("main button");
     await browser.waitFor("[data-testid=verify-done]");
 
     expect(await browser.text("[data-testid=verify-done]")).toContain("Adres potwierdzony");
@@ -164,7 +164,7 @@ describe("/verify-email page", () => {
     const target = `${baseUrl}/verify-email?token=${encodeURIComponent(token)}&next=${encodeURIComponent("/account")}`;
 
     await browser.open(target);
-    await browser.click("button");
+    await browser.click("main button");
     await browser.waitFor("[data-testid=verify-done]");
     await browser.click("[data-testid=verify-done] a");
 
@@ -177,18 +177,18 @@ describe("/verify-email page", () => {
     await browser.open(link);
     // Used elsewhere between opening the page and clicking.
     expect((await confirmApi({ token })).status).toBe(200);
-    await browser.click("button");
+    await browser.click("main button");
     await browser.waitFor("[data-testid=verify-invalid]");
     expect(await browser.text("[data-testid=verify-invalid]")).toContain("Link wygasł lub został już użyty.");
     expect(await browser.evaluate<string>("document.activeElement.dataset.testid")).toBe("verify-invalid");
 
     await browser.open(`${baseUrl}/verify-email?token=not-a-real-token`);
-    await browser.click("button");
+    await browser.click("main button");
     await browser.waitFor("[data-testid=verify-invalid]");
 
     await browser.open(`${baseUrl}/verify-email`);
     expect(await browser.text("[data-testid=verify-invalid]")).toContain("Link wygasł lub został już użyty.");
-    expect(await browser.count("button")).toBe(0);
+    expect(await browser.count("main button")).toBe(0);
   });
 
   it("tells a signed-in player with a confirmed account that the address is confirmed", async () => {
