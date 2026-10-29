@@ -101,7 +101,7 @@ describe("GameMoveService.play", () => {
       0,
     ]);
     expect(calls).toHaveLength(2);
-    expect(gameService.stateOf).toHaveBeenCalledWith(em, P, "game-1", 0);
+    expect(gameService.stateOf).toHaveBeenCalledWith(em, P, "game-1", 0, NOW);
   });
 
   it("places white on the second move for the other seat", async () => {
@@ -169,7 +169,7 @@ describe("GameMoveService.play", () => {
     await service.play(P, "game-1", move(7, 7, 1));
     expect(calls).toHaveLength(1);
     expect(timeoutSettler.settleGame).not.toHaveBeenCalled();
-    expect(gameService.stateOf).toHaveBeenCalledWith(expect.anything(), P, "game-1", 0);
+    expect(gameService.stateOf).toHaveBeenCalledWith(expect.anything(), P, "game-1", 0, NOW);
   });
 
   it("answers a retry of the move that ended the game, too", async () => {

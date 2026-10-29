@@ -115,6 +115,7 @@ export class GameMoveService {
       const [row] = await tx.execute<GameRow[]>(LOCK_GAME_SQL, [gameId, participant.playerId]);
       if (!row) throw new NotFoundError(GAME_NOT_FOUND_MESSAGE);
 
+      const now = this.#clock.now();
       const seat = row.seat as Seat;
       const moves = decodeMoves(row.moves);
       const blackSeat = row.black_seat as Seat | null;
@@ -126,11 +127,10 @@ export class GameMoveService {
         moves[after] === cell &&
         seatOnTurn(after, blackSeat) === seat
       ) {
-        return this.#gameService.stateOf(tx, participant, gameId, after);
+        return this.#gameService.stateOf(tx, participant, gameId, after, now);
       }
 
       // #23: finishes the game by time under this lock; a settled game is finished.
-      const now = this.#clock.now();
       // Not thrown inside the transaction: the error would roll the settlement back.
       if (await this.#timeoutSettler.settleGame(gameId, tx, now)) return SETTLED_BY_TIME;
       if (row.status === "finished") throw gameFinished();
@@ -195,7 +195,7 @@ export class GameMoveService {
       if (written.length === 0) throw staleMove();
       if (result) await tx.execute(RELEASE_SLOTS_SQL, [gameId], "run");
 
-      return this.#gameService.stateOf(tx, participant, gameId, after);
+      return this.#gameService.stateOf(tx, participant, gameId, after, now);
     });
     if (played === SETTLED_BY_TIME) throw gameFinished();
     return played;

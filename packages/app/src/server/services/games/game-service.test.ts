@@ -55,6 +55,7 @@ function setup(options: {
   invitation?: Record<string, unknown>;
   flushError?: unknown;
   player?: Record<string, unknown>;
+  now?: () => Date;
 } = {}) {
   const calls: Calls = [];
   const rows = [...(options.executeRows ?? [])];
@@ -99,7 +100,7 @@ function setup(options: {
   };
   const service = new GameService({
     em: em as unknown as EntityManager,
-    clock: { now: () => NOW },
+    clock: { now: options.now ?? (() => NOW) },
     rateLimiter: rateLimiter as never,
     invitationCodes: invitationCodes as never,
     timeoutSettler,
@@ -373,6 +374,29 @@ describe("GameService.getState", () => {
     });
     const state = await service.getState({ playerId: "p1" }, "game-1");
     expect(state.clock).toEqual({ remainingMs: [590_000, 575_000], running: 2 });
+  });
+
+  it("computes the clock view at the instant the expiry was settled, not at a later read", async () => {
+    let reads = 0;
+    const { service } = setup({
+      // Every `now()` is a second later than the previous one.
+      now: () => new Date(NOW.getTime() + 1000 * reads++),
+      game: {
+        status: "active",
+        blackSeat: 1,
+        moveCount: 1,
+        moves: Uint8Array.from([10]),
+        clockMs1: 600_000,
+        clockMs2: 5_000,
+        turnStartedAt: new Date(NOW.getTime() - 5_000),
+      },
+      players: [creator, guest],
+    });
+    const state = await service.getState({ playerId: "p1" }, "game-1");
+    // At the settling instant seat 2 has 5 s - 5 s = 0 left only at `now`; a second read
+    // would also show 0 or less, so assert the first read is the one used.
+    expect(reads).toBe(1);
+    expect(state.clock).toEqual({ remainingMs: [600_000, 0], running: 2 });
   });
 
   it("rejects `after` beyond the number of moves without doing the bookkeeping (optimization: no wasted writes)", async () => {

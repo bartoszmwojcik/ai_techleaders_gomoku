@@ -291,14 +291,15 @@ export class GameService {
       await this.#timeoutSettler.settleExpired(gameId, tx, now);
       await tx.execute(MARK_SEEN_SQL, [now, participant.playerId], "run");
 
-      return this.stateOf(tx, participant, gameId, after);
+      return this.stateOf(tx, participant, gameId, after, now);
     });
   }
 
   /**
    * Builds the state of a game inside the caller's transaction, without bookkeeping:
    * `getState` calls it after the lazy updates, `GameMoveService` after a move.
-   * `after` is the number of moves the client already knows (#22 Q5).
+   * `after` is the number of moves the client already knows (#22 Q5); `now` is the instant
+   * the caller settled the clock at, so the clock view never disagrees with the status.
    * @throws AppError 400 when `after` is greater than the number of moves
    */
   async stateOf(
@@ -306,6 +307,7 @@ export class GameService {
     participant: GameParticipant,
     gameId: string,
     after = 0,
+    now: Date = this.#clock.now(),
   ): Promise<GameState> {
     const game = await tx.findOneOrFail(Game, gameId);
     if (after > game.moveCount) {
@@ -338,7 +340,7 @@ export class GameService {
           turnStartedAtMs: game.turnStartedAt?.getTime() ?? null,
           turnSeat: board.turnSeat,
         },
-        this.#clock.now().getTime(),
+        now.getTime(),
       ),
       you: { seat: you.seat as Seat, kind: you.kind as ParticipantKind },
       players: players.map((player) => ({
