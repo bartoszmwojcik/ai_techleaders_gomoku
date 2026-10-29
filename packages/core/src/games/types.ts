@@ -17,3 +17,17 @@ export type Seat = (typeof SEATS)[number];
 /** State of a rematch offer (rematch spec). */
 export const REMATCH_STATES = ["pending", "accepted", "declined"] as const;
 export type RematchState = (typeof REMATCH_STATES)[number];
+
+/** Stone colour; black moves first (#22 Q1). */
+export const GAME_COLORS = ["black", "white"] as const;
+export type GameColor = (typeof GAME_COLORS)[number];
+
+/**
+ * Why a game finished: five (or more) in a row and a full board (#22), the clock running
+ * out (#23) and a resignation (resignation spec).
+ */
+export const END_REASONS = ["five_in_row", "draw", "timeout", "resignation"] as const;
+export type EndReason = (typeof END_REASONS)[number];
+
+/** Outcome of a finished game; `winnerSeat` is `null` only for a draw. */
+export type GameResult = { winnerSeat: Seat | null; reason: EndReason };
