@@ -61,6 +61,6 @@ Gracz nie może zmienić motywu, mimo że DS i prototypy go przewidują, a czę�
 ## Adnotacje z wdrożenia (2026-10-29)
 
 - Przełącznik jest wierszem w normalnym przepływie nad stroną (`flex justify-end` w `<body>` layoutu), nie elementem `absolute`: nigdy nie nachodzi na treść, a wiersz ma stałą wysokość. Dlatego `<main>` stron ma `flex-1` (zamiast `min-h-svh`), żeby wyśrodkowanie pionowe treści działało bez przewijania.
-- Przegląd wszystkich ekranów E01 w obu motywach (360/1280 px, 320 px dla wybranych): brak problemów z kontrastem, układem i fokusem, żadnych zmian tokenów (Q5 potwierdzone). Najniższy kontrast tekstu w jasnym motywie: 4,58:1 (`text-muted`). Szczegóły: `.ai/analysis/2026-10-29-theme-review-e01.md`.
+- Przegląd wszystkich ekranów E01 w obu motywach (360/1280 px, 320 px dla wybranych; stany domyślne, bez hover/pressed): brak problemów z kontrastem, układem i fokusem, żadnych zmian tokenów (Q5 potwierdzone). Najniższy kontrast tekstu w jasnym motywie: 4,58:1 (`text-muted`). Szczegóły: `.ai/analysis/2026-10-29-theme-review-e01.md`.
 - Scenariusze integracyjne: `tests/integration/theme-switch.test.ts` (preferencja systemu, ciasteczko, niepoprawna wartość, wiele stron, klawiatura, 360 px).
 - Odstępstwo od propsów `lightLabel`/`darkLabel`: `ThemeSwitch` ma jedną stałą nazwę przycisku („Jasny motyw”), a stan niesie `aria-pressed` (włączony = jasny), zgodnie ze wzorcem przycisku przełączanego; zob. `packages/ui/docs/components/theme-switch.mdx`.
