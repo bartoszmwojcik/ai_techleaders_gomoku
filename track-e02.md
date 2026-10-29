@@ -38,11 +38,11 @@ Ręczny test po fazie: sprawdzenie schematu w DBeaverze (tabele, indeksy, `CHECK
 ### Faza 2 — Zaproszenia i dołączanie (#21; backend kończy się przed ekranami)
 Ręczny test po fazie: `curl` — utworzenie partii, kod `ABCD-EFGH`, dołączenie drugiego konta, trzecia osoba odrzucona, gość z ostrzeżeniem, anulowanie.
 - [x] 2.1 `InvitationService.accept(as=user)` i `preview` (#21 krok 4)
-- [ ] 2.2 `resolveParticipant` (konto), route'y `POST /api/games`, `/api/invitations/[code]/accept`, `/api/games/[id]/cancel`, `GET /api/games/[id]`, testy współbieżności (#21 krok 5)
+- [x] 2.2 `resolveParticipant` (konto), route'y `POST /api/games`, `/api/invitations/[code]/accept`, `/api/games/[id]/cancel`, `GET /api/games/[id]`, testy współbieżności (#21 krok 5)
 - [ ] 2.3 Gość: `GuestCookie`, `accept(as=guest)`, `resolveParticipant` (gość), wygasanie tokenu (#21 krok 6)
 - [!] 2.4 Strony `/invite/[code]`, `/join`, `/games/[gameId]` w stanie oczekiwania (#21 kroki 7–8) — po zatwierdzeniu prototypu etapu A (D3.1)
 - [ ] 2.5 Dokumentacja (README, lekcje)
-- [ ] Faza 10 z `track.md` (usunięcie konta, #37) po zadaniu 1.3 i 2.2
+- [ ] Faza 10 z `track.md` (usunięcie konta, #37) po zadaniu 1.3 i 2.2 — **odblokowana po 2.2** (`GameService.cancel`, `occupiesSlot`, kolejność blokad users → games i `game_players.user_id ON DELETE SET NULL` są gotowe); nie wykonana w fazie 2
 
 ### Faza 3 — Ruchy i wygrana (#22)
 Ręczny test po fazie: partia przez `curl`/dwie karty do piątki w linii, remis (stan 224 kamieni w bazie), ruch poza turą i na zajęte pole odrzucony.

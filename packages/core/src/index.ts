@@ -16,3 +16,4 @@ export * from "./games/constants";
 export * from "./games/invitation-code";
 export * from "./games/types";
 export * from "./validators/games/accept-invitation-schema";
+export * from "./validators/games/game-id-schema";

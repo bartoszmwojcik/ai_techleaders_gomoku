@@ -204,6 +204,22 @@ export class GameService {
   }
 
   /**
+   * The participant behind an identity in a game, or `null` (the caller answers `404`, so
+   * nobody learns whether the game exists). Only accounts for now; guests arrive with their cookie.
+   */
+  async findParticipant(
+    identity: { userId?: string },
+    gameId: string,
+  ): Promise<GameParticipant | null> {
+    if (!identity.userId) return null;
+    const player = await this.#em.findOne(GamePlayer, {
+      game: gameId,
+      user: identity.userId,
+    });
+    return player ? { playerId: player.id } : null;
+  }
+
+  /**
    * State of a game for one of its participants (404 for anybody else). A read that also
    * does the lazy bookkeeping, in this order: an expired waiting game is cancelled (Q16),
    * a game nobody opened within 15 minutes is cancelled (Q21), then the caller's `seen_at`

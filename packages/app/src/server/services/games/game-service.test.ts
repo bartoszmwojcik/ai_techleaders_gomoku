@@ -37,6 +37,7 @@ function setup(options: {
   players?: Record<string, unknown>[];
   invitation?: Record<string, unknown>;
   flushError?: unknown;
+  player?: Record<string, unknown>;
 } = {}) {
   const calls: Calls = [];
   const rows = [...(options.executeRows ?? [])];
@@ -66,6 +67,7 @@ function setup(options: {
       return entity === Game ? options.game : options.invitation;
     }),
     find: vi.fn(async () => options.players ?? []),
+    findOne: vi.fn(async () => options.player ?? null),
   };
   const rateLimiter = { hit: vi.fn(async () => ({ count: 1, retryAfterSeconds: 1 })) };
   const invitationCodes = { generate: vi.fn(() => "ABCDEFGH") };
@@ -190,6 +192,27 @@ describe("GameService.cancel", () => {
       message: GAME_NOT_CANCELLABLE_MESSAGE,
     });
     expect(em.execute).toHaveBeenCalledOnce();
+  });
+});
+
+describe("GameService.findParticipant", () => {
+  it("finds the account's player in the game", async () => {
+    const { service, em } = setup({ player: { id: "player-7" } });
+    expect(await service.findParticipant({ userId: "user-1" }, "game-1")).toEqual({
+      playerId: "player-7",
+    });
+    expect(em.findOne).toHaveBeenCalledWith(GamePlayer, { game: "game-1", user: "user-1" });
+  });
+
+  it("is null for a stranger", async () => {
+    const { service } = setup();
+    expect(await service.findParticipant({ userId: "user-1" }, "game-1")).toBeNull();
+  });
+
+  it("is null without an identity, without asking the database", async () => {
+    const { service, em } = setup();
+    expect(await service.findParticipant({}, "game-1")).toBeNull();
+    expect(em.findOne).not.toHaveBeenCalled();
   });
 });
 
