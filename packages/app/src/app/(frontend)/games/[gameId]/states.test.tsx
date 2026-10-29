@@ -12,7 +12,7 @@ describe("the error states of the game page", () => {
   });
 
   it("offers a retry when the server does not answer (p07.4)", () => {
-    const html = renderToStaticMarkup(<GameError error={new Error("x")} reset={() => {}} />);
+    const html = renderToStaticMarkup(<GameError error={new Error("x")} retry={() => {}} />);
     expect(html).toContain("Nie udało się połączyć z serwerem. Spróbuj ponownie.");
     expect(html).toContain("Spróbuj ponownie</button>");
     expect(html).toContain("Wróć na stronę główną");
