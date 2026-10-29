@@ -1,0 +1,15 @@
+@import "tailwindcss";
+@import "@gomoku/ui/game-tokens.css";
+
+@source "../../../packages/ui/src";
+@source ".";
+
+@layer base {
+  body {
+    margin: 0;
+    background: var(--surface-page);
+    color: var(--text-primary);
+    font-family: var(--font-family-base);
+    line-height: var(--line-height-body);
+  }
+}
