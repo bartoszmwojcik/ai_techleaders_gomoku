@@ -138,6 +138,7 @@
 /* ---- Meaning tokens, dark theme (default) ---- */
 :root,
 [data-theme="dark"] {
+  color-scheme: dark; /* native scrollbars, autofill and form controls follow the theme */
   --surface-page: var(--palette-stone-900); /* R01.1 */
   --surface-raised: var(--palette-stone-800); /* tokens.md (propozycja approved) */
   --text-primary: var(--palette-stone-100); /* R01.2, R02.2 */
@@ -159,6 +160,7 @@
 
 /* ---- Meaning tokens, light theme ---- */
 [data-theme="light"] {
+  color-scheme: light;
   --surface-page: var(--palette-stone-50); /* Z3, palette approved in tokens.md */
   --surface-raised: var(--palette-white);
   --text-primary: var(--palette-stone-900);
