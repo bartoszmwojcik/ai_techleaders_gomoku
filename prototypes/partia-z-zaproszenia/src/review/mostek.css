@@ -1,0 +1,33 @@
+/* Mostek: names used by the review engine (toolbar, comments, pins), mapped to the Gomoku design tokens.
+   Values come only from game-tokens.css; the review chrome is not part of the product. */
+:root {
+  --font-geist-sans: var(--font-family-base);
+  --font-geist-mono: ui-monospace, monospace;
+  --font-size-overline: var(--text-meta);
+  --background: var(--surface-page);
+  --foreground: var(--text-primary);
+  --card: var(--surface-raised);
+  --border: var(--border-default);
+  --input: var(--border-control);
+  --muted: var(--surface-raised);
+  --muted-foreground: var(--text-muted);
+  --radius-sm: var(--radius-base);
+  --radius-md: var(--radius-base);
+  --radius-lg: var(--radius-base);
+  --radius-xl: var(--radius-base);
+  --accent-indigo: var(--action-primary-bg);
+  --accent-indigo-foreground: var(--action-primary-text);
+  /* The design system has no shadows outside the board (A02). */
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-xl: none;
+  --status-success-icon: var(--status-success);
+  --status-warning-icon: var(--status-warning);
+  --status-warning-border: var(--status-warning);
+  --status-warning-bg: var(--surface-raised);
+  --status-warning-text: var(--text-primary);
+  --z-index-dropdown: 200;
+  --z-index-toast: 500;
+  --z-index-top: 600;
+}

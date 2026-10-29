@@ -1,0 +1,194 @@
+{
+  "format": "discovery-prototype-v1",
+  "skill": "om-mockup-prototype",
+  "slug": "game-from-invitation",
+  "revision": 1,
+  "revisionPath": ".ai/prototypes/discovery/game-from-invitation/revision-001",
+  "previousRevision": null,
+  "brief": ".ai/specs/product-brief.md",
+  "flow": "game from invitation, stage A (create invitation, join by link or code, wait, game ready)",
+  "panelReport": null,
+  "verification": "passed",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "5c8f0ea3b654a09668a00225fb7663e9b76f2a6e356301d0e2756de1ecbe39ab"
+    },
+    {
+      "path": "evidence/01-p01-panel.png",
+      "sha256": "6b0f7ff21b12eb54aaab832b65d3cdc83e304aeefe2e30623a5d229c299beb1e"
+    },
+    {
+      "path": "evidence/02-p03-oczekiwanie.png",
+      "sha256": "83f35f848e0d74f5a999b7ec60dd408c325577a00baefbeda4974231af8d991c"
+    },
+    {
+      "path": "evidence/03-p03-skopiowano.png",
+      "sha256": "3eb80ab56a143fa1daa3d74f4d36eb4b7ef7ee9cf3c88708162619b23dcc1c93"
+    },
+    {
+      "path": "evidence/04-p03-brak-schowka.png",
+      "sha256": "e18674552a0ece3e03c5d02e1e9238beddb96d684b2634ba3b8bce4f283a5b20"
+    },
+    {
+      "path": "evidence/05-p03-bez-udostepnij.png",
+      "sha256": "c81377241698b5523df2aea718747322bda8db2101b15ee7b8eeb7565e8df699"
+    },
+    {
+      "path": "evidence/06-p03-blad-odpytywania.png",
+      "sha256": "823fe06c53eff900832ae0bcbd577db91073e1ed183517670ca2cc86cfb832b4"
+    },
+    {
+      "path": "evidence/07-p03-dialog-anulowania.png",
+      "sha256": "b6247614863c1ecde8726dde008099811e3a69107f433740dd2273710f96f103"
+    },
+    {
+      "path": "evidence/08-p03-anulowanie-w-toku.png",
+      "sha256": "da2a9bf1b63d02d4f2b1d4d8e71b539715a10d2793407bd52087979784dec069"
+    },
+    {
+      "path": "evidence/09-p03-po-anulowaniu-panel.png",
+      "sha256": "411b4d055eb7b5f7073a0fa4cdd26e41db15c54a93a5c360797e3eeb8dada125"
+    },
+    {
+      "path": "evidence/10-p01-masz-partie.png",
+      "sha256": "cea5dbc3629621fd82b89672ad68ca3acfc56aadfc6886d69424f43f39eb5b06"
+    },
+    {
+      "path": "evidence/11-p01-limit.png",
+      "sha256": "eb0a6071d60fc7acd41a76bd0247e9597a8af2fe4b15db80b340638902967212"
+    },
+    {
+      "path": "evidence/12-p01-blad-serwera.png",
+      "sha256": "be2c1146169bccd633602fcae2950db900222250f3d1d8c40e3dbc1aa4beb223"
+    },
+    {
+      "path": "evidence/13-p01-brak-sieci.png",
+      "sha256": "dfd9761f38bc5ff93e7cec4b1624ea6e8737694ce3c1e80ec0d4ba8ae6916699"
+    },
+    {
+      "path": "evidence/14-p01-masz-oczekujaca.png",
+      "sha256": "f44d28ad941fc0dbd5ae85b6e21f6d5e92a61f1a8a34e7cc50cb6bf3e37f143b"
+    },
+    {
+      "path": "evidence/15-p02-kod.png",
+      "sha256": "6b401d83cbb6bf3c2001df8642e61f0a2dfb0bcd90976288e9f456cab35c2f88"
+    },
+    {
+      "path": "evidence/16-p02-za-krotki.png",
+      "sha256": "74dd53e721c73d771211f7119985b6caf59df95aab8a43620f79bc764eb00c03"
+    },
+    {
+      "path": "evidence/17-p02-limit.png",
+      "sha256": "d0295fc0ccf11e6b2d54850f10ccd40e9ed385d1db57707397c3f61455e17c5c"
+    },
+    {
+      "path": "evidence/18-s07-niezalogowany.png",
+      "sha256": "5204bddceb02294c25639034654106a0c5cc245d5892c4d843e24c8ca85d8cea"
+    },
+    {
+      "path": "evidence/19-s07-dialog-poza-prototypem.png",
+      "sha256": "6b526e3bc81a0553ab8165ff2a773b095c696b809f196b8790855a8e5d044d00"
+    },
+    {
+      "path": "evidence/20-s07-ostrzezenie-goscia.png",
+      "sha256": "c5959846064145f111dcd6b6b94c9503b0b3d87e1912be5d204117deaa75154a"
+    },
+    {
+      "path": "evidence/21-p04-czekamy-gosc.png",
+      "sha256": "693c3ad9dcede29683cb6d63bfef47c9438b5a9e22feb21ddb22e4f5fdcfaf75"
+    },
+    {
+      "path": "evidence/22-p04-anulowana-15min.png",
+      "sha256": "7cf54976f2dd9bc8fb20727b2274638013538bb29636ce07b7007e0916b72a6c"
+    },
+    {
+      "path": "evidence/23-s07-zalogowany.png",
+      "sha256": "8db5b0f2b53d28556dc669b9b9ecea98744c0beeced199cc365ded621336fd59"
+    },
+    {
+      "path": "evidence/24-p04-czekamy-konto.png",
+      "sha256": "1956baf90eeda7fbbdd9ed324c57e3fa9cb409c664b2c9a264cfb4ef59c59677"
+    },
+    {
+      "path": "evidence/25-p03-przeciwnik-dolaczyl.png",
+      "sha256": "8e0c3e2e120c924ad4f2294bca2a9f006d6a5bb576d5de3cd16383b2b959b693"
+    },
+    {
+      "path": "evidence/26-p04-partia-gotowa.png",
+      "sha256": "47ca6e89327dca85489b9481a451fc522579598a9462dfb036b913e9aa80ac79"
+    },
+    {
+      "path": "evidence/27-poza-etapem-plansza.png",
+      "sha256": "2c76bbebf38691e06f3f6c77dbf6c5022bcb4c2f9f193daec2e4ee861e3697e3"
+    },
+    {
+      "path": "evidence/28-s07-masz-partie.png",
+      "sha256": "f4e6cc8b2062ffb1bd9b6a9ee1397be8fc68412424f8ff42755f8882871c6ceb"
+    },
+    {
+      "path": "evidence/29-s07-oczekujaca.png",
+      "sha256": "5bcdb703600377ee58e4e303cd1b5755acc2f69e602e3a09fb33e0a88c6471a0"
+    },
+    {
+      "path": "evidence/30-s07-niewazne.png",
+      "sha256": "4daa7b6c7821b26070b503334199a5b1cd940011abe046f1400ec43ac5426f47"
+    },
+    {
+      "path": "evidence/31-p03-wygaslo.png",
+      "sha256": "37ae5ac0352763f390e5e4070c7ee8f7092bca3484976719fdbd5aca510deb78"
+    },
+    {
+      "path": "evidence/32-nieznany-fragment.png",
+      "sha256": "4b2844cb277e4ee05a690ab83f7b9377bfba5844b61ae12ec53afb665f520708"
+    },
+    {
+      "path": "evidence/33-poza-etapem-lobby.png",
+      "sha256": "3db1d64f0ee6b0b356bd4901433261880569db742e61654510146f927e0c7d76"
+    },
+    {
+      "path": "evidence/34-p03-320px.png",
+      "sha256": "bea5dc3d82d0e0b091ff3463e9015d0f27841e77f0f6bccda79e00a296f6c23d"
+    },
+    {
+      "path": "evidence/34-p03-360px.png",
+      "sha256": "c21e3be21b4be7f65f98d5aafa5beafebe9fbe70a8d86e3b0504e4b94223cbb8"
+    },
+    {
+      "path": "evidence/35-dialog-320px.png",
+      "sha256": "526398089054d929b92c5477ca6d656f9bab3b898c2ff2050b0848658b8e11d8"
+    },
+    {
+      "path": "evidence/35-dialog-360px.png",
+      "sha256": "8139ec2d300f54d602c29270d74c2b8c585354b40b454955a285f4354a738745"
+    },
+    {
+      "path": "evidence/36-s07-320px.png",
+      "sha256": "4cd76cdc67f62b6c4a4ae93399f41aaa77ba12939fde5ea77e53943dfb2f6d71"
+    },
+    {
+      "path": "evidence/36-s07-360px.png",
+      "sha256": "3b5fff399fdd31e828edb46bf6a25ad06d27676f72c4819aebad224bcdbeb56b"
+    },
+    {
+      "path": "evidence/37-p04-320px.png",
+      "sha256": "6367346728b0f190daf8191b873bff731a5f1be688ecc6bb7abd02b4a6b70342"
+    },
+    {
+      "path": "evidence/37-p04-360px.png",
+      "sha256": "62cbbb45fba55396de53752952593a13f1787bab18356d3b5e7c0dfaebc3b65b"
+    },
+    {
+      "path": "evidence/walk-log.txt",
+      "sha256": "6aacf9a1386ab33beba13e01fd2b110ee405fcdc313d65aec17fd3333ec1f10e"
+    },
+    {
+      "path": "evidence/walk.sh",
+      "sha256": "17715114c8e665fc83f3b6ade14fea5b0b604ca695be90735dd5a3a4f4a0cb1a"
+    },
+    {
+      "path": "index.html",
+      "sha256": "add59cafdc236d7359c71b69b530e0987fc87c80e4bfe7609d34e82b746b986d"
+    }
+  ]
+}

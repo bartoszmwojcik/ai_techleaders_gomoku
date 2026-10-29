@@ -1,0 +1,20 @@
+@import "tailwindcss";
+@import "@gomoku/ui/game-tokens.css";
+
+@source "../../../packages/ui/src";
+@source ".";
+
+@layer base {
+  body {
+    margin: 0;
+    background: var(--surface-page);
+    color: var(--text-primary);
+    font-family: var(--font-family-base);
+    line-height: var(--line-height-body);
+  }
+}
+
+/* LUKA D04: Zegar gracza has a text label for low time but no variant without text. #23 Q1 asks for a bright colour and a
+   thicker outline below one minute, with no visible text, so the page wraps the clock (tokens only). */
+.low-clock[data-low] > div { border-width: var(--space-1); border-color: var(--status-danger); }
+.low-clock[data-low] time { color: var(--status-danger); }

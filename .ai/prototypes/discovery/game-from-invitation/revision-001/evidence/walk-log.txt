@@ -1,0 +1,167 @@
+PASS W01 | start: panel główny, stan p01.1
+PASS W02 | numer rewizji w pasku i tytule
+PASS W03 | stały czas demo
+PASS W04 | fokus na nagłówku, bez obrysu
+PASS W05 | przycisk Utwórz zaproszenie i link Masz kod?
+SHOT 01-p01-panel.png
+PASS W06 | klawiatura: Tab z nagłówka na przycisk Utwórz zaproszenie
+PASS W07 | widoczny fokus przycisku (outline)
+PASS W08 | p01.2 przycisk zajęty po kliknięciu
+PASS W09 | po sukcesie: p03.1, nagłówek partii
+PASS W10 | fokus na nagłówku partii bez obrysu
+PASS P01 | p03.1 link zaproszenia
+PASS P02 | p03.1 kod ABCD-EFGH dużą czcionką
+PASS P03 | p03.1 Ważne do wtorek 2026-10-27 10:00
+PASS P04 | p03.1 przyciski Kopiuj, Udostępnij, Anuluj zaproszenie
+PASS P05 | p03.1 role=status Czekamy na przeciwnika…
+SHOT 02-p03-oczekiwanie.png
+PASS P06 | p03.2 skopiowano
+SHOT 03-p03-skopiowano.png
+PASS P07 | p03.3 brak schowka: zaznaczenie tekstu linku
+SHOT 04-p03-brak-schowka.png
+PASS P08 | Udostępnij: komunikat o telefonie
+PASS P09 | p03.4 Udostępnij ukryty
+SHOT 05-p03-bez-udostepnij.png
+PASS P10 | p03.10 odpytywanie: ponawianie (próba)
+PASS P11 | p03.10 po 3 nieudanych: baner błędu role=alert
+SHOT 06-p03-blad-odpytywania.png
+PASS P12 | po ustąpieniu błędu: znów Czekamy na przeciwnika…
+PASS D01 | p03.6 dialog potwierdzenia otwarty, fokus na Wróć
+PASS D02 | dialog: tytuł i dostępna nazwa
+SHOT 07-p03-dialog-anulowania.png
+PASS D03 | Esc zamyka dialog, fokus wraca na Anuluj zaproszenie
+PASS D04 | dialog: Tab przechodzi na potwierdzenie
+PASS D05 | dialog modalny: fokus nie ucieka do treści strony pod spodem
+PASS D06 | Wróć zamyka dialog, partia nadal czeka
+PASS D07 | p03.7 anulowanie w toku (przycisk zajęty)
+SHOT 08-p03-anulowanie-w-toku.png
+PASS D08 | p03.8 po anulowaniu: twórca na stronie głównej z komunikatem
+SHOT 09-p03-po-anulowaniu-panel.png
+PASS D09 | link po anulowaniu: To zaproszenie jest już nieważne (s07.9)
+PASS D10 | partia anulowana: brak dostępu dla twórcy
+PASS Q01 | p01.3 masz już partię (z linkiem)
+SHOT 10-p01-masz-partie.png
+PASS Q05 | po błędzie (active) nie ma partii i fokus wraca na przycisk
+PASS Q02 | p01.5 limit utworzeń z czasem
+SHOT 11-p01-limit.png
+PASS Q05 | po błędzie (limit) nie ma partii i fokus wraca na przycisk
+PASS Q03 | p01.6 błąd serwera + Spróbuj ponownie
+SHOT 12-p01-blad-serwera.png
+PASS Q05 | po błędzie (server) nie ma partii i fokus wraca na przycisk
+PASS Q04 | p01.7 brak sieci
+SHOT 13-p01-brak-sieci.png
+PASS Q05 | po błędzie (net) nie ma partii i fokus wraca na przycisk
+PASS Q06 | Spróbuj ponownie po usunięciu błędu: powodzenie (p03.1)
+PASS Q07 | p01.4 ma oczekującą partię: przejście do niej z komunikatem
+SHOT 14-p01-masz-oczekujaca.png
+PASS Q08 | panel: link Wróć do partii przy oczekującej partii
+PASS Q09 | oczekująca partia + Utwórz: przejście do tej samej partii (L01)
+PASS J01 | p02.1 /join: pierwsze pole ma fokus
+PASS J02 | pole z etykietą Kod zaproszenia
+SHOT 15-p02-kod.png
+PASS J03 | p02.2 za krótki kod: błąd przy polu, role aria-invalid, fokus w polu
+SHOT 16-p02-za-krotki.png
+PASS J04 | p02.3 limit prób: Zbyt wiele prób — spróbuj za chwilę (alert)
+SHOT 17-p02-limit.png
+PASS J05 | p02.5 sprawdzanie kodu (przycisk zajęty)
+PASS J06 | p02.4 nieprawidłowy kod: s07.9 nieważne
+PASS J07 | poprawka kodu (małe litery, spacja): sukces, s07 dla znajomego z kontem
+PASS J08 | wynik kodu: nieważny (wymuszony)
+PASS S01 | s07.1 niezalogowany: trzy wybory
+PASS S02 | s07.1 bez przycisku Dołącz do partii
+PASS S03 | fokus na nagłówku zaproszenia
+SHOT 18-s07-niezalogowany.png
+PASS S04 | dialog Poza tym prototypem (logowanie)
+SHOT 19-s07-dialog-poza-prototypem.png
+PASS S05 | Esc zamyka dialog, fokus wraca na przycisk
+PASS S06 | Wróć do zaproszenia: powrót na /invite/ABCD-EFGH (L19)
+PASS S06b | przycisk Zaloguj się w nagłówku: ten sam dialog
+PASS S07 | s07.2 ostrzeżenie gościa i Rozumiem, graj jako gość
+SHOT 20-s07-ostrzezenie-goscia.png
+PASS S08 | gość dołączył: p04.1, rola Gość
+PASS S09 | p04.1 treść Czekamy, aż Ala_7 otworzy partię…
+PASS S10 | p04.4 stałe ostrzeżenie gościa
+SHOT 21-p04-czekamy-gosc.png
+PASS S11 | p04.3 +15 min: partia anulowana (opener)
+PASS S11b | zegar demo przesunięty o 15 min
+SHOT 22-p04-anulowana-15min.png
+PASS S12 | p04.3 widok twórcy [ASSUMPTION A-07]
+PASS S13 | przycisk do panelu głównego, brak Wróć do partii
+PASS S14 | s07.3 zalogowany: Dołącz do partii, bez opcji gościa
+SHOT 23-s07-zalogowany.png
+PASS S15 | przycisk zajęty podczas dołączania
+PASS S16 | znajomy w partii: p04.1 Czekamy, aż Ala_7 otworzy partię
+SHOT 24-p04-czekamy-konto.png
+PASS S17 | p03.5 twórca: Przeciwnik dołączył (Kuba_P)
+SHOT 25-p03-przeciwnik-dolaczyl.png
+PASS S18 | p03.5 po chwili przejście na p04.2 Partia gotowa
+PASS S19 | p04.2 koniec etapu A: Plansza pojawi się w etapie B + powrót
+SHOT 26-p04-partia-gotowa.png
+PASS S20 | obaj widzą Partia gotowa
+PASS S21 | Poza tym etapem: plansza z drogą powrotu
+SHOT 27-poza-etapem-plansza.png
+PASS S22 | powrót do partii
+PASS S23 | Wróć do panelu głównego z Partia gotowa
+PASS S23b | panel z partią w toku: Wróć do partii
+PASS S24 | +15 min po otwarciu przez obu: partia nie jest anulowana
+PASS S25 | Twórca otwiera stronę: u znajomego p04.1 przechodzi na p04.2 (odpytywanie)
+PASS S25b | t-open bez zastosowania: komunikat Nie dotyczy
+PASS S26 | gość bez partii widzi trzy wybory (token jednej partii dopiero po dołączeniu)
+PASS S27 | twórca widzi przeciwnika jako Gość
+PASS S27b | Przejdź do partii natychmiast: p04.2, Przeciwnik: Gość
+PASS S28 | zaproszenie przyjęte przez inną osobę: nieważne (BR-11)
+PASS S28b | niezalogowany na /game: brak dostępu
+PASS O01 | s07 już uczestnik: przekierowanie do partii
+PASS O02 | s07 własne zaproszenie: przekierowanie do partii twórcy (konto zostaje)
+PASS O03 | s07 ma inną partię: Masz już partię
+SHOT 28-s07-masz-partie.png
+PASS O03b | link do partii: Poza tym etapem z powrotem do zaproszenia
+PASS O04 | s07 ma własną oczekującą partię: Anuluj moją partię i dołącz
+SHOT 29-s07-oczekujaca.png
+PASS O04b | po Anuluj moją partię i dołącz: p04.1
+PASS O05 | s07 limit prób (alert)
+PASS O06 | s07 nieważne
+SHOT 30-s07-niewazne.png
+PASS E01 | p03.9 po +24 h: Zaproszenie wygasło. Utwórz nowe.
+SHOT 31-p03-wygaslo.png
+PASS E02 | link po wygaśnięciu: nieważne dla osoby z linkiem
+PASS E03 | Utwórz zaproszenie z p03.9: nowa partia p03.1, ważna do kolejnego dnia
+PASS E04 | +24 h bez partii: komunikat zegara
+PASS N01 | nieznany fragment: komunikat z drogą powrotu
+SHOT 32-nieznany-fragment.png
+PASS N02 | powrót z nieznanego do panelu
+PASS N03 | wstecz: nieznany fragment
+PASS N04 | wstecz: /join
+PASS N05 | dalej: nieznany fragment
+PASS N06 | Lobby: Poza tym etapem z powrotem
+SHOT 33-poza-etapem-lobby.png
+PASS R01 | Reset: start na panelu, p01.1, czas 10:00, domyślne kontrolki
+PASS R02 | Reset: brak partii, komunikat reset-status
+PASS R03 | Reset: stare zaproszenie nieważne
+PASS V320-1 | 320 px: panel bez poziomego przewijania
+PASS V320-2 | 320 px: p03 bez poziomego przewijania
+SHOT 34-p03-320px.png
+PASS V320-3 | 320 px: dialog mieści się w oknie
+SHOT 35-dialog-320px.png
+PASS V320-4 | 320 px: s07.1 bez poziomego przewijania
+SHOT 36-s07-320px.png
+PASS V320-5 | 320 px: /join bez poziomego przewijania
+PASS V320-6 | 320 px: p04.2 bez poziomego przewijania
+SHOT 37-p04-320px.png
+PASS V360-1 | 360 px: panel bez poziomego przewijania
+PASS V360-2 | 360 px: p03 bez poziomego przewijania
+SHOT 34-p03-360px.png
+PASS V360-3 | 360 px: dialog mieści się w oknie
+SHOT 35-dialog-360px.png
+PASS V360-4 | 360 px: s07.1 bez poziomego przewijania
+SHOT 36-s07-360px.png
+PASS V360-5 | 360 px: /join bez poziomego przewijania
+PASS V360-6 | 360 px: p04.2 bez poziomego przewijania
+SHOT 37-p04-360px.png
+PASS K01 | klawiatura: Tab + Enter na Utwórz zaproszenie tworzy partię
+PASS K02 | klawiatura: Enter na Anuluj zaproszenie otwiera dialog, fokus na Wróć
+PASS K03 | klawiatura: Tab + Enter na potwierdzeniu anuluje i wraca na panel
+PASS X01 | brak żądań sieciowych poza file://
+PASS X02 | brak localStorage/sessionStorage/cookie użyte przez prototyp
+INFO errors: 
+TOTAL PASS=124 FAIL=0

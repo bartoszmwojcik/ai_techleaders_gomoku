@@ -1,0 +1,342 @@
+## A. p04 → p05: plansza i losowanie koloru
+PASS A.1 | p04.2 partia gotowa
+PASS A.2 | Przejdź do planszy → p05
+PASS A.3 | p05.1 + p05.5 (mysz, Twój ruch)
+PASS A.4 | plansza ma role=grid i 225 pól
+PASS A.5 | Twój ruch (czarne)
+PASS A.6 | Grasz czarnymi.
+PASS A.7 | komunikat losowania (L15)
+PASS A.8 | zegary 10:00 | 10:00
+PASS A.9 | pole ma opis dla czytnika
+PASS A.10 | pasek pokazuje stan
+PASS A.11 | przeciwnik Kuba_P i Ty (Ala_7)
+PASS A.12 | nazwa gracza
+PASS A.13 | losowanie: Ty białe → p05.2
+PASS A.14 | Grasz białymi.
+## B. ruchy myszą, naprzemienność, błędy ruchu
+PASS B.1 | ruch wysłany → p05.2
+PASS B.2 | kamień na polu H8
+PASS B.3 | Ruch przeciwnika
+PASS B.4 | komunikat losowania znika po pierwszym ruchu
+PASS B.5 | plansza tylko do odczytu w turze przeciwnika
+PASS B.6 | kliknięcie w turze przeciwnika nic nie stawia
+PASS B.7 | zegar przeciwnika biegnie (jego zegar na dole stoi): górny|dolny
+PASS B.8 | przeciwnik zagrał → p05.1 + p05.5
+PASS B.9 | jego kamień biały
+PASS B.10 | błąd sieci → p05.1 + p05.7
+PASS B.11 | treść błędu
+PASS B.12 | ruch nie został zapisany
+PASS B.13 | ponowienie tego samego ruchu → p05.2
+PASS B.14 | kamień na I9
+PASS B.15 | STALE_MOVE → p05.8
+PASS B.16 | treść
+PASS B.17 | NOT_YOUR_TURN: treść
+PASS B.18 | p05.2 + p05.8
+PASS B.19 | CELL_OCCUPIED → p05.9
+PASS B.20 | treść
+PASS B.21 | komunikat znika po następnym ruchu
+## C. klawiatura i dotyk
+PASS C.1 | dokładnie jedno pole z tabindex=0 (roving)
+PASS C.2 | strzałki przesuwają fokus: Kolumna H, rząd 8, puste → Kolumna I, rząd 9, puste
+PASS C.3 | nadal jedno pole z tabindex=0
+PASS C.4 | Enter stawia kamień → p05.2
+PASS C.5 | przycisk Postaw kamień
+PASS C.6 | podpowiedź
+PASS C.7 | Postaw kamień wyłączony bez zaznaczenia
+PASS C.8 | pierwsze dotknięcie zaznacza → p05.4
+PASS C.9 | opis zaznaczenia
+PASS C.10 | zaznaczenie nie stawia kamienia
+PASS C.11 | zaznaczenie się przesuwa
+PASS C.12 | Postaw kamień → p05.2
+PASS C.13 | kamień na I9
+PASS C.14 | drugie dotknięcie tego samego pola wysyła
+## D. prawdziwe wygrane na 4 osiach, sześć w linii
+PASS D1.a | po czterech kamieniach partia trwa
+PASS D1.b | piąty kamień kończy partię → p06
+PASS D1.c | p06.1 + p06.10
+PASS D1.d | podświetlone 5 pól linii
+PASS D1.e | baner Wygrałeś
+PASS D2.a | po czterech kamieniach partia trwa
+PASS D2.b | piąty kamień kończy partię → p06
+PASS D2.c | p06.1 + p06.10
+PASS D2.d | podświetlone 5 pól linii
+PASS D2.e | baner Wygrałeś
+PASS D3.a | po czterech kamieniach partia trwa
+PASS D3.b | piąty kamień kończy partię → p06
+PASS D3.c | p06.1 + p06.10
+PASS D3.d | podświetlone 5 pól linii
+PASS D3.e | baner Wygrałeś
+PASS D4.a | po czterech kamieniach partia trwa
+PASS D4.b | piąty kamień kończy partię → p06
+PASS D4.c | p06.1 + p06.10
+PASS D4.d | podświetlone 5 pól linii
+PASS D4.e | baner Wygrałeś
+PASS D5 | po końcu plansza jest tylko do odczytu
+PASS D7.a | XX_XXX: przerwa trzyma partię
+PASS D7.b | uzupełnienie daje sześć w linii (swobodne gomoku)
+PASS D7.c | podświetlone 6 pól
+PASS D8.a | przeciwnik układa pięć w rzędzie → p06
+PASS D8.b | p06.2 + p06.10
+PASS D8.c | treść
+PASS D9.a | jedno wolne pole
+PASS D9.b | ostatnie pole kończy partię remisem (prawdziwe wykrycie)
+PASS D9.c | baner Remis
+PASS D9.d | bez linii wygrywającej
+## E. zegar: stoi, skacze, mało czasu, odliczanie, czas minął
+PASS E.1 | zegary stoją: 10:00|10:00
+PASS E.2 | czas demo +5 min zabiera zegarowi gracza na ruchu (BR-05): 10:00|5:00
+PASS E.3 | Skocz do 0:50 → p05.3
+PASS E.4 | zegar 0:50
+PASS E.5 | bez tekstu „Mało czasu”
+PASS E.6 | obrys 4 px w kolorze ostrzegawczym
+PASS E.7 | ukryty komunikat ogłasza raz
+PASS E.8 | brak elementów audio
+PASS E.9 | +1 min: 1:50
+PASS E.10 | powyżej minuty bez obrysu
+PASS E.11 | zegar przeciwnika <60 s
+PASS E.12 | Odliczaj zegar x30: tyka zegar gracza na ruchu (10:00|8:43)
+PASS E.13 | po 10 minutach demo: przegrana na czas → p06
+PASS E.14 | p06.3 + p06.10
+PASS E.15 | treść
+PASS E.16 | odliczanie wyłącza się samo po końcu
+PASS E.17 | Minął czas (mój) → p06.3
+PASS E.18 | Minął czas (przeciwnika) → p06.1
+PASS E.19 | treść
+PASS E.20 | leniwe rozstrzygnięcie: +1 h demo, nikt nie patrzył → p06.3
+## F. karta w tle i powrót (#24)
+PASS F.3 | po 20 s zegar mniejszy o nieobecność: 9:40
+PASS F.4 | bez „Wróciłeś” po 20 s
+PASS F.5 | po 45 s: p05.10
+PASS F.6 | komunikat z zegarem
+PASS F.7 | komunikat znika po ruchu
+PASS F.8 | czas wyczerpał się podczas nieobecności → od razu wynik
+PASS F.8b | bez „Wróciłeś”
+PASS F.9 | błąd odpytywania w partii po 3 próbach → p05.7
+PASS F.10 | baner
+PASS F.11 | po ustąpieniu błędu p05.2
+## G. poddanie
+PASS G.1 | dialog → p05.13
+PASS G.2 | treść dialogu poddania
+PASS G.3 | fokus zaczyna na „Wróć do gry”
+PASS G.4 | fokus zamknięty w dialogu
+PASS G.5 | Esc zamyka dialog
+PASS G.6 | fokus wraca na przycisk „Poddaj partię”
+PASS G.7 | Wróć do gry zostawia partię
+PASS G.8 | potwierdzenie → p06
+PASS G.9 | p06.9 + p06.10
+PASS G.10 | treść
+PASS G.11 | błąd sieci przy poddaniu: alert w dialogu i „Spróbuj ponownie”
+PASS G.12 | p05.7 przy błędzie poddania
+PASS G.13 | ponowienie kończy poddaniem → p06
+PASS G.14 | p06.9
+PASS G.15 | przeciwnik poddał się → p06
+PASS G.16 | p06.8 + p06.10
+PASS G.17 | treść
+## H. wynik: skróty, odświeżenie, gość
+PASS H.1 | Pokaż wygraną → p06.1
+PASS H.2 | linia: 5 pól
+PASS H.3 | odśwież stronę → p06.5
+PASS H.4 | komunikat
+PASS H.5 | Pokaż przegraną (białe) → p06.2
+PASS H.6 | linia 5 pól
+PASS H.7 | Pokaż remis → p06.4
+PASS H.8 | pełna plansza
+PASS H.9 | gość: p05.11
+PASS H.10 | ostrzeżenie dla gościa
+PASS H.11 | gość nie ma nazwy
+PASS H.12 | p06.6 po końcu
+PASS H.13 | wynik do 1 h
+PASS H.14 | po 1 h token nie działa: p06.7 (404)
+PASS H.15 | ten sam 404
+PASS H.16 | konto twórcy widzi wynik bez limitu
+PASS H.17 | twórca widzi przeciwnika „Gość”
+## I. rewanż
+PASS I.1 | p06.2 + p06.10
+PASS I.2 | zapowiedź odwróconych kolorów
+PASS I.3 | propozycja → p06.11
+PASS I.4 | treść
+PASS I.5 | wycofanie → p06.10
+PASS I.6 | przeciwnik przyjmuje → nowa partia p05
+PASS I.7 | p05.2 (kolory odwrócone: Ala_7 gra teraz białymi)
+PASS I.8 | komunikat o zamianie kolorów
+PASS I.9 | zegary 10:00
+PASS I.10 | pusta plansza
+PASS I.11 | kolejny rewanż odwraca kolory ponownie (Ala_7 czarne → p05.1)
+PASS I.12 | przeciwnik proponuje → p06.12
+PASS I.13 | treść
+PASS I.14 | Odrzuć → p06.10
+PASS I.15 | komunikat
+PASS I.16 | Przyjmij → nowa partia p05
+PASS I.17 | BR-13: 409 Masz już partię
+PASS I.18 | nadal p06.12
+PASS I.19 | link do innej partii → Poza tym prototypem
+PASS I.20 | odrzucone → p06.13 od razu
+PASS I.21 | treść
+PASS I.22 | po kliknięciu panel główny
+PASS I.23 | przeciwnik wyszedł
+PASS I.24 | po 5 min → p06.14
+PASS I.25 | treść
+PASS I.26 | Zaproponuj ponownie → p06.10
+PASS I.27 | wyjście z własną propozycją → panel
+PASS I.28 | gość: p06.15 przy ofercie
+PASS I.29 | informacja o nowym dostępie
+PASS I.30 | gość w nowej partii → p05
+PASS I.31 | nowy token: Rozumiem
+PASS I.32 | p06.15 na planszy nowej partii (kolory zamienione: gość gra białymi)
+PASS I.33 | Rozumiem zamyka komunikat
+## J. p07: błędy dostępu
+PASS J.1 | baza niedostępna → p07.4
+PASS J.2 | treść
+PASS J.3 | ponowienie nadal błąd
+PASS J.4 | po ustąpieniu wraca plansza
+PASS J.5 | spoza partii: p07.2
+PASS J.6 | treść 404
+PASS J.7 | niezalogowany: p07.2
+PASS J.8 | gość w innej przeglądarce → p07.3
+PASS J.9 | to samo 404
+PASS J.10 | zegar biegł mimo 404 (BR-06): 10:00|5:00
+PASS J.11 | wolne ładowanie → p07.1
+PASS J.12 | szkielet z aria-busy
+PASS J.13 | po chwili plansza
+PASS J.14 | ekran p07 bez dostępu: p07.2
+PASS J.15 | z dostępem: informacja
+PASS J.16 | p05 bez partii: p07.2
+PASS J.17 | p06 bez partii: p07.2
+## K. serwer z opóźnieniem: ruch w drodze, poddanie w toku (bez ?fast)
+PASS K.1 | ruch w drodze → p05.6
+PASS K.2 | Wysyłanie ruchu…
+PASS K.3 | po odpowiedzi p05.2
+PASS K.3a | karta w tle → p05.12 (opóźnienie 0,8 s)
+PASS K.3b | odpytywanie wstrzymane
+PASS K.3c | po powrocie bez komunikatu (20 s)
+PASS K.4 | poddanie w toku: Poddawanie…
+PASS K.5 | p05.14
+PASS K.6 | po odpowiedzi → p06
+## L. szerokości 1440, 360, 320 i motywy: brak poziomego przewijania, zrzuty
+PASS L.1440.dark.p05.1 | p05.1 przy 1440 px, motyw dark
+PASS L.1440.dark.p05.3 | p05.3 (mało czasu) przy 1440 px, motyw dark
+PASS L.1440.dark.p05.2 | p05.2 przy 1440 px, motyw dark
+PASS L.1440.dark.p05.11 | p05.11 przy 1440 px, motyw dark
+PASS L.1440.dark.p05.4 | p05.4 (dotyk) przy 1440 px, motyw dark
+PASS L.1440.dark.p05.10 | p05.10 przy 1440 px, motyw dark
+PASS L.1440.dark.p05.7 | p05.7 przy 1440 px, motyw dark
+PASS L.1440.dark.p05.13 | p05.13 (dialog poddania) przy 1440 px, motyw dark
+PASS L.1440.dark.p06.1 | p06.1 przy 1440 px, motyw dark
+PASS L.1440.dark.p06.3 | p06.3 przy 1440 px, motyw dark
+PASS L.1440.dark.p06.2 | p06.2 przy 1440 px, motyw dark
+PASS L.1440.dark.p06.11 | p06.11 przy 1440 px, motyw dark
+PASS L.1440.dark.p06.13 | p06.13 przy 1440 px, motyw dark
+PASS L.1440.dark.p06.12 | p06.12 przy 1440 px, motyw dark
+PASS L.1440.dark.p06.12-409 | p06.12 z 409 przy 1440 px, motyw dark
+PASS L.1440.dark.p06.14 | p06.14 przy 1440 px, motyw dark
+PASS L.1440.dark.p06.4 | p06.4 (remis) przy 1440 px, motyw dark
+PASS L.1440.dark.p06.6 | p06.6 (gość) przy 1440 px, motyw dark
+PASS L.1440.dark.p06.7 | p06.7 przy 1440 px, motyw dark
+PASS L.1440.dark.p07.4 | p07.4 przy 1440 px, motyw dark
+PASS L.1440.dark.p07.2 | p07.2 przy 1440 px, motyw dark
+PASS L.1440.light.p05.1 | p05.1 przy 1440 px, motyw light
+PASS L.1440.light.p05.3 | p05.3 (mało czasu) przy 1440 px, motyw light
+PASS L.1440.light.p05.2 | p05.2 przy 1440 px, motyw light
+PASS L.1440.light.p05.11 | p05.11 przy 1440 px, motyw light
+PASS L.1440.light.p05.4 | p05.4 (dotyk) przy 1440 px, motyw light
+PASS L.1440.light.p05.10 | p05.10 przy 1440 px, motyw light
+PASS L.1440.light.p05.7 | p05.7 przy 1440 px, motyw light
+PASS L.1440.light.p05.13 | p05.13 (dialog poddania) przy 1440 px, motyw light
+PASS L.1440.light.p06.1 | p06.1 przy 1440 px, motyw light
+PASS L.1440.light.p06.3 | p06.3 przy 1440 px, motyw light
+PASS L.1440.light.p06.2 | p06.2 przy 1440 px, motyw light
+PASS L.1440.light.p06.11 | p06.11 przy 1440 px, motyw light
+PASS L.1440.light.p06.13 | p06.13 przy 1440 px, motyw light
+PASS L.1440.light.p06.12 | p06.12 przy 1440 px, motyw light
+PASS L.1440.light.p06.12-409 | p06.12 z 409 przy 1440 px, motyw light
+PASS L.1440.light.p06.14 | p06.14 przy 1440 px, motyw light
+PASS L.1440.light.p06.4 | p06.4 (remis) przy 1440 px, motyw light
+PASS L.1440.light.p06.6 | p06.6 (gość) przy 1440 px, motyw light
+PASS L.1440.light.p06.7 | p06.7 przy 1440 px, motyw light
+PASS L.1440.light.p07.4 | p07.4 przy 1440 px, motyw light
+PASS L.1440.light.p07.2 | p07.2 przy 1440 px, motyw light
+PASS L.360.dark.p05.1 | p05.1 przy 360 px, motyw dark
+PASS L.360.dark.p05.3 | p05.3 (mało czasu) przy 360 px, motyw dark
+PASS L.360.dark.p05.2 | p05.2 przy 360 px, motyw dark
+PASS L.360.dark.p05.11 | p05.11 przy 360 px, motyw dark
+PASS L.360.dark.p05.4 | p05.4 (dotyk) przy 360 px, motyw dark
+PASS L.360.dark.p05.10 | p05.10 przy 360 px, motyw dark
+PASS L.360.dark.p05.7 | p05.7 przy 360 px, motyw dark
+PASS L.360.dark.p05.13 | p05.13 (dialog poddania) przy 360 px, motyw dark
+PASS L.360.dark.p06.1 | p06.1 przy 360 px, motyw dark
+PASS L.360.dark.p06.3 | p06.3 przy 360 px, motyw dark
+PASS L.360.dark.p06.2 | p06.2 przy 360 px, motyw dark
+PASS L.360.dark.p06.11 | p06.11 przy 360 px, motyw dark
+PASS L.360.dark.p06.13 | p06.13 przy 360 px, motyw dark
+PASS L.360.dark.p06.12 | p06.12 przy 360 px, motyw dark
+PASS L.360.dark.p06.12-409 | p06.12 z 409 przy 360 px, motyw dark
+PASS L.360.dark.p06.14 | p06.14 przy 360 px, motyw dark
+PASS L.360.dark.p06.4 | p06.4 (remis) przy 360 px, motyw dark
+PASS L.360.dark.p06.6 | p06.6 (gość) przy 360 px, motyw dark
+PASS L.360.dark.p06.7 | p06.7 przy 360 px, motyw dark
+PASS L.360.dark.p07.4 | p07.4 przy 360 px, motyw dark
+PASS L.360.dark.p07.2 | p07.2 przy 360 px, motyw dark
+PASS L.360.light.p05.1 | p05.1 przy 360 px, motyw light
+PASS L.360.light.p05.3 | p05.3 (mało czasu) przy 360 px, motyw light
+PASS L.360.light.p05.2 | p05.2 przy 360 px, motyw light
+PASS L.360.light.p05.11 | p05.11 przy 360 px, motyw light
+PASS L.360.light.p05.4 | p05.4 (dotyk) przy 360 px, motyw light
+PASS L.360.light.p05.10 | p05.10 przy 360 px, motyw light
+PASS L.360.light.p05.7 | p05.7 przy 360 px, motyw light
+PASS L.360.light.p05.13 | p05.13 (dialog poddania) przy 360 px, motyw light
+PASS L.360.light.p06.1 | p06.1 przy 360 px, motyw light
+PASS L.360.light.p06.3 | p06.3 przy 360 px, motyw light
+PASS L.360.light.p06.2 | p06.2 przy 360 px, motyw light
+PASS L.360.light.p06.11 | p06.11 przy 360 px, motyw light
+PASS L.360.light.p06.13 | p06.13 przy 360 px, motyw light
+PASS L.360.light.p06.12 | p06.12 przy 360 px, motyw light
+PASS L.360.light.p06.12-409 | p06.12 z 409 przy 360 px, motyw light
+PASS L.360.light.p06.14 | p06.14 przy 360 px, motyw light
+PASS L.360.light.p06.4 | p06.4 (remis) przy 360 px, motyw light
+PASS L.360.light.p06.6 | p06.6 (gość) przy 360 px, motyw light
+PASS L.360.light.p06.7 | p06.7 przy 360 px, motyw light
+PASS L.360.light.p07.4 | p07.4 przy 360 px, motyw light
+PASS L.360.light.p07.2 | p07.2 przy 360 px, motyw light
+PASS L.320.dark.p05.1 | p05.1 przy 320 px, motyw dark
+PASS L.320.dark.p05.3 | p05.3 (mało czasu) przy 320 px, motyw dark
+PASS L.320.dark.p05.2 | p05.2 przy 320 px, motyw dark
+PASS L.320.dark.p05.11 | p05.11 przy 320 px, motyw dark
+PASS L.320.dark.p05.4 | p05.4 (dotyk) przy 320 px, motyw dark
+PASS L.320.dark.p05.10 | p05.10 przy 320 px, motyw dark
+PASS L.320.dark.p05.7 | p05.7 przy 320 px, motyw dark
+PASS L.320.dark.p05.13 | p05.13 (dialog poddania) przy 320 px, motyw dark
+PASS L.320.dark.p06.1 | p06.1 przy 320 px, motyw dark
+PASS L.320.dark.p06.3 | p06.3 przy 320 px, motyw dark
+PASS L.320.dark.p06.2 | p06.2 przy 320 px, motyw dark
+PASS L.320.dark.p06.11 | p06.11 przy 320 px, motyw dark
+PASS L.320.dark.p06.13 | p06.13 przy 320 px, motyw dark
+PASS L.320.dark.p06.12 | p06.12 przy 320 px, motyw dark
+PASS L.320.dark.p06.12-409 | p06.12 z 409 przy 320 px, motyw dark
+PASS L.320.dark.p06.14 | p06.14 przy 320 px, motyw dark
+PASS L.320.dark.p06.4 | p06.4 (remis) przy 320 px, motyw dark
+PASS L.320.dark.p06.6 | p06.6 (gość) przy 320 px, motyw dark
+PASS L.320.dark.p06.7 | p06.7 przy 320 px, motyw dark
+PASS L.320.dark.p07.4 | p07.4 przy 320 px, motyw dark
+PASS L.320.dark.p07.2 | p07.2 przy 320 px, motyw dark
+PASS L.320.light.p05.1 | p05.1 przy 320 px, motyw light
+PASS L.320.light.p05.3 | p05.3 (mało czasu) przy 320 px, motyw light
+PASS L.320.light.p05.2 | p05.2 przy 320 px, motyw light
+PASS L.320.light.p05.11 | p05.11 przy 320 px, motyw light
+PASS L.320.light.p05.4 | p05.4 (dotyk) przy 320 px, motyw light
+PASS L.320.light.p05.10 | p05.10 przy 320 px, motyw light
+PASS L.320.light.p05.7 | p05.7 przy 320 px, motyw light
+PASS L.320.light.p05.13 | p05.13 (dialog poddania) przy 320 px, motyw light
+PASS L.320.light.p06.1 | p06.1 przy 320 px, motyw light
+PASS L.320.light.p06.3 | p06.3 przy 320 px, motyw light
+PASS L.320.light.p06.2 | p06.2 przy 320 px, motyw light
+PASS L.320.light.p06.11 | p06.11 przy 320 px, motyw light
+PASS L.320.light.p06.13 | p06.13 przy 320 px, motyw light
+PASS L.320.light.p06.12 | p06.12 przy 320 px, motyw light
+PASS L.320.light.p06.12-409 | p06.12 z 409 przy 320 px, motyw light
+PASS L.320.light.p06.14 | p06.14 przy 320 px, motyw light
+PASS L.320.light.p06.4 | p06.4 (remis) przy 320 px, motyw light
+PASS L.320.light.p06.6 | p06.6 (gość) przy 320 px, motyw light
+PASS L.320.light.p06.7 | p06.7 przy 320 px, motyw light
+PASS L.320.light.p07.4 | p07.4 przy 320 px, motyw light
+PASS L.320.light.p07.2 | p07.2 przy 320 px, motyw light
+DONE

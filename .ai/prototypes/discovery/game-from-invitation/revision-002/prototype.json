@@ -1,0 +1,390 @@
+{
+  "format": "discovery-prototype-v1",
+  "skill": "om-mockup-prototype",
+  "slug": "game-from-invitation",
+  "revision": 2,
+  "revisionPath": ".ai/prototypes/discovery/game-from-invitation/revision-002",
+  "previousRevision": ".ai/prototypes/discovery/game-from-invitation/revision-001",
+  "brief": ".ai/specs/product-brief.md",
+  "flow": "game from invitation, stages A and B (invitation, wait, board, moves, clocks, result, resignation, rematch, reconnection)",
+  "panelReport": null,
+  "verification": "passed",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "3ced78f8ad08bb310da955357e3e641169a797cfa55f8e7aca2aeadb1184714e"
+    },
+    {
+      "path": "evidence/01-p01-panel.png",
+      "sha256": "a8c0f8d52f66d3361b195df9d6e374cdb848e06f7aab2dcb2121f5c9f4498983"
+    },
+    {
+      "path": "evidence/02-p03-oczekiwanie.png",
+      "sha256": "03a034a52bdf24b229917704f64b70a0b94307c1250ba8568a1e5113c45ae5f1"
+    },
+    {
+      "path": "evidence/03-p03-skopiowano.png",
+      "sha256": "019d08ced7e37cd4cdfa1bc55a99159feb73c30fbd605c72c87379f3f18ebea8"
+    },
+    {
+      "path": "evidence/04-p03-brak-schowka.png",
+      "sha256": "e18674552a0ece3e03c5d02e1e9238beddb96d684b2634ba3b8bce4f283a5b20"
+    },
+    {
+      "path": "evidence/05-p03-bez-udostepnij.png",
+      "sha256": "da1ee0c2dbabaf06f16d9839760de399129de70beb5f26c939c28048cfe0ad86"
+    },
+    {
+      "path": "evidence/06-p03-blad-odpytywania.png",
+      "sha256": "da67a894ec33cdab29d8f980f968993321da3a0c7519c86de38b87103c0fa885"
+    },
+    {
+      "path": "evidence/07-p03-dialog-anulowania.png",
+      "sha256": "b6247614863c1ecde8726dde008099811e3a69107f433740dd2273710f96f103"
+    },
+    {
+      "path": "evidence/08-p03-anulowanie-w-toku.png",
+      "sha256": "da2a9bf1b63d02d4f2b1d4d8e71b539715a10d2793407bd52087979784dec069"
+    },
+    {
+      "path": "evidence/09-p03-po-anulowaniu-panel.png",
+      "sha256": "2c36ce789feb91518d5520093d37f407e051d0bf6a8998d15f70ae92cf42dfbb"
+    },
+    {
+      "path": "evidence/10-p01-masz-partie.png",
+      "sha256": "bf61b0c88430d0e04831d69418ddc052024e7fbc3b5fd23398a3ee67a426846c"
+    },
+    {
+      "path": "evidence/11-p01-limit.png",
+      "sha256": "08c52aa57c14bf8aff47a32119a46e08e826c04fa1a2ce46fc761a16d3ecd12f"
+    },
+    {
+      "path": "evidence/12-p01-blad-serwera.png",
+      "sha256": "89892facf178977c7ff78986130dd215823c8d1caf7e2cb25cf16c365e0faed9"
+    },
+    {
+      "path": "evidence/13-p01-brak-sieci.png",
+      "sha256": "eee4e2044989d47146a665f517118ce608f43c1176e57c5ce529e9d7507aee3b"
+    },
+    {
+      "path": "evidence/14-p01-masz-oczekujaca.png",
+      "sha256": "95e4121eeba9c63dff2e75fb8da4988f8c3f95df69ce5352bace58fff67b487f"
+    },
+    {
+      "path": "evidence/15-p02-kod.png",
+      "sha256": "27a4be3a6ca5ee6cfbf3228d6949dd871c873b432e40f02afac99c1a59d5ca42"
+    },
+    {
+      "path": "evidence/16-p02-za-krotki.png",
+      "sha256": "5c485313933a67e1c6fdcc684b1e8d959e0e284f46a1cd270db1492c70792e39"
+    },
+    {
+      "path": "evidence/17-p02-limit.png",
+      "sha256": "bc7324f1d3d86475fb8cf8f8d1a4866dbc5ec1131a7aa1062c588bd8fabc0ff7"
+    },
+    {
+      "path": "evidence/18-s07-niezalogowany.png",
+      "sha256": "19a1822dc8f3519ad2450e91c6a8040d4460fbc8fed44ab4c0bbf7c4c618863a"
+    },
+    {
+      "path": "evidence/19-s07-dialog-poza-prototypem.png",
+      "sha256": "ec82f0d98652ed640dee44f7e3df3cae45561940ebb3387cd8744bf818ddc4f8"
+    },
+    {
+      "path": "evidence/20-s07-ostrzezenie-goscia.png",
+      "sha256": "75ff385c2bc9b15741122349e46e2772b9fd3db90276f7fec992d6feded3a888"
+    },
+    {
+      "path": "evidence/21-p04-czekamy-gosc.png",
+      "sha256": "754dfb2a33414f00663712030a202c410f5cafeb455ba62b643316616760841d"
+    },
+    {
+      "path": "evidence/22-p04-anulowana-15min.png",
+      "sha256": "8e4ce8376412175d15c8fd0278bf3b040344e577949986e62dc191328ade9764"
+    },
+    {
+      "path": "evidence/23-s07-zalogowany.png",
+      "sha256": "172dddcce30c42a7b29cd0b1b1f14a2c62af381e8d4386b840887dfccb8c703b"
+    },
+    {
+      "path": "evidence/24-p04-czekamy-konto.png",
+      "sha256": "a215f731c0e5294e67fd5258b83a9070487cd69a7f7468fdf35abae2cdc18ca4"
+    },
+    {
+      "path": "evidence/25-p03-przeciwnik-dolaczyl.png",
+      "sha256": "ccec8c219d46b56d1b8a469f6015434fbba1f3ebab1ddb376eb40de36a7a6afd"
+    },
+    {
+      "path": "evidence/26-p04-partia-gotowa.png",
+      "sha256": "6e7d6d831defc95bb19ac6460cc182670060b9b006e211e0ea6b997b64592bc7"
+    },
+    {
+      "path": "evidence/27-poza-etapem-plansza.png",
+      "sha256": "9188b292b5935287838f6f2ff7595b47a986a2e65e1f4547f432b5523cdf8985"
+    },
+    {
+      "path": "evidence/28-s07-masz-partie.png",
+      "sha256": "dd1682c77b860da01463f850269488d330e44b24a5646946c139835a722e3876"
+    },
+    {
+      "path": "evidence/29-s07-oczekujaca.png",
+      "sha256": "b57926c5f99bf7d7f6dae6a4c6317b3655360c3f27663f98f8070de7d068bd06"
+    },
+    {
+      "path": "evidence/30-s07-niewazne.png",
+      "sha256": "d70034477e37cb0701d4001732bb981afcc25382fcfb3775b6ca41bc9ce85822"
+    },
+    {
+      "path": "evidence/31-p03-wygaslo.png",
+      "sha256": "7d678d26887dd0dc20bc34f8992be61879494ad7054346d2fd7dc9244a6e0c2b"
+    },
+    {
+      "path": "evidence/32-nieznany-fragment.png",
+      "sha256": "fbf1ad464685db7f6280f5e052f0a122787685b2eceafd540ddc34819ccc78ce"
+    },
+    {
+      "path": "evidence/33-poza-etapem-lobby.png",
+      "sha256": "d8c7ca30506562a84f0994fce014b9edee4dac26d09f9b260bda382c63dffda1"
+    },
+    {
+      "path": "evidence/34-p03-320px.png",
+      "sha256": "bc650ae39e6d83a4163a3b511703177e0bc3bc2b1bdff899b111e23a560c09f0"
+    },
+    {
+      "path": "evidence/34-p03-360px.png",
+      "sha256": "a5dfe29879ef810e4754be4f23d54b8b6daa900515625bef84786e2792a7942f"
+    },
+    {
+      "path": "evidence/35-dialog-320px.png",
+      "sha256": "bb2e31309699e7c240bc231a730220f1cfe95ef3d023f33e09cddd514902086b"
+    },
+    {
+      "path": "evidence/35-dialog-360px.png",
+      "sha256": "cf583e34708eaa4fa77c7487c44091a4227b5303d4a9bd1c6cf56664cf8e5e7f"
+    },
+    {
+      "path": "evidence/36-s07-320px.png",
+      "sha256": "6f34fe8e92b89682590eeeb409c5fe7146c3e3bf0d519462f2971b5762c40d7c"
+    },
+    {
+      "path": "evidence/36-s07-360px.png",
+      "sha256": "0fb200743e0674b998e5b4f6ceee67bfbff6dcfc07414e1ce673b9c2e03ef85f"
+    },
+    {
+      "path": "evidence/37-p04-320px.png",
+      "sha256": "d1af8e5240e3a9aea9c446d417559dad584d6d1f9c8c16a8da6999e5d475596f"
+    },
+    {
+      "path": "evidence/37-p04-360px.png",
+      "sha256": "89ba97608ccc1cafe7fe4235c48ce1ea16c0420351d6ab83ee1aead9d92e1652"
+    },
+    {
+      "path": "evidence/38-p05-twoj-ruch.png",
+      "sha256": "5761205c9ee852096c25e507b983f9fe86c21976263adf7a752aa566be807d76"
+    },
+    {
+      "path": "evidence/39-p05-ruch-w-drodze.png",
+      "sha256": "af6dd0cca4d021b0fe38ac061b2f4a27c3e4f1aa8b784df4b594709e684cc44e"
+    },
+    {
+      "path": "evidence/40-p05-ruch-przeciwnika.png",
+      "sha256": "f2e5aa7b452ba9d2931d8551cc8a1ed82699c75af4a04309085b55f5dd6af267"
+    },
+    {
+      "path": "evidence/41-p05-nie-twoja-kolej.png",
+      "sha256": "e4fbf9af9dca9ab0da119a2b798b42a24d07aeb301b3554069f11c4e409075f3"
+    },
+    {
+      "path": "evidence/42-p05-pole-zajete.png",
+      "sha256": "1fc27c5e444887ea348c8deff600fcd72643e62114cbd5837998a11eabc1ebf9"
+    },
+    {
+      "path": "evidence/43-p05-blad-sieci.png",
+      "sha256": "8367ce3589f9433258be2abf5c4d118b67cb40ff52d6c538de5624bd92a08949"
+    },
+    {
+      "path": "evidence/44-p05-dotyk-zaznaczone.png",
+      "sha256": "3c4e263f2ef7a9c3949c827929aafe505df37f7bb792dba7ac37b08874fb2382"
+    },
+    {
+      "path": "evidence/45-p06-wygrana-linia.png",
+      "sha256": "294192c859e5b1b688b7220769ecb2d913739117ec4bb4ec95525f5fc7aa8478"
+    },
+    {
+      "path": "evidence/46-p06-przegrana.png",
+      "sha256": "44178ca36c9d701b4b6f73ff564a1557168cae58f885c9e7424ebb83fdb36345"
+    },
+    {
+      "path": "evidence/47-p06-remis.png",
+      "sha256": "24509041552e015e5ccd5883a7bd712d66ace8237c4c569aae1a25e7009f2f27"
+    },
+    {
+      "path": "evidence/48-p06-powrot-po-koncu.png",
+      "sha256": "09bd495dc99ff4feb73fc3f7db9a5bd0e4a01b607ebdaceff16b426ffaf592df"
+    },
+    {
+      "path": "evidence/49-p05-malo-czasu.png",
+      "sha256": "41c21b176536cce47452e1683d07e94693292026e184862bfa67fea784067d6e"
+    },
+    {
+      "path": "evidence/50-p06-przegrana-na-czas.png",
+      "sha256": "fef02e71e2674355055c77378d19f099ca6d0c9ff301eea506463abcbe18fdf7"
+    },
+    {
+      "path": "evidence/51-p05-wrociles.png",
+      "sha256": "59438e553df39cfacb194c10f2aafdddf46706513ec8cb3154ffb5071f63f386"
+    },
+    {
+      "path": "evidence/52-p05-dialog-poddania.png",
+      "sha256": "1dc503f9ba9cc820b592fd8083ea3270d653b2891aed6d575750e03d34ec9cb0"
+    },
+    {
+      "path": "evidence/53-p05-poddanie-w-toku.png",
+      "sha256": "1dd95b934143f9d4cb733bb9300f91732a27f3c8637506dc178863ace9bb77a9"
+    },
+    {
+      "path": "evidence/54-p05-poddanie-blad.png",
+      "sha256": "16b2af0b07d6a171853390db0878f945917a250b9d0a3d26958feef507c8b950"
+    },
+    {
+      "path": "evidence/55-p06-przeciwnik-poddal.png",
+      "sha256": "791bd519516cd9a2ddae078d9a786d5dd2e0c3bf1aaf0ed9bc04f83912d1ff39"
+    },
+    {
+      "path": "evidence/56-p06-rewanz-zaproponowany.png",
+      "sha256": "294192c859e5b1b688b7220769ecb2d913739117ec4bb4ec95525f5fc7aa8478"
+    },
+    {
+      "path": "evidence/57-p05-po-rewanzu.png",
+      "sha256": "44735c36893f87d25a6acb0b342ad0708abb33179658cdce31cd09be4d4197fd"
+    },
+    {
+      "path": "evidence/58-p06-propozycja-od-przeciwnika.png",
+      "sha256": "294192c859e5b1b688b7220769ecb2d913739117ec4bb4ec95525f5fc7aa8478"
+    },
+    {
+      "path": "evidence/59-p06-409-masz-partie.png",
+      "sha256": "a17dedf15c6acfef28d1e93da207201c7b44f51ce1b05466e62330369e3091a5"
+    },
+    {
+      "path": "evidence/60-p06-odrzucone.png",
+      "sha256": "294192c859e5b1b688b7220769ecb2d913739117ec4bb4ec95525f5fc7aa8478"
+    },
+    {
+      "path": "evidence/61-p06-rewanz-wygasl.png",
+      "sha256": "f0f1f181274f3d125fd341f96f6a9a2160569ef95a48cc19b2bb06f3311abb51"
+    },
+    {
+      "path": "evidence/62-p05-gosc-ostrzezenie.png",
+      "sha256": "cbee81123697c451681e9613ab73e5dd168e16c6912edd32dbfbfea5f77c1e5c"
+    },
+    {
+      "path": "evidence/63-p06-rewanz-goscia.png",
+      "sha256": "4ea08fa6d0e578b8b13875844058284ea9455e83e7f816ba191e7656909cc007"
+    },
+    {
+      "path": "evidence/64-p06-gosc-po-1h.png",
+      "sha256": "5fa1a407c67407c87a88470a5e6e67b437ff346fdaceffbea9fbc2f42e43f0e7"
+    },
+    {
+      "path": "evidence/65-p07-404-gosc-inna-przegladarka.png",
+      "sha256": "ea1a0afd127568237d7ead20768e286f66b046f1d7b0cbcb4bd4b091f3cd9df7"
+    },
+    {
+      "path": "evidence/66-p07-ladowanie.png",
+      "sha256": "8dbe366b73e7c70745b0132b64a48a893a6f09e77ad16932599c0fd568f0ac1d"
+    },
+    {
+      "path": "evidence/67-p07-404.png",
+      "sha256": "965db9f9effba0af966f5855400879188fa3bdc3a69aadcd3be39610659f1ae6"
+    },
+    {
+      "path": "evidence/68-p07-baza-niedostepna.png",
+      "sha256": "955afe414607a37965185c12a1229bd3676fbcba08797cea3b83565823dac8b7"
+    },
+    {
+      "path": "evidence/70-p05-320px.png",
+      "sha256": "d72074dccd783e282f657706e889be696e4f35af3bc256175708476b2d55c411"
+    },
+    {
+      "path": "evidence/70-p05-360px.png",
+      "sha256": "31c4b31c0f095f3bbfcc3f1e451bc9269355ac3d93df20967f891bb6eb7b1a88"
+    },
+    {
+      "path": "evidence/71-dialog-poddania-320px.png",
+      "sha256": "5869955c2b0b03494f8c3ad53d509cf5ad9dc24f7ed03a59976c01d78e92f2e8"
+    },
+    {
+      "path": "evidence/71-dialog-poddania-360px.png",
+      "sha256": "4e935445f185fccd97060dccff54f38fd1e75f761b4a6b1fb5e9c106c922b715"
+    },
+    {
+      "path": "evidence/72-p05-malo-czasu-320px.png",
+      "sha256": "c29fb32011c8a493a286af69cea65dfd2ae0117aa61412600bfe4a58d7452f5a"
+    },
+    {
+      "path": "evidence/72-p05-malo-czasu-360px.png",
+      "sha256": "842e75f3c8ea14e8d97eccb365317df895665d391c13ed6c47c7e8d566754832"
+    },
+    {
+      "path": "evidence/73-p06-wygrana-320px.png",
+      "sha256": "6b7c7a6506a983e239d60be0f1c0955e96648620b086a8e9f442bec58774a116"
+    },
+    {
+      "path": "evidence/73-p06-wygrana-360px.png",
+      "sha256": "b194072911a0ecf4042b633fe494403de5d6a28d808dea8c56ce293bd0cd36ba"
+    },
+    {
+      "path": "evidence/74-p06-odrzucone-320px.png",
+      "sha256": "ec06753316e4206aca71bc2d0f71fe7503f197d74c49fbcdfe5799b469269362"
+    },
+    {
+      "path": "evidence/74-p06-odrzucone-360px.png",
+      "sha256": "ac414ef468937b237296ac39eede9534e8fb49eda5376e3292a8e0e07d048d41"
+    },
+    {
+      "path": "evidence/75-p06-propozycja-320px.png",
+      "sha256": "3f908cf70868eeba0a6674355f9781d6c085d90ca0a89d10e4e9054609a112ee"
+    },
+    {
+      "path": "evidence/75-p06-propozycja-360px.png",
+      "sha256": "4c335941b552da4e03126802bf4cb2962f9457d64d8201fca512dd8af8e46fdd"
+    },
+    {
+      "path": "evidence/76-p06-zaproponowany-320px.png",
+      "sha256": "4099b57255f4b19ff75f9a085297ce6819ea44ab4541e23b6ebc5f319c827d6e"
+    },
+    {
+      "path": "evidence/76-p06-zaproponowany-360px.png",
+      "sha256": "14a93f3dde3e754dc612569d75886d45639cc408fa648330c9a76de2ae8adca5"
+    },
+    {
+      "path": "evidence/77-p07-404-320px.png",
+      "sha256": "c364b6f81f39e9b3b2b875b8cf8fc1b3373c20d7d59d45e1c10f265d5b967c31"
+    },
+    {
+      "path": "evidence/77-p07-404-360px.png",
+      "sha256": "2c29b1f595ffaa39b9edb6fd664b057371486679b371ba0c5b591643d5efea93"
+    },
+    {
+      "path": "evidence/78-p06-przegrana-na-czas-320px.png",
+      "sha256": "1429973b97c61f47ea2a7804895c871a82416f7de5b5d7570f9e3cac41804254"
+    },
+    {
+      "path": "evidence/78-p06-przegrana-na-czas-360px.png",
+      "sha256": "ed3e36ca8c50e7e23325b1c3ceaccd799c2a7e12e8548f3cb6b8262a259bb90d"
+    },
+    {
+      "path": "evidence/walk-log.txt",
+      "sha256": "49864c5908980a7126648096ba136439090870fe042db11bdbc78703b585d230"
+    },
+    {
+      "path": "evidence/walk.sh",
+      "sha256": "4d388f25924c33384c98c09f8d012a58c943d3989f3183af8350451e29335699"
+    },
+    {
+      "path": "index.html",
+      "sha256": "c7ce89bb35f9f99d9b071afa331d14c3d7367ce731a24049c88ba53aa6067656"
+    }
+  ]
+}
