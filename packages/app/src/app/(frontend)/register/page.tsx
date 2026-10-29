@@ -20,7 +20,7 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
   const nextPath = safeNextPath(Array.isArray(next) ? next[0] : next);
 
   return (
-    <main className="mx-auto flex min-h-svh w-full max-w-md flex-col justify-center gap-stack px-panel py-section">
+    <main className="mx-auto flex w-full flex-1 max-w-md flex-col justify-center gap-stack px-panel py-section">
       <h1 className="m-0 text-section font-strong">Załóż konto</h1>
       <RegisterForm nextPath={nextPath} />
     </main>

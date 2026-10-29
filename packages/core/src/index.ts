@@ -11,3 +11,4 @@ export * from "./validators/auth/password-change-schema";
 export * from "./validators/auth/register-schema";
 export * from "./validators/auth/email-verification-confirm-schema";
 export * from "./validators/auth/password-reset-schema";
+export * from "./theme/theme";

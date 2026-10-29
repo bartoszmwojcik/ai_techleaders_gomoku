@@ -10,7 +10,7 @@ import { promisify } from "node:util";
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import type { TestProject } from "vitest/node";
 
-import { Browser } from "./browser";
+import { Browser, DEFAULT_SYSTEM_SCHEME } from "./browser";
 
 declare module "vitest" {
   export interface ProvidedContext {
@@ -124,6 +124,10 @@ export default async function setup(project: TestProject) {
       });
     }
     await waitUntilReady(baseUrl, server, () => output);
+    // One session serves every test file, so the emulated `prefers-color-scheme` is pinned here
+    // to the headless Chrome default (measured: an empty session reports `light`). Files that
+    // change it (theme-switch.test.ts) restore it to `DEFAULT_SYSTEM_SCHEME`.
+    await browser.setMedia(DEFAULT_SYSTEM_SCHEME);
 
     project.provide("baseUrl", baseUrl);
     project.provide("databaseUrl", container.getConnectionUri());

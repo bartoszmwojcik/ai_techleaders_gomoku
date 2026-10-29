@@ -241,6 +241,12 @@ curl https://gomoku.byst.re/api/health           # {"status":"ok",...}
 - **Kolejne zmienne:** `SMTP_*` (poczta, #38) dojdą z tą funkcją; produkcyjny start bez nich ma przerywać, zgodnie ze specyfikacją.
 - **Czyszczenie wygasłych rekordów** (#39, BR-18): wpis `cron` na serwerze, opis w sekcji [Sprzątanie wygasłych rekordów](#sprzątanie-wygasłych-rekordów).
 
+## Motyw jasny/ciemny
+
+Strony gracza (`(frontend)`) mają przełącznik motywu w prawym górnym rogu (wiersz nad treścią strony, na każdej stronie). Wybór zapisuje ciasteczko `gomoku_theme` (`dark` lub `light`, `Path=/`, `SameSite=Lax`, rok); serwer czyta je przy renderowaniu i ustawia `data-theme` na `<html>`. Bez poprawnego ciasteczka obowiązuje ustawienie systemu (`prefers-color-scheme`), a gdy system nie ma preferencji — motyw ciemny; mały skrypt w `<head>` ustawia motyw przed pierwszym malowaniem, więc strona nie migocze. Niepoprawna wartość ciasteczka jest ignorowana. Panel `/backend` ma własny motyw shadcn.
+
+Ręczne sprawdzenie w dev: `npm run dev`, otwórz `/`, kliknij „Jasny motyw”, odśwież stronę (wybór zostaje), usuń ciasteczko w narzędziach przeglądarki i zmień motyw systemu (lub emulację `prefers-color-scheme` w DevTools), odśwież — motyw podąża za systemem. Logika: `packages/core/src/theme/theme.ts`; scenariusze integracyjne: `tests/integration/theme-switch.test.ts`; przegląd ekranów: `.ai/analysis/2026-10-29-theme-review-e01.md`.
+
 ## Sprzątanie wygasłych rekordów
 
 Wygasłe sesje, liczniki limitów i tokeny nie wpływają na poprawność (są filtrowane przy odczycie), ale tabele rosną, więc BR-18 wymaga ich usuwania bez udziału człowieka. Robi to komenda `npm run db:cleanup` (`packages/db/src/cleanup`), uruchamiana z `cron` na serwerze, a nie przez proces aplikacji.
