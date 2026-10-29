@@ -6,6 +6,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { push, apiCall } = vi.hoisted(() => ({ push: vi.fn(), apiCall: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 vi.mock("@/lib/api-client", () => ({ apiCall }));
+// A value unlike the real one, so the text must come from the constant, not be typed in.
+vi.mock("@gomoku/core", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@gomoku/core")>()),
+  CREATE_GAME_LIMIT: 7,
+}));
 
 import { CreateGameButton } from "./create-game-button";
 
@@ -79,7 +84,7 @@ describe("CreateGameButton", () => {
     render(<CreateGameButton heldGame={null} />);
     await click();
     expect(screen.getByText("Zbyt wiele zaproszeń")).toBeTruthy();
-    expect(screen.getByText(new RegExp(`Limit to 10 utworzeń na godzinę. ${text}`))).toBeTruthy();
+    expect(screen.getByText(new RegExp(`Limit to 7 utworzeń na godzinę. ${text}`))).toBeTruthy();
   });
 
   it("asks an expired session to sign in again", async () => {

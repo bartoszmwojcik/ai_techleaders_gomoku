@@ -1,5 +1,6 @@
 "use client";
 
+import { CREATE_GAME_LIMIT } from "@gomoku/core";
 import { Alert } from "@gomoku/ui/game/alert";
 import { Button } from "@gomoku/ui/game/button";
 import { TextLink } from "@gomoku/ui/game/text-link";
@@ -71,7 +72,7 @@ export function CreateGameButton({ heldGame }: { heldGame: HeldGame | null }) {
       )}
       {failure?.kind === "limit" && (
         <Alert status="danger" title="Zbyt wiele zaproszeń">
-          Limit to 10 utworzeń na godzinę. {rateLimitedError(failure.retryAfterSeconds).details}
+          Limit to {CREATE_GAME_LIMIT} utworzeń na godzinę. {rateLimitedError(failure.retryAfterSeconds).details}
         </Alert>
       )}
       {failure?.kind === "signed-out" && (
