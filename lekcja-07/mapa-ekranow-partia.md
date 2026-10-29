@@ -1,6 +1,6 @@
 # Mapa ekranów: Epik 02, partia z zaproszenia
 
-- Data: 2026-10-26. Status: **szkic do zatwierdzenia** (nic nie zbudowano). Uwzględnia decyzje właściciela z 2026-10-26 (sekcja 0a).
+- Data: 2026-10-26, aktualizacja 2026-10-29. Status: **szkic do zatwierdzenia** (nic nie zbudowano). Uwzględnia decyzje właściciela z 2026-10-26 (sekcja 0a), specyfikacje #23 (zegar), #24 (powrót), poddania i rewanżu z 2026-10-29 oraz założenia robocze do prototypu (sekcja 0b).
 - Przepływ: Epik E02 (#16): tworzenie partii i zaproszenia (#21), dołączenie (zalogowany albo gość), ruchy i wygrana (#22), zegar 10 minut (#23), powrót po rozłączeniu (#24). Kończy się ekranem wyniku. Historia (#27), lobby (#25, #26) i zarządzanie kontem są poza tą mapą.
 - Materiały: `.ai/specs/product-brief.md` (po zmianie 2026-10-26), `.ai/specs/backlog.md`, `2026-10-24-game-invitations.md` (#21), `2026-10-25-game-moves-win-detection.md` (#22), zgłoszenia #23 i #24 (**nie mają specyfikacji**: kryteria z tracker'a), design system (`packages/ui/docs/design-system.md`, `docs/epics/partia.mdx`, `docs/screens/game-screen.tsx`, `invite-screens.tsx`), mapa E01 (`lekcja-07/mapa-ekranow.md`, ekran s07). Persony: brak.
 - **Ekran `/invite/[code]` jest wspólny z E01:** to s07 z `mapa-ekranow.md` (stany s07.1–s07.9). Tutaj go nie powielam; wchodzi w przepływ jako krok 2. ID ekranów tej mapy mają przedrostek `p` (p01, p02, …), żeby nie kolidowały z `s01–s07`. ID są stałe.
@@ -17,10 +17,40 @@
 | ~~L14~~ (rozstrzygnięta 2026-10-26) | Niezalogowany gracz jest dla przeciwnika „Gość”. | p04, p05, p06 |
 | ~~L16~~ (rozstrzygnięta 2026-10-26) | Poprawiamy tekst w design systemie (tworzenie partii bez potwierdzenia e-maila). | zadanie dokumentacji |
 | ~~L20~~ (rozstrzygnięta 2026-10-26) | Zegar pierwszego gracza rusza, gdy obaj mają `seen_at` (#21 Q20). #22 Q8 do poprawienia. | p04.1, p05.1 |
-| L21 | S | „Aktywne wyjście” z ekranu wyniku: czym jest (przycisk „Wróć do panelu głównego”, zamknięcie karty, nawigacja)? Tylko przycisk jest wykrywalny na pewno | decyzja L13 | Czy „aktywnie wyszedł” = kliknął „Wróć do panelu głównego”? Zamknięcie karty = czekamy do wygaśnięcia po 5 min? |
-| L22 | D | Rewanż a BR-13 (jedna aktywna partia): rewanż tworzy nową partię dopiero po przyjęciu, więc obaj gracze są wolni; co jeśli któryś wcześniej zaczął inną partię | decyzja L13, BR-13 | Czy zaproszenie do rewanżu znika, gdy przeciwnik dołączył do innej partii? |
-| L23 | S | Treść i skutki poddania: wynik `resignation`, potwierdzenie, wpływ na BR-21 (usunięcie konta) i na `is_active` | decyzja L12 | Tekst potwierdzenia i czy poddanie jest możliwe od pierwszego ruchu? |
-| L24 | D | Rewanż gościa: gość po 1 h od końca traci token; czy rewanż przedłuża token na nową partię | decyzja L13 | Czy wystarczy nowy token jak przy zwykłym dołączeniu? |
+| ~~L21~~ (rozstrzygnięta 2026-10-29) | S | „Aktywne wyjście” z ekranu wyniku: czym jest (przycisk „Wróć do panelu głównego”, zamknięcie karty, nawigacja)? Tylko przycisk jest wykrywalny na pewno | decyzja L13 | Czy „aktywnie wyszedł” = kliknął „Wróć do panelu głównego”? Zamknięcie karty = czekamy do wygaśnięcia po 5 min? |
+| ~~L22~~ (rozstrzygnięta 2026-10-29) | D | Rewanż a BR-13 (jedna aktywna partia): rewanż tworzy nową partię dopiero po przyjęciu, więc obaj gracze są wolni; co jeśli któryś wcześniej zaczął inną partię | decyzja L13, BR-13 | Czy zaproszenie do rewanżu znika, gdy przeciwnik dołączył do innej partii? |
+| ~~L23~~ (rozstrzygnięta 2026-10-29) | S | Treść i skutki poddania: wynik `resignation`, potwierdzenie, wpływ na BR-21 (usunięcie konta) i na `is_active` | decyzja L12 | Tekst potwierdzenia i czy poddanie jest możliwe od pierwszego ruchu? |
+| ~~L24~~ (rozstrzygnięta 2026-10-29) | D | Rewanż gościa: gość po 1 h od końca traci token; czy rewanż przedłuża token na nową partię | decyzja L13 | Czy wystarczy nowy token jak przy zwykłym dołączeniu? |
+
+## 0b. Rozstrzygnięcia z 2026-10-29 i założenia robocze do prototypu
+
+Z zatwierdzonych specyfikacji (`2026-10-26-game-clock.md`, `2026-10-29-game-reconnection.md`, `…-game-resignation.md`, `…-game-rematch.md`):
+
+| Luka | Rozstrzygnięcie | Źródło |
+|---|---|---|
+| ~~L07~~ (rozstrzygnięta 2026-10-29) | „Mało czasu” od 60 s: jaskrawy kolor zegara i grubszy obrys, bez widocznego tekstu i bez dźwięku; ukryte ogłoszenie `aria-live` raz przy przejściu progu | #23 Q1 |
+| ~~L09~~ (rozstrzygnięta 2026-10-29) | Po powrocie karty: odczyt natychmiast; „Wróciłeś do partii” tylko po nieobecności ponad 30 s | #24 Q2, Q5 |
+| L11 | Specyfikacje #23 i #24 istnieją; brak wskaźnika „przeciwnik rozłączony” (zegar przeciwnika biegnie) | #23, #24 Q1 |
+| ~~L17~~ (rozstrzygnięta 2026-10-29) | Strony graczy używają komponentów DS (`@gomoku/ui/game/*`), nie własnego Tailwinda (AGENTS.md wygrywa ze specyfikacją #21) | AGENTS.md |
+| L21 | „Aktywne wyjście” = „Odrzuć” lub „Wróć do panelu głównego”; zamknięcie karty = wygaśnięcie po 5 min | rewanż Q3 |
+| L22 | BR-13 sprawdzane przy przyjęciu rewanżu; `409` z linkiem do innej partii | rewanż Q4 |
+| L23 | Poddanie w każdej chwili partii w toku; dialog „Czy na pewno chcesz się poddać? Przeciwnik wygra partię.” | poddanie Q1, Q2 |
+| L24 | Gość przy rewanżu dostaje nowy token nowej partii (wymaga ważnego tokenu starej) | rewanż Q5 |
+
+**Założenia robocze do prototypu (propozycje do zatwierdzenia razem z mapą; prototyp pokazuje je jako założenia, a Ty je potwierdzasz lub zmieniasz po obejrzeniu):**
+
+| Luka | Założenie |
+|---|---|
+| L01 | Twórca z własną oczekującą partią, który klika „Utwórz zaproszenie”: przejście do tej partii z komunikatem „Masz już oczekującą partię” (p01.4) |
+| L02 | Błędy: „Nie udało się połączyć z serwerem. Spróbuj ponownie.” z przyciskiem; odpytywanie po błędzie ponawia się samo z opóźnieniem, po 3 nieudanych pokazuje baner błędu (p01.6, p01.7, p03.10, p07.4) |
+| L03 | `/join`: przycisk „Sprawdzanie kodu…” w stanie zajętym (p02.5) |
+| L05 | Zaproszenie wygasło po 24 h: twórca widzi „Zaproszenie wygasło. Utwórz nowe.”, osoba z linkiem „To zaproszenie jest już nieważne” (s07.9) (p03.9) |
+| L06 | Po 15 min bez otwarcia strony: „Przeciwnik nie otworzył partii w ciągu 15 minut. Partię anulowano.” z przyciskiem do panelu głównego (p04.3) |
+| L08 | `CELL_OCCUPIED`: plansza się odświeża i pojawia się krótki komunikat „To pole jest już zajęte”; `GAME_NOT_ACTIVE`: odświeżenie do właściwego stanu (p05.9) |
+| L10 | MVP bez roli operatora (T8 pozostaje w mapie jako niezaimplementowany) |
+| L15 | Status pod planszą mówi, jakim kolorem gra gracz („Grasz czarnymi”); informacja o losowaniu tylko przy starcie partii (p05.1) |
+| L18 | Plansza ma min. 320 px szerokości (DS), zgodnie z dwukrokowym potwierdzeniem na dotyku; BR-20 (360 px) spełnione z zapasem |
+| L19 | `?next=` z logowania i rejestracji zawsze wraca na `/invite/{kod}` (jak w prototypie E01) |
 
 ## 0. Historie i kryteria w zakresie
 
@@ -243,8 +273,8 @@ Typy: **K** = kryterium bez ekranu lub stanu, **S** = stan bez kryterium, **X** 
 | w tym stany bez kryterium (⚠) | 14 |
 | Scenariusze do przełączania | 12 (Q01–Q12) |
 | Konta demo | 8 (T1–T8; T8 operator bez podstaw w materiałach) |
-| Luki w specyfikacji | 24 (L01–L24), z czego 7 rozstrzygniętych 2026-10-26 (L04, L11, L12, L13, L14, L16, L20); otwarte 17 |
+| Luki w specyfikacji | 24 (L01–L24): rozstrzygnięte 2026-10-26 (L04, L11, L12, L13, L14, L16, L20) i 2026-10-29 (L07, L09, L17, L21–L24); pozostałe 10 (L01–L03, L05, L06, L08, L10, L15, L18, L19) mają założenia robocze z sekcji 0b |
 | Luki w design systemie | 7 (D01–D07) |
 | Historie w zakresie / kryteria akceptacji | 4 / 21 aktywnych (#21: 9, #22: 5, #23: 4, #24: 3); poddanie i rewanż to nowe historie bez zgłoszeń |
 
-**Czekam na zatwierdzenie mapy.** Przed prototypem: specyfikacje #23, #24, poddania i rewanżu oraz poprawka #22 Q8. Otwarte luki L21–L24 można rozstrzygnąć w tych specyfikacjach.
+**Czekam na zatwierdzenie mapy.** Po zatwierdzeniu: szary prototyp etapami (A: zaproszenie i oczekiwanie, B: plansza, wynik, poddanie, rewanż), potem klikalny prototyp z design systemu.
