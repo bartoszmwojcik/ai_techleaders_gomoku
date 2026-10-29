@@ -194,6 +194,20 @@ describe("InvitationService.accept", () => {
     expect(error.code).toBe("INVALID_INVITATION");
   });
 
+  it("keeps the result when giving the attempt back fails after a successful accept", async () => {
+    const { service, rateLimiter } = setup();
+    rateLimiter.release.mockRejectedValueOnce(new Error("db down"));
+    await expect(service.accept(CODE, { userId: USER }, AS_USER, GUARD)).resolves.toEqual({ gameId: "game-1" });
+    expect(rateLimiter.release).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the original error when giving the attempt back fails on the error path", async () => {
+    const { service, rateLimiter } = setup({ member: [{ seat: 1 }] });
+    rateLimiter.release.mockRejectedValueOnce(new Error("db down"));
+    const error = await errorOf(service.accept(CODE, { userId: CREATOR }, AS_USER, GUARD));
+    expect(error.code).toBe("OWN_INVITATION");
+  });
+
   it("refuses the creator with OWN_INVITATION and the game id", async () => {
     const { service, rateLimiter } = setup({ member: [{ seat: 1 }] });
     const error = await errorOf(service.accept(CODE, { userId: CREATOR }, AS_USER, GUARD));

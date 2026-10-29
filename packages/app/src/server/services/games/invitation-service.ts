@@ -476,6 +476,10 @@ export class InvitationService {
    * its own committed transaction, so concurrent guesses cannot all read "below the limit").
    * It is given back unless the lookup failed with the uniform `INVALID_INVITATION`, so the
    * pool only counts failures; once spent, even a correct code gets 429 (no oracle).
+   * Giving the attempt back is best-effort: a failing `release` must neither turn a finished
+   * lookup into a 500 nor mask the original error (fail-closed: the counter just stays high).
+   * A release after the window rolled over lowers the NEW window's counter: one free attempt
+   * per window boundary, accepted.
    */
   async #withAttempt<T>(guard: LookupGuard, lookup: () => Promise<T>): Promise<T> {
     await this.#rateLimiter.hit(guard.key, guard.limit, INVITATION_LOOKUP_WINDOW_MS);
@@ -483,10 +487,14 @@ export class InvitationService {
     try {
       result = await lookup();
     } catch (error) {
-      if (!(error instanceof GoneError)) await this.#rateLimiter.release(guard.key, INVITATION_LOOKUP_WINDOW_MS);
+      if (!(error instanceof GoneError)) await this.#release(guard);
       throw error;
     }
-    await this.#rateLimiter.release(guard.key, INVITATION_LOOKUP_WINDOW_MS);
+    await this.#release(guard);
     return result;
+  }
+
+  async #release(guard: LookupGuard): Promise<void> {
+    await this.#rateLimiter.release(guard.key, INVITATION_LOOKUP_WINDOW_MS).catch(() => undefined);
   }
 }
