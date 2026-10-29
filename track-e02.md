@@ -15,7 +15,7 @@
 - [x] D0.4 Poprawka #22 Q8 (start zegara po `seen_at` obu) i adnotacje w #21/#22 o decyzjach z mapy (Gość, aktywne wyjście)
 
 ### D1 — Mapa ekranów do zatwierdzenia
-- [ ] D1.1 Aktualizacja `lekcja-07/mapa-ekranow-partia.md` po D0 (stany, luki, role, scenariusze); zatrzymanie na zatwierdzenie
+- [x] D1.1 Aktualizacja `lekcja-07/mapa-ekranow-partia.md` po D0 (stany, luki, role, scenariusze); zatrzymanie na zatwierdzenie
 
 ### D2 — Szary prototyp (`om-mockup-prototype`, przepływ „partia z zaproszenia”, etapami)
 - [ ] D2.1 Etap A: tworzenie zaproszenia, `/join`, `/invite/[code]`, oczekiwanie na przeciwnika; Twój przegląd
