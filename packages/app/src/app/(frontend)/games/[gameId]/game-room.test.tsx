@@ -79,8 +79,13 @@ afterEach(() => {
 });
 
 describe("formatValidUntil", () => {
-  it("prints the weekday, date and time in the Warsaw zone", () => {
-    expect(formatValidUntil(EXPIRES)).toBe("piątek, 30 października 10:00");
+  it("prints the weekday, date and time in the Warsaw zone, marked CET in winter", () => {
+    expect(formatValidUntil(EXPIRES)).toBe("piątek, 30 października 10:00 CET");
+    expect(formatValidUntil("2026-01-15T09:00:00Z")).toBe("czwartek, 15 stycznia 10:00 CET");
+  });
+
+  it("marks summer time CEST, not CET", () => {
+    expect(formatValidUntil("2026-07-15T09:00:00Z")).toBe("środa, 15 lipca 11:00 CEST");
   });
 });
 
@@ -91,7 +96,7 @@ describe("GameRoom, waiting (p03)", () => {
     expect(screen.getByText("Czekamy na przeciwnika…")).toBeTruthy();
     expect(screen.getByText("http://localhost:3000/invite/ABCD-EFGH")).toBeTruthy();
     expect(screen.getByText("ABCD-EFGH")).toBeTruthy();
-    expect(screen.getByText("Ważne do piątek, 30 października 10:00")).toBeTruthy();
+    expect(screen.getByText("Ważne do piątek, 30 października 10:00 CET")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Udostępnij" })).toBeNull();
   });
 
