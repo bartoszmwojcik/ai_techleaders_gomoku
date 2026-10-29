@@ -49,7 +49,7 @@ cb "Wróć do panelu głównego" ; go p01; ck A.9 "Masz partię z linkiem „Wr�
 cb "Wróć do partii"; at A.10 "„Wróć do partii” → p03" p03
 go p01; create; at A.11 "druga próba utworzenia: oczekująca partia → p03" p03; sk A.12 "p03.1 + p01.4" "p03.1 + p01.4"; ck A.13 "komunikat L01" "Masz już oczekującą partię."
 reset; acct T3; go p01; create; sk A.14 "T3 (partia w toku) → p01.3" p01.3; ck A.15 "Masz już partię" "Masz już partię"
-cb "Przejdź do partii"; D=$(dialog); [[ "$D" == *"Poza tym prototypem"* ]] && echo "PASS A.16 | link do partii w toku → Poza tym prototypem" >> $LOG || echo "FAIL A.16 | $D" >> $LOG; db "Wróć do prototypu"
+cb "Przejdź do partii"; at A.16 "link do partii w toku (BR-13) → plansza p05 (od etapu B zamiast dialogu)" p05; go p01
 acct T4; go p01; create; at A.17 "T4 (własna oczekująca) → p03" p03; ck A.18 "kod partii Ewy" "KMNP-QRST"
 reset; acct T2; ck A.19 "T2: baner potwierdzenia e-maila nie blokuje" "Potwierdź adres e-mail"; create; at A.20 "T2 niepotwierdzony tworzy partię (BR-26)" p03
 reset; acct T6; ck A.21 "T6: bez przycisku Utwórz zaproszenie" "Załóż konto"; nk A.22 "T6 nie tworzy" "Utwórz zaproszenie" "Utwórz zaproszenie"
@@ -121,15 +121,15 @@ reset; stage "p04.1"; at E.1 "skrót p04.1 (widok Kuby)" p04; sk E.2 "p04.1" p04
 ck E.3 "tekst oczekiwania" "Czekamy, aż Ala_7 otworzy partię — zegar ruszy, gdy obaj będziecie na stronie (do 15 min)"
 ck E.4 "zegary 10:00" "10:00"; nk E.5 "bez Przejdź do planszy przed otwarciem" "Przejdź do planszy" "Przejdź do planszy"
 sbtn sc-opens; sk E.6 "twórca otwiera → p04.2" p04.2; ck E.7 "Partia gotowa" "Partia gotowa"
-cb "Przejdź do planszy"; D=$(dialog); [[ "$D" == *"kolejnym etapie"* ]] && echo "PASS E.8 | Przejdź do planszy → dialog (etap B)" >> $LOG || echo "FAIL E.8 | $D" >> $LOG; db "Wróć do prototypu"
-cb "Wróć do panelu głównego"; at E.9 "Wróć do panelu głównego → p01" p01
+cb "Przejdź do planszy"; at E.8 "Przejdź do planszy → p05 (od etapu B zamiast dialogu)" p05
+go p04; at E.9a "plansza w toku: p04 przekierowuje na p05" p05; reset; stage "p04.2"; cb "Wróć do panelu głównego"; at E.9 "Wróć do panelu głównego → p01" p01
 reset; stage "p04.1"; sbtn sc-plus-15; sk E.10 "+15 min bez otwarcia → p04.3 (widok Kuby)" p04.3; ck E.11 "zdanie gracza, który otworzył" "Przeciwnik nie otworzył partii w ciągu 15 minut. Partię anulowano."
 acct T1; sk E.12 "p04.3 u twórcy" p04.3; ck E.13 "zdanie twórcy" "Partię anulowano: nie została otwarta w ciągu 15 minut."
 cb "Wróć do panelu głównego"; at E.14 "→ p01" p01; nk E.15 "partia zwolniona (BR-13)" "Masz partię" "Masz partię"
 create; at E.16 "po anulowaniu można utworzyć nową" p03
 reset; stage "p04.4"; sk E.17 "gość: p04.1 + p04.4" "p04.1 + p04.4"; ck E.18 "ostrzeżenie dla gościa" "Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii"
 acct T6; go p04; sk E.19 "gość w innej przeglądarce (T6): p07.3" p07.3; ck E.20 "to samo 404 co p07.2" "Ta partia nie istnieje albo nie masz do niej dostępu"
-reset; acct T3; go p04; ck E.21 "partia w toku (T3) wskazuje etap B" "Plansza jest w kolejnym etapie prototypu"
+reset; acct T3; go p04; at E.21 "partia w toku (T3): p04 przekierowuje na planszę (od etapu B)" p05
 reset; stage "p04.2"; acct T1; sk E.22 "twórca po otwarciu: p04.2" p04.2
 
 echo "## F. kontrolki i silnik" >> $LOG

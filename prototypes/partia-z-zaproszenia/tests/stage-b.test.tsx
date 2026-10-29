@@ -766,7 +766,7 @@ describe("p07: błędy dostępu", () => {
     goTo("p05");
     expect(stateId()).toBe("p07.1");
     expect(within(frame()).getByRole("status", { busy: true })).toBeTruthy();
-    await waitFor(() => expect(stateId()).toMatch(/^p05\.1/));
+    await waitFor(() => expect(stateId()).toMatch(/^p05\.1/), { timeout: 3000 });
   });
 
   it("p07.2 i p07.3: ten sam 404 dla spoza partii i gościa w innej przeglądarce", () => {

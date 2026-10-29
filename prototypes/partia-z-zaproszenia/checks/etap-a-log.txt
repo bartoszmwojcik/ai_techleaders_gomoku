@@ -14,7 +14,7 @@ PASS A.12 | p03.1 + p01.4
 PASS A.13 | komunikat L01
 PASS A.14 | T3 (partia w toku) → p01.3
 PASS A.15 | Masz już partię
-PASS A.16 | link do partii w toku → Poza tym prototypem
+PASS A.16 | link do partii w toku (BR-13) → plansza p05 (od etapu B zamiast dialogu)
 PASS A.17 | T4 (własna oczekująca) → p03
 PASS A.18 | kod partii Ewy
 PASS A.19 | T2: baner potwierdzenia e-maila nie blokuje
@@ -119,7 +119,8 @@ PASS E.4 | zegary 10:00
 PASS E.5 | bez Przejdź do planszy przed otwarciem
 PASS E.6 | twórca otwiera → p04.2
 PASS E.7 | Partia gotowa
-PASS E.8 | Przejdź do planszy → dialog (etap B)
+PASS E.8 | Przejdź do planszy → p05 (od etapu B zamiast dialogu)
+PASS E.9a | plansza w toku: p04 przekierowuje na p05
 PASS E.9 | Wróć do panelu głównego → p01
 PASS E.10 | +15 min bez otwarcia → p04.3 (widok Kuby)
 PASS E.11 | zdanie gracza, który otworzył
@@ -132,7 +133,7 @@ PASS E.17 | gość: p04.1 + p04.4
 PASS E.18 | ostrzeżenie dla gościa
 PASS E.19 | gość w innej przeglądarce (T6): p07.3
 PASS E.20 | to samo 404 co p07.2
-PASS E.21 | partia w toku (T3) wskazuje etap B
+PASS E.21 | partia w toku (T3): p04 przekierowuje na planszę (od etapu B)
 PASS E.22 | twórca po otwarciu: p04.2
 ## F. kontrolki i silnik
 PASS F.1 | +1 h zmienia zegar

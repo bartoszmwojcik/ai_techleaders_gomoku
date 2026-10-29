@@ -1,6 +1,6 @@
 # Postęp: klikalny prototyp Epiku 02 (partia z zaproszenia)
 
-Stan: **etap A gotowy (D3.1); etap B (p05–p07: plansza, zegary, wynik, poddanie, rewanż) w zadaniu D3.2.**
+Stan: **etap A gotowy (D3.1); etap B (p05–p07: plansza, zegary, wynik, poddanie, rewanż, powrót) zbudowany w zadaniu D3.2, do przeglądu przez właściciela.**
 
 ## Źródła
 
@@ -30,4 +30,19 @@ Stan: **etap A gotowy (D3.1); etap B (p05–p07: plansza, zegary, wynik, poddani
 - s07 jest w prototypie, bo mapa wprowadza go jako krok 2 przepływu (wspólny z E01). Logowanie i rejestracja otwierają dialog (konta mają własny prototyp).
 - Symulator jest prawdziwy (stan partii wynika z akcji), nie zbiór ustawień jak w szarym prototypie; kontrolki „Przeciwnik dołącza” i skróty do stanów skracają drogę.
 - Poza szarym prototypem: p01.4 jako „p03.1 + p01.4” (stan złożony), wejście na s07 z paska bez linku (cudze zaproszenie albo zaproszenie Ala_7), „Partia w toku” dla T3 na p04 jako zapowiedź etapu B, p04 bez planszy z dwoma zegarami 10:00 (komponent Zegar gracza).
-- D3.2 dołoży p05–p07 do tych samych `sim.ts` i `chrome.tsx`; przyciski „Przejdź do planszy” i „Partia w toku” otwierają dziś dialog.
+- Przyciski „Przejdź do planszy” i „Partia w toku” otwierały w etapie A dialog; etap B zamienił je na prawdziwe przejścia na planszę.
+
+## Etap B: co jest zrobione (D3.2)
+
+- Symulator `src/sim.ts` dostał prawdziwe reguły: plansza 15×15, stawianie na wolnym polu, naprzemienność, pięć i więcej na 4 osiach z linią wygrywającą, remis, zegar serwerowy (10:00, tylko gracz na ruchu, start przy otwarciu planszy, leniwa przegrana na czas), poddanie, rewanż (odwrócone kolory, 5 min, BR-13 przy przyjęciu, nowy token gościa), token gościa do 1 h po końcu, karta w tle (próg 30 s).
+- Ekrany: p05 (p05.1–p05.14), p06 (p06.1–p06.15), p07 (p07.1–p07.4 oraz p06.7), bramki wspólne dla p03–p06. Składają się z Planszy, Zegara gracza, Statusu tury, Baneru wyniku, Dialogu potwierdzenia, Alertu, Szkieletu i Stanu błędu; wszystkie wartości z tokenów.
+- Panel „Scenariusze” rozszerzony o kontrolki z szarego prototypu (ruchy przeciwnika, wyniki ruchu, dotyk/mysz, zegar partii z „Odliczaj zegar” x10, skoki i „Minął czas”, karta w tle, skróty do wyniku, rewanż przeciwnika, błędy p07).
+- Testy: `tests/stage-b.test.tsx` (wygrane na 4 osiach i sześć w linii, remis, zegar, poddanie, rewanż, karta w tle, p07) obok testów etapu A.
+- Przeglądarka: `checks/etap-b-walk.sh`, wynik `checks/etap-b-log.txt`, zrzuty `checks/etap-b-evidence/`; regresja etapu A: `checks/etap-a-walk.sh` (trzy sprawdzenia dostosowane do zastąpienia dialogu planszą: E.8, E.9a, E.21).
+
+## Decyzje i założenia etapu B
+
+- Założenia A-12…A-26 szarego prototypu (`revision-002`) przeniesione bez zmiany treści; lista i odstępstwa w README („Ograniczenia symulacji”).
+- Odstępstwa: brak wskaźnika „przeciwnik rozłączony” (mapa L11 i #24 Q1: wskaźnika nie ma), „mało czasu” jako token `status-danger` i obrys zamiast `#ff2d00`, „pole zajęte” i „nie Twoja kolej” wywoływane kontrolką (Plansza nie pozwala na takie kliknięcie), rzeczywista zmiana widoczności karty też liczy się jako nieobecność.
+- Luki w design systemie zapisane w kodzie jako `LUKA`: D01, D04, D06 oraz brak miejsca na błąd w Dialogu potwierdzenia.
+- Bez zmian: reguły z mapy (sekcje 0a, 0b), ID ekranów i stanów, silnik przeglądu.

@@ -312,7 +312,7 @@ export function viewer(sim: Sim): Account | null {
 export const guestToken = (sim: Sim): number | null => (sim.role === "T5" ? sim.guestGame : null);
 
 /** Waiting for the game page after a link (p07.1) takes this long. */
-export const LOAD_DELAY = typeof location !== "undefined" && location.search.includes("fast") ? 50 : 1500;
+export const LOAD_DELAY = typeof location !== "undefined" && location.search.includes("fast") ? 800 : 1500;
 
 export const nameOf = (email: string) => ACCOUNTS[email]?.name ?? email;
 export const opponentName = (g: Game): string => (g.opponent === null ? "" : g.opponent.kind === "guest" ? "Gość" : nameOf(g.opponent.email));
@@ -852,7 +852,7 @@ let returnToken = 0;
 
 /** The viewer is back after `seconds`: the clock of the player to move has shrunk by that much (BR-06); a long absence earns a message. */
 export function returnFromBackground(seconds: number) {
-  set((s) => ({ bg: false, clock: s.clock + seconds * 1000 }));
+  set((s) => ({ bg: false, returned: null, clock: s.clock + seconds * 1000 }));
   const after = playOf(state);
   if (!after || after.play.result || seconds <= RETURN_NOTICE_AFTER) return;
   const token = ++returnToken;
