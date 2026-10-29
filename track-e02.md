@@ -24,7 +24,7 @@
 
 ### D3 — Klikalny prototyp z design systemu (jak `prototypes/konta-i-role`)
 - [x] D3.1 Etap A: symulator, ekrany p01–p04, pasek scenariuszy, testy nawigacji; Twój przegląd (zatwierdzony 2026-10-29, 249 PASS/0 FAIL, 41 testów nawigacji)
-- [ ] D3.2 Etap B: ekrany p05–p07 (plansza, zegary, wynik, rewanż, poddanie), Twój przegląd i zatwierdzenie
+- [x] D3.2 Etap B: ekrany p05–p07 (plansza, zegary, wynik, rewanż, poddanie), Twój przegląd i zatwierdzenie (zatwierdzony 2026-10-29, 329 PASS/0 FAIL, regresja A 250 PASS)
 
 ## Ścieżka implementacji
 
@@ -50,14 +50,14 @@ Ręczny test po fazie: partia przez `curl`/dwie karty do piątki w linii, remis 
 - [ ] 3.2 Walidator `moveCreateSchema`, encje/migracja kolumn planszy (`stones_*` bit(225), `moves` bytea, `CHECK`-i), losowanie koloru (#22 kroki 6–8)
 - [ ] 3.3 `GameMoveService.play`, `POST /api/games/[id]/moves`, rozszerzony `GET` z `after`, `result`, `winLine` (#22 kroki 9–10)
 - [ ] 3.4 Testy integracyjne: wyścigi, idempotencja, wygrana ostatnim kamieniem (#22 krok 11)
-- [!] 3.5 Plansza i stany końca na `/games/[gameId]` (#22 kroki 12–14) — po zatwierdzeniu prototypu etapu B (D3.2)
+- [ ] 3.5 Plansza i stany końca na `/games/[gameId]` (#22 kroki 12–14) — po zatwierdzeniu prototypu etapu B (D3.2)
 
 ### Faza 4 — Zegar (#23)
 Ręczny test po fazie: start zegara po otwarciu strony przez obu, malejący zegar gracza na ruchu, przegrana na czas przy odczycie przeciwnika.
 - [ ] 4.1 `core/src/games/clock.ts` (#23 krok 1)
 - [ ] 4.2 Migracja kolumn zegara, start w `getState`, `spend`/`settleGame`/`settleFor`, `GAME_NOT_STARTED` (#23 kroki 2–6)
 - [ ] 4.3 Testy integracyjne (wyścigi, rollback, BR-13) (#23 krok 7)
-- [!] 4.4 UI: `useGameClock`, `PlayerClock`, wariant „mało czasu”, baner końca przez czas (#23 kroki 8–9) — po D3.2
+- [ ] 4.4 UI: `useGameClock`, `PlayerClock`, wariant „mało czasu”, baner końca przez czas (#23 kroki 8–9) — po D3.2
 
 ### Faza 5 — Powrót po rozłączeniu, poddanie, rewanż (po D0)
 - [!] 5.x zadania z nowych specyfikacji D0.1–D0.3 (rozpisać po ich zatwierdzeniu)
