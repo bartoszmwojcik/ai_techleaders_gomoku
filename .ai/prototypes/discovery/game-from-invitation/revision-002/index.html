@@ -1,0 +1,1255 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gomoku: partia z zaproszenia, etapy A i B (prototyp discovery, rewizja 2)</title>
+<style>
+  :root { --bg:#f4f4f4; --fg:#1a1a1a; --muted:#555; --line:#8a8a8a; --soft:#e4e4e4; --panel:#fff; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, sans-serif; background:var(--bg); color:var(--fg); line-height:1.45; }
+  a { color:inherit; }
+  :focus-visible { outline: 3px solid #000; outline-offset: 2px; }
+  [tabindex="-1"]:focus, [tabindex="-1"]:focus-visible { outline: none; }
+  header.site { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--line); background:var(--panel); }
+  header.site .brand { font-weight:700; font-size:1.25rem; text-decoration:none; }
+  header.site nav { display:flex; gap:12px 16px; align-items:center; flex-wrap:wrap; }
+  .banner-proto { margin:0; padding:6px 16px; font-size:.85rem; background:var(--soft); border-bottom:1px solid var(--line); }
+  main { max-width: 36rem; margin: 0 auto; padding: 24px 16px 32px; }
+  main > section { display:none; }
+  main > section.active { display:block; }
+  h1 { font-size:1.6rem; margin:0 0 16px; overflow-wrap:anywhere; }
+  h2 { font-size:1.1rem; margin:24px 0 8px; }
+  form { display:flex; flex-direction:column; gap:16px; }
+  label { display:block; font-weight:600; margin-bottom:4px; }
+  .hint { font-weight:400; color:var(--muted); font-size:.9rem; margin:2px 0 4px; }
+  input[type=text], select { width:100%; min-height:44px; padding:8px 10px; border:2px solid var(--line); border-radius:4px; font:inherit; background:#fff; }
+  input[aria-invalid=true] { border-color:#000; border-style:dashed; }
+  .field-error { color:#000; font-weight:600; margin:4px 0 0; }
+  .field-error::before { content:"Błąd: "; }
+  button, .btn { min-height:44px; padding:8px 16px; border:2px solid #000; border-radius:4px; background:#000; color:#fff; font:inherit; font-weight:700; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; text-align:center; }
+  button.secondary, .btn.secondary { background:#fff; color:#000; }
+  button[disabled] { background:#ddd; color:#444; border-color:#888; cursor:not-allowed; }
+  .alert { border:2px solid #000; padding:12px 16px; margin:0 0 16px; background:#fff; border-radius:4px; }
+  .alert strong { display:block; }
+  .alert.warn { border-style:dashed; }
+  .alert.err::before { content:"Błąd. "; font-weight:700; }
+  .alert .extra { margin-top:8px; }
+  .alert .extra a { display:inline-block; padding:10px 0; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:16px; margin-bottom:16px; }
+  .tag { display:inline-block; border:2px dotted var(--line); padding:2px 8px; font-size:.85rem; font-weight:700; margin:0 0 12px; background:#fff; }
+  .excluded { border:2px dotted var(--line); padding:12px 16px; background:#fff; margin-bottom:16px; }
+  .excluded ul { margin:4px 0 0; padding-left:20px; }
+  .code { font-family: ui-monospace, monospace; font-size:2rem; font-weight:700; letter-spacing:.12em; margin:4px 0 12px; overflow-wrap:anywhere; }
+  .actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .reason { color:var(--muted); font-size:.9rem; margin:4px 0 0; }
+  dl.kv { margin:0 0 12px; display:grid; grid-template-columns: max-content 1fr; gap:4px 12px; }
+  dl.kv dt { color:var(--muted); } dl.kv dd { margin:0; overflow-wrap:anywhere; }
+  .linkbox { font-family: ui-monospace, monospace; }
+  dialog { max-width:min(28rem, calc(100vw - 32px)); width:100%; border:3px solid #000; border-radius:6px; padding:20px; background:#fff; color:var(--fg); }
+  dialog::backdrop { background:rgba(0,0,0,.45); }
+  dialog h2 { margin-top:0; font-size:1.25rem; }
+  aside.test { border-top:3px double var(--line); background:#fff; padding:16px; }
+  aside.test .inner { max-width:36rem; margin:0 auto; display:flex; flex-direction:column; gap:12px; }
+  aside.test fieldset { border:1px solid var(--line); padding:8px 12px; margin:0; min-width:0; }
+  aside.test legend { font-weight:700; padding:0 4px; }
+  aside.test label { font-weight:400; display:flex; gap:8px; align-items:center; margin:4px 0; }
+  aside.test label.block { display:block; font-weight:600; }
+  aside.test input[type=checkbox] { width:20px; height:20px; flex:none; }
+  aside.test select { min-height:36px; margin-bottom:6px; }
+  .vh { position:absolute; left:-9999px; }
+  /* ---- stage B: board, clocks, result ---- */
+  .board-wrap { margin:0 -16px 12px; }
+  @media (min-width: 600px) { .board-wrap { margin:0 0 12px; } }
+  .board { display:flex; flex-direction:column; width:100%; background:#dcdcdc; border:2px solid #000; touch-action:manipulation; }
+  .brow { display:flex; }
+  .gc { flex:1 1 0; aspect-ratio:1 / 1; min-width:0; position:relative; }
+  .board button.cell { position:absolute; inset:0; width:100%; height:100%; min-height:0; padding:0; border:0; border-radius:0; display:block; cursor:pointer;
+    background: linear-gradient(#777,#777) center / 1px 100% no-repeat, linear-gradient(#777,#777) center / 100% 1px no-repeat; background-color:#dcdcdc; color:inherit; }
+  .board button.cell[disabled] { cursor:default; background: linear-gradient(#777,#777) center / 1px 100% no-repeat, linear-gradient(#777,#777) center / 100% 1px no-repeat; background-color:#dcdcdc; border:0; }
+  .board button.cell[aria-disabled=true] { cursor:not-allowed; }
+  .board button.cell::after { content:""; position:absolute; inset:12%; border-radius:50%; display:none; }
+  .board button.cell.b::after { display:block; background:#111; }
+  .board button.cell.w::after { display:block; background:#fff; border:2px solid #111; }
+  .board button.cell.sel::after, .board button.cell.pend::after { display:block; border:2px dashed #000; background:rgba(0,0,0,.25); }
+  .board button.cell.sel.mw::after, .board button.cell.pend.mw::after { background:rgba(255,255,255,.7); }
+  .board button.cell.last::before { content:""; position:absolute; inset:34%; border:2px solid #000; z-index:1; }
+  .board button.cell.b.last::before { border-color:#fff; }
+  .board button.cell.win { background-color:#aaa; box-shadow: inset 0 0 0 3px #000; }
+  .board button.cell.win::after { outline:3px solid #000; outline-offset:1px; }
+  .board button.cell:focus-visible { outline:3px solid #000; outline-offset:-3px; z-index:2; }
+  .clock { display:flex; justify-content:space-between; align-items:center; gap:8px; border:2px solid var(--line); background:#fff; padding:6px 12px; margin:0 0 8px; border-radius:4px; }
+  .clock .who { overflow-wrap:anywhere; }
+  .clock .ct { font-size:1.6rem; font-weight:700; font-variant-numeric:tabular-nums; }
+  .clock .run-label { font-weight:700; font-size:.9rem; margin-left:8px; }
+  .clock.run { border:4px solid #000; padding:4px 10px; }
+  .clock.low { border:6px solid #ff2d00; padding:2px 8px; }
+  .clock.low .ct { color:#ff2d00; }
+  .statusline p { margin:4px 0; }
+  .result { border:4px solid #000; background:#fff; padding:12px 16px; margin:0 0 12px; border-radius:4px; }
+  .result strong { font-size:1.3rem; display:block; }
+  .skeleton { background:var(--soft); border-radius:4px; margin:0 0 12px; }
+  .skeleton.t { height:2rem; width:60%; } .skeleton.c { height:48px; } .skeleton.b { height:240px; }
+</style>
+</head>
+<body>
+<p class="banner-proto"><strong data-testid="revision">Rewizja 2</strong> · Discovery prototype, etapy A i B (zaproszenie, plansza, wynik, rewanż). Dane symulowane. Teraz w demo: <time id="clock" data-testid="clock" datetime="2026-10-26T10:00">poniedziałek 2026-10-26 10:00</time>.</p>
+<header class="site" id="site-header"></header>
+<main id="app">
+<section id="home" data-screen="home" aria-labelledby="home-h"></section>
+<section id="join" data-screen="p02" aria-labelledby="join-h"></section>
+<section id="invite" data-screen="s07" aria-labelledby="invite-h"></section>
+<section id="game" data-screen="game" aria-labelledby="game-h"></section>
+<section id="outside" data-screen="outside" aria-labelledby="outside-h"></section>
+<section id="unknown" data-screen="unknown" aria-labelledby="unknown-h"></section>
+</main>
+
+<aside class="test" aria-labelledby="test-h" id="test-panel">
+  <div class="inner">
+    <h2 id="test-h">Test state (kontrolki prototypu, nie funkcje produktu)</h2>
+    <p class="reason">Bieżący ekran i stan: <strong id="state-id" data-testid="state-id">-</strong>. Stan partii jest wspólny dla wszystkich ról. Kod zaproszenia w demo: <code>ABCD-EFGH</code>; inny 8-znakowy kod jest nieważny.</p>
+    <fieldset>
+      <legend>Kto ogląda</legend>
+      <label class="block" for="t-role">Rola oglądającego</label>
+      <select id="t-role">
+        <option value="creator">Ala_7 (konto, domyślnie twórca)</option>
+        <option value="friend">Kuba_P (konto, domyślnie zaproszony)</option>
+        <option value="guest">Gość (bez konta, token jednej partii)</option>
+        <option value="anon">Niezalogowany</option>
+      </select>
+    </fieldset>
+    <fieldset>
+      <legend>Utworzenie partii (p01)</legend>
+      <label class="block" for="t-create">Wynik tworzenia partii</label>
+      <select id="t-create">
+        <option value="ok">Powodzenie</option>
+        <option value="active">Ma aktywną partię</option>
+        <option value="waiting">Ma oczekującą partię</option>
+        <option value="limit">Limit utworzeń</option>
+        <option value="server">Błąd serwera</option>
+        <option value="net">Brak sieci</option>
+      </select>
+    </fieldset>
+    <fieldset>
+      <legend>Kod i zaproszenie (p02, s07)</legend>
+      <label class="block" for="t-code">Wynik kodu na /join</label>
+      <select id="t-code">
+        <option value="ok">Poprawny (działa ABCD-EFGH)</option>
+        <option value="invalid">Nieważny (każdy kod)</option>
+        <option value="limit">Limit prób</option>
+      </select>
+      <label class="block" for="t-invite">Stan zaproszenia dla znajomego</label>
+      <select id="t-invite">
+        <option value="auto">Według roli i partii</option>
+        <option value="participant">Już uczestnik</option>
+        <option value="own">Własne zaproszenie</option>
+        <option value="other-game">Ma inną partię w toku</option>
+        <option value="waiting-game">Ma własną oczekującą partię (rola z kontem)</option>
+        <option value="limit">Limit prób</option>
+        <option value="invalid">Nieważne</option>
+      </select>
+    </fieldset>
+    <fieldset>
+      <legend>Przeglądarka i odpytywanie (p03)</legend>
+      <label for="t-noclip"><input type="checkbox" id="t-noclip"> Schowek niedostępny</label>
+      <label for="t-noshare"><input type="checkbox" id="t-noshare"> „Udostępnij” niedostępne (ukryj przycisk)</label>
+      <label for="t-pollerr"><input type="checkbox" id="t-pollerr"> Błąd odpytywania (p03, p05)</label>
+    </fieldset>
+    <fieldset>
+      <legend>Zegar demo i otwarcie partii (p03, p04)</legend>
+      <div class="actions">
+        <button type="button" class="secondary" id="t-15">+15 min bez otwarcia</button>
+        <button type="button" class="secondary" id="t-24">+24 h</button>
+        <button type="button" class="secondary" id="t-open">Twórca otwiera stronę partii</button>
+        <button type="button" class="secondary" id="t-5">+5 min</button>
+        <button type="button" class="secondary" id="t-1h">+1 h</button>
+      </div>
+      <p class="reason" id="clock-status" role="status" data-testid="clock-status"></p>
+    </fieldset>
+    <fieldset>
+      <legend>Partia w toku (p05)</legend>
+      <label class="block" for="t-color">Losowanie koloru przy starcie partii (dla oglądającego)</label>
+      <select id="t-color"><option value="black">Wylosowano: Ty czarne</option><option value="white">Wylosowano: Ty białe</option></select>
+      <label class="block" for="t-input">Urządzenie wejścia</label>
+      <select id="t-input"><option value="mouse">Mysz (jedno kliknięcie)</option><option value="touch">Dotyk (dwa kroki)</option></select>
+      <label class="block" for="t-script">Scenariusz ruchów przeciwnika</label>
+      <select id="t-script"><option value="scatter">Rozproszone (bez zagrożenia)</option><option value="five">Piątka (przeciwnik układa pięć w rzędzie)</option></select>
+      <div class="actions"><button type="button" class="secondary" id="t-oppmove">Przeciwnik gra ruch</button></div>
+      <label for="t-moveerr"><input type="checkbox" id="t-moveerr"> Następny ruch: błąd sieci</label>
+      <label for="t-stale"><input type="checkbox" id="t-stale"> Następny ruch: nieaktualny widok</label>
+      <label for="t-resignerr"><input type="checkbox" id="t-resignerr"> Następne poddanie: błąd sieci</label>
+      <label for="t-db"><input type="checkbox" id="t-db"> Baza niedostępna (p07.4)</label>
+      <label for="t-slow"><input type="checkbox" id="t-slow"> Wolne ładowanie partii (szkielet p07.1)</label>
+      <label for="t-otherbr"><input type="checkbox" id="t-otherbr"> Gość w innej przeglądarce (p07.3)</label>
+    </fieldset>
+    <fieldset>
+      <legend>Zegar partii (p05.3, p06.3)</legend>
+      <label class="block" for="t-clkwho">Zegar dotyczy</label>
+      <select id="t-clkwho"><option value="me">Mój (oglądającego)</option><option value="opp">Przeciwnika</option></select>
+      <div class="actions">
+        <button type="button" class="secondary" id="t-p30">+30 s</button>
+        <button type="button" class="secondary" id="t-p60">+1 min</button>
+        <button type="button" class="secondary" id="t-j50">Skocz do 0:50</button>
+        <button type="button" class="secondary" id="t-zero">Minął czas</button>
+      </div>
+      <label for="t-count"><input type="checkbox" id="t-count"> Odliczaj zegar (gracz na ruchu)</label>
+      <label class="block" for="t-speed">Przyspieszenie odliczania</label>
+      <select id="t-speed"><option value="10">x10</option><option value="30">x30</option><option value="1">x1</option></select>
+    </fieldset>
+    <fieldset>
+      <legend>Wynik i odświeżenie (p06)</legend>
+      <div class="actions">
+        <button type="button" class="secondary" id="t-showwin">Pokaż wygraną</button>
+        <button type="button" class="secondary" id="t-showloss">Pokaż przegraną</button>
+        <button type="button" class="secondary" id="t-showdraw">Pokaż remis</button>
+        <button type="button" class="secondary" id="t-oppresign">Przeciwnik poddał się</button>
+        <button type="button" class="secondary" id="t-reload">Odśwież stronę partii</button>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Karta w tle (p05.12, p05.10)</legend>
+      <div class="actions">
+        <button type="button" class="secondary" id="t-bg20">Karta w tle 20 s</button>
+        <button type="button" class="secondary" id="t-bg45">Karta w tle 45 s</button>
+      </div>
+      <p class="reason" id="bg-info" role="status" data-testid="bg-info"></p>
+    </fieldset>
+    <fieldset>
+      <legend>Rewanż: przeciwnik (p06.10–p06.15)</legend>
+      <div class="actions">
+        <button type="button" class="secondary" id="t-rm-offer">Przeciwnik proponuje rewanż</button>
+        <button type="button" class="secondary" id="t-rm-withdraw">Przeciwnik wycofuje propozycję</button>
+        <button type="button" class="secondary" id="t-rm-accept">Przeciwnik przyjmuje</button>
+        <button type="button" class="secondary" id="t-rm-decline">Przeciwnik odrzuca</button>
+        <button type="button" class="secondary" id="t-rm-exit">Przeciwnik wychodzi do panelu</button>
+      </div>
+      <label for="t-br13"><input type="checkbox" id="t-br13"> Przeciwnik ma inną partię (BR-13, 409 przy przyjęciu)</label>
+    </fieldset>
+    <p class="reason" id="ctl-status" role="status" data-testid="ctl-status"></p>
+    <div class="actions"><button type="button" class="secondary" id="reset">Reset symulacji</button><span id="reset-status" role="status"></span></div>
+  </div>
+</aside>
+
+<script>
+(function () {
+  "use strict";
+  var CODE = "ABCD-EFGH";
+  var LINK = "https://gomoku.example/invite/" + CODE;
+  var ACCT = { creator: "Ala_7", friend: "Kuba_P" };
+  var BASE = Date.UTC(2026, 9, 26, 10, 0);
+  var DAYS = ["niedziela","poniedziałek","wtorek","środa","czwartek","piątek","sobota"];
+  var $ = function (id) { return document.getElementById(id); };
+
+  function fresh() {
+    return { now: 0, game: null, notice: null, create: "idle", createErr: null, copyMsg: "", copyKind: "", shareMsg: "",
+             pollFails: 0, dialog: null, cancelBusy: false, forceInvalid: null, guestOpen: false, joinBusy: false,
+             codeValue: "", codeError: null, codeGeneral: null, codeBusy: false, lastProbe: null, focusId: null, join: "idle",
+             sel: null, mv: null, msg: null, ret: null, bg: false, cellFocus: 112, tok: 0, reloaded: false, rmErr: false, loadingUntil: 0, playFails: 0, resignBusy: false, resignErr: false };
+  }
+  var S = fresh();
+  var timers = { advance: null, ret: null, bg: null, load: null };
+  var GID = 0, gameKey = null;
+  var lastRaw = null, lastKey = null, curPath = "/home", curState = "-";
+
+  /* ---------- helpers ---------- */
+  function h(tag, attrs) {
+    var el = document.createElement(tag);
+    var a = attrs || {};
+    Object.keys(a).forEach(function (k) {
+      if (k === "text") el.textContent = a[k];
+      else if (k === "class") el.className = a[k];
+      else if (k.indexOf("on") === 0) el.addEventListener(k.slice(2), a[k]);
+      else if (a[k] === true) el.setAttribute(k, "");
+      else if (a[k] !== false && a[k] != null) el.setAttribute(k, a[k]);
+    });
+    for (var i = 2; i < arguments.length; i++) {
+      var c = arguments[i];
+      if (c == null || c === false) continue;
+      el.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+    }
+    return el;
+  }
+  function alertBox(kind, role, title, body, extra) {
+    var box = h("div", { class: "alert " + kind, role: role });
+    if (title) box.appendChild(h("strong", { text: title }));
+    if (body) box.appendChild(document.createTextNode(body));
+    if (extra) box.appendChild(h("div", { class: "extra" }, extra));
+    return box;
+  }
+  function two(n) { return (n < 10 ? "0" : "") + n; }
+  function fmt(mins) {
+    var d = new Date(BASE + mins * 60000);
+    return DAYS[d.getUTCDay()] + " " + d.getUTCFullYear() + "-" + two(d.getUTCMonth() + 1) + "-" + two(d.getUTCDate()) + " " + two(d.getUTCHours()) + ":" + two(d.getUTCMinutes());
+  }
+  function normCode(s) { return String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); }
+  function dashed(n) { return n.length === 8 ? n.slice(0, 4) + "-" + n.slice(4) : n; }
+  function role() { return $("t-role").value; }
+  function isAccount(r) { return r === "creator" || r === "friend"; }
+  function other(r) { return r === "creator" ? "friend" : "creator"; }
+  function ctl(id) { return $(id); }
+  function go(hash) { if (location.hash === hash) render(); else location.hash = hash; }
+  function newGame(creatorKey) {
+    return { id: ++GID, creatorKey: creatorKey, phase: "waiting", createdAt: S.now, validUntil: S.now + 1440, opp: null, joinedAt: null, seenCreator: false, sawJoin: false };
+  }
+  function settle() {
+    var g = S.game; if (!g) return;
+    if (g.phase === "waiting" && S.now >= g.validUntil) g.phase = "expired";
+    if (g.phase === "ready" && !g.seenCreator && S.now >= g.joinedAt + 15) g.phase = "autocancelled";
+    if (g.phase === "finished" && g.rm && g.rm.state === "pending" && S.now >= g.rm.expiresAt) g.rm = { state: "expired" };
+  }
+  function side(g) {
+    if (!g) return null;
+    var r = role();
+    if (r === g.creatorKey) return "creator";
+    if (g.opp && ((g.opp.kind === "user" && g.opp.key === r) || (g.opp.kind === "guest" && r === "guest"))) return "opp";
+    return null;
+  }
+  function oppName(g) { return g.opp.kind === "guest" ? "Gość" : ACCT[g.opp.key]; }
+  function hasLiveGame() { var g = S.game; return !!(g && (g.phase === "waiting" || g.phase === "ready" || g.phase === "playing") && side(g)); }
+  function setState(id) { curState = id; $("state-id").textContent = id; }
+
+  /* ---------- modal ---------- */
+  function openModal(o) {
+    var opener = document.activeElement;
+    var dlg = h("dialog", { "aria-labelledby": "dlg-h", "data-testid": o.testid });
+    dlg.appendChild(h("h2", { id: "dlg-h", text: o.title }));
+    o.body.forEach(function (n) { dlg.appendChild(n); });
+    var acts = h("div", { class: "actions" });
+    var btns = [];
+    o.buttons.forEach(function (b) {
+      var el = h("button", { type: "button", class: b.secondary ? "secondary" : "", id: b.id, "data-testid": b.testid, text: b.text, onclick: function () { b.run(dlg, el); } });
+      btns.push(el); acts.appendChild(el);
+    });
+    dlg.appendChild(acts);
+    dlg.addEventListener("cancel", function (ev) { if (o.locked && o.locked()) ev.preventDefault(); });
+    dlg.addEventListener("close", function () {
+      dlg.remove();
+      if (o.onClose) o.onClose();
+      if (opener && opener.isConnected && opener.focus) opener.focus();
+    });
+    document.body.appendChild(dlg);
+    dlg.showModal();
+    btns[o.focusIndex || 0].focus();
+    return dlg;
+  }
+  function outsideDialog(kind) {
+    var onInvite = location.hash.indexOf("#/invite/") === 0;
+    var back = onInvite ? location.hash : "#/home";
+    var title = "Poza tym prototypem";
+    openModal({
+      testid: "outside-dialog", title: title,
+      body: [h("p", { text: (kind === "signup" ? "Zakładanie konta" : "Logowanie") + " nie jest częścią tego prototypu (konto ma własny prototyp). Po zalogowaniu albo założeniu konta wrócisz na to samo zaproszenie." }),
+             h("p", { class: "reason", text: "Aby zobaczyć zaproszenie jako zalogowany gracz, przełącz rolę w obszarze „Test state”." })],
+      buttons: [{ id: "outside-back", testid: "outside-back", text: onInvite ? "Wróć do zaproszenia" : "Wróć", run: function (dlg) { dlg.close(); go(back); } }]
+    });
+  }
+
+  /* ---------- header ---------- */
+  function renderHeader() {
+    var hd = $("site-header"); hd.textContent = "";
+    hd.appendChild(h("a", { class: "brand", href: "#/home", text: "Gomoku" }));
+    var nav = h("nav", { "aria-label": "Główna nawigacja" });
+    var r = role();
+    if (isAccount(r)) {
+      nav.appendChild(h("a", { href: "#/outside?to=lobby", text: "Lobby" }));
+      nav.appendChild(h("a", { href: "#/outside?to=history", text: "Historia" }));
+      nav.appendChild(h("span", { "data-testid": "who", text: "Zalogowano jako " + ACCT[r] }));
+    } else {
+      if (r === "guest") nav.appendChild(h("span", { "data-testid": "who", text: "Grasz jako gość (bez konta)" }));
+      nav.appendChild(h("button", { type: "button", class: "secondary", "data-testid": "login", id: "hdr-login", text: "Zaloguj się", onclick: function () { outsideDialog("login"); } }));
+      nav.appendChild(h("button", { type: "button", class: "secondary", "data-testid": "signup", id: "hdr-signup", text: "Załóż konto", onclick: function () { outsideDialog("signup"); } }));
+    }
+    hd.appendChild(nav);
+  }
+
+  /* ---------- notice ---------- */
+  function noticeNode() {
+    if (!S.notice) return null;
+    return alertBox("info", "status", null, S.notice.text);
+  }
+
+  /* ---------- home + p01 ---------- */
+  function renderHome() {
+    var sec = $("home"); sec.textContent = "";
+    var r = role(), stateId = "s04";
+    var nn = noticeNode();
+    sec.appendChild(h("h1", { id: "home-h", tabindex: "-1", text: isAccount(r) ? "Panel główny" : "Gomoku" }));
+    if (nn) sec.appendChild(nn);
+    if (hasLiveGame()) {
+      var gg = S.game;
+      sec.appendChild(alertBox("info", null, "Masz partię", gg.phase === "waiting" ? "Czeka na przeciwnika. " : gg.phase === "ready" ? "Gotowa do gry. " : "W toku. ", h("a", { href: "#/game", "data-testid": "back-to-game", text: "Wróć do partii" })));
+    }
+    if (isAccount(r)) {
+      var e = S.createErr;
+      if (e) { var ce = createErrNode(e); sec.appendChild(ce.node); stateId = ce.stateId; }
+      var busy = S.create === "busy";
+      if (busy) stateId = "p01.2";
+      var acts = h("div", { class: "actions" });
+      acts.appendChild(h("button", { type: "button", id: "create", "data-testid": "create", disabled: busy, "aria-busy": busy ? "true" : null, text: busy ? "Tworzenie zaproszenia…" : "Utwórz zaproszenie", onclick: function () { doCreate("create"); } }));
+      acts.appendChild(h("a", { href: "#/join", "data-testid": "have-code", text: "Masz kod?" }));
+      sec.appendChild(acts);
+      if (!e && !busy) stateId = "p01.1";
+    } else {
+      if (r === "guest") sec.appendChild(h("p", { text: "Grasz bez konta. Zaproszenia tworzą tylko zalogowani gracze." }));
+      else sec.appendChild(h("p", { text: "Zagraj w Gomoku z bliską osobą. Załóż konto, żeby tworzyć zaproszenia, albo wpisz kod od znajomego." }));
+      var acts2 = h("div", { class: "actions" });
+      if (r === "anon") acts2.appendChild(h("button", { type: "button", "data-testid": "home-signup", text: "Załóż konto", onclick: function () { outsideDialog("signup"); } }));
+      acts2.appendChild(h("a", { class: "btn secondary", href: "#/join", "data-testid": "have-code", text: "Masz kod?" }));
+      sec.appendChild(acts2);
+    }
+    return stateId;
+  }
+  function createErrNode(e) {
+    if (e.kind === "active") return { stateId: "p01.3", node: alertBox("warn", "alert", "Masz już partię", "Najpierw dokończ bieżącą partię. ", h("a", { href: e.href, "data-testid": "to-active", text: "Przejdź do partii" })) };
+    if (e.kind === "limit") return { stateId: "p01.5", node: alertBox("err", "alert", "Zbyt wiele zaproszeń", "Limit to 10 utworzeń na godzinę. Spróbuj ponownie za 23 min.") };
+    if (e.kind === "proto") return { stateId: "p01.1", node: alertBox("warn", "alert", "Ograniczenie prototypu", "Prototyp symuluje jedną partię naraz, a trwa już partia innego gracza. Zresetuj symulację albo przełącz rolę na uczestnika tej partii.") };
+    var retry = h("div", { class: "actions" }, h("button", { type: "button", class: "secondary", id: "create-retry", "data-testid": "create-retry", text: "Spróbuj ponownie", onclick: function () { doCreate("create-retry"); } }));
+    return { stateId: e.kind === "server" ? "p01.6" : "p01.7", node: alertBox("err", "alert", null, e.kind === "server" ? "Nie udało się utworzyć partii po stronie serwera. Spróbuj ponownie." : "Nie udało się połączyć z serwerem. Spróbuj ponownie.", retry) };
+  }
+  function doCreate(btnId) {
+    if (S.create === "busy") return;
+    var back = btnId === "create-retry" ? "create" : btnId;
+    S.createErr = null; S.notice = null; S.create = "busy"; S.focusId = back;
+    render();
+    setTimeout(function () {
+      S.create = "idle"; settle();
+      var out = ctl("t-create").value, r = role(), g = S.game;
+      var live = g && (g.phase === "waiting" || g.phase === "ready" || g.phase === "playing");
+      var mine = live && side(g);
+      S.focusId = back;
+      if (out === "limit" || out === "server" || out === "net") S.createErr = { kind: out };
+      else if (out === "active" || (mine && g.phase !== "waiting")) S.createErr = { kind: "active", href: mine ? "#/game" : "#/outside?to=board&from=home" };
+      else if (out === "waiting" || (mine && g.phase === "waiting")) {
+        if (!mine) S.game = newGame(r);
+        S.notice = { text: "Masz już oczekującą partię.", path: "/game" };
+        S.copyMsg = ""; S.pollFails = 0; S.createErr = null;
+        return go("#/game");
+      } else if (live && !mine) S.createErr = { kind: "proto" };
+      else {
+        S.game = newGame(r); S.copyMsg = ""; S.copyKind = ""; S.shareMsg = ""; S.pollFails = 0; S.createErr = null;
+        return go("#/game");
+      }
+      render();
+    }, 700);
+  }
+
+  /* ---------- p02 join ---------- */
+  function renderJoin() {
+    var sec = $("join"); sec.textContent = "";
+    sec.appendChild(h("h1", { id: "join-h", tabindex: "-1", text: "Masz kod zaproszenia?" }));
+    var stateId = "p02.1";
+    if (S.codeGeneral) { sec.appendChild(S.codeGeneral); stateId = "p02.3"; }
+    var form = h("form", { novalidate: true, "data-testid": "join-form", onsubmit: onJoin });
+    var wrap = h("div");
+    wrap.appendChild(h("label", { for: "f-code", text: "Kod zaproszenia" }));
+    wrap.appendChild(h("p", { class: "hint", id: "f-code-hint", text: "8 znaków. Wielkość liter i myślnik nie mają znaczenia." }));
+    var inp = h("input", { id: "f-code", name: "code", type: "text", autocomplete: "off", inputmode: "text", autocapitalize: "characters", spellcheck: "false", value: S.codeValue, "aria-describedby": "f-code-hint" + (S.codeError ? " f-code-err" : "") });
+    if (S.codeError) { inp.setAttribute("aria-invalid", "true"); stateId = "p02.2"; }
+    wrap.appendChild(inp);
+    if (S.codeError) wrap.appendChild(h("p", { class: "field-error", id: "f-code-err", text: S.codeError }));
+    form.appendChild(wrap);
+    if (S.codeBusy) stateId = "p02.5";
+    form.appendChild(h("button", { type: "submit", id: "join-submit", "data-testid": "join-submit", disabled: S.codeBusy, "aria-busy": S.codeBusy ? "true" : null, text: S.codeBusy ? "Sprawdzanie kodu…" : "Dalej" }));
+    sec.appendChild(form);
+    sec.appendChild(h("p", {}, h("a", { href: "#/home", text: "Wróć na stronę główną" })));
+    return stateId;
+  }
+  function onJoin(ev) {
+    ev.preventDefault();
+    if (S.codeBusy) return;
+    var raw = ev.target.code.value;
+    S.codeValue = raw; S.codeGeneral = null; S.codeError = null;
+    var n = normCode(raw);
+    if (n.length !== 8) { S.codeError = "Sprawdź kod: ma 8 znaków."; S.focusId = "f-code"; return render(); }
+    if (ctl("t-code").value === "limit") {
+      S.codeGeneral = alertBox("err", "alert", null, "Zbyt wiele prób — spróbuj za chwilę."); S.focusId = "f-code"; return render();
+    }
+    S.codeBusy = true; S.focusId = "f-code"; render();
+    setTimeout(function () {
+      S.codeBusy = false;
+      S.forceInvalid = ctl("t-code").value === "invalid" ? n : null;
+      S.codeValue = "";
+      go("#/invite/" + dashed(n));
+    }, 600);
+  }
+
+  /* ---------- s07 invite ---------- */
+  function renderInvite(code) {
+    var sec = $("invite"); sec.textContent = "";
+    var n = normCode(code), g = S.game, r = role(), ov = ctl("t-invite").value;
+    function head(t) { sec.appendChild(h("h1", { id: "invite-h", tabindex: "-1", text: t })); }
+    function invalid() {
+      head("To zaproszenie jest już nieważne");
+      sec.appendChild(h("p", { text: "Poproś o nowe zaproszenie albo wpisz inny kod." }));
+      sec.appendChild(h("div", { class: "actions" }, h("a", { class: "btn secondary", href: "#/join", text: "Masz kod?" }), h("a", { href: "#/home", text: "Wróć na stronę główną" })));
+      return "s07.9";
+    }
+    if (n !== "ABCDEFGH" || S.forceInvalid === n || ov === "invalid") return invalid();
+    if (ov === "limit") { head("Zaproszenie do partii"); sec.appendChild(alertBox("err", "alert", null, "Zbyt wiele prób — spróbuj za chwilę.")); return "s07.8"; }
+    if (ov === "own" || ov === "participant") {
+      // test-state override: make the session consistent with the requested state, then redirect
+      if (ov === "own") { if (!isAccount(r)) $("t-role").value = "creator"; var cr = role(); if (!(g && g.phase === "waiting" && g.creatorKey === cr)) S.game = newGame(cr); }
+      else {
+        var pr = r === "anon" ? "friend" : r; $("t-role").value = pr;
+        if (!(g && (g.phase === "ready" || g.phase === "playing") && side(g))) {
+          var ng = newGame(pr === "guest" ? "creator" : other(pr)); ng.phase = "ready"; ng.opp = pr === "guest" ? { kind: "guest" } : { kind: "user", key: pr }; ng.joinedAt = S.now; S.game = ng;
+        }
+      }
+      location.replace("#/game"); return null;
+    }
+    if (g && g.phase === "waiting" && side(g) === "creator") { location.replace("#/game"); return null; }
+    if (g && (g.phase === "ready" || g.phase === "playing") && side(g)) { location.replace("#/game"); return null; }
+    var needsGame = !(ov === "other-game" || (ov === "waiting-game" && r === "friend"));
+    if (needsGame && !(g && g.phase === "waiting")) return invalid();
+    var creatorName = g && g.phase === "waiting" ? ACCT[g.creatorKey] : "Ala_7";
+    head(creatorName + " zaprasza Cię do partii Gomoku");
+    if (ov === "other-game") {
+      sec.appendChild(alertBox("warn", "alert", "Masz już partię", "Dokończ ją, zanim dołączysz do kolejnej. ", h("a", { href: "#/outside?to=board&from=invite", "data-testid": "to-other-game", text: "Przejdź do swojej partii" })));
+      return "s07.6";
+    }
+    if (ov === "waiting-game" && r === "friend") {
+      sec.appendChild(alertBox("warn", "alert", "Masz oczekującą partię", "Możesz ją anulować i dołączyć do tej partii."));
+      var ab = h("button", { type: "button", id: "cancel-join", "data-testid": "cancel-join", disabled: S.joinBusy, text: S.joinBusy ? "Dołączanie…" : "Anuluj moją partię i dołącz", onclick: function () { acceptInvite("user", "cancel-join"); } });
+      sec.appendChild(ab); return "s07.7";
+    }
+    if (isAccount(r)) {
+      var jb = h("button", { type: "button", id: "join-game", "data-testid": "join-game", disabled: S.joinBusy, "aria-busy": S.joinBusy ? "true" : null, text: S.joinBusy ? "Dołączanie…" : "Dołącz do partii", onclick: function () { acceptInvite("user", "join-game"); } });
+      sec.appendChild(jb); return "s07.3";
+    }
+    // not signed in (anon or guest without a game): three choices
+    var stateId = "s07.1";
+    sec.appendChild(h("p", { text: "Zaloguj się, załóż konto albo zagraj jako gość." }));
+    var acts = h("div", { class: "actions" });
+    acts.appendChild(h("button", { type: "button", "data-testid": "invite-login", text: "Zaloguj się", onclick: function () { outsideDialog("login"); } }));
+    acts.appendChild(h("button", { type: "button", class: "secondary", "data-testid": "invite-signup", text: "Załóż konto", onclick: function () { outsideDialog("signup"); } }));
+    acts.appendChild(h("button", { type: "button", class: "secondary", id: "guest-open", "data-testid": "guest-open", "aria-expanded": S.guestOpen ? "true" : "false", "aria-controls": "guest-box", text: "Graj jako gość", onclick: function () { S.guestOpen = !S.guestOpen; S.focusId = "guest-open"; render(); } }));
+    sec.appendChild(acts);
+    if (S.guestOpen) {
+      stateId = "s07.2";
+      var box = h("div", { class: "panel", id: "guest-box", "data-testid": "guest-box" });
+      box.appendChild(h("p", { id: "guest-warning", "data-testid": "guest-warning", text: "Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii" }));
+      box.appendChild(h("button", { type: "button", id: "guest-go", "data-testid": "guest-go", disabled: S.joinBusy, text: S.joinBusy ? "Dołączanie…" : "Rozumiem, graj jako gość", onclick: function () { acceptInvite("guest", "guest-go"); } }));
+      sec.appendChild(box);
+    }
+    return stateId;
+  }
+  function acceptInvite(kind, btnId) {
+    if (S.joinBusy) return;
+    S.joinBusy = true; S.focusId = btnId; render();
+    setTimeout(function () {
+      S.joinBusy = false; settle();
+      var r = role(), g = S.game;
+      if (!(g && g.phase === "waiting")) g = S.game = newGame(kind === "guest" ? "creator" : other(r));
+      g.phase = "ready"; g.opp = kind === "guest" ? { kind: "guest" } : { kind: "user", key: r };
+      g.joinedAt = S.now; g.seenCreator = false; g.sawJoin = false;
+      S.notice = null; S.guestOpen = false; S.forceInvalid = null;
+      if (kind === "guest") $("t-role").value = "guest";
+      go("#/game");
+    }, 600);
+  }
+
+  /* ---------- game: p03 / p04 / no access ---------- */
+  function renderGame() {
+    var sec = $("game"); sec.textContent = ""; gameKey = null; sec.removeAttribute("data-polling");
+    var g = S.game, sd = side(g), r = role();
+    function head(t) { sec.appendChild(h("h1", { id: "game-h", tabindex: "-1", text: t })); }
+    var nn = noticeNode();
+    if (ctl("t-db").checked) {
+      head("Nie udało się wczytać partii");
+      sec.appendChild(alertBox("err", "alert", null, "Nie udało się połączyć z serwerem. Spróbuj ponownie.", h("div", { class: "actions" }, h("button", { type: "button", id: "db-retry", "data-testid": "db-retry", text: "Spróbuj ponownie", onclick: function () { S.focusId = "db-retry"; render(); } }), h("a", { href: "#/home", text: "Wróć do panelu głównego" }))));
+      return "p07.4";
+    }
+    if (Date.now() < S.loadingUntil && g && sd) {
+      head("Wczytywanie partii…");
+      var sk = h("div", { role: "status", "aria-busy": "true", "data-testid": "skeleton" }, h("p", { class: "vh", text: "Wczytywanie partii…" }), h("div", { class: "skeleton t" }), h("div", { class: "skeleton c" }), h("div", { class: "skeleton b" }), h("div", { class: "skeleton c" }));
+      sec.appendChild(sk);
+      return "p07.1";
+    }
+    var gone = null;
+    if (g && sd && r === "guest") {
+      if (ctl("t-otherbr").checked) gone = "p07.3";
+      else if (g.phase === "finished" && S.now >= g.finishedAt + 60) gone = "p06.7";
+    }
+    if (gone === "p07.3") $("bg-info").textContent = "Gość w innej przeglądarce nie widzi partii (404). Zegar partii biegnie dalej (BR-06).";
+    if (gone || !g || !sd || g.phase === "cancelled" || (g.phase === "waiting" && sd !== "creator")) {
+      head("Ta partia nie istnieje albo nie masz do niej dostępu");
+      sec.appendChild(h("p", {}, h("a", { class: "btn secondary", href: "#/home", "data-testid": "to-home", text: "Wróć na stronę główną" })));
+      return gone || "p07.2";
+    }
+    if (g.phase === "expired") {
+      head("Zaproszenie wygasło");
+      sec.appendChild(alertBox("warn", "status", null, "Zaproszenie wygasło. Utwórz nowe."));
+      if (S.createErr) sec.appendChild(createErrNode(S.createErr).node);
+      var nb = S.create === "busy";
+      sec.appendChild(h("div", { class: "actions" }, h("button", { type: "button", id: "create-new", "data-testid": "create-new", disabled: nb, text: nb ? "Tworzenie zaproszenia…" : "Utwórz zaproszenie", onclick: function () { doCreate("create-new"); } }), h("a", { href: "#/home", text: "Wróć do panelu głównego" })));
+      return "p03.9";
+    }
+    if (g.phase === "autocancelled") {
+      head("Partia anulowana");
+      var opener = sd === "opp" || g.seenCreator;
+      sec.appendChild(alertBox("warn", "alert", null, opener ? "Przeciwnik nie otworzył partii w ciągu 15 minut. Partię anulowano." : "Partię anulowano: nie została otwarta w ciągu 15 minut."));
+      sec.appendChild(h("a", { class: "btn", href: "#/home", "data-testid": "to-panel", text: "Wróć do panelu głównego" }));
+      return "p04.3";
+    }
+    if (g.phase === "waiting") {
+      head("Partia czeka na przeciwnika");
+      if (nn) sec.appendChild(nn);
+      var card = h("div", { class: "panel", "data-testid": "invite-card" });
+      card.appendChild(h("p", { class: "reason", text: "Wyślij znajomemu link albo podyktuj kod." }));
+      card.appendChild(h("label", { for: "invite-link", text: "Link zaproszenia" }));
+      card.appendChild(h("input", { id: "invite-link", "data-testid": "invite-link", type: "text", readonly: true, class: "linkbox", value: LINK }));
+      card.appendChild(h("p", { class: "reason", style: "margin-top:12px", text: "Kod zaproszenia" }));
+      card.appendChild(h("p", { class: "code", "data-testid": "invite-code", "aria-label": "Kod zaproszenia: A B C D, E F G H", text: CODE }));
+      card.appendChild(h("p", { "data-testid": "valid-until", text: "Ważne do " + fmt(g.validUntil) }));
+      var acts = h("div", { class: "actions" });
+      acts.appendChild(h("button", { type: "button", id: "copy", "data-testid": "copy", text: "Kopiuj", onclick: doCopy }));
+      if (!ctl("t-noshare").checked) acts.appendChild(h("button", { type: "button", class: "secondary", id: "share", "data-testid": "share", text: "Udostępnij", onclick: doShare }));
+      acts.appendChild(h("button", { type: "button", class: "secondary", id: "cancel", "data-testid": "cancel", text: "Anuluj zaproszenie", onclick: openCancel }));
+      card.appendChild(acts);
+      card.appendChild(h("p", { id: "copy-status", role: "status", "data-testid": "copy-status", text: S.copyMsg }));
+      card.appendChild(h("p", { id: "share-status", role: "status", "data-testid": "share-status", text: S.shareMsg }));
+      sec.appendChild(card);
+      sec.appendChild(h("div", { id: "poll", "data-testid": "poll" }));
+      updatePoll();
+      return gameStateId();
+    }
+    if (g.phase === "playing" || g.phase === "finished") return renderBoardScreen(sec, g, sd, r);
+    // phase ready
+    if (sd === "creator" && !g.sawJoin) {
+      head("Przeciwnik dołączył");
+      sec.appendChild(alertBox("ok", "status", null, oppName(g) + " dołączył do partii."));
+      sec.appendChild(h("button", { type: "button", id: "go-on", "data-testid": "go-on", text: "Przejdź do partii", onclick: advanceCreator }));
+      if (!timers.advance) timers.advance = setTimeout(function () { timers.advance = null; var gg = S.game; if (gg && gg.phase === "ready" && !gg.sawJoin && side(gg) === "creator" && curPath === "/game") advanceCreator(); }, 2500);
+      return "p03.5";
+    }
+    if (sd === "creator" && !g.seenCreator) { g.seenCreator = true; }
+    var both = g.seenCreator;
+    var who = sd === "creator" ? ACCT[g.creatorKey] : r === "guest" ? "Gość (bez konta)" : ACCT[r];
+    var theirs = sd === "creator" ? oppName(g) : ACCT[g.creatorKey];
+    head(both ? "Partia gotowa" : "Czekamy na otwarcie partii");
+    if (nn) sec.appendChild(nn);
+    if (r === "guest") { var gb = alertBox("warn", null, null, "Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii"); gb.setAttribute("data-testid", "guest-banner"); sec.appendChild(gb); }
+    sec.appendChild(h("dl", { class: "kv" }, h("dt", { text: "Ty" }), h("dd", { text: who }), h("dt", { text: "Przeciwnik" }), h("dd", { text: theirs })));
+    if (!both) {
+      sec.appendChild(h("p", { role: "status", "data-testid": "ready-status", text: "Czekamy, aż " + theirs + " otworzy partię — zegar ruszy, gdy obaj będziecie na stronie (do 15 min)" }));
+      return "p04.1";
+    }
+    sec.appendChild(h("p", { role: "status", "data-testid": "ready-status", text: "Partia gotowa" }));
+    sec.appendChild(h("div", { class: "actions" }, h("button", { type: "button", id: "go-board", "data-testid": "go-board", text: "Przejdź do planszy", onclick: startGame }), h("a", { class: "btn secondary", href: "#/home", "data-testid": "to-panel", text: "Wróć do panelu głównego" })));
+    return "p04.2";
+  }
+  function advanceCreator() {
+    var g = S.game; if (!g) return;
+    if (timers.advance) { clearTimeout(timers.advance); timers.advance = null; }
+    g.sawJoin = true; g.seenCreator = true; S.focusId = null; lastKey = null; render();
+  }
+  function gameStateId() {
+    if (S.cancelBusy) return "p03.7";
+    if (S.dialog === "cancel") return "p03.6";
+    if (S.pollFails >= 3) return "p03.10";
+    if (S.copyKind === "fail") return "p03.3";
+    if (S.copyKind === "ok") return "p03.2";
+    if (ctl("t-noshare").checked) return "p03.4";
+    return "p03.1";
+  }
+  function updatePoll() {
+    var box = $("poll"); if (!box) return;
+    box.textContent = "";
+    if (S.pollFails >= 3) {
+      box.appendChild(alertBox("err", "alert", null, "Nie udało się sprawdzić, czy przeciwnik dołączył. Ponawiamy próby.", h("div", { class: "actions" }, h("button", { type: "button", class: "secondary", "data-testid": "poll-retry", id: "poll-retry", text: "Sprawdź teraz", onclick: function () { S.pollFails = 0; tick(); S.focusId = "poll-retry"; } }))));
+    } else if (S.pollFails > 0) {
+      box.appendChild(h("p", { role: "status", "data-testid": "wait-status", text: "Czekamy na przeciwnika… Ponawiamy sprawdzanie (próba " + S.pollFails + " z 3)." }));
+    } else box.appendChild(h("p", { role: "status", "data-testid": "wait-status", text: "Czekamy na przeciwnika…" }));
+    if (curPath === "/game") setState(gameStateId());
+  }
+  function doCopy() {
+    var msg = $("copy-status");
+    if (ctl("t-noclip").checked) {
+      S.copyKind = "fail"; S.copyMsg = "Nie można skopiować automatycznie. Link jest zaznaczony — skopiuj go ręcznie (Ctrl+C).";
+      msg.textContent = S.copyMsg; var inp = $("invite-link"); inp.focus(); inp.select();
+    } else { S.copyKind = "ok"; S.copyMsg = "Skopiowano link do schowka."; msg.textContent = S.copyMsg; }
+    setState(gameStateId());
+  }
+  function doShare() { S.shareMsg = "Udostępnianie dostępne tylko na telefonie"; $("share-status").textContent = S.shareMsg; }
+  function openCancel() {
+    S.dialog = "cancel"; setState(gameStateId());
+    openModal({
+      testid: "cancel-dialog", title: "Anulować zaproszenie?",
+      body: [h("p", { text: "Link i kod przestaną działać, a partia zostanie anulowana. Tej operacji nie można cofnąć." })],
+      focusIndex: 0, locked: function () { return S.cancelBusy; },
+      onClose: function () { S.dialog = null; if (curPath === "/game") setState(gameStateId()); },
+      buttons: [
+        { id: "cancel-back", testid: "cancel-back", text: "Wróć", secondary: true, run: function (dlg) { dlg.close(); } },
+        { id: "cancel-confirm", testid: "cancel-confirm", text: "Tak, anuluj zaproszenie", run: function (dlg, el) {
+          if (S.cancelBusy) return;
+          S.cancelBusy = true; el.disabled = true; el.textContent = "Anulowanie…"; $("cancel-back").disabled = true; setState(gameStateId());
+          setTimeout(function () {
+            S.cancelBusy = false; settle();
+            var g = S.game;
+            if (g && g.phase === "waiting") { g.phase = "cancelled"; S.notice = { text: "Zaproszenie zostało anulowane. Link jest już nieważny.", path: "/home" }; }
+            else S.notice = { text: "Przeciwnik zdążył dołączyć, zanim anulowałeś. Partii nie można już anulować jako zaproszenia.", path: "/game" };
+            dlg.close();
+            S.focusId = null;
+            if (g && g.phase === "cancelled") go("#/home"); else render();
+          }, 700);
+        } }
+      ]
+    });
+  }
+
+  /* ---------- stage B: board, clocks, result, resignation, rematch ---------- */
+  var COLS = "ABCDEFGHIJKLMNO";
+  var SCATTER = [[1,1],[4,3],[7,1],[10,3],[13,1],[1,13],[4,11],[7,13],[10,11],[13,13],[2,6],[12,6],[2,9],[12,9],[5,4],[9,4]];
+  var FIVE = [3,4,5,6,7,8,9,10,11];
+  function oside(s) { return s === "creator" ? "opp" : "creator"; }
+  function cname(i) { return "Kolumna " + COLS.charAt(i % 15) + ", rząd " + (Math.floor(i / 15) + 1); }
+  function fmtClock(ms) { var t = Math.ceil(Math.max(0, ms) / 1000); return Math.floor(t / 60) + ":" + two(t % 60); }
+  function colorOf(g, s) { return g.black === s ? 1 : 2; }
+  function cw(v) { return v === 1 ? "czarnymi" : "białymi"; }
+  function cn(v) { return v === 1 ? "czarne" : "białe"; }
+  function ctlMsg(t) { $("ctl-status").textContent = t; }
+  function initBoard(g) {
+    g.cells = []; for (var k = 0; k < 225; k++) g.cells.push(0);
+    g.moves = []; g.last = -1; g.res = null; g.rm = null; g.finishedAt = null; g.tokenNotice = false;
+    g.clk = { creator: 600000, opp: 600000 }; g.lowSeen = { creator: false, opp: false }; g.lowCount = { creator: 0, opp: 0 };
+  }
+  function resetTransient() {
+    S.sel = null; S.mv = null; S.msg = null; S.ret = null; S.bg = false; S.resignBusy = false; S.resignErr = false;
+    S.reloaded = false; S.playFails = 0; S.rmErr = false; S.tok++;
+    if (timers.ret) { clearTimeout(timers.ret); timers.ret = null; }
+    if (timers.bg) { clearTimeout(timers.bg); timers.bg = null; }
+  }
+  function winLine(cells, i) {
+    var v = cells[i], c0 = i % 15, r0 = Math.floor(i / 15), dirs = [[1,0],[0,1],[1,1],[1,-1]];
+    for (var d = 0; d < dirs.length; d++) {
+      var line = [i];
+      [1, -1].forEach(function (sg) {
+        var x = c0 + sg * dirs[d][0], y = r0 + sg * dirs[d][1];
+        while (x >= 0 && x < 15 && y >= 0 && y < 15 && cells[y * 15 + x] === v) { line.push(y * 15 + x); x += sg * dirs[d][0]; y += sg * dirs[d][1]; }
+      });
+      if (line.length >= 5) return line;
+    }
+    return null;
+  }
+  function resultInfo(g, me) {
+    var r = g.res, won = r.winner === me;
+    if (r.kind === "draw") return { id: "p06.4", title: "Remis", detail: "Plansza jest pełna, nikt nie ułożył pięciu kamieni." };
+    if (r.kind === "five") return won ? { id: "p06.1", title: "Wygrałeś", detail: "Ułożyłeś pięć kamieni w jednej linii." } : { id: "p06.2", title: "Przegrałeś", detail: "Przeciwnik ułożył pięć kamieni w jednej linii." };
+    if (r.kind === "timeout") return won ? { id: "p06.1", title: "Wygrałeś — przeciwnikowi skończył się czas", detail: "" } : { id: "p06.3", title: "Przegrałeś — skończył się Twój czas", detail: "" };
+    return won ? { id: "p06.8", title: "Wygrałeś, przeciwnik poddał partię", detail: "" } : { id: "p06.9", title: "Przegrałeś, poddałeś partię", detail: "" };
+  }
+  function finish(g, res) {
+    g.phase = "finished"; g.res = res; g.finishedAt = S.now; g.rm = null;
+    resetTransient();
+    document.querySelectorAll("dialog").forEach(function (d) { d.close(); });
+    S.dialog = null; S.focusId = null; render();
+  }
+  function startGame() {
+    var g = S.game; if (!g || g.phase !== "ready") return;
+    var me = side(g); if (!me) return;
+    g.black = ctl("t-color").value === "black" ? me : oside(me); g.turn = g.black; g.rematch = false;
+    initBoard(g); g.phase = "playing"; resetTransient(); S.focusId = null; render();
+  }
+  function startRematch(old) {
+    var ng = newGame(old.creatorKey);
+    ng.opp = old.opp; ng.phase = "playing"; ng.joinedAt = S.now; ng.seenCreator = true; ng.sawJoin = true;
+    ng.black = oside(old.black); ng.turn = ng.black; ng.rematch = true; initBoard(ng);
+    ng.tokenNotice = role() === "guest";
+    S.game = ng; resetTransient(); S.focusId = null; render();
+  }
+  function commitMove(g, i, s) {
+    g.cells[i] = colorOf(g, s); g.moves.push(i); g.last = i; S.msg = null; S.ret = null; g.tokenNotice = false;
+    var line = winLine(g.cells, i);
+    if (line) return finish(g, { kind: "five", winner: s, line: line });
+    if (g.cells.indexOf(0) < 0) return finish(g, { kind: "draw" });
+    g.turn = oside(s); render();
+  }
+  function cellClick(i) {
+    var g = S.game; if (!g || g.phase !== "playing" || S.resignBusy) return;
+    if (S.mv && S.mv.status === "busy") return;
+    var me = side(g); S.cellFocus = i; S.focusId = "cell-" + i; S.msg = null; S.ret = null;
+    if (g.turn !== me) { S.sel = null; S.msg = { id: "p05.8", text: "Teraz ruch przeciwnika. Plansza została odświeżona." }; return render(); }
+    if (g.cells[i] !== 0) { S.sel = null; S.msg = { id: "p05.9", text: "To pole jest już zajęte" }; return render(); }
+    if (S.mv && S.mv.status === "error") S.mv = null;
+    if (ctl("t-input").value === "touch") {
+      if (S.sel === i) return sendMove(i);
+      S.sel = i; return render();
+    }
+    sendMove(i);
+  }
+  function sendMove(i) {
+    var g = S.game; if (!g || g.phase !== "playing") return;
+    var me = side(g), tok = ++S.tok;
+    S.msg = null; S.sel = null; S.mv = { i: i, status: "busy" }; S.focusId = "cell-" + i; render();
+    setTimeout(function () {
+      if (tok !== S.tok || S.game !== g || g.phase !== "playing") return;
+      if (ctl("t-moveerr").checked) { ctl("t-moveerr").checked = false; S.mv = { i: i, status: "error" }; S.focusId = "move-retry"; return render(); }
+      if (ctl("t-stale").checked) { ctl("t-stale").checked = false; S.mv = null; S.msg = { id: "p05.8", text: "Plansza była nieaktualna i została odświeżona. Spróbuj ponownie." }; S.focusId = "cell-" + i; return render(); }
+      S.mv = null; S.focusId = "cell-" + i; commitMove(g, i, me);
+    }, 600);
+  }
+  function oppMove() {
+    var g = S.game, me = g && side(g);
+    if (!g || g.phase !== "playing" || !me) return ctlMsg("Nie dotyczy: nie ma partii w toku, w której bierze udział ta rola.");
+    var op = oside(me);
+    if (g.turn !== op) return ctlMsg("Nie dotyczy: teraz Twój ruch.");
+    var list = ctl("t-script").value === "five" ? FIVE.map(function (c) { return 13 * 15 + c; }) : SCATTER.map(function (p) { return p[1] * 15 + p[0]; });
+    var pick = -1;
+    for (var k = 0; k < list.length; k++) if (g.cells[list[k]] === 0) { pick = list[k]; break; }
+    if (pick < 0) pick = g.cells.indexOf(0);
+    ctlMsg("Przeciwnik zagrał: " + cname(pick) + ".");
+    commitMove(g, pick, op);
+  }
+  function showResult(kind) {
+    var g = S.game, me = g && side(g);
+    if (!g || g.phase !== "playing" || !me) return ctlMsg("Nie dotyczy: nie ma partii w toku, w której bierze udział ta rola.");
+    for (var k = 0; k < 225; k++) g.cells[k] = 0;
+    g.moves = [];
+    if (kind === "draw") {
+      for (var i = 0; i < 225; i++) { g.cells[i] = ((((i % 15) >> 1) + Math.floor(i / 15)) & 1) ? 1 : 2; g.moves.push(i); }
+      g.last = 112; return finish(g, { kind: "draw" });
+    }
+    var winner = kind === "win" ? me : oside(me), wc = colorOf(g, winner), lc = 3 - wc;
+    var line = [5, 6, 7, 8, 9].map(function (c) { return 7 * 15 + c; });
+    [[1,1],[4,3],[7,1],[10,3]].forEach(function (p) { g.cells[p[1] * 15 + p[0]] = lc; g.moves.push(p[1] * 15 + p[0]); });
+    line.forEach(function (i) { g.cells[i] = wc; g.moves.push(i); });
+    g.last = line[4];
+    finish(g, { kind: "five", winner: winner, line: line });
+  }
+  function runClock(ms) {
+    var g = S.game, s = g.turn;
+    g.clk[s] -= ms;
+    if (g.clk[s] <= 0) { g.clk[s] = 0; finish(g, { kind: "timeout", winner: oside(s), loser: s }); return true; }
+    checkLow(g); paintClocks(); refreshBoardState(); return false;
+  }
+  function checkLow(g) {
+    ["creator", "opp"].forEach(function (s) {
+      if (g.clk[s] < 60000 && !g.lowSeen[s]) {
+        g.lowSeen[s] = true; g.lowCount[s] = 1;
+        if (s === side(g)) { var lv = $("low-live"); if (lv) { lv.setAttribute("data-count", "1"); lv.textContent = "Zostało mniej niż minuta"; } }
+      }
+    });
+  }
+  function paintClocks() {
+    var g = S.game; if (!g || !g.clk) return;
+    document.querySelectorAll("#game .clock").forEach(function (b) {
+      var s = b.getAttribute("data-side"), mine = b.getAttribute("data-testid") === "clock-me", ms = g.clk[s];
+      var run = g.phase === "playing" && g.turn === s;
+      b.querySelector(".ct").textContent = fmtClock(ms);
+      b.classList.toggle("run", run); b.classList.toggle("low", ms < 60000);
+      b.setAttribute("data-low", ms < 60000 ? "true" : "false");
+      b.querySelector(".run-label").textContent = run ? (mine ? "Twój ruch" : "Ruch przeciwnika") : "";
+    });
+  }
+  function clockBar(g, s, label, name, mine) {
+    return h("div", { class: "clock", role: "timer", "aria-label": mine ? "Zegar: Ty" : "Zegar przeciwnika", "data-side": s, "data-testid": mine ? "clock-me" : "clock-opp" },
+      h("span", { class: "who" }, label + ": " + name, h("span", { class: "run-label" })), h("span", { class: "ct", text: fmtClock(g.clk[s]) }));
+  }
+  function buildBoard(g, me, mc, fin) {
+    var grid = h("div", { class: "board", role: "grid", "aria-label": "Plansza 15 na 15", "aria-readonly": fin ? "true" : null, "data-testid": "board" });
+    var rf = (S.cellFocus >= 0 && S.cellFocus < 225) ? S.cellFocus : 112;
+    var myTurn = !fin && g.turn === me, busy = !!(S.mv && S.mv.status === "busy");
+    var winSet = {}; ((g.res && g.res.line) || []).forEach(function (i) { winSet[i] = true; });
+    for (var r = 0; r < 15; r++) {
+      var row = h("div", { class: "brow", role: "row" });
+      for (var c = 0; c < 15; c++) {
+        (function (i) {
+          var v = g.cells[i], cls = "cell", lab = cname(i) + ", " + (v === 0 ? "puste" : v === 1 ? "czarny kamień" : "biały kamień");
+          if (v === 1) cls += " b"; else if (v === 2) cls += " w";
+          if (i === g.last) { cls += " last"; lab += ", ostatni ruch"; }
+          if (winSet[i]) { cls += " win"; lab += ", linia wygrywająca"; }
+          if (v === 0 && S.sel === i) { cls += " sel" + (mc === 2 ? " mw" : ""); lab += ", zaznaczone"; }
+          if (v === 0 && S.mv && S.mv.i === i) { cls += " pend" + (mc === 2 ? " mw" : ""); lab += S.mv.status === "busy" ? ", ruch w drodze" : ", ruch nie został wysłany"; }
+          var b = h("button", { type: "button", class: cls, id: "cell-" + i, "data-testid": "cell-" + i, "data-i": String(i), "aria-label": lab, tabindex: i === rf ? "0" : "-1", disabled: fin, "aria-disabled": (!fin && (!myTurn || busy)) ? "true" : null, onclick: function () { cellClick(i); } });
+          row.appendChild(h("div", { class: "gc", role: "gridcell" }, b));
+        })(r * 15 + c);
+      }
+      grid.appendChild(row);
+    }
+    grid.addEventListener("keydown", function (ev) {
+      var t = ev.target; if (!t.hasAttribute || !t.hasAttribute("data-i")) return;
+      var i = Number(t.getAttribute("data-i")), c = i % 15, rr = (i - c) / 15, n = null;
+      if (ev.key === "ArrowRight" && c < 14) n = i + 1;
+      else if (ev.key === "ArrowLeft" && c > 0) n = i - 1;
+      else if (ev.key === "ArrowDown" && rr < 14) n = i + 15;
+      else if (ev.key === "ArrowUp" && rr > 0) n = i - 15;
+      else if (["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"].indexOf(ev.key) >= 0) { ev.preventDefault(); return; }
+      if (n === null) return;
+      ev.preventDefault();
+      var old = grid.querySelector('[tabindex="0"]'); if (old) old.setAttribute("tabindex", "-1");
+      var nb = $("cell-" + n); nb.setAttribute("tabindex", "0"); nb.focus(); S.cellFocus = n;
+    });
+    return h("div", { class: "board-wrap" }, grid);
+  }
+  function boardStateId(g, me, r) {
+    var ids = [];
+    if (g.phase === "playing") {
+      ids.push(g.turn === me ? "p05.1" : "p05.2");
+      if (S.bg) ids.push("p05.12");
+      if (S.mv && S.mv.status === "busy") ids.push("p05.6");
+      if ((S.mv && S.mv.status === "error") || S.resignErr || S.playFails >= 3) ids.push("p05.7");
+      if (S.msg) ids.push(S.msg.id);
+      if (S.ret) ids.push("p05.10");
+      if (g.clk[me] < 60000) ids.push("p05.3");
+      if (ctl("t-input").value === "touch") { if (S.sel != null) ids.push("p05.4"); }
+      else if (g.turn === me && !S.mv) ids.push("p05.5");
+      if (r === "guest") ids.push("p05.11");
+      if (S.dialog === "resign") ids.push("p05.13");
+      if (S.resignBusy) ids.push("p05.14");
+      if (g.tokenNotice) ids.push("p06.15");
+      return ids.join(" + ");
+    }
+    ids.push(resultInfo(g, me).id);
+    if (S.reloaded) ids.push("p06.5");
+    if (r === "guest") ids.push("p06.6");
+    var rm = g.rm, op = oside(me);
+    if (rm && rm.state === "pending" && rm.by === me) ids.push("p06.11");
+    else if (rm && rm.state === "pending") ids.push("p06.12");
+    else if (rm && rm.state === "declined" && rm.by === op) ids.push("p06.13");
+    else if (rm && rm.state === "expired") ids.push("p06.14");
+    else ids.push("p06.10");
+    if (r === "guest" && rm && rm.state === "pending") ids.push("p06.15");
+    return ids.join(" + ");
+  }
+  function refreshBoardState() {
+    if (curPath !== "/game" || !document.querySelector("#game [data-testid=board]")) return;
+    var g = S.game, me = g && side(g);
+    if (g && me && (g.phase === "playing" || g.phase === "finished")) setState(boardStateId(g, me, role()));
+  }
+  function updatePlayPoll() {
+    var box = $("play-poll"); if (!box) return;
+    box.textContent = "";
+    if (S.playFails >= 3) {
+      box.appendChild(alertBox("err", "alert", null, "Nie udało się połączyć z serwerem. Spróbuj ponownie.", h("div", { class: "actions" }, h("button", { type: "button", class: "secondary", id: "play-poll-retry", "data-testid": "play-poll-retry", text: "Sprawdź teraz", onclick: function () { S.playFails = 0; S.focusId = "play-poll-retry"; updatePlayPoll(); } }))));
+    } else if (S.playFails > 0) box.appendChild(h("p", { role: "status", "data-testid": "play-poll-status", text: "Ponawiamy sprawdzanie stanu partii (próba " + S.playFails + " z 3)." }));
+    refreshBoardState();
+  }
+  function renderBoardScreen(sec, g, me, r) {
+    var fin = g.phase === "finished", op = oside(me), mc = colorOf(g, me);
+    gameKey = (fin ? "fin" : "play") + g.id;
+    var myName = me === "creator" ? ACCT[g.creatorKey] : (r === "guest" ? "Gość (bez konta)" : ACCT[r]);
+    var opName = me === "creator" ? oppName(g) : ACCT[g.creatorKey];
+    sec.setAttribute("data-polling", S.bg ? "paused" : (fin ? "stopped" : "active"));
+    sec.appendChild(h("h1", { id: "game-h", tabindex: "-1", text: fin ? "Koniec partii" : "Partia w toku" }));
+    if (r === "guest" && !fin) { var gb = alertBox("warn", null, null, "Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii"); gb.setAttribute("data-testid", "guest-banner"); sec.appendChild(gb); }
+    if (g.tokenNotice) {
+      var tn = alertBox("info", "status", null, "Nowa partia ma nowy dostęp w tej przeglądarce. Wynik poprzedniej partii nie będzie już tu dostępny. ", h("button", { type: "button", class: "secondary", id: "token-ok", "data-testid": "token-ok", text: "Rozumiem", onclick: function () { g.tokenNotice = false; S.focusId = null; render(); } }));
+      tn.setAttribute("data-testid", "guest-token-notice"); sec.appendChild(tn);
+    }
+    if (!fin && g.moves.length === 0) {
+      var sn = alertBox("info", "status", null, g.rematch ? "Rewanż: kolory zostały zamienione. Grasz " + cw(mc) + "." : "Wylosowano: Ty " + cn(mc));
+      sn.setAttribute("data-testid", "start-notice"); sec.appendChild(sn);
+    }
+    if (S.ret) { var rn = alertBox("info", "status", null, S.ret.text); rn.setAttribute("data-testid", "return-notice"); sec.appendChild(rn); }
+    sec.appendChild(h("div", { class: "vh", id: "low-live", "aria-live": "polite", "data-testid": "low-live", "data-count": String(g.lowCount[me] || 0), text: g.lowSeen[me] ? "Zostało mniej niż minuta" : "" }));
+    if (fin) {
+      var ri = resultInfo(g, me);
+      sec.appendChild(h("div", { class: "result", role: "status", "data-testid": "result-banner" }, h("strong", { text: ri.title }), ri.detail));
+      if (r === "guest") sec.appendChild(h("p", { "data-testid": "guest-until", text: "Wynik zobaczysz w tej przeglądarce do 1 godziny po zakończeniu partii." }));
+      if (S.reloaded) sec.appendChild(h("p", { role: "status", "data-testid": "reload-note", text: "Powrót do zakończonej partii: wynik jest ten sam, ruch nie jest możliwy." }));
+    }
+    sec.appendChild(clockBar(g, op, "Przeciwnik", opName, false));
+    sec.appendChild(buildBoard(g, me, mc, fin));
+    sec.appendChild(clockBar(g, me, "Ty", myName, true));
+    var st = h("div", { class: "statusline" });
+    st.appendChild(h("p", { "data-testid": "my-color", text: "Grasz " + cw(mc) }));
+    if (!fin) {
+      st.appendChild(h("p", { role: "status", "data-testid": "turn-status", text: g.turn === me ? "Twój ruch (" + cn(mc) + ")" : "Ruch przeciwnika" }));
+      if (S.mv && S.mv.status === "busy") st.appendChild(h("p", { role: "status", "data-testid": "move-status", text: "Wysyłanie ruchu…" }));
+      if (S.sel != null) st.appendChild(h("p", { role: "status", "data-testid": "sel-status", text: "Zaznaczono: " + cname(S.sel) + ". Naciśnij „Postaw kamień”." }));
+      if (S.msg) { var mm = alertBox("warn", "status", null, S.msg.text); mm.setAttribute("data-testid", "move-msg"); st.appendChild(mm); }
+      if (S.mv && S.mv.status === "error") st.appendChild(alertBox("err", "alert", null, "Nie udało się połączyć z serwerem. Spróbuj ponownie.", h("div", { class: "actions" }, h("button", { type: "button", class: "secondary", id: "move-retry", "data-testid": "move-retry", text: "Spróbuj ponownie", onclick: function () { sendMove(S.mv.i); } }))));
+      sec.appendChild(st);
+      if (ctl("t-input").value === "touch") {
+        var canPlace = S.sel != null && g.turn === me && !(S.mv && S.mv.status === "busy");
+        sec.appendChild(h("div", { class: "actions" }, h("button", { type: "button", id: "place", "data-testid": "place", disabled: !canPlace, text: "Postaw kamień", onclick: function () { if (S.sel != null) sendMove(S.sel); } })));
+        if (S.sel == null) sec.appendChild(h("p", { class: "reason", text: "Dotknij przecięcia, żeby je zaznaczyć." }));
+      }
+      sec.appendChild(h("div", { id: "play-poll", "data-testid": "play-poll" }));
+      sec.appendChild(h("div", { class: "actions", style: "margin-top:12px" }, h("button", { type: "button", class: "secondary", id: "resign", "data-testid": "resign", text: "Poddaj partię", onclick: openResign })));
+    } else {
+      sec.appendChild(st);
+      sec.appendChild(rematchBlock(g, me, r, opName));
+    }
+    paintClocks();
+    var sid = boardStateId(g, me, r);
+    if (!fin) setTimeout(updatePlayPoll, 0);
+    return sid;
+  }
+  function openResign() {
+    S.dialog = "resign"; S.resignErr = false; refreshBoardState();
+    openModal({
+      testid: "resign-dialog", title: "Czy na pewno chcesz się poddać?",
+      body: [h("p", { text: "Przeciwnik wygra partię." })],
+      focusIndex: 0, locked: function () { return S.resignBusy; },
+      onClose: function () { S.dialog = null; var rb = $("resign"); if (rb) rb.focus(); refreshBoardState(); },
+      buttons: [
+        { id: "resign-back", testid: "resign-back", text: "Wróć do gry", secondary: true, run: function (dlg) { dlg.close(); } },
+        { id: "resign-confirm", testid: "resign-confirm", text: "Poddaj partię", run: function (dlg, el) {
+          if (S.resignBusy) return;
+          var old = dlg.querySelector("#resign-err"); if (old) old.remove();
+          S.resignBusy = true; S.resignErr = false; el.disabled = true; el.textContent = "Poddawanie…"; $("resign-back").disabled = true; refreshBoardState();
+          setTimeout(function () {
+            S.resignBusy = false;
+            var g = S.game;
+            if (!g || g.phase !== "playing") { dlg.close(); return; }
+            if (ctl("t-resignerr").checked) {
+              ctl("t-resignerr").checked = false; S.resignErr = true; el.disabled = false; el.textContent = "Spróbuj ponownie"; $("resign-back").disabled = false;
+              var ea = alertBox("err", "alert", null, "Nie udało się połączyć z serwerem. Spróbuj ponownie."); ea.id = "resign-err";
+              dlg.insertBefore(ea, dlg.querySelector(".actions")); refreshBoardState(); return;
+            }
+            var me = side(g); dlg.close(); finish(g, { kind: "resign", winner: oside(me), by: me });
+          }, 700);
+        } }
+      ]
+    });
+  }
+  /* ---- rematch ---- */
+  function rematchBlock(g, me, r, opName) {
+    var rm = g.rm, op = oside(me), box = h("div", { class: "panel", "data-testid": "rematch-box" });
+    box.appendChild(h("h2", { text: "Rewanż" }));
+    var panel = h("a", { class: "btn secondary", href: "#/home", id: "to-panel", "data-testid": "to-panel", text: "Wróć do panelu głównego", onclick: function () { if (g.rm && g.rm.state === "pending") g.rm = { state: "declined", by: me, how: "exit" }; } });
+    var gnote = r === "guest" ? h("p", { class: "reason", "data-testid": "guest-rematch-note", text: "Jako gość dostaniesz nowy dostęp do nowej partii w tej przeglądarce." }) : null;
+    if (rm && rm.state === "pending" && rm.by === me) {
+      box.appendChild(h("p", { role: "status", "data-testid": "rm-status", text: "Zaproponowano rewanż. Czekamy na odpowiedź przeciwnika (do 5 min)." }));
+      if (gnote) box.appendChild(gnote);
+      box.appendChild(h("div", { class: "actions" }, h("button", { type: "button", id: "rm-withdraw", "data-testid": "rm-withdraw", text: "Wycofaj propozycję", onclick: function () { g.rm = null; S.focusId = "rematch"; render(); } }), panel));
+    } else if (rm && rm.state === "pending") {
+      box.appendChild(h("p", { role: "status", "data-testid": "rm-status", text: opName + " proponuje rewanż. Kolory zostaną zamienione." }));
+      if (gnote) box.appendChild(gnote);
+      if (S.rmErr) box.appendChild(alertBox("warn", "alert", "Masz już partię", "Nie można zacząć rewanżu, bo któryś z graczy ma inną partię w toku (409). Propozycja trwa do wygaśnięcia lub odrzucenia. ", h("a", { href: "#/outside?to=board&from=game", "data-testid": "to-active", text: "Przejdź do partii" })));
+      box.appendChild(h("div", { class: "actions" },
+        h("button", { type: "button", id: "rm-accept", "data-testid": "rm-accept", text: "Przyjmij", onclick: function () {
+          if (ctl("t-br13").checked) { S.rmErr = true; S.focusId = "rm-accept"; return render(); }
+          startRematch(g);
+        } }),
+        h("button", { type: "button", class: "secondary", id: "rm-decline", "data-testid": "rm-decline", text: "Odrzuć", onclick: function () { g.rm = { state: "declined", by: me, how: "decline" }; S.rmErr = false; S.focusId = "rematch"; render(); } }),
+        panel));
+    } else if (rm && rm.state === "declined" && rm.by === op) {
+      box.appendChild(h("div", { class: "alert", role: "status", "data-testid": "rm-status" }, h("strong", { text: "Zaproszenie do rewanżu odrzucone" }), rm.how === "exit" ? "Przeciwnik wyszedł do panelu głównego." : "Przeciwnik odrzucił rewanż."));
+      panel.className = "btn"; box.appendChild(h("div", { class: "actions" }, panel));
+    } else if (rm && rm.state === "expired") {
+      box.appendChild(h("p", { role: "status", "data-testid": "rm-status", text: "Zaproszenie do rewanżu wygasło (po 5 minutach)." }));
+      box.appendChild(h("div", { class: "actions" }, h("button", { type: "button", id: "rm-again", "data-testid": "rm-again", text: "Zaproponuj ponownie", onclick: function () { g.rm = null; S.focusId = "rematch"; render(); } }), panel));
+    } else {
+      var next = g.black === me ? 2 : 1;
+      box.appendChild(h("p", { "data-testid": "rm-info", text: "Rewanż to nowa partia z odwróconymi kolorami: zagrasz " + cw(next) + "." }));
+      if (rm && rm.state === "declined") box.appendChild(h("p", { role: "status", "data-testid": "rm-status", text: "Odrzuciłeś propozycję rewanżu." }));
+      if (gnote) box.appendChild(gnote);
+      box.appendChild(h("div", { class: "actions" }, h("button", { type: "button", id: "rematch", "data-testid": "rematch", text: "Rewanż", onclick: function () { g.rm = { state: "pending", by: me, expiresAt: S.now + 5 }; S.focusId = "rm-withdraw"; render(); } }), panel));
+    }
+    return box;
+  }
+
+  /* ---------- outside + unknown ---------- */
+  var OUT = { lobby: ["Lobby", "Lobby i lista otwartych partii nie są częścią tego epiku."], history: ["Historia partii", "Historia partii nie jest częścią tego epiku."], board: ["Twoja inna partia", "Prototyp symuluje jedną partię naraz, więc inna partia nie jest tu pokazana. W produkcie ten link prowadzi do tamtej partii."] };
+  function renderOutside(q) {
+    var sec = $("outside"); sec.textContent = "";
+    var o = OUT[q.get("to")] || OUT.board;
+    sec.appendChild(h("p", { class: "tag", text: q.get("to") === "board" || !OUT[q.get("to")] ? "Poza tym prototypem" : "Poza tym etapem" }));
+    sec.appendChild(h("h1", { id: "outside-h", tabindex: "-1", text: o[0] }));
+    sec.appendChild(h("p", { text: o[1] }));
+    var from = q.get("from"), href = from === "invite" ? "#/invite/" + CODE : from === "game" ? "#/game" : "#/home";
+    sec.appendChild(h("a", { class: "btn", href: href, "data-testid": "outside-back-link", text: from === "invite" ? "Wróć do zaproszenia" : from === "game" ? "Wróć do partii" : "Wróć do panelu głównego" }));
+    return "outside";
+  }
+  function renderUnknown() {
+    var sec = $("unknown"); sec.textContent = "";
+    sec.appendChild(h("h1", { id: "unknown-h", tabindex: "-1", text: "Nie ma takiego ekranu" }));
+    sec.appendChild(h("p", { text: "Ten adres nie należy do prototypu." }));
+    sec.appendChild(h("a", { class: "btn", href: "#/home", "data-testid": "unknown-back", text: "Wróć do panelu głównego" }));
+    return "unknown";
+  }
+
+  /* ---------- router ---------- */
+  function render() {
+    settle();
+    var raw = location.hash.replace(/^#/, "") || "/home";
+    var parts = raw.split("?"), path = parts[0], q = new URLSearchParams(parts[1] || "");
+    var inv = path.indexOf("/invite/") === 0;
+    var prevPath = curPath;
+    curPath = inv ? "/invite" : path;
+    if (curPath === "/game" && prevPath !== "/game" && S.game && S.game.phase === "finished") S.reloaded = true;
+    if (curPath === "/game" && prevPath !== "/game" && ctl("t-slow").checked) {
+      var lg = S.game;
+      if (lg && side(lg) && (lg.phase === "playing" || lg.phase === "finished")) {
+        S.loadingUntil = Date.now() + 1500; clearTimeout(timers.load);
+        timers.load = setTimeout(function () { if (curPath === "/game") render(); }, 1550);
+      }
+    }
+    if (raw !== lastRaw) { S.createErr = null; lastRaw = raw; }
+    if (S.notice && S.notice.path !== curPath) S.notice = null;
+    if (curPath !== "/game" && timers.advance) { clearTimeout(timers.advance); timers.advance = null; }
+    renderHeader();
+    $("clock").textContent = fmt(S.now);
+    document.querySelectorAll("main > section").forEach(function (s) { s.classList.remove("active"); });
+    var sid, secId, hid;
+    if (curPath === "/home") { sid = renderHome(); secId = "home"; hid = "home-h"; }
+    else if (curPath === "/join") { sid = renderJoin(); secId = "join"; hid = "f-code"; }
+    else if (inv) { sid = renderInvite(path.slice(8)); secId = "invite"; hid = "invite-h"; if (sid === null) return; }
+    else if (curPath === "/game") { sid = renderGame(); secId = "game"; hid = "game-h"; }
+    else if (curPath === "/outside") { sid = renderOutside(q); secId = "outside"; hid = "outside-h"; }
+    else { sid = renderUnknown(); secId = "unknown"; hid = "unknown-h"; }
+    $(secId).classList.add("active");
+    $(secId).setAttribute("data-state", sid);
+    setState(sid);
+    var hh = $(secId).querySelector("h1");
+    document.title = "Gomoku: " + (hh ? hh.textContent : "prototyp") + " (rewizja 2)";
+    var g = S.game;
+    S.lastProbe = g ? g.phase + g.seenCreator + g.sawJoin : null;
+    var gk = secId === "game" && gameKey ? gameKey : secId === "game" && sid.indexOf("p03.") === 0 && sid !== "p03.5" && sid !== "p03.9" ? "p03" : (secId === "game" ? sid : sid.split(".")[0]);
+    var key = raw + "|" + role() + "|" + gk;
+    var changed = key !== lastKey, f = S.focusId;
+    lastKey = key; S.focusId = null;
+    if (changed) { var t = $(hid); if (t) t.focus(); }
+    else if (f && $(f)) $(f).focus();
+  }
+  window.addEventListener("hashchange", render);
+
+  /* ---------- simulated polling (3 s in the product, 1 s here) ---------- */
+  function tick() {
+    settle();
+    var g = S.game;
+    if (curPath === "/game" && g && g.phase === "playing" && side(g)) {
+      if (ctl("t-pollerr").checked && !S.bg) S.playFails++; else S.playFails = 0;
+      updatePlayPoll();
+      return;
+    }
+    if (curPath === "/game" && g && g.phase === "waiting" && side(g) === "creator") {
+      if (ctl("t-pollerr").checked) S.pollFails++; else S.pollFails = 0;
+      updatePoll();
+      return;
+    }
+    var sg = S.game;
+    if (curPath === "/game" && sg && sg.phase !== "waiting") {
+      var probe = sg.phase + sg.seenCreator + sg.sawJoin;
+      if (S.lastProbe == null) S.lastProbe = probe;
+      if (probe !== S.lastProbe) { S.lastProbe = probe; render(); }
+    }
+  }
+  setInterval(tick, 1000);
+
+  /* ---------- test state ---------- */
+  ["t-role", "t-create", "t-code", "t-invite", "t-noclip", "t-noshare", "t-pollerr", "t-input", "t-otherbr", "t-db", "t-slow"].forEach(function (id) {
+    $(id).addEventListener("change", function () {
+      if (id === "t-role") { S.guestOpen = false; resetTransient(); }
+      if (id === "t-input") S.sel = null;
+      if (id === "t-otherbr") $("bg-info").textContent = "";
+      if (id === "t-pollerr") S.playFails = 0;
+      if (id === "t-pollerr" || id === "t-noshare" || id === "t-noclip") { S.copyMsg = ""; S.copyKind = ""; S.shareMsg = ""; }
+      render();
+    });
+  });
+  function clockMsg(text) { $("clock-status").textContent = text; }
+  $("t-15").addEventListener("click", function () {
+    var before = S.game && S.game.phase; S.now += 15; settle(); S.lastProbe = null; render();
+    var g = S.game;
+    clockMsg(g && before === "ready" && g.phase === "autocancelled" ? "+15 min: partia anulowana, bo twórca jej nie otworzył. Teraz: " + fmt(S.now) + "." : "+15 min. Teraz: " + fmt(S.now) + ".");
+  });
+  $("t-24").addEventListener("click", function () {
+    var before = S.game && S.game.phase; S.now += 1440; settle(); S.lastProbe = null; render();
+    var g = S.game;
+    clockMsg(g && before === "waiting" && g.phase === "expired" ? "+24 h: zaproszenie wygasło. Teraz: " + fmt(S.now) + "." : "+24 h. Teraz: " + fmt(S.now) + ".");
+  });
+  $("t-open").addEventListener("click", function () {
+    var g = S.game;
+    if (g && g.phase === "ready" && !g.seenCreator) { g.seenCreator = true; g.sawJoin = true; S.lastProbe = null; render(); clockMsg("Twórca otworzył stronę partii: oba zegary mogą ruszyć."); }
+    else clockMsg("Nie dotyczy: nie ma partii, w której twórca jeszcze nie otworzył strony.");
+  });
+  /* ---------- stage B test controls ---------- */
+  function clkTarget() {
+    var g = S.game, me = g && side(g);
+    if (!g || g.phase !== "playing" || !me) { ctlMsg("Nie dotyczy: nie ma partii w toku, w której bierze udział ta rola."); return null; }
+    return { g: g, s: ctl("t-clkwho").value === "me" ? me : oside(me) };
+  }
+  function afterClock(t, text) { checkLow(t.g); paintClocks(); refreshBoardState(); ctlMsg(text); }
+  $("t-p30").addEventListener("click", function () { var t = clkTarget(); if (!t) return; t.g.clk[t.s] += 30000; afterClock(t, "+30 s: zegar " + fmtClock(t.g.clk[t.s]) + "."); });
+  $("t-p60").addEventListener("click", function () { var t = clkTarget(); if (!t) return; t.g.clk[t.s] += 60000; afterClock(t, "+1 min: zegar " + fmtClock(t.g.clk[t.s]) + "."); });
+  $("t-j50").addEventListener("click", function () { var t = clkTarget(); if (!t) return; t.g.clk[t.s] = 50000; afterClock(t, "Zegar ustawiony na 0:50."); });
+  $("t-zero").addEventListener("click", function () { var t = clkTarget(); if (!t) return; ctlMsg("Minął czas."); finish(t.g, { kind: "timeout", winner: oside(t.s), loser: t.s }); });
+  $("t-oppmove").addEventListener("click", oppMove);
+  $("t-showwin").addEventListener("click", function () { showResult("win"); });
+  $("t-showloss").addEventListener("click", function () { showResult("loss"); });
+  $("t-showdraw").addEventListener("click", function () { showResult("draw"); });
+  $("t-oppresign").addEventListener("click", function () {
+    var g = S.game, me = g && side(g);
+    if (!g || g.phase !== "playing" || !me) return ctlMsg("Nie dotyczy: nie ma partii w toku, w której bierze udział ta rola.");
+    ctlMsg("Przeciwnik poddał partię."); finish(g, { kind: "resign", winner: me, by: oside(me) });
+  });
+  $("t-reload").addEventListener("click", function () {
+    var g = S.game;
+    if (g && side(g) && g.phase === "finished") { S.reloaded = true; S.focusId = null; render(); ctlMsg("Strona odświeżona po końcu partii: wynik, bez możliwości ruchu."); }
+    else if (g && side(g) && g.phase === "playing") { resetTransient(); S.focusId = null; render(); ctlMsg("Strona odświeżona: stan partii odczytany z serwera."); }
+    else ctlMsg("Nie dotyczy: ta rola nie ma partii do odświeżenia.");
+  });
+  function simBg(sec) {
+    var g = S.game, me = g && side(g);
+    if (!g || g.phase !== "playing" || !me) return ctlMsg("Nie dotyczy: nie ma partii w toku, w której bierze udział ta rola.");
+    if (S.bg) return;
+    S.bg = true; $("bg-info").textContent = "Karta w tle: odpytywanie wstrzymane."; ctlMsg("Karta w tle " + sec + " s.");
+    var game = $("game"); if (game) game.setAttribute("data-polling", "paused");
+    refreshBoardState();
+    timers.bg = setTimeout(function () {
+      timers.bg = null; S.bg = false;
+      if (S.game !== g || g.phase !== "playing") return;
+      var ended = runClock(sec * 1000);
+      $("bg-info").textContent = "Karta wróciła: odpytywanie wznowione, natychmiastowy odczyt" + (sec > 30 ? " (nieobecność ponad 30 s: komunikat)." : " (nieobecność do 30 s: bez komunikatu).");
+      if (ended) return;
+      S.playFails = 0;
+      if (sec > 30) {
+        S.ret = { text: "Wróciłeś do partii. Twój zegar: " + fmtClock(g.clk[me]) + "." };
+        timers.ret = setTimeout(function () { timers.ret = null; S.ret = null; if (S.game === g && g.phase === "playing" && curPath === "/game") { S.focusId = null; render(); } }, 8000);
+      }
+      S.focusId = null; render();
+    }, 800);
+  }
+  $("t-bg20").addEventListener("click", function () { simBg(20); });
+  $("t-bg45").addEventListener("click", function () { simBg(45); });
+  function rmCtl(kind) {
+    var g = S.game, me = g && side(g);
+    if (!g || g.phase !== "finished" || !me) return ctlMsg("Nie dotyczy: nie ma zakończonej partii, w której bierze udział ta rola.");
+    var op = oside(me), rm = g.rm;
+    if (kind === "offer") {
+      if (rm && rm.state === "pending") return ctlMsg("Nie dotyczy: propozycja rewanżu już trwa (jedna naraz).");
+      g.rm = { state: "pending", by: op, expiresAt: S.now + 5 }; S.rmErr = false; S.focusId = null; render(); return ctlMsg("Przeciwnik zaproponował rewanż.");
+    }
+    if (!(rm && rm.state === "pending")) return ctlMsg("Nie dotyczy: brak trwającej propozycji rewanżu.");
+    if (kind === "withdraw") { if (rm.by !== op) return ctlMsg("Nie dotyczy: to Ty zaproponowałeś rewanż."); g.rm = null; S.focusId = null; render(); return ctlMsg("Przeciwnik wycofał propozycję."); }
+    if (rm.by !== me) return ctlMsg("Nie dotyczy: propozycję złożył przeciwnik, nie Ty.");
+    if (kind === "accept") {
+      if (ctl("t-br13").checked) return ctlMsg("Przeciwnik próbował przyjąć rewanż, ale ma inną partię (409). Propozycja trwa.");
+      ctlMsg("Przeciwnik przyjął rewanż."); return startRematch(g);
+    }
+    g.rm = { state: "declined", by: op, how: kind === "exit" ? "exit" : "decline" }; S.focusId = null; render();
+    ctlMsg(kind === "exit" ? "Przeciwnik wyszedł do panelu głównego." : "Przeciwnik odrzucił rewanż.");
+  }
+  $("t-rm-offer").addEventListener("click", function () { rmCtl("offer"); });
+  $("t-rm-withdraw").addEventListener("click", function () { rmCtl("withdraw"); });
+  $("t-rm-accept").addEventListener("click", function () { rmCtl("accept"); });
+  $("t-rm-decline").addEventListener("click", function () { rmCtl("decline"); });
+  $("t-rm-exit").addEventListener("click", function () { rmCtl("exit"); });
+  $("t-5").addEventListener("click", function () { S.now += 5; S.lastProbe = null; render(); clockMsg("+5 min. Teraz: " + fmt(S.now) + "."); });
+  $("t-1h").addEventListener("click", function () { S.now += 60; S.lastProbe = null; render(); clockMsg("+1 h. Teraz: " + fmt(S.now) + "."); });
+  setInterval(function () {
+    var g = S.game;
+    if (!g || g.phase !== "playing" || !ctl("t-count").checked || S.bg) return;
+    runClock(250 * Number(ctl("t-speed").value));
+  }, 250);
+  $("reset").addEventListener("click", function () {
+    if (timers.advance) { clearTimeout(timers.advance); timers.advance = null; }
+    ["ret", "bg", "load"].forEach(function (k) { if (timers[k]) { clearTimeout(timers[k]); timers[k] = null; } });
+    document.querySelectorAll("dialog").forEach(function (d) { d.close(); });
+    S = fresh(); lastKey = null; lastRaw = null;
+    ["t-noclip", "t-noshare", "t-pollerr", "t-moveerr", "t-stale", "t-resignerr", "t-db", "t-slow", "t-otherbr", "t-count", "t-br13"].forEach(function (id) { $(id).checked = false; });
+    $("t-color").value = "black"; $("t-input").value = "mouse"; $("t-script").value = "scatter"; $("t-clkwho").value = "me"; $("t-speed").value = "10";
+    $("bg-info").textContent = ""; ctlMsg("");
+    $("t-role").value = "creator"; $("t-create").value = "ok"; $("t-code").value = "ok"; $("t-invite").value = "auto";
+    clockMsg("");
+    $("reset-status").textContent = "Symulacja zresetowana. Start: panel główny, czas 2026-10-26 10:00.";
+    if (location.hash === "#/home") render(); else location.hash = "#/home";
+  });
+  render();
+})();
+</script>
+</body>
+</html>

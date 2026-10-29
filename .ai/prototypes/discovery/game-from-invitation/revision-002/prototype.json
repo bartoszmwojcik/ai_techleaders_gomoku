@@ -1,0 +1,22 @@
+{
+  "format": "discovery-prototype-v1",
+  "skill": "om-mockup-prototype",
+  "slug": "game-from-invitation",
+  "revision": 2,
+  "revisionPath": ".ai/prototypes/discovery/game-from-invitation/revision-002",
+  "previousRevision": ".ai/prototypes/discovery/game-from-invitation/revision-001",
+  "brief": ".ai/specs/product-brief.md",
+  "flow": "game from invitation, stages A and B (invitation, wait, board, moves, clocks, result, resignation, rematch, reconnection)",
+  "panelReport": null,
+  "verification": "not-run",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "e05b202e4f746b5ae1e6fa4e5c580e21543197aa4ed3443d896a62b64557da97"
+    },
+    {
+      "path": "index.html",
+      "sha256": "e157836b5978cb8f0224bb61361a8fd28d48927c1982502b82f7c67b203b3bbb"
+    }
+  ]
+}
