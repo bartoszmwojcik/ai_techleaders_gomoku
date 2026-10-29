@@ -31,7 +31,7 @@
 ### Faza 1 — Fundament backendu (bez ekranów; równolegle do D0–D3)
 Ręczny test po fazie: sprawdzenie schematu w DBeaverze (tabele, indeksy, `CHECK`), `GameParticipation` zwraca prawdę dla partii w toku (test integracyjny).
 - [x] 1.1 Domena `core/src/games/`: stałe, `generateInvitationCode`, `normalizeInvitationCode`, typy, `acceptInvitationSchema` (#21 krok 1)
-- [ ] 1.2 Encje i migracja (#29): `game`, `game_player` (w tym `seen_at`, `kind`, `is_active`, hash tokenu gościa), `invitation`; kolumny zegara z #23; up/down/up na jednorazowej bazie (nie dev)
+- [x] 1.2 Encje i migracja (#29): `game`, `game_player` (w tym `seen_at`, `kind`, `is_active`, hash tokenu gościa), `invitation`; kolumny zegara z #23; up/down/up na jednorazowej bazie (nie dev)
 - [ ] 1.3 `GameService.create/cancel/getState` + prawdziwy `GameParticipation` (`hasActiveGame`, `occupiesSlot`) + zamykanie przeterminowanych oczekujących partii (#21 krok 3, Q16/Q17)
 - [ ] 1.4 Komentarz w #29 o wymaganiach schematu (tabele, indeksy, `CHECK`, `is_active`, `seen_at`, kolumny zegara i rewanżu); poprawka #22 Q8 w specyfikacjach zrobiona w D0.4
 

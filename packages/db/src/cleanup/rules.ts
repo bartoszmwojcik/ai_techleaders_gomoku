@@ -59,5 +59,9 @@ export const CLEANUP_RULES: readonly CleanupRule[] = [
   },
 ];
 
-/** Tables with an `expiresAt` column that are deliberately not swept (none yet). */
-export const CLEANUP_EXEMPT_TABLES: readonly string[] = [];
+/**
+ * Tables with an `expiresAt` column that are deliberately not swept by their own rule.
+ * `invitations` go away with their game (`on delete cascade`); the games rules (cancelled and
+ * expired `waiting` games, guest token clearing) arrive with the games cleanup (#39, E02).
+ */
+export const CLEANUP_EXEMPT_TABLES: readonly string[] = ["invitations"];

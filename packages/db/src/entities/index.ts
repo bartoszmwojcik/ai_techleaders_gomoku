@@ -2,6 +2,9 @@ import { EmailVerificationToken } from "./auth/email-verification-token";
 import { PasswordResetToken } from "./auth/password-reset-token";
 import { Session } from "./auth/session";
 import { User } from "./auth/user";
+import { Game } from "./games/game";
+import { GamePlayer } from "./games/game-player";
+import { Invitation } from "./games/invitation";
 import { RateLimitBucket } from "./rate-limit/rate-limit-bucket";
 
 // Registry of all MikroORM entities. Entities are defined with `defineEntity`
@@ -13,4 +16,7 @@ export const entities = [
   EmailVerificationToken,
   PasswordResetToken,
   RateLimitBucket,
+  Game,
+  GamePlayer,
+  Invitation,
 ] as const;
