@@ -19,8 +19,8 @@
 
 ### D2 — Szary prototyp (`om-mockup-prototype`, przepływ „partia z zaproszenia”, etapami)
 - [x] D2.1 Etap A: tworzenie zaproszenia, `/join`, `/invite/[code]`, oczekiwanie na przeciwnika; Twój przegląd
-- [ ] D2.2 Etap B: gotowość, plansza, ruchy, zegary, koniec partii, poddanie, rewanż, powrót po rozłączeniu; Twój przegląd
-- [ ] D2.3 Kopia do Storybooka: `npm run prototypes`
+- [x] D2.2 Etap B: gotowość, plansza, ruchy, zegary, koniec partii, poddanie, rewanż, powrót po rozłączeniu; Twój przegląd (rev. 002 zatwierdzona 2026-10-29, 282 PASS/0 FAIL)
+- [x] D2.3 Kopia do Storybooka: `npm run prototypes`
 
 ### D3 — Klikalny prototyp z design systemu (jak `prototypes/konta-i-role`)
 - [ ] D3.1 Etap A: symulator, ekrany p01–p04, pasek scenariuszy, testy nawigacji; Twój przegląd
