@@ -80,6 +80,26 @@ export class Browser {
     await this.run("set", "headers", JSON.stringify(headers));
   }
 
+  /** Emulates the `prefers-color-scheme` preference of the system. */
+  async setMedia(scheme: "dark" | "light"): Promise<void> {
+    await this.run("set", "media", scheme);
+  }
+
+  /** Presses a key at the current focus (e.g. `Tab`, `Enter`, `Space`). */
+  async press(key: string): Promise<void> {
+    await this.run("press", key);
+  }
+
+  async cookies(): Promise<
+    { name: string; value: string; path: string; sameSite: string; secure: boolean; httpOnly: boolean; expires: number }[]
+  > {
+    return (await this.run<{ cookies: never[] }>("cookies", "get")).cookies;
+  }
+
+  async setCookie(name: string, value: string, url: string): Promise<void> {
+    await this.run("cookies", "set", name, value, "--url", url);
+  }
+
   async clearCookies(): Promise<void> {
     await this.run("cookies", "clear");
   }
