@@ -4,7 +4,7 @@ import { Alert } from "@gomoku/ui/game/alert";
 import { Button } from "@gomoku/ui/game/button";
 import { TextLink } from "@gomoku/ui/game/text-link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { rateLimitedError } from "@/components/feedback/rate-limited-error";
 import { apiCall } from "@/lib/api-client";
@@ -24,9 +24,12 @@ export function CreateGameButton({ heldGame }: { heldGame: HeldGame | null }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
+  // State alone lags a double click by one render; the ref closes that gap (two games would be a 409).
+  const inFlight = useRef(false);
 
   async function onCreate() {
-    if (busy) return;
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     setFailure(null);
     const result = await apiCall<{ gameId: string }>("/api/games");
@@ -41,6 +44,7 @@ export function CreateGameButton({ heldGame }: { heldGame: HeldGame | null }) {
       router.push(`/games/${heldGame.gameId}?notice=own-waiting`);
       return;
     }
+    inFlight.current = false;
     setBusy(false);
     if (code === "ACTIVE_GAME_EXISTS") setFailure({ kind: "active" });
     else if (code === "RATE_LIMITED") setFailure({ kind: "limit", retryAfterSeconds });

@@ -1,0 +1,36 @@
+import { NotFoundError, type GameStatus, type ParticipantKind, type Seat } from "@gomoku/core";
+
+import { withRequestScope } from "../container";
+import { resolveParticipant } from "./participant";
+
+/** The state of a game as the page and `GET /api/games/[id]` carry it (dates as ISO strings). */
+export type GameView = {
+  status: GameStatus;
+  you: { seat: Seat; kind: ParticipantKind };
+  players: {
+    seat: Seat;
+    kind: ParticipantKind;
+    displayName: string | null;
+    seen: boolean;
+  }[];
+  /** Only for the creator while the game waits. */
+  invitation?: { code: string; url: string; expiresAt: string };
+};
+
+/**
+ * The game for its participant, or `null` when there is no such game or the visitor does not
+ * play in it (the page answers `404` for both, so it does not confirm that a game exists, N-05).
+ * Reading it also does the lazy bookkeeping of `GameService.getState` (Q16, Q20, Q21).
+ */
+export async function loadGameView(gameId: string): Promise<GameView | null> {
+  try {
+    const { gameId: id, participant } = await resolveParticipant(gameId);
+    const state = await withRequestScope(({ cradle }) => cradle.gameService.getState(participant, id));
+    // Dates cross the server/client boundary as ISO strings, like in the JSON API.
+    const { invitation, ...rest } = state;
+    return invitation ? { ...rest, invitation: { ...invitation, expiresAt: invitation.expiresAt.toISOString() } } : rest;
+  } catch (error) {
+    if (error instanceof NotFoundError) return null;
+    throw error;
+  }
+}

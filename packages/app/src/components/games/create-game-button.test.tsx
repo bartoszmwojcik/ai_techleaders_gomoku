@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -36,12 +36,14 @@ describe("CreateGameButton", () => {
     let finish!: (value: unknown) => void;
     apiCall.mockReturnValue(new Promise((resolve) => (finish = resolve)));
     render(<CreateGameButton heldGame={null} />);
-    const user = userEvent.setup();
     const button = screen.getByRole("button", { name: "Utwórz zaproszenie" });
-    await user.click(button);
-    await user.click(screen.getByRole("button", { name: "Tworzenie zaproszenia…" }));
+    await act(async () => {
+      // Two clicks in one batch: React has not re-rendered the disabled state between them.
+      button.click();
+      button.click();
+    });
     expect(apiCall).toHaveBeenCalledTimes(1);
-    finish({ ok: true, data: { gameId: "g1" } });
+    await act(async () => finish({ ok: true, data: { gameId: "g1" } }));
   });
 
   it("takes a player who already waits in a game to that game, with a notice (L01)", async () => {

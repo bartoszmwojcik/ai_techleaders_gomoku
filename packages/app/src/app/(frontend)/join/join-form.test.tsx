@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -63,9 +63,9 @@ describe("JoinForm", () => {
   });
 
   it("ignores a second submit while pending", async () => {
-    const { user, input } = await submit("ABCDEFGH");
-    // Enter in the field submits the form again although the button is disabled.
-    await user.type(input, "{Enter}");
+    await submit("ABCDEFGH");
+    // A second submit event that arrives before the disabled button is rendered.
+    fireEvent.submit(screen.getByTestId("join-form"));
     expect(push).toHaveBeenCalledTimes(1);
   });
 });
