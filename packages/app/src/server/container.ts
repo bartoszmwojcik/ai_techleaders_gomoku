@@ -17,6 +17,8 @@ import {
 } from "./services/auth/session-service";
 import { EmailVerificationService } from "./services/auth/email-verification-service";
 import { GameParticipation } from "./services/auth/game-participation";
+import { ColorDraw } from "./services/games/color-draw";
+import { GameMoveService } from "./services/games/game-move-service";
 import { GameService } from "./services/games/game-service";
 import { InvitationCodes } from "./services/games/invitation-codes";
 import { InvitationService } from "./services/games/invitation-service";
@@ -59,7 +61,10 @@ export type AppCradle = {
   sessionService: SessionService;
   gameParticipation: GameParticipation;
   gameService: GameService;
+  gameMoveService: GameMoveService;
   invitationCodes: InvitationCodes;
+  /** Draws who plays black when the opponent joins (#22 Q1). */
+  colorDraw: ColorDraw;
   invitationService: InvitationService;
   /** No-op until the clock (#23) delivers the real settlement of timed-out games. */
   timeoutSettler: TimeoutSettler;
@@ -139,7 +144,9 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     sessionService: asClass(SessionService).scoped(),
     gameParticipation: asClass(GameParticipation).scoped(),
     gameService: asClass(GameService).scoped(),
+    gameMoveService: asClass(GameMoveService).scoped(),
     invitationCodes: asClass(InvitationCodes).singleton(),
+    colorDraw: asClass(ColorDraw).singleton(),
     invitationService: asClass(InvitationService).scoped(),
     timeoutSettler: asClass(NoopTimeoutSettler).singleton(),
     rateLimiter: asClass(RateLimiter).scoped(),

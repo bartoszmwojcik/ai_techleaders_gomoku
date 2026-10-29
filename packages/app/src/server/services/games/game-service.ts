@@ -6,6 +6,10 @@ import {
   INVITATION_TTL_MS,
   NotFoundError,
   READY_DEADLINE_MS,
+  ValidationError,
+  boardView,
+  type BoardView,
+  type EndReason,
   formatInvitationCode,
   invitationUrl,
   type GameStatus,
@@ -52,6 +56,7 @@ export const GAME_NOT_CANCELLABLE_MESSAGE =
 export const GAME_NOT_FOUND_MESSAGE = "Nie znaleziono partii.";
 
 /** Used only outside production, where `APP_ORIGIN` may be unset (as in e-mail links). */
+const AFTER_MESSAGE = "Nieprawidłowy parametr after.";
 const DEV_ORIGIN = "http://localhost:3000";
 
 // The player a guest token stands for in this game, while the token is valid (BR-22).
@@ -60,6 +65,10 @@ const FIND_GUEST_SQL = `
   where p.game_id = ? and p.guest_token_hash = ? and ${GUEST_TOKEN_VALID_SQL}`;
 
 // First successful read of the page by a participant (#21 Q20); only while the game is open.
+const MEMBER_MOVE_COUNT_SQL = `
+  select g.move_count from game_players p join games g on g.id = p.game_id
+  where p.id = ? and g.id = ?`;
+
 const MARK_SEEN_SQL = `
   update game_players p set seen_at = ?
   from games g
@@ -79,7 +88,7 @@ export type CreatedGame = {
 /** Who is asking: the participant resolved from the session or the guest token. */
 export type GameParticipant = { playerId: string };
 
-export type GameState = {
+export type GameState = BoardView & {
   status: GameStatus;
   you: { seat: Seat; kind: ParticipantKind };
   players: {
@@ -239,13 +248,20 @@ export class GameService {
   async getState(
     participant: GameParticipant,
     gameId: string,
+    after = 0,
   ): Promise<GameState> {
     return this.#em.transactional(async (tx) => {
-      const member = await tx.count(GamePlayer, {
-        id: participant.playerId,
-        game: gameId,
-      });
-      if (member === 0) throw new NotFoundError(GAME_NOT_FOUND_MESSAGE);
+      // One query for membership and the move count (no extra query on a normal poll).
+      const [member] = await tx.execute<{ move_count: number }[]>(MEMBER_MOVE_COUNT_SQL, [
+        participant.playerId,
+        gameId,
+      ]);
+      if (!member) throw new NotFoundError(GAME_NOT_FOUND_MESSAGE);
+      // Optimization, not a correctness guarantee: a bad `after` is refused before the lazy
+      // bookkeeping, so a request that is rejected anyway does no writes and takes no locks.
+      // (The 400 rolls the transaction back either way, so the outcome is the same as the
+      // later check in `stateOf`; the move count does not change under the lazy updates.)
+      if (after > member.move_count) throw new ValidationError(AFTER_MESSAGE);
 
       const now = this.#clock.now();
       await tx.execute(EXPIRE_WAITING_OF_GAME, [now, gameId], "run");
@@ -256,33 +272,64 @@ export class GameService {
       );
       await tx.execute(MARK_SEEN_SQL, [now, participant.playerId], "run");
 
-      const game = await tx.findOneOrFail(Game, gameId);
-      const players = await tx.find(
-        GamePlayer,
-        { game: gameId },
-        { populate: ["user"], orderBy: { seat: "asc" } },
-      );
-      const you = players.find(({ id }) => id === participant.playerId)!;
-      const state: GameState = {
-        status: game.status as GameStatus,
-        you: { seat: you.seat as Seat, kind: you.kind as ParticipantKind },
-        players: players.map((player) => ({
-          seat: player.seat as Seat,
-          kind: player.kind as ParticipantKind,
-          displayName: player.user?.displayName ?? null,
-          seen: player.seenAt !== null,
-        })),
-      };
-      if (you.seat === 1 && game.status === "waiting") {
-        const invitation = await tx.findOneOrFail(Invitation, { game: gameId });
-        state.invitation = {
-          code: formatInvitationCode(invitation.code),
-          url: invitationUrl(this.#origin(), invitation.code),
-          expiresAt: invitation.expiresAt,
-        };
-      }
-      return state;
+      return this.stateOf(tx, participant, gameId, after);
     });
+  }
+
+  /**
+   * Builds the state of a game inside the caller's transaction, without bookkeeping:
+   * `getState` calls it after the lazy updates, `GameMoveService` after a move.
+   * `after` is the number of moves the client already knows (#22 Q5).
+   * @throws AppError 400 when `after` is greater than the number of moves
+   */
+  async stateOf(
+    tx: EntityManager,
+    participant: GameParticipant,
+    gameId: string,
+    after = 0,
+  ): Promise<GameState> {
+    const game = await tx.findOneOrFail(Game, gameId);
+    if (after > game.moveCount) {
+      throw new ValidationError(AFTER_MESSAGE);
+    }
+    const players = await tx.find(
+      GamePlayer,
+      { game: gameId },
+      { populate: ["user"], orderBy: { seat: "asc" } },
+    );
+    const you = players.find(({ id }) => id === participant.playerId)!;
+    const state: GameState = {
+      status: game.status as GameStatus,
+      you: { seat: you.seat as Seat, kind: you.kind as ParticipantKind },
+      players: players.map((player) => ({
+        seat: player.seat as Seat,
+        kind: player.kind as ParticipantKind,
+        displayName: player.user?.displayName ?? null,
+        seen: player.seenAt !== null,
+      })),
+      ...boardView(
+        {
+          status: game.status as GameStatus,
+          blackSeat: game.blackSeat ?? null,
+          moveCount: game.moveCount,
+          stonesBlack: game.stonesBlack,
+          stonesWhite: game.stonesWhite,
+          moves: game.moves,
+          winnerSeat: game.winnerSeat ?? null,
+          endReason: (game.endReason ?? null) as EndReason | null,
+        },
+        after,
+      ),
+    };
+    if (you.seat === 1 && game.status === "waiting") {
+      const invitation = await tx.findOneOrFail(Invitation, { game: gameId });
+      state.invitation = {
+        code: formatInvitationCode(invitation.code),
+        url: invitationUrl(this.#origin(), invitation.code),
+        expiresAt: invitation.expiresAt,
+      };
+    }
+    return state;
   }
 
   #origin(): string {

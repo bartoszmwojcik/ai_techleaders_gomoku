@@ -29,11 +29,23 @@ const CUTOFF = new Date(NOW.getTime() - READY_DEADLINE_MS);
 
 type Calls = string[];
 
+const EMPTY_BOARD = {
+  blackSeat: null,
+  moveCount: 0,
+  stonesBlack: "0".repeat(225),
+  stonesWhite: "0".repeat(225),
+  moves: new Uint8Array(0),
+  winnerSeat: null,
+  endReason: null,
+};
+
 /** Fake `em`: `transactional` runs the callback with the same object as `tx`. */
 function setup(options: {
   config?: { appOrigin?: string };
   executeRows?: unknown[][];
   count?: number;
+  member?: boolean;
+  gamesMoveCount?: number;
   game?: Record<string, unknown>;
   players?: Record<string, unknown>[];
   invitation?: Record<string, unknown>;
@@ -46,10 +58,14 @@ function setup(options: {
   const em = {
     transactional: vi.fn(async (fn: (tx: unknown) => unknown) => fn(em)),
     execute: vi.fn(async (sql: string) => {
+      if (sql.includes("select g.move_count")) {
+        calls.push("member");
+        return options.member === false ? [] : [{ move_count: options.gamesMoveCount ?? 0 }];
+      }
       calls.push(`execute:${sql.includes("returning id") && sql.includes("update games set") ? "cancel" : sql.trim().split(/\s+/).slice(0, 2).join(" ")}`);
       return rows.shift() ?? [];
     }),
-    count: vi.fn(async () => {
+    count: vi.fn(async (entity: unknown) => {
       calls.push("count");
       return options.count ?? 1;
     }),
@@ -65,14 +81,17 @@ function setup(options: {
     }),
     findOneOrFail: vi.fn(async (entity: unknown) => {
       calls.push("findOneOrFail");
-      return entity === Game ? options.game : options.invitation;
+      return entity === Game ? { ...EMPTY_BOARD, ...options.game } : options.invitation;
     }),
     find: vi.fn(async () => options.players ?? []),
     findOne: vi.fn(async () => options.player ?? null),
   };
   const rateLimiter = { hit: vi.fn(async () => ({ count: 1, retryAfterSeconds: 1 })) };
   const invitationCodes = { generate: vi.fn(() => "ABCDEFGH") };
-  const timeoutSettler = { settleFor: vi.fn(async () => undefined) };
+  const timeoutSettler = {
+    settleFor: vi.fn(async () => undefined),
+    settleGame: vi.fn(async () => false),
+  };
   const service = new GameService({
     em: em as unknown as EntityManager,
     clock: { now: () => NOW },
@@ -266,19 +285,24 @@ describe("GameService.getState", () => {
     const state = await service.getState({ playerId: "p1" }, "game-1");
 
     expect(calls).toEqual([
-      "count",
+      "member",
       "execute:with expired",
       "execute:with stale",
       "execute:update game_players",
       "findOneOrFail",
       "findOneOrFail",
     ]);
-    expect(em.count).toHaveBeenCalledWith(GamePlayer, { id: "p1", game: "game-1" });
-    expect(em.execute).toHaveBeenNthCalledWith(1, expect.any(String), [NOW, "game-1"], "run");
-    expect(em.execute).toHaveBeenNthCalledWith(2, expect.any(String), [CUTOFF, "game-1"], "run");
-    expect(em.execute).toHaveBeenNthCalledWith(3, expect.any(String), [NOW, "p1"], "run");
+    expect(em.execute).toHaveBeenNthCalledWith(1, expect.any(String), ["p1", "game-1"]);
+    expect(em.execute).toHaveBeenNthCalledWith(2, expect.any(String), [NOW, "game-1"], "run");
+    expect(em.execute).toHaveBeenNthCalledWith(3, expect.any(String), [CUTOFF, "game-1"], "run");
+    expect(em.execute).toHaveBeenNthCalledWith(4, expect.any(String), [NOW, "p1"], "run");
     expect(state).toEqual({
       status: "waiting",
+      moveCount: 0,
+      blackSeat: null,
+      turnSeat: null,
+      moves: [],
+      result: null,
       you: { seat: 1, kind: "account" },
       players: [{ seat: 1, kind: "account", displayName: "Ala", seen: true }],
       invitation: {
@@ -310,11 +334,39 @@ describe("GameService.getState", () => {
     expect(state.invitation).toBeUndefined();
   });
 
+  it("adds the board: moves after `after`, the seat on turn and the result", async () => {
+    const { service } = setup({
+      gamesMoveCount: 2,
+      game: {
+        status: "active",
+        blackSeat: 2,
+        moveCount: 2,
+        moves: Uint8Array.from([10, 11]),
+      },
+      players: [creator, guest],
+    });
+    const state = await service.getState({ playerId: "p1" }, "game-1", 1);
+    expect(state).toMatchObject({ moveCount: 2, blackSeat: 2, turnSeat: 2, moves: [11], result: null });
+  });
+
+  it("rejects `after` beyond the number of moves without doing the bookkeeping (optimization: no wasted writes)", async () => {
+    const { service, em, calls } = setup({ gamesMoveCount: 0, players: [creator, guest] });
+    await expect(service.getState({ playerId: "p1" }, "game-1", 1)).rejects.toMatchObject({ status: 400 });
+    expect(calls).toEqual(["member"]);
+    expect(em.execute).toHaveBeenCalledOnce();
+  });
+
+  it("stateOf still refuses `after` beyond the number of moves (used after a move)", async () => {
+    const { service, em } = setup({ game: { status: "active", blackSeat: 1 }, players: [creator, guest] });
+    await expect(service.stateOf(em as never, { playerId: "p1" }, "game-1", 1)).rejects.toMatchObject({ status: 400 });
+  });
+
   it("answers 404 to a non-participant before writing anything", async () => {
-    const { service, em } = setup({ count: 0 });
+    const { service, em, calls } = setup({ member: false });
     await expect(service.getState({ playerId: "x" }, "game-1")).rejects.toMatchObject({
       status: 404,
     });
-    expect(em.execute).not.toHaveBeenCalled();
+    expect(calls).toEqual(["member"]);
+    expect(em.execute).toHaveBeenCalledOnce();
   });
 });

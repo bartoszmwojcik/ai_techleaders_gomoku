@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 
 import { hashOpaqueToken } from "../../packages/app/src/server/http/opaque-token";
 import { systemClock } from "../../packages/app/src/server/services/email/email-sender";
+import { ColorDraw } from "../../packages/app/src/server/services/games/color-draw";
 import { GameService } from "../../packages/app/src/server/services/games/game-service";
 import { InvitationCodes } from "../../packages/app/src/server/services/games/invitation-codes";
 import {
@@ -50,7 +51,13 @@ function scope() {
   const rateLimiter = new RateLimiter({ em });
   const timeoutSettler = new NoopTimeoutSettler();
   return {
-    invitations: new InvitationService({ em, clock: systemClock, rateLimiter, timeoutSettler }),
+    invitations: new InvitationService({
+      em,
+      clock: systemClock,
+      rateLimiter,
+      timeoutSettler,
+      colorDraw: new ColorDraw(),
+    }),
     games: new GameService({
       em,
       clock: systemClock,
@@ -83,6 +90,10 @@ describe("InvitationService.accept", () => {
     const result = await scope().invitations.accept(code, { userId: joiner }, asUser, guard());
 
     expect(result).toEqual({ gameId });
+    // The colour draw (#22 Q1) happens in the same transaction as the start.
+    const [started] = await run(`select black_seat, move_count from games where id = ?`, [gameId]);
+    expect([1, 2]).toContain(started!.black_seat);
+    expect(started!.move_count).toBe(0);
     expect(await status(gameId)).toBe("active");
     const [game] = await run(`select started_at from games where id = ?`, [gameId]);
     expect(game!.started_at).not.toBeNull();
@@ -366,7 +377,7 @@ describe("InvitationService.accept as a guest", () => {
     expect(await status(second.gameId)).toBe("waiting");
 
     // Once the first game is over the same browser may join again, with a fresh token.
-    await run(`update games set status = 'finished', finished_at = now() where id = ?`, [first.gameId]);
+    await run(`update games set status = 'finished', end_reason = 'draw', finished_at = now() where id = ?`, [first.gameId]);
     await run(`update game_players set is_active = false where game_id = ?`, [first.gameId]);
     const again = await scope().invitations.accept(second.code, viewer, GUEST, guard());
     expect(again.gameId).toBe(second.gameId);
@@ -416,7 +427,7 @@ describe("GameService.findParticipant for guests", () => {
     expect(await games.findParticipant({ guestTokenHash: "0".repeat(64) }, gameId)).toBeNull();
     expect(await games.findParticipant(identity, "00000000-0000-4000-8000-000000000000")).toBeNull();
 
-    await run(`update games set status = 'finished', finished_at = now() - interval '59 minutes' where id = ?`, [gameId]);
+    await run(`update games set status = 'finished', end_reason = 'draw', finished_at = now() - interval '59 minutes' where id = ?`, [gameId]);
     expect(await games.findParticipant(identity, gameId)).not.toBeNull();
     await run(`update games set finished_at = now() - interval '61 minutes' where id = ?`, [gameId]);
     expect(await games.findParticipant(identity, gameId)).toBeNull();

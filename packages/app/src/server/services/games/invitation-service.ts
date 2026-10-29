@@ -25,6 +25,7 @@ import {
   closeStaleSlotsOfUser,
 } from "./lazy-closing";
 import { GUEST_TOKEN_VALID_SQL } from "./guest-token";
+import type { ColorDraw } from "./color-draw";
 import type { TimeoutSettler } from "./timeout-settler";
 
 type Deps = {
@@ -32,6 +33,7 @@ type Deps = {
   clock: Clock;
   rateLimiter: RateLimiter;
   timeoutSettler: TimeoutSettler;
+  colorDraw: ColorDraw;
 };
 
 export const INVALID_INVITATION_MESSAGE = "To zaproszenie jest już nieważne.";
@@ -150,7 +152,7 @@ const INSERT_GUEST_SQL = `
 const SET_CONSUMED_BY_SQL = `update invitations set consumed_by_id = ? where id = ?`;
 
 const START_GAME_SQL = `
-  update games set status = 'active', started_at = ?
+  update games set status = 'active', started_at = ?, black_seat = ?
   where id = ? and status = 'waiting'
   returning id`;
 
@@ -182,12 +184,14 @@ function constraintOf(error: unknown): string | undefined {
 export class InvitationService {
   readonly #em: EntityManager;
   readonly #clock: Clock;
+  readonly #colorDraw: ColorDraw;
   readonly #rateLimiter: RateLimiter;
   readonly #timeoutSettler: TimeoutSettler;
 
-  constructor({ em, clock, rateLimiter, timeoutSettler }: Deps) {
+  constructor({ em, clock, rateLimiter, timeoutSettler, colorDraw }: Deps) {
     this.#em = em;
     this.#clock = clock;
+    this.#colorDraw = colorDraw;
     this.#rateLimiter = rateLimiter;
     this.#timeoutSettler = timeoutSettler;
   }
@@ -410,7 +414,11 @@ export class InvitationService {
       [gameId, guestToken ? hashOpaqueToken(guestToken) : userId, now, now],
     );
     await tx.execute(SET_CONSUMED_BY_SQL, [player!.id, invitation.id], "run");
-    const started = await tx.execute<{ id: string }[]>(START_GAME_SQL, [now, gameId]);
+    const started = await tx.execute<{ id: string }[]>(START_GAME_SQL, [
+      now,
+      this.#colorDraw.drawBlackSeat(),
+      gameId,
+    ]);
     if (started.length === 0) throw invalidInvitation();
     return { game: { gameId }, joined: true };
   }

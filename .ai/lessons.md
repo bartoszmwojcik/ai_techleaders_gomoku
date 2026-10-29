@@ -26,3 +26,4 @@ Indeks lekcji. Jedna linia na wpis: `- [Tytuł](lessons/YYYY-MM-DD-slug.md) — 
 - [Blokada podwójnego kliknięcia: `useRef`](lessons/2026-10-29-double-click-guard-needs-a-ref.md) — strażnik „w locie” to `useRef` ustawiany synchronicznie (stan `busy` tylko do wyglądu); testuj dwoma `click()` w jednym `act`.
 - [`loading.tsx` ukrywa status 404](lessons/2026-10-29-next-loading-tsx-hides-404-status.md) — strona z prawdziwym `404` nie ma `loading.tsx`; status sprawdzaj `curl`-em i `fetch` w teście integracyjnym.
 - [`userEvent` z fałszywymi timerami](lessons/2026-10-29-user-event-fake-timers.md) — `shouldAdvanceTime: true` + `userEvent.setup({ delay: null })`; atrapę schowka ustaw po `setup()`.
+- [CHECK-i planszy: kolejność i bigint](lessons/2026-10-29-check-constraint-order-and-bigint-strings.md) — testując jeden CHECK, trzymaj resztę pól poprawną (PG zgłasza CHECK-i alfabetycznie), a `bit_count`/`bigint` rzutuj `::int`.

@@ -41,6 +41,7 @@ function setup(
     consume?: Row[];
     start?: Row[];
     cancelWaiting?: Row[];
+    blackSeat?: 1 | 2;
     failWith?: { match: string; error: unknown };
   } = {},
 ) {
@@ -75,14 +76,19 @@ function setup(
     hit: vi.fn(async () => ({ count: 1, retryAfterSeconds: 1 })),
     release: vi.fn(async () => undefined),
   };
-  const timeoutSettler = { settleFor: vi.fn(async () => undefined) };
+  const timeoutSettler = {
+    settleFor: vi.fn(async () => undefined),
+    settleGame: vi.fn(async () => false),
+  };
+  const colorDraw = { drawBlackSeat: vi.fn(() => options.blackSeat ?? 1) };
   const service = new InvitationService({
     em: em as unknown as EntityManager,
     clock: { now: () => NOW },
     rateLimiter: rateLimiter as never,
     timeoutSettler,
+    colorDraw,
   });
-  return { service, em, execute, calls, rateLimiter, timeoutSettler };
+  return { service, em, execute, calls, rateLimiter, timeoutSettler, colorDraw };
 }
 
 const sqlsOf = (calls: { sql: string }[]) => calls.map(({ sql }) => sql);
@@ -142,6 +148,19 @@ describe("InvitationService.accept", () => {
     ]);
     expect(calls.find(({ sql }) => sql.includes("set consumed_at"))!.params).toEqual([NOW, "ABCDEFGH", NOW]);
     expect(calls.find(({ sql }) => sql.includes("set consumed_by"))!.params).toEqual(["player-2", "inv-1"]);
+  });
+
+  it.each([1, 2] as const)("draws black for seat %i when the game starts (#22 Q1)", async (blackSeat) => {
+    const { service, calls, colorDraw } = setup({ blackSeat });
+
+    await service.accept(CODE, { userId: USER }, AS_USER, GUARD);
+
+    expect(colorDraw.drawBlackSeat).toHaveBeenCalledOnce();
+    expect(calls.find(({ sql }) => sql.includes("update games set status = 'active'"))!.params).toEqual([
+      NOW,
+      blackSeat,
+      "game-1",
+    ]);
   });
 
   it("locks only the joiner when the creator account is gone", async () => {
