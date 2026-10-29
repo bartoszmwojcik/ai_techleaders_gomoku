@@ -33,9 +33,11 @@ function cancelNotStartedSql(scope: string): string {
 
 const OF_USER = `exists (select 1 from game_players m where m.game_id = g.id and m.user_id = ?)`;
 const OF_GAME = `g.id = ?`;
+const OF_GUEST = `exists (select 1 from game_players m where m.game_id = g.id and m.guest_token_hash = ?)`;
 
 export const EXPIRE_WAITING_OF_USER = expireWaitingSql(OF_USER);
 export const EXPIRE_WAITING_OF_GAME = expireWaitingSql(OF_GAME);
 export const CANCEL_NOT_STARTED_OF_USER = cancelNotStartedSql(OF_USER);
 export const CANCEL_NOT_STARTED_OF_GAME = cancelNotStartedSql(OF_GAME);
 
+export const CANCEL_NOT_STARTED_OF_GUEST = cancelNotStartedSql(OF_GUEST);

@@ -468,6 +468,25 @@ describe("InvitationService.accept as a guest", () => {
 });
 
 describe("InvitationService.preview", () => {
+  it("closes the viewer's stale games before judging their slot (Q16, Q21)", async () => {
+    const { service, calls } = setup();
+    await service.preview(CODE, { userId: USER }, GUARD);
+    const writes = calls.filter(({ sql }) => !sql.startsWith("select"));
+    expect(writes.map(({ params }) => params)).toEqual([[NOW, USER], [CUTOFF, USER]]);
+    const lastWrite = calls.findLastIndex(({ sql }) => sql.startsWith("with"));
+    const slotRead = calls.findIndex(({ sql }) => sql.includes("from game_players p join games g"));
+    expect(lastWrite).toBeLessThan(slotRead);
+  });
+
+  it("closes a guest's game that nobody opened in time", async () => {
+    const { service, calls } = setup();
+    await service.preview(CODE, { guestTokenHash: TOKEN_HASH }, GUARD);
+    const writes = calls.filter(({ sql }) => !sql.startsWith("select"));
+    expect(writes).toHaveLength(1);
+    expect(writes[0]!.params).toEqual([CUTOFF, TOKEN_HASH]);
+    expect(writes[0]!.sql).toContain("guest_token_hash = ?");
+  });
+
   it("shows a free invitation to an anonymous visitor without touching state", async () => {
     const { service, calls, rateLimiter, em, timeoutSettler } = setup();
     const preview = await service.preview(CODE, {}, GUARD);

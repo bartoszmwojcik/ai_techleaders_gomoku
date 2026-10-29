@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { GameParticipation } from "./game-participation";
 
-function setup(count: number) {
-  const em = { count: vi.fn(async () => count) };
+function setup(count: number, player: unknown = null) {
+  const em = { count: vi.fn(async () => count), findOne: vi.fn(async () => player) };
   return {
     em,
     participation: new GameParticipation({ em: em as unknown as EntityManager }),
@@ -51,5 +51,21 @@ describe("GameParticipation.occupiesSlot", () => {
 
   it("is false when the slot is free", async () => {
     expect(await setup(0).participation.occupiesSlot("user-1")).toBe(false);
+  });
+});
+
+describe("GameParticipation.currentGame", () => {
+  it("returns the game, its status and the user's seat", async () => {
+    const { em, participation } = setup(0, { seat: 1, game: { id: "game-1", status: "waiting" } });
+    expect(await participation.currentGame("user-1")).toEqual({ gameId: "game-1", status: "waiting", seat: 1 });
+    expect(em.findOne).toHaveBeenCalledWith(
+      GamePlayer,
+      { user: "user-1", isActive: true, game: { status: { $in: ["waiting", "active"] } } },
+      { populate: ["game"] },
+    );
+  });
+
+  it("is null without a slot", async () => {
+    expect(await setup(0).participation.currentGame("user-1")).toBeNull();
   });
 });

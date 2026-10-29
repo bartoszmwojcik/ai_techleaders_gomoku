@@ -20,6 +20,7 @@ import {
 } from "./game-service";
 import {
   CANCEL_NOT_STARTED_OF_GAME,
+  CANCEL_NOT_STARTED_OF_GUEST,
   CANCEL_NOT_STARTED_OF_USER,
   EXPIRE_WAITING_OF_GAME,
   EXPIRE_WAITING_OF_USER,
@@ -193,8 +194,8 @@ export class InvitationService {
   }
 
   /**
-   * State of the invitation for its page. Changes nothing (Q12: link previews must not
-   * consume anything); a failed lookup counts towards the pool of Q13 like in `accept`.
+   * State of the invitation for its page. Consumes nothing (Q12: link previews must not); the
+   * only writes are the lazy closings of the viewer's stale games (Q16, Q21), as in `accept`; a failed lookup counts towards the pool of Q13 like in `accept`.
    * @throws AppError 410 `INVALID_INVITATION` (unknown, used, expired, cancelled or malformed
    * code - one answer for all); 429 `RATE_LIMITED`.
    */
@@ -235,6 +236,7 @@ export class InvitationService {
       throw invalidInvitation();
     }
 
+    await this.#closeStaleSlots(viewer);
     const slot = await this.#slotOf(this.#em, viewer);
     if (!slot) return { creatorName: invitation.creator_name, state: "joinable" };
     return {
@@ -413,6 +415,23 @@ export class InvitationService {
     const started = await tx.execute<{ id: string }[]>(START_GAME_SQL, [now, gameId]);
     if (started.length === 0) throw invalidInvitation();
     return { game: { gameId }, joined: true };
+  }
+
+  /**
+   * Q16, Q21: before the viewer's slot is judged, the viewer's own expired waiting game and
+   * a game nobody opened within the deadline are closed - the same bookkeeping `accept`
+   * does, so the page never claims "you have a game" where joining would succeed. Idempotent
+   * single statements, no invitation is consumed (Q12); an anonymous visitor has no slot.
+   */
+  async #closeStaleSlots({ userId, guestTokenHash }: Viewer): Promise<void> {
+    const now = this.#clock.now();
+    const cutoff = new Date(now.getTime() - READY_DEADLINE_MS);
+    if (userId) {
+      await this.#em.execute(EXPIRE_WAITING_OF_USER, [now, userId], "run");
+      await this.#em.execute(CANCEL_NOT_STARTED_OF_USER, [cutoff, userId], "run");
+    } else if (guestTokenHash) {
+      await this.#em.execute(CANCEL_NOT_STARTED_OF_GUEST, [cutoff, guestTokenHash], "run");
+    }
   }
 
   /** The viewer's seat in the game: the account wins over a guest token. */
