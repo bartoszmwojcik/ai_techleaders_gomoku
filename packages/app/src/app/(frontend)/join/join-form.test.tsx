@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -67,5 +67,35 @@ describe("JoinForm", () => {
     // A second submit event that arrives before the disabled button is rendered.
     fireEvent.submit(screen.getByTestId("join-form"));
     expect(push).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends one navigation for two submits in the same tick", async () => {
+    render(<JoinForm />);
+    await userEvent.setup().type(screen.getByLabelText(/Kod zaproszenia/), "ABCDEFGH");
+    const form = screen.getByTestId("join-form");
+    act(() => {
+      fireEvent.submit(form);
+      fireEvent.submit(form);
+    });
+    expect(push).toHaveBeenCalledTimes(1);
+  });
+
+  it("unlocks the form when the page comes back from the back/forward cache", async () => {
+    await submit("ABCDEFGH");
+    act(() => {
+      window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+    });
+    const button = screen.getByRole("button", { name: "Dalej" }) as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    await userEvent.setup().click(button);
+    expect(push).toHaveBeenCalledTimes(2);
+  });
+
+  it("stays locked on a pageshow that is not a cache restore", async () => {
+    await submit("ABCDEFGH");
+    act(() => {
+      window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: false }));
+    });
+    expect((screen.getByRole("button", { name: "Sprawdzanie kodu…" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });
