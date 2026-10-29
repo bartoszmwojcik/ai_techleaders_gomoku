@@ -76,7 +76,7 @@ Ręczny test po fazie: partia przez `curl`/dwie karty do piątki w linii, remis 
 ### Faza 4 — Zegar (#23)
 Ręczny test po fazie: start zegara po otwarciu strony przez obu, malejący zegar gracza na ruchu, przegrana na czas przy odczycie przeciwnika.
 - [x] 4.1 `core/src/games/clock.ts` (#23 krok 1)
-- [ ] 4.2 Migracja kolumn zegara, start w `getState`, `spend`/`settleGame`/`settleFor`, `GAME_NOT_STARTED` (#23 kroki 2–6)
+- [x] 4.2 Migracja kolumn zegara, start w `getState`, `spend`/`settleGame`/`settleFor`, `GAME_NOT_STARTED` (#23 kroki 2–6) — kolumny zegara i CHECK `timeout` istniały od fazy 1/3, migracji nie dodano
 - [ ] 4.3 Testy integracyjne (wyścigi, rollback, BR-13) (#23 krok 7)
 - [ ] 4.4 UI: `useGameClock`, `PlayerClock`, wariant „mało czasu”, baner końca przez czas (#23 kroki 8–9) — po D3.2
 

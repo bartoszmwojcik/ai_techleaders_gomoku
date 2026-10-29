@@ -2,6 +2,7 @@ import {
   CREATE_GAME_LIMIT,
   CREATE_GAME_WINDOW_MS,
   GUEST_TOKEN_GRACE_MS,
+  INITIAL_CLOCK_MS,
   INVITATION_TTL_MS,
   READY_DEADLINE_MS,
   TooManyRequestsError,
@@ -37,6 +38,9 @@ const EMPTY_BOARD = {
   moves: new Uint8Array(0),
   winnerSeat: null,
   endReason: null,
+  clockMs1: INITIAL_CLOCK_MS,
+  clockMs2: INITIAL_CLOCK_MS,
+  turnStartedAt: null,
 };
 
 /** Fake `em`: `transactional` runs the callback with the same object as `tx`. */
@@ -91,6 +95,7 @@ function setup(options: {
   const timeoutSettler = {
     settleFor: vi.fn(async () => undefined),
     settleGame: vi.fn(async () => false),
+    settleExpired: vi.fn(async () => false),
   };
   const service = new GameService({
     em: em as unknown as EntityManager,
@@ -276,7 +281,7 @@ describe("GameService.getState", () => {
   const invitation = { code: "ABCDEFGH", expiresAt: new Date("2026-10-30T12:00:00Z") };
 
   it("does the lazy bookkeeping in order and shows the invitation to the creator", async () => {
-    const { service, em, calls } = setup({
+    const { service, em, calls, timeoutSettler } = setup({
       game: { status: "waiting" },
       players: [creator],
       invitation,
@@ -288,6 +293,7 @@ describe("GameService.getState", () => {
       "member",
       "execute:with expired",
       "execute:with stale",
+      "execute:update games",
       "execute:update game_players",
       "findOneOrFail",
       "findOneOrFail",
@@ -295,9 +301,12 @@ describe("GameService.getState", () => {
     expect(em.execute).toHaveBeenNthCalledWith(1, expect.any(String), ["p1", "game-1"]);
     expect(em.execute).toHaveBeenNthCalledWith(2, expect.any(String), [NOW, "game-1"], "run");
     expect(em.execute).toHaveBeenNthCalledWith(3, expect.any(String), [CUTOFF, "game-1"], "run");
-    expect(em.execute).toHaveBeenNthCalledWith(4, expect.any(String), [NOW, "p1"], "run");
+    expect(em.execute).toHaveBeenNthCalledWith(4, expect.stringContaining("turn_started_at is null"), [NOW, "game-1", "p1"], "run");
+    expect(em.execute).toHaveBeenNthCalledWith(5, expect.stringContaining("set seen_at"), [NOW, "p1"], "run");
+    expect(timeoutSettler.settleExpired).toHaveBeenCalledWith("game-1", em, NOW);
     expect(state).toEqual({
       status: "waiting",
+      clock: { remainingMs: [INITIAL_CLOCK_MS, INITIAL_CLOCK_MS], running: null },
       moveCount: 0,
       blackSeat: null,
       turnSeat: null,
@@ -347,6 +356,23 @@ describe("GameService.getState", () => {
     });
     const state = await service.getState({ playerId: "p1" }, "game-1", 1);
     expect(state).toMatchObject({ moveCount: 2, blackSeat: 2, turnSeat: 2, moves: [11], result: null });
+  });
+
+  it("serves the clock: the player on turn loses the time since the turn began", async () => {
+    const { service } = setup({
+      game: {
+        status: "active",
+        blackSeat: 1,
+        moveCount: 1,
+        moves: Uint8Array.from([10]),
+        clockMs1: 590_000,
+        clockMs2: 600_000,
+        turnStartedAt: new Date(NOW.getTime() - 25_000),
+      },
+      players: [creator, guest],
+    });
+    const state = await service.getState({ playerId: "p1" }, "game-1");
+    expect(state.clock).toEqual({ remainingMs: [590_000, 575_000], running: 2 });
   });
 
   it("rejects `after` beyond the number of moves without doing the bookkeeping (optimization: no wasted writes)", async () => {

@@ -14,7 +14,7 @@ import {
   InvitationService,
   type LookupGuard,
 } from "../../packages/app/src/server/services/games/invitation-service";
-import { NoopTimeoutSettler } from "../../packages/app/src/server/services/games/timeout-settler";
+import { SqlTimeoutSettler } from "../../packages/app/src/server/services/games/timeout-settler";
 import { RateLimiter } from "../../packages/app/src/server/services/rate-limit/rate-limiter";
 
 let orm: Orm;
@@ -49,7 +49,7 @@ const guard = (limit = 1000): LookupGuard => ({
 function scope() {
   const em = orm.em.fork();
   const rateLimiter = new RateLimiter({ em });
-  const timeoutSettler = new NoopTimeoutSettler();
+  const timeoutSettler = new SqlTimeoutSettler({ em, clock: systemClock });
   return {
     invitations: new InvitationService({
       em,

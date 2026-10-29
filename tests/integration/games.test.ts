@@ -10,7 +10,7 @@ import { GameParticipation } from "../../packages/app/src/server/services/auth/g
 import { systemClock } from "../../packages/app/src/server/services/email/email-sender";
 import { GameService } from "../../packages/app/src/server/services/games/game-service";
 import { InvitationCodes } from "../../packages/app/src/server/services/games/invitation-codes";
-import { NoopTimeoutSettler } from "../../packages/app/src/server/services/games/timeout-settler";
+import { SqlTimeoutSettler } from "../../packages/app/src/server/services/games/timeout-settler";
 import { RateLimiter } from "../../packages/app/src/server/services/rate-limit/rate-limiter";
 
 let orm: Orm;
@@ -44,7 +44,7 @@ function scope() {
     clock: systemClock,
     rateLimiter: new RateLimiter({ em }),
     invitationCodes: new InvitationCodes(),
-    timeoutSettler: new NoopTimeoutSettler(),
+    timeoutSettler: new SqlTimeoutSettler({ em, clock: systemClock }),
     serverConfig: { appOrigin: "https://gomoku.test" } as never,
   });
   return { gameService, participation: new GameParticipation({ em, clock: systemClock }) };

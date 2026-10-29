@@ -8,6 +8,7 @@ import {
   decodeMoves,
   encodeBitboard,
   seatOnTurn,
+  spend,
   type MoveCreateInput,
   type Seat,
 } from "@gomoku/core";
@@ -34,6 +35,7 @@ export const GAME_FINISHED_MESSAGE = "Ta partia jest już zakończona.";
 export const NOT_YOUR_TURN_MESSAGE = "Teraz ruch przeciwnika.";
 export const STALE_MOVE_MESSAGE = "Plansza zmieniła się — odśwież widok.";
 export const CELL_OCCUPIED_MESSAGE = "To pole jest już zajęte.";
+export const GAME_NOT_STARTED_MESSAGE = "Czekamy, aż przeciwnik otworzy partię.";
 
 type GameRow = {
   status: string;
@@ -42,6 +44,10 @@ type GameRow = {
   stones_black: string;
   stones_white: string;
   moves: Uint8Array;
+  clock_ms_1: number;
+  clock_ms_2: number;
+  /** `turn_started_at` in epoch milliseconds, computed in SQL (dates come back as text). */
+  turn_started_ms: number | null;
   seat: number;
 };
 
@@ -49,7 +55,8 @@ type GameRow = {
 // seat. `for no key update` does not block the foreign-key checks of inserts into game_players.
 const LOCK_GAME_SQL = `
   select g.status, g.black_seat, g.move_count, g.stones_black::text as stones_black,
-    g.stones_white::text as stones_white, g.moves, p.seat
+    g.stones_white::text as stones_white, g.moves, g.clock_ms_1, g.clock_ms_2,
+    (extract(epoch from g.turn_started_at) * 1000)::float8 as turn_started_ms, p.seat
   from games g join game_players p on p.game_id = g.id
   where g.id = ? and p.id = ?
   for no key update of g`;
@@ -58,13 +65,15 @@ const LOCK_GAME_SQL = `
 // to the game state it was computed from.
 const MOVE_SQL = `
   update games set stones_black = ?::bit(225), stones_white = ?::bit(225),
-    moves = moves || ?::bytea, move_count = move_count + 1
+    moves = moves || ?::bytea, move_count = move_count + 1,
+    clock_ms_1 = ?, clock_ms_2 = ?, turn_started_at = ?
   where id = ? and status = 'active' and move_count = ?
   returning id`;
 
 const FINISHING_MOVE_SQL = `
   update games set stones_black = ?::bit(225), stones_white = ?::bit(225),
     moves = moves || ?::bytea, move_count = move_count + 1,
+    clock_ms_1 = ?, clock_ms_2 = ?, turn_started_at = ?,
     status = 'finished', winner_seat = ?, end_reason = ?, finished_at = ?
   where id = ? and status = 'active' and move_count = ?
   returning id`;
@@ -88,10 +97,11 @@ export class GameMoveService {
   /**
    * Plays one move for a participant and returns the game state with the moves from
    * `moveNumber - 1` on. Order of checks under the row lock: retry of the same move (answered
-   * `200` even when it ended the game), settlement of an expired clock (#23 hook), game
-   * status, turn, move number, free cell.
+   * `200` even when it ended the game), settlement of an expired clock (#23), game
+   * status, clock started, turn, move number, free cell. The time of the move is read once,
+   * under the lock, and shared by the settlement and the clock charge.
    * @throws AppError 404 for a stranger; 409 `GAME_NOT_ACTIVE`, `GAME_FINISHED`,
-   * `NOT_YOUR_TURN`, `STALE_MOVE`, `CELL_OCCUPIED`
+   * `GAME_NOT_STARTED`, `NOT_YOUR_TURN`, `STALE_MOVE`, `CELL_OCCUPIED`
    */
   async play(
     participant: GameParticipant,
@@ -117,11 +127,15 @@ export class GameMoveService {
         return this.#gameService.stateOf(tx, participant, gameId, after);
       }
 
-      // #23 hook: finishes the game by time under this lock; a settled game is finished.
-      if (await this.#timeoutSettler.settleGame(gameId, tx)) throw gameFinished();
+      // #23: finishes the game by time under this lock; a settled game is finished.
+      const now = this.#clock.now();
+      if (await this.#timeoutSettler.settleGame(gameId, tx, now)) throw gameFinished();
       if (row.status === "finished") throw gameFinished();
       if (row.status !== "active" || blackSeat === null) {
         throw new ConflictError(GAME_NOT_ACTIVE_MESSAGE, { code: "GAME_NOT_ACTIVE" });
+      }
+      if (row.turn_started_ms === null) {
+        throw new ConflictError(GAME_NOT_STARTED_MESSAGE, { code: "GAME_NOT_STARTED" });
       }
       if (seatOnTurn(row.move_count, blackSeat) !== seat) {
         throw new ConflictError(NOT_YOUR_TURN_MESSAGE, { code: "NOT_YOUR_TURN" });
@@ -145,6 +159,20 @@ export class GameMoveService {
       }
 
       const { state, result } = outcome;
+      const left = spend(
+        {
+          clockMs: [row.clock_ms_1, row.clock_ms_2],
+          turnStartedAtMs: Math.floor(Number(row.turn_started_ms)),
+          turnSeat: seat,
+        },
+        seat,
+        now.getTime(),
+      ).clockMs;
+      const clocks = [
+        seat === 1 ? left : row.clock_ms_1,
+        seat === 2 ? left : row.clock_ms_2,
+        now,
+      ];
       const board = [
         encodeBitboard(state.black),
         encodeBitboard(state.white),
@@ -153,13 +181,14 @@ export class GameMoveService {
       const written = result
         ? await tx.execute<{ id: string }[]>(FINISHING_MOVE_SQL, [
             ...board,
+            ...clocks,
             result.winnerSeat,
             result.reason,
-            this.#clock.now(),
+            now,
             gameId,
             row.move_count,
           ])
-        : await tx.execute<{ id: string }[]>(MOVE_SQL, [...board, gameId, row.move_count]);
+        : await tx.execute<{ id: string }[]>(MOVE_SQL, [...board, ...clocks, gameId, row.move_count]);
       if (written.length === 0) throw staleMove();
       if (result) await tx.execute(RELEASE_SLOTS_SQL, [gameId], "run");
 

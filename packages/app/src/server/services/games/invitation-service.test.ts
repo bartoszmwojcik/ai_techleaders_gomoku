@@ -79,6 +79,7 @@ function setup(
   const timeoutSettler = {
     settleFor: vi.fn(async () => undefined),
     settleGame: vi.fn(async () => false),
+    settleExpired: vi.fn(async () => false),
   };
   const colorDraw = { drawBlackSeat: vi.fn(() => options.blackSeat ?? 1) };
   const service = new InvitationService({

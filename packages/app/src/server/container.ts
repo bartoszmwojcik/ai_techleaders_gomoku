@@ -23,7 +23,7 @@ import { GameService } from "./services/games/game-service";
 import { InvitationCodes } from "./services/games/invitation-codes";
 import { InvitationService } from "./services/games/invitation-service";
 import {
-  NoopTimeoutSettler,
+  SqlTimeoutSettler,
   type TimeoutSettler,
 } from "./services/games/timeout-settler";
 import { createInvalidateResetTokens } from "./services/auth/invalidate-reset-tokens";
@@ -148,7 +148,7 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     invitationCodes: asClass(InvitationCodes).singleton(),
     colorDraw: asClass(ColorDraw).singleton(),
     invitationService: asClass(InvitationService).scoped(),
-    timeoutSettler: asClass(NoopTimeoutSettler).singleton(),
+    timeoutSettler: asClass(SqlTimeoutSettler).scoped(),
     rateLimiter: asClass(RateLimiter).scoped(),
     emailVerificationService: asClass(EmailVerificationService).scoped(),
     userService: asClass(UserService).scoped(),
