@@ -18,7 +18,7 @@
 - [x] D1.1 Aktualizacja `lekcja-07/mapa-ekranow-partia.md` po D0 (stany, luki, role, scenariusze); zatrzymanie na zatwierdzenie
 
 ### D2 — Szary prototyp (`om-mockup-prototype`, przepływ „partia z zaproszenia”, etapami)
-- [ ] D2.1 Etap A: tworzenie zaproszenia, `/join`, `/invite/[code]`, oczekiwanie na przeciwnika; Twój przegląd
+- [x] D2.1 Etap A: tworzenie zaproszenia, `/join`, `/invite/[code]`, oczekiwanie na przeciwnika; Twój przegląd
 - [ ] D2.2 Etap B: gotowość, plansza, ruchy, zegary, koniec partii, poddanie, rewanż, powrót po rozłączeniu; Twój przegląd
 - [ ] D2.3 Kopia do Storybooka: `npm run prototypes`
 
