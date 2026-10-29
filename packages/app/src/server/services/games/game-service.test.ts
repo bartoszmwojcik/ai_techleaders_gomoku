@@ -44,6 +44,7 @@ function setup(options: {
   config?: { appOrigin?: string };
   executeRows?: unknown[][];
   count?: number;
+  gamesBeyond?: number;
   game?: Record<string, unknown>;
   players?: Record<string, unknown>[];
   invitation?: Record<string, unknown>;
@@ -59,9 +60,9 @@ function setup(options: {
       calls.push(`execute:${sql.includes("returning id") && sql.includes("update games set") ? "cancel" : sql.trim().split(/\s+/).slice(0, 2).join(" ")}`);
       return rows.shift() ?? [];
     }),
-    count: vi.fn(async () => {
-      calls.push("count");
-      return options.count ?? 1;
+    count: vi.fn(async (entity: unknown) => {
+      calls.push(entity === Game ? "count:after" : "count");
+      return entity === Game ? (options.gamesBeyond ?? 0) : (options.count ?? 1);
     }),
     create: vi.fn((entity: unknown, data: Record<string, unknown>) => {
       const row = { ...data, id: entity === Game ? "game-1" : undefined };
@@ -342,9 +343,16 @@ describe("GameService.getState", () => {
     expect(state).toMatchObject({ moveCount: 2, blackSeat: 2, turnSeat: 2, moves: [11], result: null });
   });
 
-  it("rejects `after` beyond the number of moves", async () => {
-    const { service } = setup({ game: { status: "active", blackSeat: 1 }, players: [creator, guest] });
+  it("rejects `after` beyond the number of moves before any bookkeeping, so nothing is rolled back", async () => {
+    const { service, em, calls } = setup({ gamesBeyond: 1, players: [creator, guest] });
     await expect(service.getState({ playerId: "p1" }, "game-1", 1)).rejects.toMatchObject({ status: 400 });
+    expect(calls).toEqual(["count", "count:after"]);
+    expect(em.execute).not.toHaveBeenCalled();
+  });
+
+  it("stateOf still refuses `after` beyond the number of moves (used after a move)", async () => {
+    const { service, em } = setup({ game: { status: "active", blackSeat: 1 }, players: [creator, guest] });
+    await expect(service.stateOf(em as never, { playerId: "p1" }, "game-1", 1)).rejects.toMatchObject({ status: 400 });
   });
 
   it("answers 404 to a non-participant before writing anything", async () => {

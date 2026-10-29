@@ -56,6 +56,7 @@ export const GAME_NOT_CANCELLABLE_MESSAGE =
 export const GAME_NOT_FOUND_MESSAGE = "Nie znaleziono partii.";
 
 /** Used only outside production, where `APP_ORIGIN` may be unset (as in e-mail links). */
+const AFTER_MESSAGE = "Nieprawidłowy parametr after.";
 const DEV_ORIGIN = "http://localhost:3000";
 
 // The player a guest token stands for in this game, while the token is valid (BR-22).
@@ -251,6 +252,13 @@ export class GameService {
         game: gameId,
       });
       if (member === 0) throw new NotFoundError(GAME_NOT_FOUND_MESSAGE);
+      // A bad `after` is refused before the lazy bookkeeping: the 400 must not roll back
+      // `seen_at` or a cancellation done in this transaction. A count (no entity is loaded, so
+      // the identity map stays clean for the raw updates below); the move count does not
+      // change under the lazy updates, so the later check in `stateOf` never disagrees.
+      if (after > 0 && (await tx.count(Game, { id: gameId, moveCount: { $lt: after } })) > 0) {
+        throw new ValidationError(AFTER_MESSAGE);
+      }
 
       const now = this.#clock.now();
       await tx.execute(EXPIRE_WAITING_OF_GAME, [now, gameId], "run");
@@ -279,7 +287,7 @@ export class GameService {
   ): Promise<GameState> {
     const game = await tx.findOneOrFail(Game, gameId);
     if (after > game.moveCount) {
-      throw new ValidationError("Nieprawidłowy parametr after.");
+      throw new ValidationError(AFTER_MESSAGE);
     }
     const players = await tx.find(
       GamePlayer,

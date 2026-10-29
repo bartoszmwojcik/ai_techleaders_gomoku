@@ -233,6 +233,31 @@ describe("a game to five in a row over HTTP", () => {
   });
 });
 
+describe("a state read with a bad `after`", () => {
+  it("answers 400 before the bookkeeping, so it changes nothing, and a valid read marks the page as seen", async () => {
+    const game = await startedGame();
+    await run(`update game_players set seen_at = null where game_id = ?`, [game.gameId]);
+    for (const [index, [x, y]] of ([[7, 7], [8, 8], [7, 8]] as [number, number][]).entries()) {
+      expect((await move(game.gameId, index % 2 === 0 ? game.black : game.white, x, y, index + 1)).status).toBe(200);
+    }
+    const seen = () => run(`select count(seen_at)::int as seen from game_players where game_id = ?`, [game.gameId]);
+
+    const refused = await stateOf(game.gameId, game.black, 200);
+    expect(refused.status).toBe(400);
+    expect(refused.body.error?.code).toBe("VALIDATION");
+    // Decision: a refused request has no side effects (the 400 comes before MARK_SEEN_SQL).
+    expect(await seen()).toEqual([{ seen: 0 }]);
+
+    // The edge: `after` equal to the number of moves is valid and marks the page as seen.
+    const edge = await stateOf(game.gameId, game.black, 3);
+    expect(edge.status).toBe(200);
+    expect(edge.body.data.moves).toEqual([]);
+    expect(await seen()).toEqual([{ seen: 1 }]);
+    expect((await stateOf(game.gameId, game.black, 200)).status).toBe(400);
+    expect(await seen()).toEqual([{ seen: 1 }]);
+  });
+});
+
 describe("rejected moves", () => {
   it("answers the documented codes and changes nothing", async () => {
     const game = await startedGame();
