@@ -137,6 +137,7 @@ describe("auth services", () => {
         expect.objectContaining({ user: "user", isActive: true }),
       );
       expect(cradle.gameService).toBe(cradle.gameService);
+      expect(cradle.gameMoveService).toBe(cradle.gameMoveService);
       expect(cradle.invitationCodes).toBe(cradle.invitationCodes);
       expect(cradle.colorDraw).toBe(cradle.colorDraw);
       expect(cradle.invitationService).toBe(cradle.invitationService);

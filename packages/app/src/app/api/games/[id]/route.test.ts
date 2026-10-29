@@ -39,8 +39,18 @@ describe("GET /api/games/[id]", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ok: true, data: state });
     expect(resolveParticipant).toHaveBeenCalledWith(GAME);
-    expect(getState).toHaveBeenCalledWith({ playerId: "player-1" }, GAME);
+    expect(getState).toHaveBeenCalledWith({ playerId: "player-1" }, GAME, 0);
     expect(refreshGuestCookie).not.toHaveBeenCalled();
+  });
+
+  it("passes `after` on and rejects a malformed one before reading", async () => {
+    await GET(new Request(`https://gomoku.example/api/games/${GAME}?after=3`), context);
+    expect(getState).toHaveBeenLastCalledWith({ playerId: "player-1" }, GAME, 3);
+
+    getState.mockClear();
+    const bad = await GET(new Request(`https://gomoku.example/api/games/${GAME}?after=-1`), context);
+    expect(bad.status).toBe(400);
+    expect(getState).not.toHaveBeenCalled();
   });
 
   it("slides the guest cookie on every successful read by a guest", async () => {

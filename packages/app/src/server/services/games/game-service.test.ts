@@ -29,6 +29,16 @@ const CUTOFF = new Date(NOW.getTime() - READY_DEADLINE_MS);
 
 type Calls = string[];
 
+const EMPTY_BOARD = {
+  blackSeat: null,
+  moveCount: 0,
+  stonesBlack: "0".repeat(225),
+  stonesWhite: "0".repeat(225),
+  moves: new Uint8Array(0),
+  winnerSeat: null,
+  endReason: null,
+};
+
 /** Fake `em`: `transactional` runs the callback with the same object as `tx`. */
 function setup(options: {
   config?: { appOrigin?: string };
@@ -65,14 +75,17 @@ function setup(options: {
     }),
     findOneOrFail: vi.fn(async (entity: unknown) => {
       calls.push("findOneOrFail");
-      return entity === Game ? options.game : options.invitation;
+      return entity === Game ? { ...EMPTY_BOARD, ...options.game } : options.invitation;
     }),
     find: vi.fn(async () => options.players ?? []),
     findOne: vi.fn(async () => options.player ?? null),
   };
   const rateLimiter = { hit: vi.fn(async () => ({ count: 1, retryAfterSeconds: 1 })) };
   const invitationCodes = { generate: vi.fn(() => "ABCDEFGH") };
-  const timeoutSettler = { settleFor: vi.fn(async () => undefined) };
+  const timeoutSettler = {
+    settleFor: vi.fn(async () => undefined),
+    settleGame: vi.fn(async () => false),
+  };
   const service = new GameService({
     em: em as unknown as EntityManager,
     clock: { now: () => NOW },
@@ -279,6 +292,11 @@ describe("GameService.getState", () => {
     expect(em.execute).toHaveBeenNthCalledWith(3, expect.any(String), [NOW, "p1"], "run");
     expect(state).toEqual({
       status: "waiting",
+      moveCount: 0,
+      blackSeat: null,
+      turnSeat: null,
+      moves: [],
+      result: null,
       you: { seat: 1, kind: "account" },
       players: [{ seat: 1, kind: "account", displayName: "Ala", seen: true }],
       invitation: {
@@ -308,6 +326,25 @@ describe("GameService.getState", () => {
     const state = await service.getState({ playerId: "p1" }, "game-1");
     expect(state.status).toBe("cancelled");
     expect(state.invitation).toBeUndefined();
+  });
+
+  it("adds the board: moves after `after`, the seat on turn and the result", async () => {
+    const { service } = setup({
+      game: {
+        status: "active",
+        blackSeat: 2,
+        moveCount: 2,
+        moves: Uint8Array.from([10, 11]),
+      },
+      players: [creator, guest],
+    });
+    const state = await service.getState({ playerId: "p1" }, "game-1", 1);
+    expect(state).toMatchObject({ moveCount: 2, blackSeat: 2, turnSeat: 2, moves: [11], result: null });
+  });
+
+  it("rejects `after` beyond the number of moves", async () => {
+    const { service } = setup({ game: { status: "active", blackSeat: 1 }, players: [creator, guest] });
+    await expect(service.getState({ playerId: "p1" }, "game-1", 1)).rejects.toMatchObject({ status: 400 });
   });
 
   it("answers 404 to a non-participant before writing anything", async () => {

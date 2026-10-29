@@ -76,7 +76,10 @@ function setup(
     hit: vi.fn(async () => ({ count: 1, retryAfterSeconds: 1 })),
     release: vi.fn(async () => undefined),
   };
-  const timeoutSettler = { settleFor: vi.fn(async () => undefined) };
+  const timeoutSettler = {
+    settleFor: vi.fn(async () => undefined),
+    settleGame: vi.fn(async () => false),
+  };
   const colorDraw = { drawBlackSeat: vi.fn(() => options.blackSeat ?? 1) };
   const service = new InvitationService({
     em: em as unknown as EntityManager,

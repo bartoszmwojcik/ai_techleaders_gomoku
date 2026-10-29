@@ -6,6 +6,10 @@ import {
   INVITATION_TTL_MS,
   NotFoundError,
   READY_DEADLINE_MS,
+  ValidationError,
+  boardView,
+  type BoardView,
+  type EndReason,
   formatInvitationCode,
   invitationUrl,
   type GameStatus,
@@ -79,7 +83,7 @@ export type CreatedGame = {
 /** Who is asking: the participant resolved from the session or the guest token. */
 export type GameParticipant = { playerId: string };
 
-export type GameState = {
+export type GameState = BoardView & {
   status: GameStatus;
   you: { seat: Seat; kind: ParticipantKind };
   players: {
@@ -239,6 +243,7 @@ export class GameService {
   async getState(
     participant: GameParticipant,
     gameId: string,
+    after = 0,
   ): Promise<GameState> {
     return this.#em.transactional(async (tx) => {
       const member = await tx.count(GamePlayer, {
@@ -256,33 +261,64 @@ export class GameService {
       );
       await tx.execute(MARK_SEEN_SQL, [now, participant.playerId], "run");
 
-      const game = await tx.findOneOrFail(Game, gameId);
-      const players = await tx.find(
-        GamePlayer,
-        { game: gameId },
-        { populate: ["user"], orderBy: { seat: "asc" } },
-      );
-      const you = players.find(({ id }) => id === participant.playerId)!;
-      const state: GameState = {
-        status: game.status as GameStatus,
-        you: { seat: you.seat as Seat, kind: you.kind as ParticipantKind },
-        players: players.map((player) => ({
-          seat: player.seat as Seat,
-          kind: player.kind as ParticipantKind,
-          displayName: player.user?.displayName ?? null,
-          seen: player.seenAt !== null,
-        })),
-      };
-      if (you.seat === 1 && game.status === "waiting") {
-        const invitation = await tx.findOneOrFail(Invitation, { game: gameId });
-        state.invitation = {
-          code: formatInvitationCode(invitation.code),
-          url: invitationUrl(this.#origin(), invitation.code),
-          expiresAt: invitation.expiresAt,
-        };
-      }
-      return state;
+      return this.stateOf(tx, participant, gameId, after);
     });
+  }
+
+  /**
+   * Builds the state of a game inside the caller's transaction, without bookkeeping:
+   * `getState` calls it after the lazy updates, `GameMoveService` after a move.
+   * `after` is the number of moves the client already knows (#22 Q5).
+   * @throws AppError 400 when `after` is greater than the number of moves
+   */
+  async stateOf(
+    tx: EntityManager,
+    participant: GameParticipant,
+    gameId: string,
+    after = 0,
+  ): Promise<GameState> {
+    const game = await tx.findOneOrFail(Game, gameId);
+    if (after > game.moveCount) {
+      throw new ValidationError("Nieprawidłowy parametr after.");
+    }
+    const players = await tx.find(
+      GamePlayer,
+      { game: gameId },
+      { populate: ["user"], orderBy: { seat: "asc" } },
+    );
+    const you = players.find(({ id }) => id === participant.playerId)!;
+    const state: GameState = {
+      status: game.status as GameStatus,
+      you: { seat: you.seat as Seat, kind: you.kind as ParticipantKind },
+      players: players.map((player) => ({
+        seat: player.seat as Seat,
+        kind: player.kind as ParticipantKind,
+        displayName: player.user?.displayName ?? null,
+        seen: player.seenAt !== null,
+      })),
+      ...boardView(
+        {
+          status: game.status as GameStatus,
+          blackSeat: game.blackSeat ?? null,
+          moveCount: game.moveCount,
+          stonesBlack: game.stonesBlack,
+          stonesWhite: game.stonesWhite,
+          moves: game.moves,
+          winnerSeat: game.winnerSeat ?? null,
+          endReason: (game.endReason ?? null) as EndReason | null,
+        },
+        after,
+      ),
+    };
+    if (you.seat === 1 && game.status === "waiting") {
+      const invitation = await tx.findOneOrFail(Invitation, { game: gameId });
+      state.invitation = {
+        code: formatInvitationCode(invitation.code),
+        url: invitationUrl(this.#origin(), invitation.code),
+        expiresAt: invitation.expiresAt,
+      };
+    }
+    return state;
   }
 
   #origin(): string {

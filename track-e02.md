@@ -69,7 +69,7 @@ Na świeżej bazie (osobna baza jednorazowa, nie `gomoku` z danymi: `docker comp
 Ręczny test po fazie: partia przez `curl`/dwie karty do piątki w linii, remis (stan 224 kamieni w bazie), ruch poza turą i na zajęte pole odrzucony.
 - [x] 3.1 Rdzeń `core/src/games/`: `board`, `bitboard-codec`, `checkWin`, `applyMove` z testem równoważności (#22 kroki 1–5)
 - [x] 3.2 Walidator `moveCreateSchema`, encje/migracja kolumn planszy (`stones_*` bit(225), `moves` bytea, `CHECK`-i), losowanie koloru (#22 kroki 6–8)
-- [ ] 3.3 `GameMoveService.play`, `POST /api/games/[id]/moves`, rozszerzony `GET` z `after`, `result`, `winLine` (#22 kroki 9–10)
+- [x] 3.3 `GameMoveService.play`, `POST /api/games/[id]/moves`, rozszerzony `GET` z `after`, `result`, `winLine` (#22 kroki 9–10)
 - [ ] 3.4 Testy integracyjne: wyścigi, idempotencja, wygrana ostatnim kamieniem (#22 krok 11)
 - [ ] 3.5 Plansza i stany końca na `/games/[gameId]` (#22 kroki 12–14) — po zatwierdzeniu prototypu etapu B (D3.2)
 
