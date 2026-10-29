@@ -9,7 +9,7 @@
 ## Ścieżka projektowa (D0–D3) — równolegle do ścieżki fundamentu
 
 ### D0 — Specyfikacje brakujących funkcji (interaktywne, pytania do właściciela)
-- [ ] D0.1 Specyfikacja #24: powrót po rozłączeniu (zegar biegnie, widok po powrocie, odświeżenie po końcu partii, status „rozłączony” przeciwnika)
+- [x] D0.1 Specyfikacja #24: powrót po rozłączeniu (zegar biegnie, widok po powrocie, odświeżenie po końcu partii, status „rozłączony” przeciwnika)
 - [ ] D0.2 Specyfikacja poddania (nowe zgłoszenie; zmiana #22 Q6; BR-21; tekst potwierdzenia, L23)
 - [ ] D0.3 Specyfikacja rewanżu (odwrócone kolory, zaproszenie 5 min, rozstrzygnięcie L21, L22, L24; gość)
 - [ ] D0.4 Poprawka #22 Q8 (start zegara po `seen_at` obu) i adnotacje w #21/#22 o decyzjach z mapy (Gość, aktywne wyjście)
