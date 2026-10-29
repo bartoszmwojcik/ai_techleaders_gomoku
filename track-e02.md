@@ -23,7 +23,7 @@
 - [x] D2.3 Kopia do Storybooka: `npm run prototypes`
 
 ### D3 — Klikalny prototyp z design systemu (jak `prototypes/konta-i-role`)
-- [ ] D3.1 Etap A: symulator, ekrany p01–p04, pasek scenariuszy, testy nawigacji; Twój przegląd
+- [x] D3.1 Etap A: symulator, ekrany p01–p04, pasek scenariuszy, testy nawigacji; Twój przegląd (zatwierdzony 2026-10-29, 249 PASS/0 FAIL, 41 testów nawigacji)
 - [ ] D3.2 Etap B: ekrany p05–p07 (plansza, zegary, wynik, rewanż, poddanie), Twój przegląd i zatwierdzenie
 
 ## Ścieżka implementacji
