@@ -295,7 +295,7 @@ describe("InvitationService.accept", () => {
     // A successful join does not spend the pool of failures.
     const other = guard(INVITATION_LOOKUP_LIMIT);
     await scope().invitations.accept(code, { userId: user }, asUser, other);
-    const [bucket] = await run(`select count(*)::int as n from rate_limit_buckets where "key" = ?`, [other.key]);
+    const [bucket] = await run(`select coalesce(sum("count"), 0)::int as n from rate_limit_buckets where "key" = ?`, [other.key]);
     expect(bucket!.n).toBe(0);
   });
 });
