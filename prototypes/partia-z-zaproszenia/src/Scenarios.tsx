@@ -5,7 +5,6 @@ import {
   advanceClock,
   clockSteps,
   creatorOpens,
-  defaultInviteCode,
   openInvite,
   opponentJoins,
   patchScenario,
@@ -15,7 +14,9 @@ import {
   setRole,
   setupDemo,
   setWidth,
+  DEFAULT_CODE,
   getSim,
+  phaseOf,
   useSim,
   type CreateOutcome,
   type DemoStage,
@@ -148,7 +149,9 @@ export function Scenarios() {
             label="Otwórz zaproszenie Ala_7"
             onClick={() => {
               prepareDemoInvitation();
-              openInvite(defaultInviteCode(getSim()));
+              openInvite(
+                getSim().games.find((g) => g.creator === "ala@example.com" && phaseOf(getSim(), g) === "waiting")?.code ?? DEFAULT_CODE,
+              );
               go("s07");
             }}
           />

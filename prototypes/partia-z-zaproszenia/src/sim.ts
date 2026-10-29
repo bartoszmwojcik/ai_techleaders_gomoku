@@ -303,10 +303,11 @@ export function openInvite(code: string) {
   set({ inviteCode: code, failedLookups: peekedFailure && sim.failedLookups <= LOOKUP_LIMIT ? sim.failedLookups + 1 : sim.failedLookups });
 }
 
-/** The code the navigation bar opens when nothing was looked up: the newest waiting invitation, or Ala_7's demo one. */
-export function defaultInviteCode(sim: Sim): string {
-  const waiting = [...sim.games].reverse().find((g) => phaseOf(sim, g) === "waiting");
-  return waiting?.code ?? DEFAULT_CODE;
+/** The newest waiting invitation of somebody else: what the review bar opens when no link was followed. */
+export function foreignInviteCode(sim: Sim): string | null {
+  const account = viewer(sim);
+  const waiting = [...sim.games].reverse().find((g) => phaseOf(sim, g) === "waiting" && (!account || g.creator !== account.email));
+  return waiting?.code ?? null;
 }
 
 export function normalizeCode(raw: string): string {

@@ -3,10 +3,9 @@ import { Button } from "@gomoku/ui/game/button";
 import { PlayerClock } from "@gomoku/ui/game/player-clock";
 import { TextLink } from "@gomoku/ui/game/text-link";
 import { TurnStatus } from "@gomoku/ui/game/turn-status";
-import { useEffect } from "react";
 
-import { go, Main, SiteHeader, useCurrentScreen, useGameRoute } from "../chrome";
-import { accessibleGame, creatorOpens, nameOf, opponentName, phaseOf, showOutside, sideOf, useSim, viewer } from "../sim";
+import { go, Main, SiteHeader, useGameRoute } from "../chrome";
+import { accessibleGame, nameOf, opponentName, phaseOf, showOutside, sideOf, useSim, viewer } from "../sim";
 import { useStateId } from "../stateId";
 import { GameGate } from "./game-gate";
 
@@ -17,17 +16,10 @@ const TEN_MINUTES = 600_000;
 export function P04Ready() {
   const sim = useSim();
   const route = useGameRoute("p04");
-  const current = useCurrentScreen();
   const game = accessibleGame(sim);
   const phase = game ? phaseOf(sim, game) : null;
   const side = game ? sideOf(sim, game) : null;
   const account = viewer(sim);
-
-  // A creator who lands here has opened the game page (`seen_at`, Q20), unless the game was cancelled for want of an opener.
-  const gameId = game?.id;
-  useEffect(() => {
-    if (current === "p04" && phase === "ready" && side === "creator") creatorOpens(gameId);
-  }, [current, phase, side, gameId]);
 
   let stateId = "p04.1";
   if (phase === "autocancelled") stateId = "p04.3";

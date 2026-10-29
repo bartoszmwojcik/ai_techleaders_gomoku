@@ -6,7 +6,7 @@ import { useState } from "react";
 import { go, Main, SiteHeader, useScreenEnter } from "../chrome";
 import {
   acceptInvite,
-  defaultInviteCode,
+  foreignInviteCode,
   findByCode,
   getSim,
   inviteView,
@@ -46,9 +46,9 @@ export function S07Invite() {
     setAsking(false);
     let current = getSim();
     if (current.inviteCode === null) {
-      // Opened from the review bar without a link: show Ala_7's demo invitation (a prototype shortcut).
-      prepareDemoInvitation();
-      openInvite(defaultInviteCode(getSim()));
+      // Opened from the review bar without a link: show somebody else's waiting invitation, or prepare Ala_7's (a prototype shortcut).
+      if (foreignInviteCode(current) === null) prepareDemoInvitation();
+      openInvite(foreignInviteCode(getSim()) ?? getSim().games.at(-1)!.code);
       current = getSim();
     }
     // s07.4 and s07.5 are redirects to the game in the product.

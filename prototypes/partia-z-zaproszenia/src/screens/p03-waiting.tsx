@@ -142,6 +142,7 @@ export function P03Waiting() {
         <SiteHeader />
         <Main state={stateId}>
           <h1 className="m-0 text-section font-strong">Przeciwnik dołączył</h1>
+          {sim.notice?.screen === "p03" && <Alert status="warning" title={sim.notice.text} />}
           <Alert status="success" title={`${opponentName(game)} dołączył do partii`}>
             Za chwilę przejdziesz do partii.
           </Alert>
