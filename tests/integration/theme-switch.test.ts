@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, inject, it } from "vitest";
 
-import { Browser } from "./browser";
+import { Browser, DEFAULT_SYSTEM_SCHEME } from "./browser";
 
 const baseUrl = inject("baseUrl");
 const browser = new Browser(inject("browserSession"));
@@ -25,7 +25,8 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await browser.clearCookies();
-  await browser.setMedia("dark");
+  // The session is shared with the other files: leave the system preference as global-setup set it.
+  await browser.setMedia(DEFAULT_SYSTEM_SCHEME);
   await browser.setViewport(1280, 800);
 });
 
@@ -50,6 +51,9 @@ describe("theme switch: first visit without a cookie", () => {
     expect(await pressed()).toBe("false");
   });
 
+  // No-flash guarantee: a synchronous inline script in <head>, before <body>, sets the theme
+  // before the first paint. This test checks the order in the raw HTML (and the state after load
+  // in the tests above); it does not observe the first paint itself.
   it("ships the init script only without a valid cookie, before the body", async () => {
     const none = await rawHtml();
     expect(none).toMatch(/<html lang="pl"(?![^>]*data-theme)/);

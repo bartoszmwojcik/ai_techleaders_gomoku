@@ -1,6 +1,6 @@
 # Przełącznik motywu jasny/ciemny na stronach gracza
 
-> Status: **zatwierdzona do implementacji** (Q1–Q5 rozstrzygnięte) (`om-spec-writing`, tryb interaktywny, 2026-10-28). Źródło: decyzja właściciela z 2026-10-28 (dodać przełącznik do planu E01, `track.md` Faza 11), `packages/ui/docs/foundations/motywy.mdx`, `packages/ui/src/styles/game-tokens.css`, `packages/ui/docs/design-system.md`. Dotyczy tylko grupy tras `(frontend)`; panel `(backend)` ma własny motyw shadcn.
+> Status: **wdrożona** (2026-10-29; Q1–Q5 rozstrzygnięte) (`om-spec-writing`, tryb interaktywny, 2026-10-28). Źródło: decyzja właściciela z 2026-10-28 (dodać przełącznik do planu E01, `track.md` Faza 11), `packages/ui/docs/foundations/motywy.mdx`, `packages/ui/src/styles/game-tokens.css`, `packages/ui/docs/design-system.md`. Dotyczy tylko grupy tras `(frontend)`; panel `(backend)` ma własny motyw shadcn.
 
 ## 📝 TLDR
 
@@ -42,6 +42,7 @@ Gracz nie może zmienić motywu, mimo że DS i prototypy go przewidują, a czę�
 | System zmienia preferencję w trakcie wizyty | Bez ciasteczka motyw nie zmienia się do odświeżenia (świadomie; brak nasłuchu) |
 | Migotanie przy pierwszej wizycie bez ciasteczka | Skrypt w `<head>` ustawia atrybut przed pierwszym malowaniem |
 | Hydracja | `suppressHydrationWarning` tylko na `<html>`; komponent przełącznika renderuje na serwerze ten sam stan, co na kliencie (z ciasteczka) |
+| Użytkownik z jasnym systemem, bez ciasteczka | Ikona i `aria-pressed` przełącznika startują jako „ciemny” (snapshot serwera), a po hydracji przeskakują na „jasny”, podczas gdy skrypt w `<head>` ustawił `light` przed malowaniem. Zachowanie świadomie przyjęte (bez ostrzeżeń hydracji); do ewentualnej poprawki, np. ukrycie ikony do zamontowania |
 | Dialogi i popovery renderowane poza drzewem strony | Dziedziczą motyw z `<html>` (zgodnie z `motywy.mdx`) |
 
 ## 📝 Risks & Impact Review
@@ -62,3 +63,4 @@ Gracz nie może zmienić motywu, mimo że DS i prototypy go przewidują, a czę�
 - Przełącznik jest wierszem w normalnym przepływie nad stroną (`flex justify-end` w `<body>` layoutu), nie elementem `absolute`: nigdy nie nachodzi na treść, a wiersz ma stałą wysokość. Dlatego `<main>` stron ma `flex-1` (zamiast `min-h-svh`), żeby wyśrodkowanie pionowe treści działało bez przewijania.
 - Przegląd wszystkich ekranów E01 w obu motywach (360/1280 px, 320 px dla wybranych): brak problemów z kontrastem, układem i fokusem, żadnych zmian tokenów (Q5 potwierdzone). Najniższy kontrast tekstu w jasnym motywie: 4,58:1 (`text-muted`). Szczegóły: `.ai/analysis/2026-10-29-theme-review-e01.md`.
 - Scenariusze integracyjne: `tests/integration/theme-switch.test.ts` (preferencja systemu, ciasteczko, niepoprawna wartość, wiele stron, klawiatura, 360 px).
+- Odstępstwo od propsów `lightLabel`/`darkLabel`: `ThemeSwitch` ma jedną stałą nazwę przycisku („Jasny motyw”), a stan niesie `aria-pressed` (włączony = jasny), zgodnie ze wzorcem przycisku przełączanego; zob. `packages/ui/docs/components/theme-switch.mdx`.

@@ -9,6 +9,9 @@ const execFileAsync = promisify(execFile);
 
 export const AGENT_BROWSER_BIN = resolve(import.meta.dirname, "../../node_modules/.bin/agent-browser");
 
+/** `prefers-color-scheme` of a fresh headless Chrome session (measured with `matchMedia`: light). */
+export const DEFAULT_SYSTEM_SCHEME = "light" as const;
+
 type CliResult<T> = { success: boolean; data: T; error: string | null };
 
 export class Browser {
