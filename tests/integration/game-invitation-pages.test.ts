@@ -260,7 +260,7 @@ describe("the invitation pages", () => {
       "select count(*) filter (where is_active) as held from game_players where game_id = ?",
       [own.gameId],
     );
-    expect(Number(slot.held)).toBe(0);
+    expect(Number(slot!.held)).toBe(0);
     // The slot is really free: a new game can be created.
     await createdGame(player.cookie);
   });
@@ -281,7 +281,7 @@ describe("the invitation pages", () => {
       "select count(*) filter (where is_active) as held from game_players where game_id = ?",
       [own.gameId],
     );
-    expect(Number(slot.held)).toBe(0);
+    expect(Number(slot!.held)).toBe(0);
     await createdGame(player.cookie);
   });
 
