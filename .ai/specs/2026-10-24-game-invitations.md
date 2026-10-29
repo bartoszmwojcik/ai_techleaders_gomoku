@@ -8,6 +8,8 @@
 
 > Status: **zatwierdzona** (`om-auto-write-spec`, 2026-10-24; założenia Q4 i Q9 potwierdzone przez właściciela — Bartosz Wójcik, 2026-10-24; pozostałe odwracalne; Q3, Q6, Q13 i Q20–Q22 potwierdzone w sesji grill-me 2026-10-24). Źródło: issue #21, `.ai/specs/product-brief.md` (BR-01, BR-09, BR-11, BR-13, BR-22, BR-23, BR-24, D-07, D-10, D-21, D-23), specyfikacje #19 (G2, G5, G7, G8), #20 (`requireSession`, `RateLimiter.hit`, `gameParticipation`), #37 (usunięcie konta), #39 (sprzątanie), standardy (`.ai/docs/2026-09-01-engineering-standards.md`, §Architecture).
 
+> **Adnotacja 2026-10-29 (decyzje właściciela, mapa ekranów E02):** anulowanie zaproszenia wymaga potwierdzenia, a po anulowaniu twórca wraca na stronę główną, link jest nieważny (L04); niezalogowany gracz jest dla przeciwnika „Gość” (L14); po zakończonej partii dostępne są rewanż (`2026-10-29-game-rematch.md`) i poddanie w trakcie (`2026-10-29-game-resignation.md`); powrót po rozłączeniu: `2026-10-29-game-reconnection.md`.
+
 ## 📝 TLDR
 
 Dziś nie ma partii: stałe `BOARD_SIZE`/`WIN_LENGTH` w `core` to jedyny kod domeny. Po wdrożeniu (zachowanie przyszłe): zalogowany użytkownik z potwierdzonym e-mailem tworzy partię i dostaje **jedno jednorazowe zaproszenie** — link `/invite/ABCD-EFGH` i ten sam kod do przepisania na `/join`. Zaproszony dołącza jako zalogowany gracz z potwierdzonym e-mailem albo — bez konta — jako **gość** z tokenem jednej partii w ciasteczku (BR-22). Partia ma dokładnie dwóch uczestników, trzecia osoba nie wejdzie, a użytkownik ma co najwyżej jedną partię (BR-13). Ruchy, zegary i wynik to #22/#23 — tu powstaje partia „gotowa do gry” i warstwa tożsamości uczestnika (konto albo gość), z której skorzystają kolejne route'y.

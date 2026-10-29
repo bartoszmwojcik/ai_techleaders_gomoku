@@ -10,9 +10,9 @@
 
 ### D0 — Specyfikacje brakujących funkcji (interaktywne, pytania do właściciela)
 - [x] D0.1 Specyfikacja #24: powrót po rozłączeniu (zegar biegnie, widok po powrocie, odświeżenie po końcu partii, status „rozłączony” przeciwnika)
-- [ ] D0.2 Specyfikacja poddania (nowe zgłoszenie; zmiana #22 Q6; BR-21; tekst potwierdzenia, L23)
-- [ ] D0.3 Specyfikacja rewanżu (odwrócone kolory, zaproszenie 5 min, rozstrzygnięcie L21, L22, L24; gość)
-- [ ] D0.4 Poprawka #22 Q8 (start zegara po `seen_at` obu) i adnotacje w #21/#22 o decyzjach z mapy (Gość, aktywne wyjście)
+- [x] D0.2 Specyfikacja poddania (nowe zgłoszenie; zmiana #22 Q6; BR-21; tekst potwierdzenia, L23)
+- [x] D0.3 Specyfikacja rewanżu (odwrócone kolory, zaproszenie 5 min, rozstrzygnięcie L21, L22, L24; gość)
+- [x] D0.4 Poprawka #22 Q8 (start zegara po `seen_at` obu) i adnotacje w #21/#22 o decyzjach z mapy (Gość, aktywne wyjście)
 
 ### D1 — Mapa ekranów do zatwierdzenia
 - [ ] D1.1 Aktualizacja `lekcja-07/mapa-ekranow-partia.md` po D0 (stany, luki, role, scenariusze); zatrzymanie na zatwierdzenie
