@@ -1,0 +1,89 @@
+import { ArgTypes, Canvas, Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { ThemeSwitch } from "@gomoku/ui/game/theme-switch";
+import { DoDont } from "../../.storybook/blocks";
+import * as Stories from "./theme-switch.stories";
+
+<Meta of={Stories} />
+
+# Przełącznik motywu
+
+## 1. Do czego służy
+
+Pozwala graczowi przełączyć stronę między motywem ciemnym a jasnym. Komponent tylko wyświetla stan i zgłasza kliknięcie; zapamiętanie wyboru i zmiana motywu na stronie należą do aplikacji.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Kiedy używać
+
+- **Jeden przełącznik na stronę gracza**, w rogu layoutu, ten sam na każdym ekranie (specyfikacja theme-switcher, Q4).
+
+## 3. Kiedy nie używać
+
+- **Wybór jednej z wielu opcji** (więcej niż dwa motywy): potrzebna będzie grupa opcji, nie przełącznik.
+- **Akcja na serwerze:** użyj [Przycisku](?path=/docs/prymitywy-przycisk--docs).
+
+## 4. Anatomia
+
+1. **Ikona** (słońce w motywie jasnym, księżyc w ciemnym), dekoracyjna.
+2. **Tekst** (wymagany): stała nazwa przycisku.
+
+## 5. Warianty
+
+Brak wariantów wizualnych. Prop `theme` (`dark` lub `light`) opisuje motyw, który jest włączony teraz.
+
+<Canvas of={Stories.Ciemny} />
+<Canvas of={Stories.Jasny} />
+
+## 6. Stany
+
+Niewciśnięty (motyw ciemny), wciśnięty (motyw jasny), najechanie i fokus. Zablokowanego, ładowania i błędu przełącznik nie ma.
+
+<Canvas of={Stories.Stany} />
+
+## 7. Zachowanie i dostępność
+
+- **Klawiatura:** `Tab` ustawia fokus, `Enter` i `Spacja` przełączają. Fokus zostaje na przycisku.
+- **Rola i stan:** natywny `<button>` z `aria-pressed` (wciśnięty = motyw jasny). Nazwa jest stała w obu stanach, bo zmienny stan czytnik odczytuje z `aria-pressed`.
+- **Kolor nie jest jedynym nośnikiem:** stan pokazuje ikona.
+- **Cel kliknięcia:** co najmniej 44 na 44 px. Fokus: obrys 2 px `focus-ring`.
+
+## 8. Treść
+
+- Nazwa to rzeczownik opisujący włączany stan: „Jasny motyw”.
+- Komponent nie ma wbudowanych tekstów; `label` przychodzi z propsów.
+
+## 9. Responsywność
+
+Przycisk ma stałą szerokość wynikającą z tekstu i ikony; mieści się w 320 px.
+
+<Canvas of={Stories.NaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={ThemeSwitch} />
+
+Dodatkowo: atrybuty natywnego `<button>` poza `onClick`, `children` i `aria-pressed`.
+
+## 11. Kod
+
+```tsx
+import { ThemeSwitch } from "@gomoku/ui/game/theme-switch";
+
+<ThemeSwitch theme={theme} label="Jasny motyw" onToggle={toggle} />;
+```
+
+## 12. Dobrze i źle
+
+<Unstyled>
+  <DoDont
+    good={<ThemeSwitch theme="dark" label="Jasny motyw" onToggle={() => undefined} />}
+    goodNote="stała nazwa, stan w aria-pressed i w ikonie."
+    bad={<ThemeSwitch theme="dark" label="Przełącz" onToggle={() => undefined} />}
+    badNote="nazwa nic nie mówi o skutku."
+  />
+</Unstyled>
+
+## 13. Powiązane
+
+- **Mylony z:** Polem wyboru (zgoda, niezależna opcja) i Przyciskiem (akcja).
+- **Zasady motywów:** [Motywy](?path=/docs/fundamenty-motywy--docs).

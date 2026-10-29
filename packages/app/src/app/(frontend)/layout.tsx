@@ -7,6 +7,8 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
+import { ThemeToggle } from "@/components/theme/theme-toggle";
+
 import "./frontend.css";
 
 export const metadata: Metadata = {
@@ -28,7 +30,11 @@ export default async function FrontendLayout({
           <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         )}
       </head>
-      <body className="min-h-svh bg-surface-page text-text-primary antialiased">
+      <body className="relative min-h-svh bg-surface-page text-text-primary antialiased">
+        {/* Out of the flow, so it never shifts a page; the top inset keeps it clear of the content. */}
+        <div className="absolute top-group right-group z-10">
+          <ThemeToggle initialTheme={theme} />
+        </div>
         {children}
       </body>
     </html>

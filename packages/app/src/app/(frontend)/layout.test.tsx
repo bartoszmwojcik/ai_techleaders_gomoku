@@ -54,6 +54,14 @@ describe("FrontendLayout", () => {
     },
   );
 
+  it("places the theme switch in the corner with the cookie theme as its server state", async () => {
+    const light = await render("light");
+    const unset = await render(undefined);
+
+    expect(light).toMatch(/<div class="absolute[^"]*"><button[^>]*aria-pressed="true"/);
+    expect(unset).toMatch(/<div class="absolute[^"]*"><button[^>]*aria-pressed="false"/);
+  });
+
   it("describes the game for search engines", () => {
     expect(metadata).toEqual({
       title: "Gomoku",
