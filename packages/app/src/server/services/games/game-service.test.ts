@@ -44,7 +44,8 @@ function setup(options: {
   config?: { appOrigin?: string };
   executeRows?: unknown[][];
   count?: number;
-  gamesBeyond?: number;
+  member?: boolean;
+  gamesMoveCount?: number;
   game?: Record<string, unknown>;
   players?: Record<string, unknown>[];
   invitation?: Record<string, unknown>;
@@ -57,12 +58,16 @@ function setup(options: {
   const em = {
     transactional: vi.fn(async (fn: (tx: unknown) => unknown) => fn(em)),
     execute: vi.fn(async (sql: string) => {
+      if (sql.includes("select g.move_count")) {
+        calls.push("member");
+        return options.member === false ? [] : [{ move_count: options.gamesMoveCount ?? 0 }];
+      }
       calls.push(`execute:${sql.includes("returning id") && sql.includes("update games set") ? "cancel" : sql.trim().split(/\s+/).slice(0, 2).join(" ")}`);
       return rows.shift() ?? [];
     }),
     count: vi.fn(async (entity: unknown) => {
-      calls.push(entity === Game ? "count:after" : "count");
-      return entity === Game ? (options.gamesBeyond ?? 0) : (options.count ?? 1);
+      calls.push("count");
+      return options.count ?? 1;
     }),
     create: vi.fn((entity: unknown, data: Record<string, unknown>) => {
       const row = { ...data, id: entity === Game ? "game-1" : undefined };
@@ -280,17 +285,17 @@ describe("GameService.getState", () => {
     const state = await service.getState({ playerId: "p1" }, "game-1");
 
     expect(calls).toEqual([
-      "count",
+      "member",
       "execute:with expired",
       "execute:with stale",
       "execute:update game_players",
       "findOneOrFail",
       "findOneOrFail",
     ]);
-    expect(em.count).toHaveBeenCalledWith(GamePlayer, { id: "p1", game: "game-1" });
-    expect(em.execute).toHaveBeenNthCalledWith(1, expect.any(String), [NOW, "game-1"], "run");
-    expect(em.execute).toHaveBeenNthCalledWith(2, expect.any(String), [CUTOFF, "game-1"], "run");
-    expect(em.execute).toHaveBeenNthCalledWith(3, expect.any(String), [NOW, "p1"], "run");
+    expect(em.execute).toHaveBeenNthCalledWith(1, expect.any(String), ["p1", "game-1"]);
+    expect(em.execute).toHaveBeenNthCalledWith(2, expect.any(String), [NOW, "game-1"], "run");
+    expect(em.execute).toHaveBeenNthCalledWith(3, expect.any(String), [CUTOFF, "game-1"], "run");
+    expect(em.execute).toHaveBeenNthCalledWith(4, expect.any(String), [NOW, "p1"], "run");
     expect(state).toEqual({
       status: "waiting",
       moveCount: 0,
@@ -331,6 +336,7 @@ describe("GameService.getState", () => {
 
   it("adds the board: moves after `after`, the seat on turn and the result", async () => {
     const { service } = setup({
+      gamesMoveCount: 2,
       game: {
         status: "active",
         blackSeat: 2,
@@ -343,11 +349,11 @@ describe("GameService.getState", () => {
     expect(state).toMatchObject({ moveCount: 2, blackSeat: 2, turnSeat: 2, moves: [11], result: null });
   });
 
-  it("rejects `after` beyond the number of moves before any bookkeeping, so nothing is rolled back", async () => {
-    const { service, em, calls } = setup({ gamesBeyond: 1, players: [creator, guest] });
+  it("rejects `after` beyond the number of moves without doing the bookkeeping (optimization: no wasted writes)", async () => {
+    const { service, em, calls } = setup({ gamesMoveCount: 0, players: [creator, guest] });
     await expect(service.getState({ playerId: "p1" }, "game-1", 1)).rejects.toMatchObject({ status: 400 });
-    expect(calls).toEqual(["count", "count:after"]);
-    expect(em.execute).not.toHaveBeenCalled();
+    expect(calls).toEqual(["member"]);
+    expect(em.execute).toHaveBeenCalledOnce();
   });
 
   it("stateOf still refuses `after` beyond the number of moves (used after a move)", async () => {
@@ -356,10 +362,11 @@ describe("GameService.getState", () => {
   });
 
   it("answers 404 to a non-participant before writing anything", async () => {
-    const { service, em } = setup({ count: 0 });
+    const { service, em, calls } = setup({ member: false });
     await expect(service.getState({ playerId: "x" }, "game-1")).rejects.toMatchObject({
       status: 404,
     });
-    expect(em.execute).not.toHaveBeenCalled();
+    expect(calls).toEqual(["member"]);
+    expect(em.execute).toHaveBeenCalledOnce();
   });
 });

@@ -234,7 +234,7 @@ describe("a game to five in a row over HTTP", () => {
 });
 
 describe("a state read with a bad `after`", () => {
-  it("answers 400 before the bookkeeping, so it changes nothing, and a valid read marks the page as seen", async () => {
+  it("answers 400 and changes nothing, and a valid read marks the page as seen", async () => {
     const game = await startedGame();
     await run(`update game_players set seen_at = null where game_id = ?`, [game.gameId]);
     for (const [index, [x, y]] of ([[7, 7], [8, 8], [7, 8]] as [number, number][]).entries()) {
@@ -245,7 +245,8 @@ describe("a state read with a bad `after`", () => {
     const refused = await stateOf(game.gameId, game.black, 200);
     expect(refused.status).toBe(400);
     expect(refused.body.error?.code).toBe("VALIDATION");
-    // Decision: a refused request has no side effects (the 400 comes before MARK_SEEN_SQL).
+    // A refused request has no lasting effect. (The 400 is raised before the lazy writes as an
+    // optimization: no wasted writes or locks; the outcome would be the same after a rollback.)
     expect(await seen()).toEqual([{ seen: 0 }]);
 
     // The edge: `after` equal to the number of moves is valid and marks the page as seen.
