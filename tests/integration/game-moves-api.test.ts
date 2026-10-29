@@ -68,6 +68,8 @@ async function startedGame(): Promise<Game> {
   const { data } = (await created.json()) as { data: { gameId: string; invitation: { code: string } } };
   const joined = await call("POST", `/api/invitations/${data.invitation.code}/accept`, { as: "user" }, { cookie: bob });
   expect(joined.status).toBe(200);
+  // The creator opens the game page: both players have seen it, so the clock starts (#23 Q5).
+  expect((await stateOf(data.gameId, alice)).status).toBe(200);
   const [game] = await run(`select black_seat from games where id = ?`, [data.gameId]);
   const blackSeat = game!.black_seat as 1 | 2;
   return {
@@ -228,6 +230,7 @@ describe("a game to five in a row over HTTP", () => {
       acknowledgedGuestWarning: true,
     });
     const guest = (joined.headers.getSetCookie?.() ?? []).find((l) => l.startsWith("gomoku_guest="))!.split(";")[0]!;
+    expect((await stateOf(data.gameId, alice)).status).toBe(200); // starts the clock (#23)
     const [row] = await run(`select black_seat from games where id = ?`, [data.gameId]);
     const [black, white] = row!.black_seat === 1 ? [alice, guest] : [guest, alice];
     expect((await move(data.gameId, black, 7, 7, 1)).status).toBe(200);

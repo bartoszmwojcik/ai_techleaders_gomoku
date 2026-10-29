@@ -80,6 +80,8 @@ const FINISHING_MOVE_SQL = `
 
 const RELEASE_SLOTS_SQL = `update game_players set is_active = false where game_id = ? and is_active`;
 
+const SETTLED_BY_TIME = Symbol("settled-by-time");
+
 /** Moves of a running game (#22). Orchestration only: the rules live in `@gomoku/core`. */
 export class GameMoveService {
   readonly #em: EntityManager;
@@ -109,7 +111,7 @@ export class GameMoveService {
     input: MoveCreateInput,
   ): Promise<GameState> {
     const cell = cellOf(input.x, input.y);
-    return this.#em.transactional(async (tx) => {
+    const played = await this.#em.transactional(async (tx) => {
       const [row] = await tx.execute<GameRow[]>(LOCK_GAME_SQL, [gameId, participant.playerId]);
       if (!row) throw new NotFoundError(GAME_NOT_FOUND_MESSAGE);
 
@@ -129,7 +131,8 @@ export class GameMoveService {
 
       // #23: finishes the game by time under this lock; a settled game is finished.
       const now = this.#clock.now();
-      if (await this.#timeoutSettler.settleGame(gameId, tx, now)) throw gameFinished();
+      // Not thrown inside the transaction: the error would roll the settlement back.
+      if (await this.#timeoutSettler.settleGame(gameId, tx, now)) return SETTLED_BY_TIME;
       if (row.status === "finished") throw gameFinished();
       if (row.status !== "active" || blackSeat === null) {
         throw new ConflictError(GAME_NOT_ACTIVE_MESSAGE, { code: "GAME_NOT_ACTIVE" });
@@ -194,6 +197,8 @@ export class GameMoveService {
 
       return this.#gameService.stateOf(tx, participant, gameId, after);
     });
+    if (played === SETTLED_BY_TIME) throw gameFinished();
+    return played;
   }
 }
 
