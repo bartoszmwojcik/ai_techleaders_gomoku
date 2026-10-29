@@ -53,6 +53,21 @@ async function expectViolation(statement: Promise<unknown>, constraint: string) 
   await expect(statement).rejects.toThrow(constraint);
 }
 
+const FINISHED = {
+  status: "finished",
+  started_at: new Date(),
+  finished_at: new Date(),
+  black_seat: 1,
+  end_reason: "draw",
+};
+
+/** Column values of a board with the given cells set, as `bit(225)` strings. */
+function board(black: number[], white: number[]) {
+  const bits = (cells: number[]) =>
+    Array.from({ length: 225 }, (_, c) => (cells.includes(c) ? "1" : "0")).join("");
+  return { stones_black: bits(black), stones_white: bits(white) };
+}
+
 const hash = () => `${Date.now().toString(16)}${++counter}`.padEnd(64, "0");
 
 describe("games", () => {
@@ -72,14 +87,12 @@ describe("games", () => {
   });
 
   it("requires started_at for active and finished, finished_at for finished", async () => {
-    await expectViolation(insertGame({ status: "active" }), "games_started_at_check");
+    await expectViolation(insertGame({ status: "active", black_seat: 1 }), "games_started_at_check");
     await expectViolation(
-      insertGame({ status: "finished", started_at: new Date() }),
+      insertGame({ status: "finished", started_at: new Date(), black_seat: 1, end_reason: "draw" }),
       "games_finished_at_check",
     );
-    await expect(
-      insertGame({ status: "finished", started_at: new Date(), finished_at: new Date() }),
-    ).resolves.toBeTruthy();
+    await expect(insertGame(FINISHED)).resolves.toBeTruthy();
     await expect(insertGame({ status: "cancelled" })).resolves.toBeTruthy();
   });
 
@@ -90,7 +103,7 @@ describe("games", () => {
   });
 
   it("limits a rematch offer to finished games with its required fields", async () => {
-    const finished = { status: "finished", started_at: new Date(), finished_at: new Date() };
+    const finished = FINISHED;
     await expectViolation(insertGame({ rematch_state: "maybe", ...finished }), "games_rematch_state_check");
     await expectViolation(
       insertGame({ rematch_state: "declined", status: "waiting" }),
@@ -118,12 +131,92 @@ describe("games", () => {
     ).resolves.toBeTruthy();
   });
 
+  it("round-trips bit(225) boards and the bytea move log, byte 0x00 and empty ones included", async () => {
+    const id = await insertGame();
+    const [empty] = await run(
+      `select stones_black::text as black, stones_white::text as white, move_count, moves from games where id = ?`,
+      [id],
+    );
+    expect(empty).toMatchObject({ black: "0".repeat(225), white: "0".repeat(225), move_count: 0 });
+    expect(Buffer.from(empty!.moves as Uint8Array)).toHaveLength(0);
+
+    const full = await insertGame({ ...board([0, 224], [7, 8]), move_count: 4, moves: Buffer.from([0, 7, 224, 8]) });
+    const [row] = await run(`select stones_black::text as black, moves from games where id = ?`, [full]);
+    expect((row!.black as string)[0]).toBe("1");
+    expect((row!.black as string)[224]).toBe("1");
+    expect(Array.from(row!.moves as Uint8Array)).toEqual([0, 7, 224, 8]);
+  });
+
+  it("rejects boards that break the invariants (occupied cell, wrong counts, bad alternation)", async () => {
+    // The same cell for both colours.
+    await expectViolation(
+      insertGame({ ...board([5], [5]), move_count: 2, moves: Buffer.from([5, 5]) }),
+      "games_board_disjoint_check",
+    );
+    // A stone more than the move counter says (what a stone on an occupied cell would look like).
+    await expectViolation(
+      insertGame({ ...board([5, 6], [7]), move_count: 2, moves: Buffer.from([5, 7]) }),
+      "games_stone_count_check",
+    );
+    // Log length differs from the counter.
+    await expectViolation(
+      insertGame({ ...board([5], []), move_count: 1, moves: Buffer.from([5, 6]) }),
+      "games_moves_length_check",
+    );
+    // White ahead of black, and black two ahead.
+    await expectViolation(
+      insertGame({ ...board([], [5]), move_count: 1, moves: Buffer.from([5]) }),
+      "games_alternation_check",
+    );
+    await expectViolation(
+      insertGame({ ...board([5, 6], []), move_count: 2, moves: Buffer.from([5, 6]) }),
+      "games_alternation_check",
+    );
+    await expectViolation(insertGame({ move_count: 226 }), "games_move_count_check");
+    await expect(
+      insertGame({ ...board([5, 6], [7]), move_count: 3, moves: Buffer.from([5, 7, 6]) }),
+    ).resolves.toBeTruthy();
+  });
+
+  it("accepts a full 225-stone board", async () => {
+    const cells = Array.from({ length: 225 }, (_, c) => c);
+    const black = cells.filter((c) => (Math.floor((c % 15) / 2) + Math.floor(c / 15)) % 2 === 0);
+    const white = cells.filter((c) => !black.includes(c));
+    expect(black).toHaveLength(113);
+    await expect(
+      insertGame({ ...board(black, white), move_count: 225, moves: Buffer.from(cells) }),
+    ).resolves.toBeTruthy();
+  });
+
+  it("ties the result columns together", async () => {
+    await expectViolation(insertGame({ black_seat: 3 }), "games_black_seat_check");
+    await expectViolation(insertGame({ ...FINISHED, end_reason: "timeout", winner_seat: 0 }), "games_winner_seat_check");
+    await expectViolation(insertGame({ ...FINISHED, end_reason: "abandoned" }), "games_end_reason_check");
+    // Finished needs a reason; a reason needs a finished game.
+    await expectViolation(insertGame({ ...FINISHED, end_reason: null }), "games_finished_end_reason_check");
+    await expectViolation(insertGame({ end_reason: "draw" }), "games_finished_end_reason_check");
+    // Active and finished games know their black seat.
+    await expectViolation(
+      insertGame({ status: "active", started_at: new Date() }),
+      "games_active_black_seat_check",
+    );
+    // A draw has no winner; every other ending has one.
+    await expectViolation(insertGame({ ...FINISHED, winner_seat: 1 }), "games_draw_no_winner_check");
+    for (const reason of ["five_in_row", "timeout", "resignation"]) {
+      await expectViolation(
+        insertGame({ ...FINISHED, end_reason: reason }),
+        "games_winner_required_check",
+      );
+      await expect(
+        insertGame({ ...FINISHED, end_reason: reason, winner_seat: 2 }),
+      ).resolves.toBeTruthy();
+    }
+  });
+
   it("clears the rematch link when the rematch game is deleted", async () => {
     const rematch = await insertGame({ origin: "rematch" });
     const finished = await insertGame({
-      status: "finished",
-      started_at: new Date(),
-      finished_at: new Date(),
+      ...FINISHED,
       rematch_state: "accepted",
       rematch_game_id: rematch,
     });

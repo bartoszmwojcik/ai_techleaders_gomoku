@@ -138,6 +138,7 @@ describe("auth services", () => {
       );
       expect(cradle.gameService).toBe(cradle.gameService);
       expect(cradle.invitationCodes).toBe(cradle.invitationCodes);
+      expect(cradle.colorDraw).toBe(cradle.colorDraw);
       expect(cradle.invitationService).toBe(cradle.invitationService);
       expect(await cradle.timeoutSettler.settleFor("user")).toBeUndefined();
       expect(cradle.passwordResetService).toBe(cradle.passwordResetService);

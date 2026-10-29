@@ -61,7 +61,7 @@ async function join(gameId: string, opponent: string, options: { startedAt?: Dat
     `insert into game_players (game_id, seat, kind, user_id, is_active, seen_at) values (?, 2, 'account', ?, true, now())`,
     [gameId, opponent],
   );
-  await run(`update games set status = 'active', started_at = ? where id = ?`, [options.startedAt ?? new Date(), gameId]);
+  await run(`update games set status = 'active', started_at = ?, black_seat = 1 where id = ?`, [options.startedAt ?? new Date(), gameId]);
 }
 
 const status = async (gameId: string) =>
@@ -272,7 +272,7 @@ describe("GameParticipation on PostgreSQL", () => {
     expect(await scope().participation.hasActiveGame(user, { startedBefore: new Date() })).toBe(true);
 
     // Finished: both slots are released (is_active = false by the finishing transaction).
-    await run(`update games set status = 'finished', finished_at = now() where id = ?`, [gameId]);
+    await run(`update games set status = 'finished', end_reason = 'draw', finished_at = now() where id = ?`, [gameId]);
     await run(`update game_players set is_active = false where game_id = ?`, [gameId]);
     for (const who of [user, opponent]) {
       expect(await scope().participation.hasActiveGame(who)).toBe(false);

@@ -20,3 +20,6 @@ export * from "./games/invitation-code";
 export * from "./games/types";
 export * from "./validators/games/accept-invitation-schema";
 export * from "./validators/games/game-id-schema";
+export * from "./validators/games/move-create-schema";
+export * from "./games/board-view";
+export * from "./validators/games/game-state-query-schema";

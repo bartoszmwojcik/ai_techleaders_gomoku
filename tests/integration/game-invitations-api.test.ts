@@ -385,7 +385,7 @@ describe("guest flow over HTTP", () => {
     expect(blocked.status).toBe(409);
     expect(await errorCode(blocked)).toBe("ACTIVE_GAME_EXISTS");
 
-    await run(`update games set status = 'finished', finished_at = now() where id = ?`, [first.gameId]);
+    await run(`update games set status = 'finished', end_reason = 'draw', finished_at = now() where id = ?`, [first.gameId]);
     await run(`update game_players set is_active = false where game_id = ?`, [first.gameId]);
     const again = await accept(second.code, GUEST, guest);
     expect(again.status).toBe(200);
@@ -401,7 +401,7 @@ describe("guest flow over HTTP", () => {
     const { gameId, code } = await createGame(alice);
     const guest = guestCookieOf(await accept(code, GUEST))!;
 
-    await run(`update games set status = 'finished', finished_at = now() - interval '30 minutes' where id = ?`, [gameId]);
+    await run(`update games set status = 'finished', end_reason = 'draw', finished_at = now() - interval '30 minutes' where id = ?`, [gameId]);
     expect((await stateOf(gameId, guest)).status).toBe(200);
     // The account is never subject to the one-hour window.
     expect((await stateOf(gameId, alice)).status).toBe(200);
