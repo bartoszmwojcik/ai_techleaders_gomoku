@@ -471,9 +471,10 @@ export const resetSim = () => {
 };
 
 /** Prepares Ala_7's invitation (first free code, ABCD-EFGH in a fresh demo) so the invitation page has something to show. */
-export function prepareDemoInvitation() {
+export function prepareDemoInvitation(onlyIfNone = false) {
   const sim = state;
-  if (sim.games.some((g) => g.creator === "ala@example.com" && phaseOf(sim, g) === "waiting")) return;
+  const alas = sim.games.filter((g) => g.creator === "ala@example.com");
+  if (onlyIfNone ? alas.length > 0 : alas.some((g) => phaseOf(sim, g) === "waiting")) return;
   const now = nowMs(sim);
   const game: Game = {
     id: sim.seq,

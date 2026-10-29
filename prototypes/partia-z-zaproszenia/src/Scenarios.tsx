@@ -16,7 +16,6 @@ import {
   setWidth,
   DEFAULT_CODE,
   getSim,
-  phaseOf,
   useSim,
   type CreateOutcome,
   type DemoStage,
@@ -148,10 +147,10 @@ export function Scenarios() {
             id="sc-open-invite"
             label="Otwórz zaproszenie Ala_7"
             onClick={() => {
-              prepareDemoInvitation();
-              openInvite(
-                getSim().games.find((g) => g.creator === "ala@example.com" && phaseOf(getSim(), g) === "waiting")?.code ?? DEFAULT_CODE,
-              );
+              // Ala_7's newest invitation in any state (so a used, cancelled or expired link shows its own page); without one, a fresh invitation.
+              prepareDemoInvitation(true);
+              const alas = getSim().games.filter((g) => g.creator === "ala@example.com");
+              openInvite(alas.at(-1)?.code ?? DEFAULT_CODE);
               go("s07");
             }}
           />
