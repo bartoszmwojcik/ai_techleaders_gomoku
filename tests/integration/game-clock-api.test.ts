@@ -290,7 +290,10 @@ describe("with an injected clock", () => {
     expect((await row(game)).ran_ms).toBe(INITIAL_CLOCK_MS);
   });
 
-  it("rolls the settlement back with the transaction", async () => {
+  // Only proves that a throw inside the transaction undoes the settlement write. The `play`
+  // regression (throwing after the commit instead) is pinned by the test "answers a move after
+  // the deadline with GAME_FINISHED and records nothing".
+  it("undoes the settlement write when the transaction throws", async () => {
     const game = await joinedGame(true);
     await turnBegan(game, 700);
     const { em, settler } = servicesAt(systemClock);
