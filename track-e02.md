@@ -86,7 +86,7 @@ Ręczny test po fazie: partia przez `curl`/dwie karty do piątki w linii, remis 
 5. Odświeżenie w trakcie partii i po jej końcu: ta sama plansza, status i wynik. Odświeżenie przez gościa w tej samej przeglądarce działa; w innej — „Ta partia nie istnieje…”.
 6. Błędy: w DevTools „Offline” i ruch → „Nie udało się połączyć z serwerem” + „Spróbuj ponownie”; po włączeniu sieci przycisk wysyła ten sam ruch (jeden kamień). Dwie karty tego samego gracza: ruch w jednej, w drugiej próba ruchu → „Teraz ruch przeciwnika. Plansza została odświeżona.”
 7. Ukryta karta (przełącz na inną): w zakładce Network brak odpytywania; po powrocie od razu jeden odczyt.
-8. Remis: `curl` z gotowej sekwencji (README, „Partia z zaproszenia”; test integracyjny `game-moves-api.test.ts` ma sekwencję 225 ruchów) → baner „Remis”.
+8. Remis: nie do odtworzenia ręcznie (225 ruchów bez piątki); pokrywa go test integracyjny `game-moves-api.test.ts` („ends in a draw…”) i test jednostkowy `PlayField` (baner „Remis”). Opcjonalnie: wpisz planszę remisową do bazy jak ten test i odśwież stronę.
 9. Oba motywy i szerokości 320, 360, 1280 px: bez poziomego przewijania, plansza skaluje się do szerokości.
 
 ### Faza 4 — Zegar (#23)
