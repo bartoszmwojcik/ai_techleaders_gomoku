@@ -19,6 +19,7 @@ import { EmailVerificationService } from "./services/auth/email-verification-ser
 import { GameParticipation } from "./services/auth/game-participation";
 import { GameService } from "./services/games/game-service";
 import { InvitationCodes } from "./services/games/invitation-codes";
+import { InvitationService } from "./services/games/invitation-service";
 import {
   NoopTimeoutSettler,
   type TimeoutSettler,
@@ -59,6 +60,7 @@ export type AppCradle = {
   gameParticipation: GameParticipation;
   gameService: GameService;
   invitationCodes: InvitationCodes;
+  invitationService: InvitationService;
   /** No-op until the clock (#23) delivers the real settlement of timed-out games. */
   timeoutSettler: TimeoutSettler;
   rateLimiter: RateLimiter;
@@ -138,6 +140,7 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     gameParticipation: asClass(GameParticipation).scoped(),
     gameService: asClass(GameService).scoped(),
     invitationCodes: asClass(InvitationCodes).singleton(),
+    invitationService: asClass(InvitationService).scoped(),
     timeoutSettler: asClass(NoopTimeoutSettler).singleton(),
     rateLimiter: asClass(RateLimiter).scoped(),
     emailVerificationService: asClass(EmailVerificationService).scoped(),

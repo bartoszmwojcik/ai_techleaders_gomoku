@@ -4,6 +4,7 @@ import {
   AppError,
   ConflictError,
   ForbiddenError,
+  GoneError,
   NotFoundError,
   TooManyRequestsError,
   UnauthorizedError,
@@ -27,6 +28,20 @@ describe("AppError", () => {
       fieldErrors: { email: ["bad"] },
     });
   });
+
+  it("includes data in the body when present", () => {
+    const error = new AppError(409, "X", "m", undefined, { gameId: "g-1" });
+    expect(error.toBody()).toEqual({ code: "X", message: "m", data: { gameId: "g-1" } });
+  });
+
+  it("passes data through the subclasses", () => {
+    const error = new ConflictError("m", { code: "OWN_WAITING_GAME", data: { gameId: "g-1" } });
+    expect(error.toBody()).toEqual({
+      code: "OWN_WAITING_GAME",
+      message: "m",
+      data: { gameId: "g-1" },
+    });
+  });
 });
 
 describe.each([
@@ -35,6 +50,7 @@ describe.each([
   ["ForbiddenError", ForbiddenError, 403, "FORBIDDEN"],
   ["NotFoundError", NotFoundError, 404, "NOT_FOUND"],
   ["ConflictError", ConflictError, 409, "CONFLICT"],
+  ["GoneError", GoneError, 410, "GONE"],
   ["TooManyRequestsError", TooManyRequestsError, 429, "RATE_LIMITED"],
 ] as const)("%s", (name, ErrorClass, status, code) => {
   it("has the default status and code", () => {

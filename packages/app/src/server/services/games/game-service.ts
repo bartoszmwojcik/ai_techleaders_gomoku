@@ -24,6 +24,12 @@ import type { ServerConfig } from "../../config";
 import type { Clock } from "../email/email-sender";
 import type { RateLimiter } from "../rate-limit/rate-limiter";
 import type { InvitationCodes } from "./invitation-codes";
+import {
+  CANCEL_NOT_STARTED_OF_GAME,
+  CANCEL_NOT_STARTED_OF_USER,
+  EXPIRE_WAITING_OF_GAME,
+  EXPIRE_WAITING_OF_USER,
+} from "./lazy-closing";
 import type { TimeoutSettler } from "./timeout-settler";
 
 type Deps = {
@@ -46,45 +52,6 @@ export const GAME_NOT_FOUND_MESSAGE = "Nie znaleziono partii.";
 
 /** Used only outside production, where `APP_ORIGIN` may be unset (as in e-mail links). */
 const DEV_ORIGIN = "http://localhost:3000";
-
-// Frees the slots of waiting games whose invitation expired (#21 Q16). One statement, in the
-// lock order games -> game_players. `?` binds: now, then the user (or game) id.
-function expireWaitingSql(scope: string): string {
-  return `
-  with expired as (
-    update games g set status = 'cancelled'
-    where g.status = 'waiting'
-      and exists (select 1 from invitations i where i.game_id = g.id and i.expires_at <= ?)
-      and ${scope}
-    returning g.id
-  )
-  update game_players set is_active = false
-  where is_active and game_id in (select id from expired)`;
-}
-
-// Cancels `active` games in which somebody never opened the page within READY_DEADLINE_MS of
-// the start (#21 Q21). `?` binds: the cutoff (now - deadline), then the user (or game) id.
-function cancelNotStartedSql(scope: string): string {
-  return `
-  with stale as (
-    update games g set status = 'cancelled'
-    where g.status = 'active'
-      and g.started_at <= ?
-      and exists (select 1 from game_players p where p.game_id = g.id and p.seen_at is null)
-      and ${scope}
-    returning g.id
-  )
-  update game_players set is_active = false
-  where is_active and game_id in (select id from stale)`;
-}
-
-const OF_USER = `exists (select 1 from game_players m where m.game_id = g.id and m.user_id = ?)`;
-const OF_GAME = `g.id = ?`;
-
-const EXPIRE_WAITING_OF_USER = expireWaitingSql(OF_USER);
-const EXPIRE_WAITING_OF_GAME = expireWaitingSql(OF_GAME);
-const CANCEL_NOT_STARTED_OF_USER = cancelNotStartedSql(OF_USER);
-const CANCEL_NOT_STARTED_OF_GAME = cancelNotStartedSql(OF_GAME);
 
 // First successful read of the page by a participant (#21 Q20); only while the game is open.
 const MARK_SEEN_SQL = `

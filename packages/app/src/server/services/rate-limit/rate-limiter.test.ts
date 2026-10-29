@@ -91,3 +91,35 @@ describe("RateLimiter.reset", () => {
     );
   });
 });
+
+describe("RateLimiter.assertBelow", () => {
+  function peek(rows: unknown[]) {
+    const execute = vi.fn(async () => rows);
+    const limiter = new RateLimiter({
+      em: { execute } as unknown as EntityManager,
+    });
+    return { execute, limiter };
+  }
+
+  it("reads the live bucket with bound parameters and counts nothing", async () => {
+    const { execute, limiter } = peek([{ count: 19, retry_after_seconds: 5 }]);
+    await expect(limiter.assertBelow("k", 20, 1000)).resolves.toBeUndefined();
+    expect(execute).toHaveBeenCalledWith(
+      expect.stringContaining("from rate_limit_buckets"),
+      [1000, "k", 1000],
+      "all",
+    );
+  });
+
+  it("allows a key without a live bucket", async () => {
+    const { limiter } = peek([]);
+    await expect(limiter.assertBelow("k", 20, 1000)).resolves.toBeUndefined();
+  });
+
+  it("refuses with Retry-After once the limit is already spent", async () => {
+    const { limiter } = peek([{ count: 20, retry_after_seconds: 42 }]);
+    const error = await limiter.assertBelow("k", 20, 1000).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(TooManyRequestsError);
+    expect((error as TooManyRequestsError).retryAfterSeconds).toBe(42);
+  });
+});

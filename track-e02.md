@@ -37,7 +37,7 @@ Ręczny test po fazie: sprawdzenie schematu w DBeaverze (tabele, indeksy, `CHECK
 
 ### Faza 2 — Zaproszenia i dołączanie (#21; backend kończy się przed ekranami)
 Ręczny test po fazie: `curl` — utworzenie partii, kod `ABCD-EFGH`, dołączenie drugiego konta, trzecia osoba odrzucona, gość z ostrzeżeniem, anulowanie.
-- [ ] 2.1 `InvitationService.accept(as=user)` i `preview` (#21 krok 4)
+- [x] 2.1 `InvitationService.accept(as=user)` i `preview` (#21 krok 4)
 - [ ] 2.2 `resolveParticipant` (konto), route'y `POST /api/games`, `/api/invitations/[code]/accept`, `/api/games/[id]/cancel`, `GET /api/games/[id]`, testy współbieżności (#21 krok 5)
 - [ ] 2.3 Gość: `GuestCookie`, `accept(as=guest)`, `resolveParticipant` (gość), wygasanie tokenu (#21 krok 6)
 - [!] 2.4 Strony `/invite/[code]`, `/join`, `/games/[gameId]` w stanie oczekiwania (#21 kroki 7–8) — po zatwierdzeniu prototypu etapu A (D3.1)
