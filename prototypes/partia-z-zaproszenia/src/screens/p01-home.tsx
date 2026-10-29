@@ -27,10 +27,9 @@ import { useStateId } from "../stateId";
 
 type Failure = Extract<CreateResult, { kind: "active" | "limit" | "server" | "network" }>;
 
-/** Opens the page of a game the player already has (BR-13); the board of a game in progress is stage B. */
+/** Opens the page of a game the player already has (BR-13): its board when it is in progress. */
 export function openGame(sim: Sim, game: Game) {
-  if (phaseOf(sim, game) === "playing") showOutside("Partia w toku: plansza", "board");
-  else go(screenForGame(sim, game));
+  go(screenForGame(sim, game));
 }
 
 const PHASE_TEXT = { waiting: "Czeka na przeciwnika.", ready: "Gotowa do gry.", playing: "W toku." } as const;

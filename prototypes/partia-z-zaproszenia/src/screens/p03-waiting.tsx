@@ -19,7 +19,7 @@ import {
   useSim,
 } from "../sim";
 import { useStateId } from "../stateId";
-import { GameGate } from "./game-gate";
+import { GameGate, gateStateId, useGameBlock } from "./game-gate";
 
 // p03 Partia czeka na przeciwnika `/games/{id}` (status waiting), widok twórcy (map p03.1–p03.10, game-invitations #21 UI).
 // Polling every 3 s in the product (Q6); the prototype checks every second.
@@ -35,6 +35,7 @@ const SHARE_FEEDBACK = "Udostępnianie dostępne tylko na telefonie.";
 export function P03Waiting() {
   const sim = useSim();
   const route = useGameRoute("p03");
+  const block = useGameBlock("p03", route);
   const current = useCurrentScreen();
   const game = accessibleGame(sim);
   const phase = game ? phaseOf(sim, game) : null;
@@ -82,9 +83,9 @@ export function P03Waiting() {
   else if (copy === "ok") stateId = "p03.2";
   else if (sim.scenario.shareUnavailable) stateId = "p03.4";
   if (sim.notice?.screen === "p03" && stateId === "p03.1") stateId = "p03.1 + p01.4";
-  useStateId("p03", stateId);
+  useStateId("p03", block !== "none" ? gateStateId(sim, block) : stateId);
 
-  if (route === null) return <GameGate screen="p03" />;
+  if (block !== "none") return <GameGate kind={block} />;
   if (!game || route !== "p03") return <SiteHeader />;
 
   const link = `https://gomoku.example/invite/${game.code}`;

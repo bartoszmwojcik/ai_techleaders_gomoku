@@ -4,7 +4,7 @@ import { PageHeader } from "@gomoku/ui/game/page-header";
 import { TextLink } from "@gomoku/ui/game/text-link";
 import { useEffect, useState, type ReactNode } from "react";
 
-import { gameRoute, guestToken, showOutside, useSim, viewer, type OutsideKind } from "./sim";
+import { gameRoute, guestToken, showOutside, useSim, viewer, type GameScreenId, type OutsideKind } from "./sim";
 
 declare global {
   interface Window {
@@ -37,8 +37,8 @@ export function useCurrentScreen(): string {
   return current;
 }
 
-/** The game page lives on one of two screens (p03, p04) or is closed to the viewer; keeps the shown screen in line with the game. */
-export function useGameRoute(screen: "p03" | "p04") {
+/** The game page lives on one of four screens (p03–p06) or is closed to the viewer; keeps the shown screen in line with the game. */
+export function useGameRoute(screen: GameScreenId) {
   const sim = useSim();
   const current = useCurrentScreen();
   const route = gameRoute(sim);
@@ -130,7 +130,7 @@ export function Main({ children, narrow = false, state }: { children: ReactNode;
 
 const OUTSIDE_TEXT: Record<OutsideKind, (name: string) => string> = {
   account: (name) => `„${name}” należy do prototypu kont (Epik 01). Tu konto wybierasz w panelu „Scenariusze” (T1–T7); po zalogowaniu wrócisz na to samo zaproszenie.`,
-  board: (name) => `„${name}” pojawi się w kolejnym etapie tego prototypu (plansza, zegary, wynik, poddanie, rewanż). W tym etapie ten przycisk nie działa.`,
+  board: (name) => `„${name}” to inna partia, której ten prototyp nie pokazuje: symuluje jedną partię naraz (A-26). W produkcie ten link prowadzi do tamtej partii.`,
   other: (name) => `„${name}” nie należy do przepływu partii z zaproszenia (Lobby i historia to inne epiki). W prototypie ten przycisk nie działa.`,
 };
 

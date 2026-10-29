@@ -2,9 +2,20 @@ import type { ReactNode } from "react";
 
 import { go } from "./chrome";
 import {
+  addToClock,
   advanceClock,
+  backgroundTab,
   clockSteps,
   creatorOpens,
+  expireClock,
+  jumpClockTo,
+  opponentPlays,
+  opponentRematch,
+  opponentResigns,
+  reloadGamePage,
+  setEvent,
+  showPosition,
+  type OpponentRematch,
   openInvite,
   opponentJoins,
   patchScenario,
@@ -27,6 +38,18 @@ import { resetStateIds } from "./stateId";
 
 // Scenario controls (map section 2, Q01–Q12 for stage A). They live in the review bar, apart from the product
 // navigation, and are not product features.
+
+function Pick<K extends keyof Scenario>({ id, label, flag, options }: { id: string; label: string; flag: K; options: readonly (readonly [Scenario[K], string])[] }) {
+  const sim = useSim();
+  return (
+    <label htmlFor={id}>
+      {label}
+      <select id={id} value={String(sim.scenario[flag])} onChange={(e) => patchScenario({ [flag]: options.find(([value]) => String(value) === e.target.value)![0] } as Partial<Scenario>)}>
+        {options.map(([value, text]) => <option key={String(value)} value={String(value)}>{text}</option>)}
+      </select>
+    </label>
+  );
+}
 
 function Check({ id, label, flag }: { id: string; label: string; flag: keyof Scenario }) {
   const sim = useSim();
@@ -65,12 +88,28 @@ const ROLES: readonly (readonly [RoleCode, string])[] = [
   ["T7", "T7 Zofia_K, spoza partii (404)"],
 ];
 
+const REMATCH_ACTIONS: readonly (readonly [OpponentRematch, string])[] = [
+  ["propose", "Przeciwnik proponuje rewanż"],
+  ["withdraw", "…wycofuje propozycję"],
+  ["accept", "…przyjmuje"],
+  ["decline", "…odrzuca"],
+  ["leave", "…wychodzi do panelu"],
+];
+
+const NA = "Nie dotyczy: brak partii w toku u oglądającego.";
+
 const STAGES: readonly (readonly [DemoStage, string])[] = [
   ["waiting", "p03: Ala_7 utworzyła zaproszenie"],
   ["joined", "p03.5: Kuba_P dołączył (widok Ali)"],
   ["opponent-waits", "p04.1: Kuba_P czeka na Alę (widok Kuby)"],
   ["ready", "p04.2: partia gotowa (widok Ali)"],
   ["guest", "p04.4: gość dołączył (widok gościa)"],
+  ["play-black", "p05.1: partia w toku, Twój ruch (Ala_7, czarne)"],
+  ["play-white", "p05.2: partia w toku, ruch przeciwnika (Ala_7, białe)"],
+  ["play-guest", "p05.11: gość w partii (widok gościa)"],
+  ["won", "p06.1: wygrana z linią (Ala_7)"],
+  ["lost", "p06.2: przegrana (Ala_7)"],
+  ["draw", "p06.4: remis (Ala_7)"],
 ];
 
 export function Scenarios() {
@@ -112,10 +151,11 @@ export function Scenarios() {
           <Check id="sc-join-cancel" label="Przeciwnik dołączy, zanim potwierdzę anulowanie" flag="joinBeforeCancel" />
         </Group>
         <Group title="Zegar demo (Q03)">
-          <p className="t-hint">Stały „teraz”: poniedziałek 2026-10-26 10:00.</p>
+          <p className="t-hint">Stały „teraz”: poniedziałek 2026-10-26 10:00. Czas demo płynie też dla zegara gracza na ruchu: duże skoki kończą partię przegraną na czas (BR-06, BR-07).</p>
           <div className="row" style={{ flexWrap: "wrap" }}>
             <Act id="sc-plus-15" label="+15 min bez otwarcia" onClick={() => advanceClock(15 * clockSteps.minute)} />
             <Act id="sc-plus-1h" label="+1 h" onClick={() => advanceClock(clockSteps.hour)} />
+            <Act id="sc-plus-5" label="+5 min (rewanż wygasa)" onClick={() => advanceClock(5 * clockSteps.minute)} />
             <Act id="sc-plus-24" label="+24 h (zaproszenie wygasa)" onClick={() => advanceClock(clockSteps.day)} />
             <Act id="sc-back" label="Wróć do 10:00" onClick={() => setClock(0)} />
           </div>
@@ -159,6 +199,60 @@ export function Scenarios() {
           <Check id="sc-noclip" label="Schowek niedostępny (p03.3)" flag="clipboardUnavailable" />
           <Check id="sc-noshare" label="„Udostępnij” niedostępne (p03.4)" flag="shareUnavailable" />
           <Check id="sc-pollerr" label="Błąd odpytywania (p03.10)" flag="pollError" />
+        </Group>
+        <Group title="Partia w toku (Q05, Q06)">
+          <Pick id="sc-draw" label="Wylosowano" flag="colorDraw" options={[["random", "Losowo"], ["viewer-black", "Ty czarne"], ["viewer-white", "Ty białe"]]} />
+          <Pick id="sc-input" label="Urządzenie wejścia" flag="input" options={[["auto", "Wykryj (pointer: coarse)"], ["mouse", "Mysz (jedno kliknięcie)"], ["touch", "Dotyk (dwa kroki)"]]} />
+          <Pick id="sc-pattern" label="Ruchy przeciwnika" flag="opponentPattern" options={[["scatter", "Rozproszone (bez piątki)"], ["five", "Piątka w rzędzie"]]} />
+          <Act id="sc-opp-move" label="Przeciwnik gra ruch" onClick={() => setEvent(opponentPlays() ? "Przeciwnik zagrał." : "Nie dotyczy: nie jest ruch przeciwnika.")} />
+          <Pick id="sc-move" label="Następny ruch" flag="moveOutcome" options={[["ok", "Przyjęty"], ["network", "Błąd sieci (p05.7)"], ["stale", "Nieaktualny widok (p05.8)"], ["not-your-turn", "Nie Twoja kolej (p05.8)"], ["occupied", "Pole zajęte (p05.9)"]]} />
+          <Check id="sc-resign-err" label="Następne poddanie: błąd sieci (p05.14)" flag="resignFails" />
+          <Check id="sc-poll-err-game" label="Błąd odpytywania działa też w partii (p05.7)" flag="pollError" />
+          <Check id="sc-dbdown" label="Baza niedostępna (p07.4)" flag="dbDown" />
+          <Check id="sc-slow" label="Wolne ładowanie partii (p07.1)" flag="slowLoad" />
+          <div className="row" style={{ flexWrap: "wrap" }}>
+            <Act id="sc-other-browser" label="Gość w innej przeglądarce (p07.3)" onClick={() => setRole("T6")} />
+            <Act id="sc-guest-browser" label="Wróć do przeglądarki gościa" onClick={() => setRole("T5")} />
+          </div>
+        </Group>
+        <Group title="Zegar partii (Q03)">
+          <Pick id="sc-clock-target" label="Zegar dotyczy" flag="clockTarget" options={[["mine", "Mojego"], ["theirs", "Przeciwnika"]]} />
+          <div className="row" style={{ flexWrap: "wrap" }}>
+            <Act id="sc-clock-30" label="+30 s" onClick={() => addToClock(30_000)} />
+            <Act id="sc-clock-60" label="+1 min" onClick={() => addToClock(60_000)} />
+            <Act id="sc-clock-50" label="Skocz do 0:50" onClick={() => jumpClockTo(50_000)} />
+            <Act id="sc-clock-0" label="Minął czas" onClick={() => expireClock()} />
+          </div>
+          <Check id="sc-autoclock" label="Odliczaj zegar" flag="autoClock" />
+          <Pick id="sc-speed" label="Przyspieszenie" flag="speed" options={[[10, "x10"], [30, "x30"], [1, "x1 (czas rzeczywisty)"]]} />
+          <p className="t-hint">Bez „Odliczaj zegar” czas partii stoi; pracują tylko skoki i „+ min” z zegara demo.</p>
+        </Group>
+        <Group title="Wynik (Q02)">
+          <div className="row" style={{ flexWrap: "wrap" }}>
+            <Act id="sc-show-win" label="Pokaż wygraną" onClick={() => setEvent(showPosition("win") ? "Wygrana: gotowy układ." : NA)} />
+            <Act id="sc-show-loss" label="Pokaż przegraną" onClick={() => setEvent(showPosition("loss") ? "Przegrana: gotowy układ." : NA)} />
+            <Act id="sc-show-draw" label="Pokaż remis" onClick={() => setEvent(showPosition("draw") ? "Remis: pełna plansza." : NA)} />
+            <Act id="sc-almost-full" label="Prawie pełna plansza" onClick={() => setEvent(showPosition("almost-full") ? "Jedno wolne pole: ostatni ruch kończy remisem." : NA)} />
+            <Act id="sc-opp-resign" label="Przeciwnik poddał się" onClick={() => setEvent(opponentResigns() ? "Przeciwnik poddał partię." : NA)} />
+            <Act id="sc-reload" label="Odśwież stronę partii" onClick={() => reloadGamePage()} />
+          </div>
+          <p className="t-hint">Skróty nadpisują planszę gotowym układem (A-15). „Odśwież” pokazuje p06.5.</p>
+        </Group>
+        <Group title="Karta w tle (Q07, Q11)">
+          <div className="row" style={{ flexWrap: "wrap" }}>
+            <Act id="sc-bg-20" label="Karta w tle 20 s" onClick={() => backgroundTab(20)} />
+            <Act id="sc-bg-45" label="Karta w tle 45 s" onClick={() => backgroundTab(45)} />
+          </div>
+          <p className="t-hint">Po 20 s zegar jest mniejszy bez komunikatu, po 45 s pojawia się „Wróciłeś do partii” (próg 30 s, #24 Q2).</p>
+        </Group>
+        <Group title="Rewanż: przeciwnik (L13, L21, L22)">
+          <div className="row" style={{ flexWrap: "wrap" }}>
+            {REMATCH_ACTIONS.map(([action, label]) => (
+              <Act key={action} id={`sc-rm-${action}`} label={label} onClick={() => opponentRematch(action)} />
+            ))}
+          </div>
+          <Check id="sc-rm-conflict" label="Ktoś z graczy ma inną partię (BR-13, 409)" flag="rematchConflict" />
+          <p role="status" className="t-hint" data-testid="sc-event">{sim.event}</p>
         </Group>
         <Group title="Podgląd (Q12)">
           <label htmlFor="sc-width">

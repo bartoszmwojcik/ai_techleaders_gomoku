@@ -112,8 +112,10 @@ describe("p01 utworzenie partii", () => {
     click("Utwórz zaproszenie");
     await waitFor(() => expect(stateId()).toBe("p01.3"));
     expect(inFrame().getByText("Masz już partię")).toBeTruthy();
+    // Stage B: the link leads to the board of the game in progress (p05), no longer to a dialog.
     fireEvent.click(inFrame().getAllByRole("link", { name: "Przejdź do partii" })[0]!);
-    expect(screen.getByRole("dialog").textContent).toContain("Poza tym prototypem");
+    expect(current()).toBe("p05");
+    expect(stateId()).toMatch(/^p05\.1/);
   });
 
   it("p01.4: konto z własną oczekującą partią (T4) trafia do niej z komunikatem (L01)", async () => {
@@ -431,7 +433,7 @@ describe("p03 czekamy na przeciwnika", () => {
 });
 
 describe("p04 partia gotowa", () => {
-  it("p04.1 u zaproszonego, p04.2 po otwarciu przez twórcę, „Przejdź do planszy” → Poza prototypem", async () => {
+  it("p04.1 u zaproszonego, p04.2 po otwarciu przez twórcę, „Przejdź do planszy” → p05", async () => {
     start();
     act(() => setupDemo("opponent-waits"));
     goTo("p04");
@@ -443,7 +445,8 @@ describe("p04 partia gotowa", () => {
     fireEvent.click(document.getElementById("sc-opens")!);
     await waitFor(() => expect(stateId()).toBe("p04.2"));
     click("Przejdź do planszy");
-    expect(screen.getByRole("dialog").textContent).toContain("Poza tym prototypem");
+    expect(current()).toBe("p05");
+    expect(inFrame().getByRole("grid", { name: "Plansza 15 na 15" })).toBeTruthy();
   });
 
   it("p04.4: gość widzi stałe ostrzeżenie; przeciwnik gościa to „Gość”", () => {
@@ -480,11 +483,12 @@ describe("p04 partia gotowa", () => {
     expect(stateId()).toBe("p07.3");
   });
 
-  it("T3: partia w toku — p04 mówi, że plansza jest w etapie B", () => {
+  it("T3: partia w toku — p04 przekierowuje na planszę p05", () => {
     start();
     as("T3");
     goTo("p04");
-    expect(inFrame().getByText("Plansza jest w kolejnym etapie prototypu")).toBeTruthy();
+    expect(current()).toBe("p05");
+    expect(inFrame().getByText("Twój ruch (czarne)")).toBeTruthy();
   });
 });
 

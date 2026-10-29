@@ -5,17 +5,18 @@ import { TextLink } from "@gomoku/ui/game/text-link";
 import { TurnStatus } from "@gomoku/ui/game/turn-status";
 
 import { go, Main, SiteHeader, useGameRoute } from "../chrome";
-import { accessibleGame, nameOf, opponentName, phaseOf, showOutside, sideOf, useSim, viewer } from "../sim";
+import { accessibleGame, nameOf, opponentName, phaseOf, sideOf, startPlay, useSim, viewer } from "../sim";
 import { useStateId } from "../stateId";
-import { GameGate } from "./game-gate";
+import { GameGate, gateStateId, useGameBlock } from "./game-gate";
 
 // p04 Partia gotowa `/games/{id}` (active, no `seen_at` of both players yet; map p04.1–p04.4, game-invitations #21 UI,
-// Q20, Q21). The board and the clocks that run are stage B: here both clocks stand at 10:00 (BR-04).
+// Q20, Q21). Both clocks stand at 10:00 (BR-04); "Przejdź do planszy" draws the colours and opens p05.
 const TEN_MINUTES = 600_000;
 
 export function P04Ready() {
   const sim = useSim();
   const route = useGameRoute("p04");
+  const block = useGameBlock("p04", route);
   const game = accessibleGame(sim);
   const phase = game ? phaseOf(sim, game) : null;
   const side = game ? sideOf(sim, game) : null;
@@ -25,28 +26,14 @@ export function P04Ready() {
   if (phase === "autocancelled") stateId = "p04.3";
   else if (phase === "ready" && game?.seenCreator) stateId = "p04.2";
   if (side === "opponent" && game?.opponent?.kind === "guest") stateId = `${stateId} + p04.4`;
-  useStateId("p04", stateId);
+  useStateId("p04", block !== "none" ? gateStateId(sim, block) : stateId);
 
-  if (route === null) return <GameGate screen="p04" />;
+  if (block !== "none") return <GameGate kind={block} />;
   if (!game || route !== "p04") return <SiteHeader />;
 
   const guest = side === "opponent" && game.opponent?.kind === "guest";
   const mineName = side === "creator" ? nameOf(game.creator) : account ? account.name : "Gość";
   const theirName = side === "creator" ? opponentName(game) : nameOf(game.creator);
-
-  if (phase === "playing") {
-    // Stage B: the game is in progress and its board is not in this prototype yet.
-    return (
-      <>
-        <SiteHeader />
-        <Main narrow state="p05">
-          <h1 className="m-0 text-section font-strong">Partia w toku</h1>
-          <Alert status="info" title="Plansza jest w kolejnym etapie prototypu">Ruchy, zegary i wynik pokaże etap B.</Alert>
-          <div><Button onClick={() => showOutside("Plansza", "board")}>Przejdź do planszy</Button></div>
-        </Main>
-      </>
-    );
-  }
 
   if (phase === "autocancelled") {
     // L06 + A-07: the player who opened the page and the one who did not read different sentences.
@@ -88,7 +75,7 @@ export function P04Ready() {
           <PlayerClock name={`Ty (${mineName})`} remainingMs={TEN_MINUTES} />
           {both && (
             <div className="flex flex-wrap items-center gap-group">
-              <Button onClick={() => showOutside("Plansza", "board")}>Przejdź do planszy</Button>
+              <Button onClick={() => startPlay(game.id)}>Przejdź do planszy</Button>
               <TextLink href="#p01" placement="standalone">Wróć do panelu głównego</TextLink>
             </div>
           )}
