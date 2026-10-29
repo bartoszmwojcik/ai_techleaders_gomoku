@@ -362,6 +362,7 @@ describe("GameRoom, ended", () => {
     ...NO_BOARD,
     moves: [],
     status: "cancelled",
+    closedReason: "not_opened",
     you: { seat: 1, kind: "account" },
     players: [
       { seat: 1, kind: "account", displayName: "Ala_7", seen: seenByYou },
@@ -370,11 +371,19 @@ describe("GameRoom, ended", () => {
   });
 
   it("tells the creator whose invitation ran out to create a new one (p03.9)", () => {
-    room({ ...waiting(), status: "cancelled", invitation: undefined });
+    room({ ...waiting(), status: "cancelled", closedReason: "expired", invitation: undefined });
     expect(screen.getByRole("heading", { name: "Zaproszenie wygasło" })).toBeTruthy();
     expect(screen.getByText("Zaproszenie jest ważne 24 godziny. Link i kod nie działają.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Utwórz zaproszenie" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Wróć na stronę główną" }).getAttribute("href")).toBe("/");
+  });
+
+  it("tells the creator who cancelled in another tab that the invitation was cancelled, not expired (p03.8)", () => {
+    room({ ...waiting(), status: "cancelled", closedReason: "cancelled", invitation: undefined });
+    expect(screen.getByRole("heading", { name: "Zaproszenie zostało anulowane" })).toBeTruthy();
+    expect(screen.getByText("Link i kod nie działają.")).toBeTruthy();
+    expect(screen.queryByText(/wygasło/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Utwórz zaproszenie" })).toBeTruthy();
   });
 
   it("tells the player who opened the page that the opponent did not (p04.3)", () => {

@@ -177,6 +177,31 @@ describe("the invitation pages", () => {
     expect(await stranger.text("main")).toContain("To zaproszenie jest już nieważne");
   });
 
+  it("tells a creator who cancelled elsewhere 'anulowane', not 'wygasło' (L1)", async () => {
+    await visitor(creator);
+    const owner = await signedUp(creator);
+    const { gameId } = await createdGame(owner.cookie);
+    await creator.open(`${baseUrl}/games/${gameId}`);
+    await bodyHas(creator, "Czekamy na przeciwnika…");
+
+    // Another tab or device of the same account cancels; the open page learns it by polling.
+    const cancel = await api("POST", `/api/games/${gameId}/cancel`, undefined, owner.cookie);
+    expect(cancel.status).toBe(200);
+    await bodyHas(creator, "Zaproszenie zostało anulowane");
+    expect(await creator.text("main")).not.toContain("Zaproszenie wygasło");
+
+    // A fresh load and the API say the same; an expired one stays 'expired'.
+    await creator.open(`${baseUrl}/games/${gameId}`);
+    await bodyHas(creator, "Zaproszenie zostało anulowane");
+    const state = await api("GET", `/api/games/${gameId}`, undefined, owner.cookie);
+    expect(((await state.json()) as { data: { closedReason: string } }).data.closedReason).toBe("cancelled");
+    const other = await signedUp();
+    const expired = await createdGame(other.cookie);
+    await run("update invitations set expires_at = now() - interval '1 hour' where game_id = ?", [expired.gameId]);
+    const lapsed = await api("GET", `/api/games/${expired.gameId}`, undefined, other.cookie);
+    expect(((await lapsed.json()) as { data: { closedReason: string } }).data.closedReason).toBe("expired");
+  });
+
   it("lets a signed-in player join with one button, and sends the creator and a participant to the game", async () => {
     const owner = await signedUp();
     const { gameId, code } = await createdGame(owner.cookie);

@@ -20,6 +20,7 @@ import {
 } from "./game-service";
 import {
   CANCEL_NOT_STARTED_OF_GAME,
+  CANCEL_WAITING_GAME_SQL,
   CANCEL_NOT_STARTED_OF_GUEST,
   EXPIRE_WAITING_OF_GAME,
   closeStaleSlotsOfUser,
@@ -155,9 +156,6 @@ const START_GAME_SQL = `
   update games set status = 'active', started_at = ?, black_seat = ?
   where id = ? and status = 'waiting'
   returning id`;
-
-const CANCEL_WAITING_SQL = `
-  update games set status = 'cancelled' where id = ? and status = 'waiting' returning id`;
 
 const RELEASE_SLOTS_SQL = `update game_players set is_active = false where game_id = ? and is_active`;
 
@@ -395,7 +393,7 @@ export class InvitationService {
           data: { gameId: slot.game_id },
         });
       }
-      await tx.execute(CANCEL_WAITING_SQL, [slot.game_id]);
+      await tx.execute(CANCEL_WAITING_GAME_SQL, [slot.game_id, now]);
       await tx.execute(RELEASE_SLOTS_SQL, [slot.game_id], "run");
     }
 

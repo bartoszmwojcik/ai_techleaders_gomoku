@@ -234,13 +234,17 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
   }
 
   if (game.status === "cancelled") {
-    // The creator's own cancel leaves the page, so a one-player game that is cancelled here ran out (24 h, L05).
-    if (game.players.length === 1) {
+    // `closedReason` tells the endings apart: the creator may have cancelled in another tab or device.
+    if (game.closedReason === "cancelled" || game.closedReason === "expired") {
+      const ending =
+        game.closedReason === "cancelled"
+          ? { heading: "Zaproszenie zostało anulowane", details: "Link i kod nie działają." }
+          : { heading: "Zaproszenie wygasło", details: "Zaproszenie jest ważne 24 godziny. Link i kod nie działają." };
       return (
         <Shell>
-          <h1 className="m-0 text-section font-strong">Zaproszenie wygasło</h1>
-          <Alert status="warning" title="Zaproszenie wygasło. Utwórz nowe." role="status">
-            Zaproszenie jest ważne 24 godziny. Link i kod nie działają.
+          <h1 className="m-0 text-section font-strong">{ending.heading}</h1>
+          <Alert status="warning" title={`${ending.heading}. Utwórz nowe.`} role="status">
+            {ending.details}
           </Alert>
           <div className="flex flex-wrap items-center gap-group">
             <CreateGameButton heldGame={null} />

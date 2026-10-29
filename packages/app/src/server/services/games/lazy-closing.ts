@@ -59,3 +59,18 @@ export async function closeStaleSlotsOfUser(
   await em.execute(EXPIRE_WAITING_OF_USER, [now, userId], "run");
   await em.execute(CANCEL_NOT_STARTED_OF_USER, [cutoff, userId], "run");
 }
+
+/**
+ * Cancels a game by its creator, only while it waits (the conditional update is what makes a race
+ * with a join safe), and voids its invitation in the same statement: `consumed_at` set without
+ * `consumed_by` marks "cancelled by the creator", as opposed to "expired" (`consumed_at` null),
+ * so the game page can tell the two endings apart. `?` binds: the game id, then the void time.
+ */
+export const CANCEL_WAITING_GAME_SQL = `
+  with cancelled as (
+    update games set status = 'cancelled' where id = ? and status = 'waiting' returning id
+  ), voided as (
+    update invitations i set consumed_at = coalesce(i.consumed_at, ?)
+    from cancelled c where i.game_id = c.id
+  )
+  select id from cancelled`;

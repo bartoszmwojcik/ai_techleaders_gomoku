@@ -197,7 +197,8 @@ describe("GameService.cancel", () => {
 
     expect(em.count).toHaveBeenCalledWith(GamePlayer, { game: "game-1", seat: 1, user: "user-1" });
     expect(calls).toEqual(["count", "execute:cancel", "execute:update game_players"]);
-    expect(em.execute).toHaveBeenNthCalledWith(1, expect.stringContaining("status = 'waiting'"), ["game-1"]);
+    // The same statement voids the invitation, so the page can tell "cancelled" from "expired".
+    expect(em.execute).toHaveBeenNthCalledWith(1, expect.stringContaining("update invitations"), ["game-1", NOW]);
     expect(em.execute).toHaveBeenNthCalledWith(2, expect.any(String), ["game-1"], "run");
   });
 
@@ -337,11 +338,36 @@ describe("GameService.getState", () => {
     ]);
   });
 
-  it("does not show the invitation once the game is no longer waiting", async () => {
-    const { service } = setup({ game: { status: "cancelled" }, players: [creator] });
+  it("does not show the invitation once the game is no longer waiting, and says it was cancelled", async () => {
+    const { service } = setup({
+      game: { status: "cancelled" },
+      players: [creator],
+      invitation: { consumedAt: NOW },
+    });
     const state = await service.getState({ playerId: "p1" }, "game-1");
     expect(state.status).toBe("cancelled");
     expect(state.invitation).toBeUndefined();
+    expect(state.closedReason).toBe("cancelled");
+  });
+
+  it("says an unjoined cancelled game with an untouched invitation expired", async () => {
+    const { service } = setup({
+      game: { status: "cancelled" },
+      players: [creator],
+      invitation: { consumedAt: null },
+    });
+    expect((await service.getState({ playerId: "p1" }, "game-1")).closedReason).toBe("expired");
+  });
+
+  it("says a cancelled game with two players was not opened, without reading the invitation", async () => {
+    const { service, em } = setup({ game: { status: "cancelled" }, players: [creator, guest] });
+    expect((await service.getState({ playerId: "p1" }, "game-1")).closedReason).toBe("not_opened");
+    expect(em.findOneOrFail).toHaveBeenCalledTimes(1);
+  });
+
+  it("has no closing reason while the game is not cancelled", async () => {
+    const { service } = setup({ game: { status: "active" }, players: [creator, guest] });
+    expect((await service.getState({ playerId: "p1" }, "game-1")).closedReason).toBeUndefined();
   });
 
   it("adds the board: moves after `after`, the seat on turn and the result", async () => {
