@@ -144,3 +144,8 @@ BR-04, BR-05, BR-06, BR-07, BR-13, D-03 (właściciel: Bartosz Wójcik). Spec pr
 8. **UI:** `useGameClock` (testy z fałszywym czasem; ogłoszenie `aria-live` jednorazowe przy przejściu poniżej 60 s, także po korekcie czasu przez odpytywanie), `PlayerClock` w wariancie bez tekstu „mało czasu”, baner końca przez czas; stories w Storybooku (oba motywy, `check:tokens`).
 9. **Scenariusz przeglądarkowy** (agent-browser, 360 px): zegar rusza po obu wejściach, zmiana tury, jaskrawy kolor poniżej 60 s (przyspieszony czas), koniec przez czas.
 10. **Dokumentacja i `npm run check`;** lekcja w `.ai/lessons/`, jeśli przegląd wykaże korektę.
+
+## 📝 Adnotacja 2026-10-29: świadome odstępstwa (zgodne z BR-22)
+
+- **Gość po terminie:** gość widzi wynik przy pierwszym odczycie, a token jest ważny godzinę od `finished_at` (nie od wykrycia przegranej), więc odczyt po ponad 1 h od terminu daje `404`. Kolejność „ocena tokenu po rozstrzygnięciu" jest bezpieczna, ale różni się od brzmienia o `settleGame` przed oceną tokenu.
+- **`accept` jako gość:** nie wywołuje `settleFor`, bo gość nie ma `userId`, więc może dostać `ACTIVE_GAME_EXISTS` do czasu odczytu jego przeterminowanej partii. Błąd niesie `gameId`, a odczyt rozstrzyga partię, więc stan samonaprawia się.
