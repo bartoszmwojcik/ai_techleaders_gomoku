@@ -42,6 +42,21 @@ describe("mergeState", () => {
     const current = view({ moveCount: 3, moves: [1, 2, 3] });
     expect(mergeState(current, view({ moveCount: 2, moves: [] }), 2)).toBe(current);
   });
+
+  it("never reopens a finished game: a late 'active' response with the same move count is dropped", () => {
+    const current = view({ status: "finished", moveCount: 3, moves: [1, 2, 3] });
+    expect(mergeState(current, view({ status: "active", moveCount: 3, moves: [] }), 3)).toBe(current);
+  });
+
+  it("takes a 'finished' response over an active state, also without a new move", () => {
+    const merged = mergeState(
+      view({ moveCount: 3, moves: [1, 2, 3] }),
+      view({ status: "finished", moveCount: 3, moves: [] }),
+      3,
+    );
+    expect(merged.status).toBe("finished");
+    expect(merged.moves).toEqual([1, 2, 3]);
+  });
 });
 
 describe("moveOf", () => {

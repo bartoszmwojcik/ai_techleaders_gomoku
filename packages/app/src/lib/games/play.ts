@@ -14,10 +14,13 @@ export function stonesOf(moves: readonly number[]): PlacedStone[] {
 /**
  * Puts a state read with `?after=<after>` on top of the one the client holds. The server sends
  * only the moves after the first `after`, so the known ones are kept and the new ones appended.
- * A stale response (older than what the client holds) never moves the board back.
+ * A stale response (older than what the client holds) never moves the board back, and a finished
+ * game never reopens: a game can end without a move (timeout, resignation), so a late `active`
+ * response with the same move count must not undo `finished`.
  */
 export function mergeState(current: GameView, next: GameView, after: number): GameView {
   if (next.moveCount < current.moves.length) return current;
+  if (current.status === "finished" && next.status !== "finished") return current;
   return { ...next, moves: [...current.moves.slice(0, after), ...next.moves] };
 }
 

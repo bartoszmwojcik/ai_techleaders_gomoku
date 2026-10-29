@@ -227,6 +227,17 @@ describe("PlayField, a touch screen (p05.4)", () => {
     expect(screen.getByTestId("selection").textContent).toBe("Poczekaj na ruch przeciwnika.");
   });
 
+  it("announces the opponent's last move to screen readers, only on the player's turn", () => {
+    field({ turnSeat: 1, moveCount: 2, moves: [112, 7 * 15 + 7 + 1] });
+    expect(screen.getByTestId("opponent-move").textContent).toBe("Przeciwnik: kolumna I, rząd 8");
+    cleanup();
+    field({ turnSeat: 2, moveCount: 1, moves: [112] });
+    expect(screen.queryByTestId("opponent-move")).toBeNull();
+    cleanup();
+    field();
+    expect(screen.queryByTestId("opponent-move")).toBeNull();
+  });
+
   it("reacts to the device changing (a keyboard docked to a tablet)", () => {
     const query = stubPointer(true);
     field();

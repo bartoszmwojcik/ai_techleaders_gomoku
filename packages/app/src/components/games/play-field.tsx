@@ -188,6 +188,12 @@ export function PlayField({ gameId, game, pollFails, onState, onRefresh, onGone 
           readOnly={!myTurn || busy}
           onCellSelect={onCellSelect}
         />
+        {myTurn && lastMove !== undefined && (
+          // The opponent's stone appears on its own; a screen reader hears where (visually hidden).
+          <p role="status" className="sr-only" data-testid="opponent-move">
+            Przeciwnik: {cellName(lastMove).toLowerCase()}
+          </p>
+        )}
         <ClockSlot name={`Ty (${playerName(mine)})`} active={myTurn} activeLabel="Twój ruch" />
         <p className="m-0 text-body text-text-secondary" data-testid="my-color">
           {finished ? "Grałeś" : "Grasz"} {COLOR_PLAYS[myColor]}.
