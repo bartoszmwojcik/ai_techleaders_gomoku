@@ -92,34 +92,15 @@ describe("RateLimiter.reset", () => {
   });
 });
 
-describe("RateLimiter.assertBelow", () => {
-  function peek(rows: unknown[]) {
-    const execute = vi.fn(async () => rows);
-    const limiter = new RateLimiter({
-      em: { execute } as unknown as EntityManager,
-    });
-    return { execute, limiter };
-  }
-
-  it("reads the live bucket with bound parameters and counts nothing", async () => {
-    const { execute, limiter } = peek([{ count: 19, retry_after_seconds: 5 }]);
-    await expect(limiter.assertBelow("k", 20, 1000)).resolves.toBeUndefined();
+describe("RateLimiter.release", () => {
+  it("gives one attempt back in a live window, in its own transaction, with bound parameters", async () => {
+    const { execute, transactional, limiter } = setup([]);
+    await limiter.release("invite:ip:1", 1000);
+    expect(transactional).toHaveBeenCalledOnce();
     expect(execute).toHaveBeenCalledWith(
-      expect.stringContaining("from rate_limit_buckets"),
-      [1000, "k", 1000],
-      "all",
+      expect.stringContaining('greatest("count" - 1, 0)'),
+      ["invite:ip:1", 1000],
+      "run",
     );
-  });
-
-  it("allows a key without a live bucket", async () => {
-    const { limiter } = peek([]);
-    await expect(limiter.assertBelow("k", 20, 1000)).resolves.toBeUndefined();
-  });
-
-  it("refuses with Retry-After once the limit is already spent", async () => {
-    const { limiter } = peek([{ count: 20, retry_after_seconds: 42 }]);
-    const error = await limiter.assertBelow("k", 20, 1000).catch((e: unknown) => e);
-    expect(error).toBeInstanceOf(TooManyRequestsError);
-    expect((error as TooManyRequestsError).retryAfterSeconds).toBe(42);
   });
 });

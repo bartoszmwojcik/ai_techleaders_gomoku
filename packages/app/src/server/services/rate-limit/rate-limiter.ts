@@ -22,13 +22,10 @@ const CONSUME_SQL = `
       (b.window_start + (?::double precision * interval '1 millisecond') - now()))))::int
       as retry_after_seconds`;
 
-// Read-only peek at a live bucket (no row when the window elapsed or the key is new).
-const PEEK_SQL = `
-  select "count",
-    greatest(1, ceil(extract(epoch from
-      (window_start + (?::double precision * interval '1 millisecond') - now()))))::int
-      as retry_after_seconds
-  from rate_limit_buckets
+// Gives one attempt back, never below zero, only while the window it was counted in is live.
+const RELEASE_SQL = `
+  update rate_limit_buckets
+  set "count" = greatest("count" - 1, 0)
   where "key" = ?
     and window_start + (?::double precision * interval '1 millisecond') > now()`;
 
@@ -72,23 +69,14 @@ export class RateLimiter {
   }
 
   /**
-   * Refuses (429) when `limit` attempts were already counted for `key` in the current window,
-   * without counting anything. For pools that only failures feed (e.g. failed invitation-code
-   * lookups): once spent, even a correct attempt is refused, so the answer is no oracle.
+   * Gives back one attempt counted by {@link hit} in the live window (no-op without one), in
+   * its own committed transaction. For pools that only failures feed (failed invitation-code
+   * lookups): the caller reserves with `hit` before the lookup and releases on success.
    */
-  async assertBelow(key: string, limit: number, windowMs: number): Promise<void> {
-    const rows = await this.#em.execute<BucketRow[]>(
-      PEEK_SQL,
-      [windowMs, key, windowMs],
-      "all",
+  async release(key: string, windowMs: number): Promise<void> {
+    await this.#em.transactional((em) =>
+      em.execute(RELEASE_SQL, [key, windowMs], "run"),
     );
-    const row = rows[0];
-    if (row && row.count >= limit) {
-      throw new TooManyRequestsError(
-        "Zbyt wiele prób. Spróbuj ponownie później.",
-        { retryAfterSeconds: row.retry_after_seconds },
-      );
-    }
   }
 
   /** Same as {@link hit}, for callers that only need the limit enforced. */

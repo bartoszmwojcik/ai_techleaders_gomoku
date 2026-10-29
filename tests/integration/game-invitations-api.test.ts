@@ -263,6 +263,36 @@ describe("invitation flow over HTTP", () => {
     // Another address is not affected and the game was never joined by that attempt.
     expect((await accept(code, { as: "user" }, bob)).status).toBe(200);
   });
+
+  it("lets at most 20 of 60 parallel wrong codes from one address through (Q13), the rest get 429", async () => {
+    const bob = await signedUp();
+    const address = { "x-forwarded-for": "203.0.113.78" };
+    const statuses = (
+      await Promise.all(
+        Array.from({ length: 60 }, () => accept("ZZZZ-ZZZZ", { as: "user" }, bob, address)),
+      )
+    ).map((response) => response.status);
+    expect(statuses.filter((status) => status === 410)).toHaveLength(20);
+    expect(statuses.filter((status) => status === 429)).toHaveLength(40);
+  });
+
+  it("does not spend the pool on successful lookups", async () => {
+    const address = { "x-forwarded-for": "203.0.113.79" };
+    const bob = await signedUp();
+    const alice = await signedUp();
+    const { code, gameId } = await createGame(alice);
+    // The first accept joins, the next 29 are the joiner coming back: 30 successful lookups,
+    // far above the limit of 20 failures.
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      expect((await accept(code, { as: "user" }, bob, address)).status).toBe(200);
+    }
+    // The pool is untouched: all 20 failures still fit before the 429.
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      expect((await accept("ZZZZ-ZZZZ", { as: "user" }, bob, address)).status).toBe(410);
+    }
+    expect((await accept("ZZZZ-ZZZZ", { as: "user" }, bob, address)).status).toBe(429);
+    expect((await stateOf(gameId, bob)).status).toBe(200);
+  });
 });
 
 const guestCookieOf = (response: Response): string | undefined => {

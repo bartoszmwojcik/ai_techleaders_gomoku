@@ -72,8 +72,8 @@ function setup(
     transactional: vi.fn(async (fn: (tx: unknown) => unknown) => fn(em)),
   };
   const rateLimiter = {
-    assertBelow: vi.fn(async () => undefined),
     hit: vi.fn(async () => ({ count: 1, retryAfterSeconds: 1 })),
+    release: vi.fn(async () => undefined),
   };
   const timeoutSettler = { settleFor: vi.fn(async () => undefined) };
   const service = new InvitationService({
@@ -95,8 +95,8 @@ describe("InvitationService.accept", () => {
     const result = await service.accept(CODE, { userId: USER }, AS_USER, GUARD);
 
     expect(result).toEqual({ gameId: "game-1" });
-    expect(rateLimiter.assertBelow).toHaveBeenCalledWith(GUARD.key, GUARD.limit, INVITATION_LOOKUP_WINDOW_MS);
-    expect(rateLimiter.hit).not.toHaveBeenCalled();
+    expect(rateLimiter.hit).toHaveBeenCalledWith(GUARD.key, GUARD.limit, INVITATION_LOOKUP_WINDOW_MS);
+    expect(rateLimiter.release).toHaveBeenCalledWith(GUARD.key, INVITATION_LOOKUP_WINDOW_MS);
     expect(timeoutSettler.settleFor).toHaveBeenCalledWith(USER);
     expect(em.transactional).toHaveBeenCalledOnce();
     const sqls = sqlsOf(calls);
@@ -154,14 +154,15 @@ describe("InvitationService.accept", () => {
     const { service, rateLimiter } = setup();
     const error = await errorOf(service.accept(CODE, {}, AS_USER, GUARD));
     expect(error.status).toBe(401);
-    expect(rateLimiter.assertBelow).not.toHaveBeenCalled();
+    expect(rateLimiter.hit).not.toHaveBeenCalled();
   });
 
   it("refuses with 429 once the pool of failed lookups is spent, even for a valid code", async () => {
     const { service, rateLimiter, em } = setup();
-    rateLimiter.assertBelow.mockRejectedValue(new TooManyRequestsError("limit", { retryAfterSeconds: 9 }));
+    rateLimiter.hit.mockRejectedValue(new TooManyRequestsError("limit", { retryAfterSeconds: 9 }));
     const error = await errorOf(service.accept(CODE, { userId: USER }, AS_USER, GUARD));
     expect(error.status).toBe(429);
+    expect(rateLimiter.release).not.toHaveBeenCalled();
     expect(em.transactional).not.toHaveBeenCalled();
   });
 
@@ -180,6 +181,7 @@ describe("InvitationService.accept", () => {
     expect(error.status).toBe(410);
     expect(error.code).toBe("INVALID_INVITATION");
     expect(rateLimiter.hit).toHaveBeenCalledOnce();
+    expect(rateLimiter.release).not.toHaveBeenCalled();
   });
 
   it("answers 410 when the invitation vanishes between the peek and the lock", async () => {
@@ -198,7 +200,7 @@ describe("InvitationService.accept", () => {
     expect(error.status).toBe(409);
     expect(error.code).toBe("OWN_INVITATION");
     expect(error.data).toEqual({ gameId: "game-1" });
-    expect(rateLimiter.hit).not.toHaveBeenCalled();
+    expect(rateLimiter.release).toHaveBeenCalledOnce();
   });
 
   it.each([
@@ -236,6 +238,7 @@ describe("InvitationService.accept", () => {
     expect(error.code).toBe("INVALID_INVITATION");
     expect(error.message).toBe("To zaproszenie jest już nieważne.");
     expect(rateLimiter.hit).toHaveBeenCalledOnce();
+    expect(rateLimiter.release).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -247,7 +250,7 @@ describe("InvitationService.accept", () => {
     expect(error.status).toBe(409);
     expect(error.code).toBe("ACTIVE_GAME_EXISTS");
     expect(error.data).toEqual({ gameId: "other" });
-    expect(rateLimiter.hit).not.toHaveBeenCalled();
+    expect(rateLimiter.release).toHaveBeenCalledOnce();
   });
 
   it("offers to cancel an own waiting game (Q18) without doing it unasked", async () => {
@@ -309,6 +312,7 @@ describe("InvitationService.accept", () => {
     const error = await errorOf(service.accept(CODE, { userId: USER }, AS_USER, GUARD));
     expect(error.code).toBe("INVALID_INVITATION");
     expect(rateLimiter.hit).toHaveBeenCalledOnce();
+    expect(rateLimiter.release).not.toHaveBeenCalled();
   });
 
   it("maps the BR-13 index to ACTIVE_GAME_EXISTS", async () => {
@@ -333,6 +337,7 @@ describe("InvitationService.accept", () => {
     const error = await errorOf(service.accept(CODE, { userId: USER }, AS_USER, GUARD));
     expect(error.code).toBe("INVALID_INVITATION");
     expect(rateLimiter.hit).toHaveBeenCalledOnce();
+    expect(rateLimiter.release).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -367,7 +372,7 @@ describe("InvitationService.accept as a guest", () => {
       [NOW, "game-1"],
       [CUTOFF, "game-1"],
     ]);
-    expect(rateLimiter.hit).not.toHaveBeenCalled();
+    expect(rateLimiter.release).toHaveBeenCalledOnce();
   });
 
   it("issues a different token each time", async () => {
@@ -384,7 +389,7 @@ describe("InvitationService.accept as a guest", () => {
     const error = await errorOf(service.accept(CODE, { userId: USER }, GUEST_INPUT, GUARD));
     expect(error.status).toBe(409);
     expect(error.code).toBe("GUEST_NOT_ALLOWED");
-    expect(rateLimiter.assertBelow).not.toHaveBeenCalled();
+    expect(rateLimiter.hit).not.toHaveBeenCalled();
     expect(em.transactional).not.toHaveBeenCalled();
   });
 
@@ -427,7 +432,7 @@ describe("InvitationService.accept as a guest", () => {
       CUTOFF,
       "a-held",
     ]);
-    expect(rateLimiter.hit).not.toHaveBeenCalled();
+    expect(rateLimiter.release).toHaveBeenCalledOnce();
   });
 
   it("joins a browser whose old token holds nothing (the old game ended)", async () => {
@@ -441,6 +446,7 @@ describe("InvitationService.accept as a guest", () => {
     const error = await errorOf(service.accept(CODE, {}, GUEST_INPUT, GUARD));
     expect(error.code).toBe("INVALID_INVITATION");
     expect(rateLimiter.hit).toHaveBeenCalledOnce();
+    expect(rateLimiter.release).not.toHaveBeenCalled();
   });
 
   it("gives no token when the join is rolled back", async () => {
@@ -466,8 +472,8 @@ describe("InvitationService.preview", () => {
     const { service, calls, rateLimiter, em, timeoutSettler } = setup();
     const preview = await service.preview(CODE, {}, GUARD);
     expect(preview).toEqual({ creatorName: "Ala", state: "joinable" });
-    expect(rateLimiter.assertBelow).toHaveBeenCalledWith(GUARD.key, GUARD.limit, INVITATION_LOOKUP_WINDOW_MS);
-    expect(rateLimiter.hit).not.toHaveBeenCalled();
+    expect(rateLimiter.hit).toHaveBeenCalledWith(GUARD.key, GUARD.limit, INVITATION_LOOKUP_WINDOW_MS);
+    expect(rateLimiter.release).toHaveBeenCalledWith(GUARD.key, INVITATION_LOOKUP_WINDOW_MS);
     expect(em.transactional).not.toHaveBeenCalled();
     expect(timeoutSettler.settleFor).not.toHaveBeenCalled();
     expect(sqlsOf(calls).every((sql) => sql.startsWith("select"))).toBe(true);
@@ -532,6 +538,7 @@ describe("InvitationService.preview", () => {
     const error = await errorOf(service.preview("x", {}, GUARD));
     expect(error.code).toBe("INVALID_INVITATION");
     expect(rateLimiter.hit).toHaveBeenCalledOnce();
+    expect(rateLimiter.release).not.toHaveBeenCalled();
   });
 
   it("recognizes a returning guest and a guest busy elsewhere", async () => {
@@ -567,7 +574,7 @@ describe("InvitationService.preview", () => {
 
   it("refuses with 429 before looking anything up when the pool is spent", async () => {
     const { service, rateLimiter, execute } = setup();
-    rateLimiter.assertBelow.mockRejectedValue(new TooManyRequestsError("limit"));
+    rateLimiter.hit.mockRejectedValue(new TooManyRequestsError("limit"));
     const error = await errorOf(service.preview(CODE, {}, GUARD));
     expect(error.status).toBe(429);
     expect(execute).not.toHaveBeenCalled();

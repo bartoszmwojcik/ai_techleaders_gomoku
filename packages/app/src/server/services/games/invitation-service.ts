@@ -93,7 +93,8 @@ export type InvitationPreview = {
 type InvitationRow = {
   id: string;
   game_id: string;
-  consumed_at: Date | null;
+  /** Only compared with null: raw `em.execute` returns timestamps as strings, not `Date`s. */
+  consumed_at: string | null;
   /** Computed in SQL: raw `em.execute` returns timestamps as strings, not `Date`s. */
   expired: boolean;
   status: string;
@@ -202,7 +203,10 @@ export class InvitationService {
     viewer: Viewer,
     guard: LookupGuard,
   ): Promise<InvitationPreview> {
-    await this.#rateLimiter.assertBelow(guard.key, guard.limit, INVITATION_LOOKUP_WINDOW_MS);
+    return this.#withAttempt(guard, () => this.#preview(code, viewer));
+  }
+
+  async #preview(code: string, viewer: Viewer): Promise<InvitationPreview> {
     const invitation = await this.#find(code);
     const { userId } = viewer;
     if (userId) await this.#timeoutSettler.settleFor(userId);
@@ -228,7 +232,7 @@ export class InvitationService {
       invitation.consumed_at !== null ||
       invitation.expired
     ) {
-      return this.#fail(guard);
+      throw invalidInvitation();
     }
 
     const slot = await this.#slotOf(this.#em, viewer);
@@ -275,9 +279,17 @@ export class InvitationService {
         });
       }
     }
-    await this.#rateLimiter.assertBelow(guard.key, guard.limit, INVITATION_LOOKUP_WINDOW_MS);
+    return this.#withAttempt(guard, () => this.#accept(code, viewer, input));
+  }
+
+  async #accept(
+    code: string,
+    viewer: Viewer,
+    input: AcceptInput,
+  ): Promise<AcceptResult> {
+    const { userId } = viewer;
     const normalized = normalizeInvitationCode(code);
-    if (!normalized) return this.#fail(guard);
+    if (!normalized) throw invalidInvitation();
 
     if (userId) await this.#timeoutSettler.settleFor(userId);
     // Only a guest who really joins gets a token; a returning one keeps the cookie.
@@ -288,15 +300,14 @@ export class InvitationService {
       );
       return result.joined && guestToken ? { ...result.game, guestToken } : result.game;
     } catch (error) {
-      // The failed lookup is counted after the rollback, in its own transaction.
-      if (error instanceof GoneError) return this.#fail(guard);
+      if (error instanceof GoneError) throw error;
       const constraint = constraintOf(error);
       if (constraint === ACTIVE_SLOT_CONSTRAINT) {
         throw new ConflictError(ACTIVE_GAME_EXISTS_MESSAGE, {
           code: "ACTIVE_GAME_EXISTS",
         });
       }
-      if (constraint === SEAT_CONSTRAINT) return this.#fail(guard);
+      if (constraint === SEAT_CONSTRAINT) throw invalidInvitation();
       throw error;
     }
   }
@@ -444,9 +455,22 @@ export class InvitationService {
     )[0];
   }
 
-  /** A failed lookup: counted in the pool of Q13, answered with the one uniform error. */
-  async #fail(guard: LookupGuard): Promise<never> {
+  /**
+   * Q13, race-free: one attempt is reserved in the pool BEFORE the lookup (an atomic upsert in
+   * its own committed transaction, so concurrent guesses cannot all read "below the limit").
+   * It is given back unless the lookup failed with the uniform `INVALID_INVITATION`, so the
+   * pool only counts failures; once spent, even a correct code gets 429 (no oracle).
+   */
+  async #withAttempt<T>(guard: LookupGuard, lookup: () => Promise<T>): Promise<T> {
     await this.#rateLimiter.hit(guard.key, guard.limit, INVITATION_LOOKUP_WINDOW_MS);
-    throw invalidInvitation();
+    let result: T;
+    try {
+      result = await lookup();
+    } catch (error) {
+      if (!(error instanceof GoneError)) await this.#rateLimiter.release(guard.key, INVITATION_LOOKUP_WINDOW_MS);
+      throw error;
+    }
+    await this.#rateLimiter.release(guard.key, INVITATION_LOOKUP_WINDOW_MS);
+    return result;
   }
 }
