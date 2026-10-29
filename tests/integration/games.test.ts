@@ -47,7 +47,7 @@ function scope() {
     timeoutSettler: new NoopTimeoutSettler(),
     serverConfig: { appOrigin: "https://gomoku.test" } as never,
   });
-  return { gameService, participation: new GameParticipation({ em }) };
+  return { gameService, participation: new GameParticipation({ em, clock: systemClock }) };
 }
 
 async function playerOf(gameId: string, userId: string): Promise<string> {

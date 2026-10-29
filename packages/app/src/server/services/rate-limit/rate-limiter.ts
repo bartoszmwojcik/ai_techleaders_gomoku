@@ -22,6 +22,13 @@ const CONSUME_SQL = `
       (b.window_start + (?::double precision * interval '1 millisecond') - now()))))::int
       as retry_after_seconds`;
 
+// Gives one attempt back, never below zero, only while the window it was counted in is live.
+const RELEASE_SQL = `
+  update rate_limit_buckets
+  set "count" = greatest("count" - 1, 0)
+  where "key" = ?
+    and window_start + (?::double precision * interval '1 millisecond') > now()`;
+
 const RESET_SQL = `delete from rate_limit_buckets where "key" = ?`;
 
 export class RateLimiter {
@@ -59,6 +66,17 @@ export class RateLimiter {
       );
     }
     return { count: row.count, retryAfterSeconds: row.retry_after_seconds };
+  }
+
+  /**
+   * Gives back one attempt counted by {@link hit} in the live window (no-op without one), in
+   * its own committed transaction. For pools that only failures feed (failed invitation-code
+   * lookups): the caller reserves with `hit` before the lookup and releases on success.
+   */
+  async release(key: string, windowMs: number): Promise<void> {
+    await this.#em.transactional((em) =>
+      em.execute(RELEASE_SQL, [key, windowMs], "run"),
+    );
   }
 
   /** Same as {@link hit}, for callers that only need the limit enforced. */

@@ -236,6 +236,43 @@ describe("password reset on PostgreSQL", () => {
     await limiter.reset("email-daily:reset");
   });
 
+  it("release gives an attempt back only in a live window and never goes below zero", async () => {
+    const limiter = new RateLimiter({ em: orm.em.fork() });
+    const key = `release-it:${Date.now().toString(36)}`;
+    const count = async () =>
+      (
+        await orm.em
+          .fork()
+          .execute<{ count: number }[]>(
+            `select "count" from rate_limit_buckets where "key" = ?`,
+            [key],
+          )
+      )[0]?.count;
+
+    await expect(limiter.release(key, 60_000)).resolves.toBeUndefined();
+    expect(await count()).toBeUndefined();
+
+    await limiter.hit(key, 5, 60_000);
+    await limiter.hit(key, 5, 60_000);
+    await limiter.release(key, 60_000);
+    expect(await count()).toBe(1);
+    await limiter.release(key, 60_000);
+    await limiter.release(key, 60_000);
+    expect(await count()).toBe(0);
+
+    await limiter.hit(key, 5, 60_000);
+    await orm.em
+      .fork()
+      .execute(
+        `update rate_limit_buckets set window_start = now() - interval '2 minutes' where "key" = ?`,
+        [key],
+      );
+    await limiter.release(key, 60_000);
+    expect(await count()).toBe(1);
+
+    await limiter.reset(key);
+  });
+
   it("confirm sets the new password, deletes all sessions and uses the token once", async () => {
     const user = await createUser();
     await new SessionService({

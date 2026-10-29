@@ -23,3 +23,12 @@ export const INITIAL_CLOCK_MS = 10 * 60 * 1000;
  */
 export const INVITATION_CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 export const INVITATION_CODE_LENGTH = 8;
+
+/**
+ * Failed invitation-code lookups (#21 Q13), `accept` and the invite page share one pool:
+ * 20 per client address in 15 minutes; when the address cannot be trusted a global pool
+ * of 300 applies instead, and once it is spent every lookup is refused until the window ends.
+ */
+export const INVITATION_LOOKUP_LIMIT = 20;
+export const INVITATION_LOOKUP_GLOBAL_LIMIT = 300;
+export const INVITATION_LOOKUP_WINDOW_MS = 15 * 60 * 1000;

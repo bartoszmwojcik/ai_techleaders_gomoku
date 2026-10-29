@@ -91,3 +91,16 @@ describe("RateLimiter.reset", () => {
     );
   });
 });
+
+describe("RateLimiter.release", () => {
+  it("gives one attempt back in a live window, in its own transaction, with bound parameters", async () => {
+    const { execute, transactional, limiter } = setup([]);
+    await limiter.release("invite:ip:1", 1000);
+    expect(transactional).toHaveBeenCalledOnce();
+    expect(execute).toHaveBeenCalledWith(
+      expect.stringContaining('greatest("count" - 1, 0)'),
+      ["invite:ip:1", 1000],
+      "run",
+    );
+  });
+});

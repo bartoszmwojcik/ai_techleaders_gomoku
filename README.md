@@ -99,7 +99,7 @@ Specyfikacja i kontrakt API: [`.ai/specs/2026-10-24-account-registration.md`](.a
 - **Adres klienta** pochodzi z `CLIENT_IP_HEADER` według `TRUST_PROXY_HOPS` (IPv6 skrócony do /64). Źle ustawione `TRUST_PROXY_HOPS` psuje limity: za duże pozwala podszyć się pod adres, za małe wrzuca wszystkich pod adres proxy, więc jedna osoba wyczerpie limit całej aplikacji. W dev (bez `TRUST_PROXY_HOPS`) wszyscy współdzielą klucz `local`.
 - **Ciasteczko sesji:** `httpOnly`, `SameSite=Lax`, `Path=/` (w produkcji `__Host-gomoku_session` z `Secure`). Każde logowanie tworzy nową sesję z nowym tokenem (brak session fixation). Wylogowanie unieważnia tylko bieżącą sesję w bazie (inne urządzenia zostają zalogowane) i usuwa ciasteczko; jest idempotentne, a przy niedostępnej bazie odpowiada `500`, ale ciasteczko i tak jest usuwane (przycisk „Wyloguj” traktuje wtedy `500` jak udane wylogowanie i przechodzi na `/`; błąd sieci pokazuje komunikat i pozwala ponowić). Wszystkie pozostałe sesje konta unieważnia zmiana hasła (#36), a wszystkie sesje konta (bez wyjątku) reset hasła (#35).
 - **Strażnik sesji** (`packages/app/src/server/http/auth.ts`): `requireSession()` w route handlerach (bez sesji `401` przez `apiHandler`) i `requirePageSession(path)` na stronach (przekierowanie na `/login?next=<path>`). Obie zawodzą bezpiecznie: przy błędzie bazy nie ma sesji. Każda nowa chroniona trasa lub strona woła jedną z nich jako pierwszą.
-- **Wylogowanie w trakcie partii (Q4):** `/account` i `/` przekazują do `LogoutButton` prop `hasActiveGame` z `gameParticipation.hasActiveGame(userId)` (po zamknięciu okna fokus wraca na przycisk „Wyloguj”); gdy jest `true`, przed wylogowaniem pojawia się potwierdzenie „Trwa partia — po wylogowaniu zegar biegnie dalej. Wylogować?”. Dziś partii nie ma, więc `GameParticipation` (singleton) zawsze zwraca `false`; implementację podmieni funkcja gry (#21/#22).
+- **Wylogowanie w trakcie partii (Q4):** `/account` i `/` przekazują do `LogoutButton` prop `hasActiveGame` z `gameParticipation.hasActiveGame(userId)` (po zamknięciu okna fokus wraca na przycisk „Wyloguj”); gdy jest `true`, przed wylogowaniem pojawia się potwierdzenie „Trwa partia — po wylogowaniu zegar biegnie dalej. Wylogować?”. `GameParticipation` czyta ją z bazy (partia `active` z aktywnym miejscem gracza).
 - **Koszt hasha:** `PASSWORD_HASH_COST` (opis wyżej) dotyczy też logowania: nieznany e-mail jest weryfikowany względem atrapowego hasha o tym samym koszcie, żeby czas odpowiedzi nie zdradzał istnienia konta. W produkcji zostaw domyślne `12`.
 
 Specyfikacja i kontrakt API: [`.ai/specs/2026-10-24-login-logout.md`](.ai/specs/2026-10-24-login-logout.md).
@@ -154,6 +154,40 @@ Gracz, który nie pamięta hasła, wchodzi z `/login` (link „Nie pamiętasz ha
 - **Wdrożenie:** jak przy potwierdzeniu e-maila, na produkcji (HTTPS) wiadomość wyśle dopiero dostawca poczty z #38; do tego czasu `request` dalej zwraca `200`, ale wiadomość nie dochodzi (błąd trafia do logu).
 
 Specyfikacja: [`.ai/specs/2026-10-24-password-reset.md`](.ai/specs/2026-10-24-password-reset.md).
+
+#### Partia z zaproszenia
+
+Zalogowany gracz tworzy partię na `/` (przycisk „Utwórz zaproszenie”), dostaje link `APP_ORIGIN/invite/ABCD-EFGH` i kod `ABCD-EFGH` (alfabet bez `0 O 1 I L`, wielkość liter i myślnik nie mają znaczenia), a przeciwnik dołącza z konta albo jako gość (bez konta, ciasteczko `gomoku_guest`, w produkcji `__Host-gomoku_guest`). Strony: `/` (tworzenie, wejście do własnej partii), `/join` (wpisanie kodu), `/invite/[code]` (wszystkie stany zaproszenia), `/games/[gameId]` (oczekiwanie, „Partia gotowa”, stany końcowe; **plansza i ruchy dopiero w fazie 3, #22**). Ekrany odwzorowują zatwierdzony prototyp etapu A (`prototypes/partia-z-zaproszenia/`) i mapę `lekcja-07/mapa-ekranow-partia.md`; komponenty z `@gomoku/ui/game/*`.
+
+- **API** (nagłówki CSRF jak wyżej; odpowiedzi w kopercie `{ ok, data | error }`):
+
+  | Żądanie | Sukces | Błędy |
+  | --- | --- | --- |
+  | `POST /api/games` (sesja) | `201` `{ gameId, invitation: { code, url, expiresAt } }` | `401`, `409 ACTIVE_GAME_EXISTS` (BR-13), `429 RATE_LIMITED` (10 utworzeń na godzinę) |
+  | `POST /api/invitations/{code}/accept` `{ as: "user" \| "guest", acknowledgedGuestWarning?, cancelOwnWaitingGame? }` | `200` `{ gameId }` (gość dostaje token tylko w ciasteczku) | `400` (gość bez `acknowledgedGuestWarning: true`), `401`, `409` (`GUEST_NOT_ALLOWED`, `OWN_INVITATION`, `OWN_WAITING_GAME`, `ACTIVE_GAME_EXISTS`), `410 INVALID_INVITATION` (nieznany, użyty, wygasły, anulowany i źle zapisany kod: jedna odpowiedź), `429` |
+  | `GET /api/games/{id}` (uczestnik) | `200` status, miejsca, kto otworzył stronę, dla twórcy oczekującej partii zaproszenie | `404` dla obcego i nieistniejącej partii (jedna odpowiedź) |
+  | `POST /api/games/{id}/cancel` (twórca) | `200` | `404`, `409 GAME_NOT_CANCELLABLE` (przeciwnik zdążył dołączyć) |
+
+- **Zaproszenie nic nie zużywa przy otwarciu** (Q12): `/invite/[code]` woła `InvitationService.preview`, a zużywa je dopiero przycisk. Nieudane wyszukania kodu (strona i `accept`) liczą się do wspólnej puli: 20 na adres klienta w 15 min albo 300 globalnie, gdy adres nie jest wiarygodny (Q13); po wyczerpaniu nawet poprawny kod dostaje `429`/„Zbyt wiele prób”. `preview` zamyka leniwie przeterminowane sloty widza (własną wygasłą oczekującą partię, partię nieotwartą w 15 min), tak samo jak `accept`, więc strona nie twierdzi „Masz partię” tam, gdzie dołączenie by się udało. Strona ma `Referrer-Policy: no-referrer` (`<meta name="referrer">`) i `noindex`.
+- **Gość:** „Graj jako gość” pokazuje ostrzeżenie „Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii”, a dopiero „Rozumiem, graj jako gość” wysyła `accept`; przycisk jest wyłączony na czas żądania i żądanie idzie dokładnie raz (drugie dostałoby `410` i zużyło pulę). Zalogowany gracz nie widzi opcji gościa (`GUEST_NOT_ALLOWED`). Ostrzeżenie jest na stronie partii stale.
+- **Strona partii:** twórca czeka na przeciwnika (Karta kodu: link, kod, „Ważne do …”, Kopiuj, Udostępnij tylko tam, gdzie jest `navigator.share`, Anuluj z potwierdzeniem). Aplikacja odpytuje `GET /api/games/{id}` co 3 s, gdy partia czeka albo gdy któryś gracz jeszcze nie otworzył strony (Q6, Q20), i przechodzi przez „Przeciwnik dołączył” do „Partia gotowa”; po trzech nieudanych odpytywaniach pokazuje baner z „Sprawdź teraz”. Anulowanie wraca na `/` z komunikatem, a link staje się „nieważny”. Wygasłe zaproszenie (24 h) i partia nieotwarta w 15 min mają własne komunikaty. Obca lub nieistniejąca partia to `404` z jednym tekstem („Ta partia nie istnieje albo nie masz do niej dostępu”); strona nie ma `loading.tsx`, bo szkielet ładowania (p07.1) wymusiłby status `200` także dla `404`.
+- **Odstępstwa od prototypu** (decyzje przy implementacji): brak nagłówka strony z prototypu (strony E01 też go nie mają, jest tylko przełącznik motywu); `/join` sprawdza tylko kształt kodu (limit prób pokazuje strona zaproszenia, nie `/join`; p02.3 i p02.4 to s07.8 i s07.9); na „Partia gotowa” nie ma przycisku „Przejdź do planszy” (plansza w fazie 3); „Ważne do” w strefie `Europe/Warsaw` (stałej, bez rozjazdu hydracji).
+- **Ręczne sprawdzenie (curl)** po `npm run dev` na świeżej bazie (nie na bazie dev z danymi, której nie chcesz zaśmiecać): zakładasz dwa konta, tworzysz partię, dołączasz drugim, trzeci jest odrzucony, gość z ostrzeżeniem, anulowanie. Każde żądanie `POST` potrzebuje nagłówków `Origin: http://localhost:3000` i `X-Gomoku-Request: 1`:
+
+  ```bash
+  H=(-H 'Origin: http://localhost:3000' -H 'X-Gomoku-Request: 1' -H 'Content-Type: application/json')
+  curl -s -c a.jar "${H[@]}" -d '{"email":"a@example.com","displayName":"Ala_7","password":"secret123"}' localhost:3000/api/auth/register
+  curl -s -c b.jar "${H[@]}" -d '{"email":"b@example.com","displayName":"Kuba_P","password":"secret123"}' localhost:3000/api/auth/register
+  curl -s -b a.jar "${H[@]}" -X POST localhost:3000/api/games          # gameId, code ABCD-EFGH
+  curl -s -b b.jar "${H[@]}" -d '{"as":"user"}' localhost:3000/api/invitations/ABCD-EFGH/accept  # 200 { gameId }
+  curl -s "${H[@]}" -d '{"as":"guest","acknowledgedGuestWarning":true}' localhost:3000/api/invitations/ABCD-EFGH/accept  # 410: kod już użyty
+  curl -s -b a.jar localhost:3000/api/games/<gameId>                   # status active, seen obu graczy
+  ```
+
+  Gość: `-c g.jar` na `accept` z `{"as":"guest","acknowledgedGuestWarning":true}` i świeżym kodzie (bez `acknowledgedGuestWarning` to `400`), potem `curl -b g.jar …/api/games/<gameId>`. Strony: patrz lista kroków w `track-e02.md` (po fazie 2).
+- **Testy:** jednostkowe obok kodu (serwisy, route'y, strony, komponenty), integracyjne `tests/integration/game-invitations-api.test.ts` (API, wyścigi) i `tests/integration/game-invitation-pages.test.ts` (przeglądarka: tworzenie, `/join`, gość, konto, anulowanie, BR-13, 404, limit).
+
+Specyfikacja: [`.ai/specs/2026-10-24-game-invitations.md`](.ai/specs/2026-10-24-game-invitations.md).
 
 ### `@gomoku/core` — części wielokrotnego użytku
 

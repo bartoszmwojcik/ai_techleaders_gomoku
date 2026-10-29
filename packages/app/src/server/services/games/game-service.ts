@@ -2,6 +2,7 @@ import {
   CREATE_GAME_LIMIT,
   CREATE_GAME_WINDOW_MS,
   ConflictError,
+  GUEST_TOKEN_GRACE_MS,
   INVITATION_TTL_MS,
   NotFoundError,
   READY_DEADLINE_MS,
@@ -24,6 +25,12 @@ import type { ServerConfig } from "../../config";
 import type { Clock } from "../email/email-sender";
 import type { RateLimiter } from "../rate-limit/rate-limiter";
 import type { InvitationCodes } from "./invitation-codes";
+import { GUEST_TOKEN_VALID_SQL } from "./guest-token";
+import {
+  CANCEL_NOT_STARTED_OF_GAME,
+  EXPIRE_WAITING_OF_GAME,
+  closeStaleSlotsOfUser,
+} from "./lazy-closing";
 import type { TimeoutSettler } from "./timeout-settler";
 
 type Deps = {
@@ -47,44 +54,10 @@ export const GAME_NOT_FOUND_MESSAGE = "Nie znaleziono partii.";
 /** Used only outside production, where `APP_ORIGIN` may be unset (as in e-mail links). */
 const DEV_ORIGIN = "http://localhost:3000";
 
-// Frees the slots of waiting games whose invitation expired (#21 Q16). One statement, in the
-// lock order games -> game_players. `?` binds: now, then the user (or game) id.
-function expireWaitingSql(scope: string): string {
-  return `
-  with expired as (
-    update games g set status = 'cancelled'
-    where g.status = 'waiting'
-      and exists (select 1 from invitations i where i.game_id = g.id and i.expires_at <= ?)
-      and ${scope}
-    returning g.id
-  )
-  update game_players set is_active = false
-  where is_active and game_id in (select id from expired)`;
-}
-
-// Cancels `active` games in which somebody never opened the page within READY_DEADLINE_MS of
-// the start (#21 Q21). `?` binds: the cutoff (now - deadline), then the user (or game) id.
-function cancelNotStartedSql(scope: string): string {
-  return `
-  with stale as (
-    update games g set status = 'cancelled'
-    where g.status = 'active'
-      and g.started_at <= ?
-      and exists (select 1 from game_players p where p.game_id = g.id and p.seen_at is null)
-      and ${scope}
-    returning g.id
-  )
-  update game_players set is_active = false
-  where is_active and game_id in (select id from stale)`;
-}
-
-const OF_USER = `exists (select 1 from game_players m where m.game_id = g.id and m.user_id = ?)`;
-const OF_GAME = `g.id = ?`;
-
-const EXPIRE_WAITING_OF_USER = expireWaitingSql(OF_USER);
-const EXPIRE_WAITING_OF_GAME = expireWaitingSql(OF_GAME);
-const CANCEL_NOT_STARTED_OF_USER = cancelNotStartedSql(OF_USER);
-const CANCEL_NOT_STARTED_OF_GAME = cancelNotStartedSql(OF_GAME);
+// The player a guest token stands for in this game, while the token is valid (BR-22).
+const FIND_GUEST_SQL = `
+  select p.id from game_players p join games g on g.id = p.game_id
+  where p.game_id = ? and p.guest_token_hash = ? and ${GUEST_TOKEN_VALID_SQL}`;
 
 // First successful read of the page by a participant (#21 Q20); only while the game is open.
 const MARK_SEEN_SQL = `
@@ -165,12 +138,7 @@ export class GameService {
     const code = this.#invitationCodes.generate();
     try {
       const gameId = await this.#em.transactional(async (tx) => {
-        await tx.execute(EXPIRE_WAITING_OF_USER, [now, userId], "run");
-        await tx.execute(
-          CANCEL_NOT_STARTED_OF_USER,
-          [new Date(now.getTime() - READY_DEADLINE_MS), userId],
-          "run",
-        );
+        await closeStaleSlotsOfUser(tx, userId, now);
         const game = tx.create(Game, {
           origin: "invite",
           status: "waiting",
@@ -234,6 +202,32 @@ export class GameService {
       }
       await tx.execute(RELEASE_SLOTS_SQL, [gameId], "run");
     });
+  }
+
+  /**
+   * The participant behind an identity in a game, or `null` (the caller answers `404`, so
+   * nobody learns whether the game exists). Order: the signed-in account, then the guest
+   * token (#21 step 6). A guest token counts while the game is in progress and for one hour
+   * after it finished (BR-22); a game closed unplayed (Q21) voids it.
+   */
+  async findParticipant(
+    identity: { userId?: string; guestTokenHash?: string },
+    gameId: string,
+  ): Promise<GameParticipant | null> {
+    if (identity.userId) {
+      const player = await this.#em.findOne(GamePlayer, {
+        game: gameId,
+        user: identity.userId,
+      });
+      if (player) return { playerId: player.id };
+    }
+    if (!identity.guestTokenHash) return null;
+    const cutoff = new Date(this.#clock.now().getTime() - GUEST_TOKEN_GRACE_MS);
+    const [guest] = await this.#em.execute<{ id: string }[]>(
+      FIND_GUEST_SQL,
+      [gameId, identity.guestTokenHash, cutoff],
+    );
+    return guest ? { playerId: guest.id } : null;
   }
 
   /**
