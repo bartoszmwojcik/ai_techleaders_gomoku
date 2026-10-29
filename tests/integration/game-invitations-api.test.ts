@@ -348,6 +348,22 @@ describe("guest flow over HTTP", () => {
     expect((await post(`/api/games/${gameId}/cancel`, undefined, { cookie: guest })).status).toBe(401);
   });
 
+  it("slides the guest cookie on reads of the game, never for an account", async () => {
+    const alice = await signedUp();
+    const { gameId, code } = await createGame(alice);
+    const guest = guestCookieOf(await accept(code, GUEST))!;
+
+    const asGuest = await get(`/api/games/${gameId}`, { cookie: guest });
+    expect(asGuest.status).toBe(200);
+    const refreshed = (asGuest.headers.getSetCookie?.() ?? []).find((line) => line.startsWith("gomoku_guest="))!;
+    expect(refreshed.split(";")[0]).toBe(guest);
+    expect(refreshed).toMatch(/Max-Age=7200/);
+
+    const asAccount = await get(`/api/games/${gameId}`, { cookie: alice });
+    expect(asAccount.status).toBe(200);
+    expect(asAccount.headers.getSetCookie?.() ?? []).toEqual([]);
+  });
+
   it("refuses a signed-in visitor as a guest", async () => {
     const alice = await signedUp();
     const bob = await signedUp();

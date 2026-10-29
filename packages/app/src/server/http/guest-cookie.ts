@@ -35,11 +35,15 @@ export async function setGuestCookie(
   });
 }
 
-export async function clearGuestCookie(config: CookieConfig): Promise<void> {
-  (await cookies()).set(guestCookieName(config), "", {
-    ...attributes(config),
-    maxAge: 0,
-  });
+/**
+ * Sliding expiry: sets the cookie the browser already carries again, with a fresh `Max-Age`.
+ * Only the carrier is extended; whether the token works is still decided by the server alone
+ * (`GUEST_TOKEN_VALID_SQL`). Without a cookie it does nothing.
+ */
+export async function refreshGuestCookie(config: CookieConfig): Promise<void> {
+  const store = await cookies();
+  const token = store.get(guestCookieName(config))?.value;
+  if (token) await setGuestCookie(config, token);
 }
 
 /** SHA-256 of the guest token the browser carries, or `undefined` without the cookie. */

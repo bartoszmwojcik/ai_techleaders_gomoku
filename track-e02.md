@@ -41,6 +41,7 @@ Ręczny test po fazie: `curl` — utworzenie partii, kod `ABCD-EFGH`, dołączen
 - [x] 2.2 `resolveParticipant` (konto), route'y `POST /api/games`, `/api/invitations/[code]/accept`, `/api/games/[id]/cancel`, `GET /api/games/[id]`, testy współbieżności (#21 krok 5)
 - [x] 2.3 Gość: `GuestCookie`, `accept(as=guest)`, `resolveParticipant` (gość), wygasanie tokenu (#21 krok 6)
 - [!] 2.4 Strony `/invite/[code]`, `/join`, `/games/[gameId]` w stanie oczekiwania (#21 kroki 7–8) — po zatwierdzeniu prototypu etapu A (D3.1)
+  - Uwagi z review Fazy 2: (a) `/invite`: leniwe zamykanie przeterminowanych w `preview` (dziś tylko odczyt); (b) blokada podwójnego kliknięcia przy `accept`.
 - [ ] 2.5 Dokumentacja (README, lekcje)
 - [ ] Faza 10 z `track.md` (usunięcie konta, #37) po zadaniu 1.3 i 2.2 — **odblokowana po 2.2** (`GameService.cancel`, `occupiesSlot`, kolejność blokad users → games i `game_players.user_id ON DELETE SET NULL` są gotowe); nie wykonana w fazie 2
 

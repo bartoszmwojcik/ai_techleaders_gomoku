@@ -6,9 +6,9 @@ vi.mock("next/headers", () => ({ cookies }));
 
 import {
   GUEST_COOKIE_MAX_AGE_SECONDS,
-  clearGuestCookie,
   guestCookieName,
   readGuestTokenHash,
+  refreshGuestCookie,
   setGuestCookie,
 } from "./guest-cookie";
 import { hashOpaqueToken } from "./opaque-token";
@@ -45,15 +45,22 @@ describe("guest cookie", () => {
     });
   });
 
-  it("clears the cookie", async () => {
-    await clearGuestCookie(plain);
-    expect(store.set).toHaveBeenCalledWith("gomoku_guest", "", {
+  it("sets the cookie again with a fresh Max-Age when the browser carries one", async () => {
+    store.get.mockReturnValue({ value: "tok" });
+    await refreshGuestCookie(plain);
+    expect(store.set).toHaveBeenCalledWith("gomoku_guest", "tok", {
       httpOnly: true,
       secure: false,
       sameSite: "lax",
       path: "/",
-      maxAge: 0,
+      maxAge: 7200,
     });
+  });
+
+  it("refreshes nothing without a cookie", async () => {
+    store.get.mockReturnValue(undefined);
+    await refreshGuestCookie(plain);
+    expect(store.set).not.toHaveBeenCalled();
   });
 
   it("reads only the hash of the token", async () => {
