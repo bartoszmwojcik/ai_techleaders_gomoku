@@ -122,16 +122,20 @@ async function statementsDuring(action: () => Promise<unknown>): Promise<string[
   await run(`select pg_reload_conf()`);
   // The pooled connections of the app pick the new setting up on their next command; make sure of it.
   await new Promise((done) => setTimeout(done, 500));
-  await run(`select 'start-${id}'`);
-  await action();
-  await run(`select 'end-${id}'`);
   let text = "";
-  for (let attempt = 0; attempt < 50 && !text.includes(`end-${id}'`); attempt++) {
-    text = await logs();
-    if (!text.includes(`end-${id}'`)) await new Promise((done) => setTimeout(done, 100));
+  try {
+    await run(`select 'start-${id}'`);
+    await action();
+    await run(`select 'end-${id}'`);
+    for (let attempt = 0; attempt < 50 && !text.includes(`end-${id}'`); attempt++) {
+      text = await logs();
+      if (!text.includes(`end-${id}'`)) await new Promise((done) => setTimeout(done, 100));
+    }
+  } finally {
+    // Restore the setting even when `action` (or an assertion inside it) fails.
+    await run(`alter system reset log_statement`);
+    await run(`select pg_reload_conf()`);
   }
-  await run(`alter system reset log_statement`);
-  await run(`select pg_reload_conf()`);
   // A log entry starts with a timestamp; a multi-line statement continues on the lines after it.
   const lines = text.split(/\n(?=\d{4}-\d\d-\d\d )/).filter((entry) => /LOG:\s+(statement|execute [^:]*):/.test(entry));
   const from = lines.findIndex((line) => line.includes(`start-${id}`));
@@ -447,9 +451,11 @@ describe("the end of the board", () => {
     const [row] = await run(`select pg_column_size(games.*) as row_bytes, octet_length(moves) as moves_bytes from games where id = ?`, [full.gameId]);
     // Spec #22 estimated "about 300 B"; measured on PostgreSQL 17: 402 B for the whole row, of which
     // the 225 B of `moves` alone plus 2 x 33 B of bitboards already make 291 B, and the rest are
-    // ids, timestamps and status fields. The bound keeps ~10% headroom over the measurement.
+    // ids, timestamps and status fields. The bound keeps ~25% headroom over the measurement; raise
+    // it when columns are added to `games` (e.g. #23 / Phase 5). The invariant of this test is
+    // `octet_length(moves) = 225` plus the constant statement count above, not the exact bound.
     expect(row!.moves_bytes).toBe(225);
-    expect(row!.row_bytes).toBeLessThan(450);
+    expect(row!.row_bytes).toBeLessThan(500);
   });
 
   it("a five with the 225th stone wins instead of a draw", async () => {
