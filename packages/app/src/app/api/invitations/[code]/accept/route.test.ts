@@ -1,12 +1,15 @@
 import { GoneError } from "@gomoku/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { connection, accept, getCurrentUser, getContainer } = vi.hoisted(() => ({
+const { connection, accept, getCurrentUser, getContainer, readGuestTokenHash, setGuestCookie } =
+  vi.hoisted(() => ({
+  readGuestTokenHash: vi.fn(),
+  setGuestCookie: vi.fn(),
   connection: vi.fn(),
   accept: vi.fn(),
   getCurrentUser: vi.fn(),
   getContainer: vi.fn(),
-}));
+  }));
 const serverConfig = {
   production: true,
   trustProxyHops: 1,
@@ -15,6 +18,7 @@ const serverConfig = {
 };
 vi.mock("next/server", () => ({ connection }));
 vi.mock("@/server/http/auth", () => ({ getCurrentUser }));
+vi.mock("@/server/http/guest-cookie", () => ({ readGuestTokenHash, setGuestCookie }));
 vi.mock("@/server/container", () => ({
   getContainer,
   withRequestScope: (fn: (scope: unknown) => unknown) =>
@@ -44,6 +48,8 @@ beforeEach(() => {
   accept.mockReset().mockResolvedValue({ gameId: "game-1" });
   getCurrentUser.mockReset().mockResolvedValue({ id: "user-2" });
   getContainer.mockReset().mockResolvedValue({ cradle: { serverConfig } });
+  readGuestTokenHash.mockReset().mockResolvedValue(undefined);
+  setGuestCookie.mockReset().mockResolvedValue(undefined);
 });
 
 describe("POST /api/invitations/[code]/accept", () => {
@@ -55,7 +61,7 @@ describe("POST /api/invitations/[code]/accept", () => {
     expect(await response.json()).toEqual({ ok: true, data: { gameId: "game-1" } });
     expect(accept).toHaveBeenCalledWith(
       "ABCD-EFGH",
-      { userId: "user-2" },
+      { userId: "user-2", guestTokenHash: undefined },
       { as: "user", cancelOwnWaitingGame: true },
       expect.objectContaining({ key: expect.stringMatching(/^invitation-lookup:ip:/), limit: 20 }),
     );
@@ -64,7 +70,13 @@ describe("POST /api/invitations/[code]/accept", () => {
   it("passes an anonymous viewer to the service, which answers 401", async () => {
     getCurrentUser.mockResolvedValue(null);
     await POST(post({ as: "user" }), context);
-    expect(accept).toHaveBeenCalledWith("ABCD-EFGH", { userId: undefined }, expect.anything(), expect.anything());
+    expect(accept).toHaveBeenCalledWith(
+      "ABCD-EFGH",
+      { userId: undefined, guestTokenHash: undefined },
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(setGuestCookie).not.toHaveBeenCalled();
   });
 
   it("uses the global pool when the address is unknown", async () => {
@@ -91,10 +103,30 @@ describe("POST /api/invitations/[code]/accept", () => {
     expect(body.error.fieldErrors.acknowledgedGuestWarning).toBeDefined();
   });
 
-  it("does not support guests yet", async () => {
+  it("joins a guest: the token goes to the cookie, never into the answer", async () => {
+    getCurrentUser.mockResolvedValue(null);
+    readGuestTokenHash.mockResolvedValue("h".repeat(64));
+    accept.mockResolvedValue({ gameId: "game-1", guestToken: "secret-token" });
+
     const response = await POST(post({ as: "guest", acknowledgedGuestWarning: true }), context);
-    expect(response.status).toBe(400);
-    expect(accept).not.toHaveBeenCalled();
+
+    expect(response.status).toBe(200);
+    const text = await response.text();
+    expect(JSON.parse(text)).toEqual({ ok: true, data: { gameId: "game-1" } });
+    expect(text).not.toContain("secret-token");
+    expect(accept).toHaveBeenCalledWith(
+      "ABCD-EFGH",
+      { userId: undefined, guestTokenHash: "h".repeat(64) },
+      { as: "guest", acknowledgedGuestWarning: true },
+      expect.anything(),
+    );
+    expect(setGuestCookie).toHaveBeenCalledWith(serverConfig, "secret-token");
+  });
+
+  it("sets no cookie for a returning guest", async () => {
+    getCurrentUser.mockResolvedValue(null);
+    await POST(post({ as: "guest", acknowledgedGuestWarning: true }), context);
+    expect(setGuestCookie).not.toHaveBeenCalled();
   });
 
   it("passes on the uniform 410", async () => {

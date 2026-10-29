@@ -5,6 +5,7 @@ import { INVITATION_LOOKUP_LIMIT, normalizeInvitationCode } from "@gomoku/core";
 import { createOrm, type Orm } from "@gomoku/db";
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 
+import { hashOpaqueToken } from "../../packages/app/src/server/http/opaque-token";
 import { systemClock } from "../../packages/app/src/server/services/email/email-sender";
 import { GameService } from "../../packages/app/src/server/services/games/game-service";
 import { InvitationCodes } from "../../packages/app/src/server/services/games/invitation-codes";
@@ -296,6 +297,141 @@ describe("InvitationService.accept", () => {
     await scope().invitations.accept(code, { userId: user }, asUser, other);
     const [bucket] = await run(`select count(*)::int as n from rate_limit_buckets where "key" = ?`, [other.key]);
     expect(bucket!.n).toBe(0);
+  });
+});
+
+const GUEST = { as: "guest", acknowledgedGuestWarning: true } as const;
+
+describe("InvitationService.accept as a guest", () => {
+  it("seats the guest with only the hash of the token, seen at once, without a user", async () => {
+    const { creator, code, gameId } = await newGame();
+
+    const result = await scope().invitations.accept(code, {}, GUEST, guard());
+
+    expect(result.gameId).toBe(gameId);
+    expect(result.guestToken).toMatch(/^[\w-]{43}$/);
+    expect(await status(gameId)).toBe("active");
+    const [first, second] = await players(gameId);
+    expect(first).toMatchObject({ user_id: creator });
+    expect(second).toMatchObject({ seat: 2, user_id: null, is_active: true });
+    expect(second!.seen_at).not.toBeNull();
+    const [row] = await run(
+      `select kind, guest_token_hash from game_players where game_id = ? and seat = 2`,
+      [gameId],
+    );
+    expect(row).toEqual({ kind: "guest", guest_token_hash: hashOpaqueToken(result.guestToken!) });
+  });
+
+  it("returns a returning guest to the game without a new token, and refuses a third person", async () => {
+    const { code, gameId } = await newGame();
+    const { guestToken } = await scope().invitations.accept(code, {}, GUEST, guard());
+    const viewer = { guestTokenHash: hashOpaqueToken(guestToken!) };
+
+    expect(await scope().invitations.accept(code, viewer, GUEST, guard())).toEqual({ gameId });
+    expect(await scope().invitations.preview(code, viewer, guard())).toMatchObject({
+      state: "participant",
+      gameId,
+    });
+    await expect(scope().invitations.accept(code, {}, GUEST, guard())).rejects.toMatchObject({
+      status: 410,
+    });
+    await expect(
+      scope().invitations.accept(code, { userId: await insertUser() }, asUser, guard()),
+    ).rejects.toMatchObject({ status: 410 });
+    expect(await players(gameId)).toHaveLength(2);
+  });
+
+  it("refuses a signed-in visitor as a guest", async () => {
+    const { code } = await newGame();
+    await expect(
+      scope().invitations.accept(code, { userId: await insertUser() }, GUEST, guard()),
+    ).rejects.toMatchObject({ status: 409, code: "GUEST_NOT_ALLOWED" });
+  });
+
+  it("enforces BR-13 for a browser whose token holds a game in progress (Q7)", async () => {
+    const first = await newGame();
+    const { guestToken } = await scope().invitations.accept(first.code, {}, GUEST, guard());
+    const viewer = { guestTokenHash: hashOpaqueToken(guestToken!) };
+    const second = await newGame();
+
+    await expect(scope().invitations.accept(second.code, viewer, GUEST, guard())).rejects.toMatchObject({
+      status: 409,
+      code: "ACTIVE_GAME_EXISTS",
+      data: { gameId: first.gameId },
+    });
+    expect(await scope().invitations.preview(second.code, viewer, guard())).toMatchObject({
+      state: "has-active-game",
+      gameId: first.gameId,
+    });
+    expect(await status(second.gameId)).toBe("waiting");
+
+    // Once the first game is over the same browser may join again, with a fresh token.
+    await run(`update games set status = 'finished', finished_at = now() where id = ?`, [first.gameId]);
+    await run(`update game_players set is_active = false where game_id = ?`, [first.gameId]);
+    const again = await scope().invitations.accept(second.code, viewer, GUEST, guard());
+    expect(again.gameId).toBe(second.gameId);
+    expect(again.guestToken).not.toBe(guestToken);
+  });
+
+  it("closes a held game nobody opened for 15 minutes, so a dead game does not block the guest (Q21)", async () => {
+    const first = await newGame();
+    const { guestToken } = await scope().invitations.accept(first.code, {}, GUEST, guard());
+    await run(`update game_players set seen_at = null where game_id = ? and seat = 1`, [first.gameId]);
+    await run(`update games set started_at = now() - interval '16 minutes' where id = ?`, [first.gameId]);
+    const second = await newGame();
+
+    const joined = await scope().invitations.accept(
+      second.code,
+      { guestTokenHash: hashOpaqueToken(guestToken!) },
+      GUEST,
+      guard(),
+    );
+
+    expect(joined.gameId).toBe(second.gameId);
+    expect(await status(first.gameId)).toBe("cancelled");
+  });
+
+  it("lets exactly one of many parallel guests win", async () => {
+    const { code, gameId } = await newGame();
+    const outcomes = await Promise.allSettled(
+      Array.from({ length: 6 }, () => scope().invitations.accept(code, {}, GUEST, guard())),
+    );
+
+    expect(outcomes.filter((o) => o.status === "fulfilled")).toHaveLength(1);
+    for (const outcome of outcomes) {
+      if (outcome.status === "rejected") expect(outcome.reason).toMatchObject({ status: 410 });
+    }
+    expect(await players(gameId)).toHaveLength(2);
+  });
+});
+
+describe("GameService.findParticipant for guests", () => {
+  it("honours the token while the game runs and for one hour after it finished", async () => {
+    const { code, gameId } = await newGame();
+    const { guestToken } = await scope().invitations.accept(code, {}, GUEST, guard());
+    const identity = { guestTokenHash: hashOpaqueToken(guestToken!) };
+    const { games } = scope();
+
+    expect(await games.findParticipant(identity, gameId)).not.toBeNull();
+    expect(await games.findParticipant({ guestTokenHash: "0".repeat(64) }, gameId)).toBeNull();
+    expect(await games.findParticipant(identity, "00000000-0000-4000-8000-000000000000")).toBeNull();
+
+    await run(`update games set status = 'finished', finished_at = now() - interval '59 minutes' where id = ?`, [gameId]);
+    expect(await games.findParticipant(identity, gameId)).not.toBeNull();
+    await run(`update games set finished_at = now() - interval '61 minutes' where id = ?`, [gameId]);
+    expect(await games.findParticipant(identity, gameId)).toBeNull();
+  });
+
+  it("rejects a token cleared by the cleanup (NULL hash) and a token of another game", async () => {
+    const one = await newGame();
+    const two = await newGame();
+    const { guestToken } = await scope().invitations.accept(one.code, {}, GUEST, guard());
+    await scope().invitations.accept(two.code, {}, GUEST, guard());
+    const identity = { guestTokenHash: hashOpaqueToken(guestToken!) };
+
+    expect(await scope().games.findParticipant(identity, two.gameId)).toBeNull();
+    await run(`update game_players set guest_token_hash = null where game_id = ? and seat = 2`, [one.gameId]);
+    expect(await scope().games.findParticipant(identity, one.gameId)).toBeNull();
   });
 });
 

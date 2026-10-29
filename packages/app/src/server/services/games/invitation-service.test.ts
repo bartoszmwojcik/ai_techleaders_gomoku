@@ -1,5 +1,6 @@
 import {
   AppError,
+  GUEST_TOKEN_GRACE_MS,
   GoneError,
   INVITATION_LOOKUP_WINDOW_MS,
   READY_DEADLINE_MS,
@@ -8,6 +9,7 @@ import {
 import type { EntityManager } from "@gomoku/db";
 import { describe, expect, it, vi } from "vitest";
 
+import { hashOpaqueToken } from "../../http/opaque-token";
 import { InvitationService, type AcceptInput, type LookupGuard } from "./invitation-service";
 
 const NOW = new Date("2026-10-29T12:00:00Z");
@@ -55,7 +57,8 @@ function setup(
       invitationReads += 1;
       return row ? [row] : [];
     }
-    if (sql.includes("select seat from game_players")) return options.member ?? [];
+    if (sql.includes("select seat from game_players") || sql.includes("select p.seat from game_players"))
+      return options.member ?? [];
     if (sql.includes("from game_players p join games g")) return slots.shift() ?? [];
     if (sql.includes("update invitations set consumed_at")) return options.consume ?? [{ id: "inv-1" }];
     if (sql.includes("insert into game_players")) return [{ id: "player-2" }];
@@ -342,6 +345,122 @@ describe("InvitationService.accept", () => {
   });
 });
 
+const GUEST_INPUT: AcceptInput = { as: "guest", acknowledgedGuestWarning: true };
+const TOKEN_HASH = "a".repeat(64);
+
+describe("InvitationService.accept as a guest", () => {
+  it("seats the guest with only the hash of a fresh token, seen at once, and hands the token out", async () => {
+    const { service, calls, timeoutSettler, rateLimiter } = setup();
+
+    const result = await service.accept(CODE, {}, GUEST_INPUT, GUARD);
+
+    expect(result).toEqual({ gameId: "game-1", guestToken: expect.stringMatching(/^[\w-]{43}$/) });
+    const insert = calls.find(({ sql }) => sql.includes("insert into game_players"))!;
+    expect(insert.sql).toContain("'guest'");
+    expect(insert.sql).not.toContain("user_id");
+    expect(insert.params).toEqual(["game-1", hashOpaqueToken(result.guestToken!), NOW, NOW]);
+    expect(JSON.stringify(calls)).not.toContain(result.guestToken);
+    // Only the creator is locked as a user; there is no account to settle or sweep.
+    expect(calls.find(({ sql }) => sql.includes("from users"))!.params).toEqual([CREATOR]);
+    expect(timeoutSettler.settleFor).not.toHaveBeenCalled();
+    expect(calls.filter(({ sql }) => sql.startsWith("with")).map(({ params }) => params)).toEqual([
+      [NOW, "game-1"],
+      [CUTOFF, "game-1"],
+    ]);
+    expect(rateLimiter.hit).not.toHaveBeenCalled();
+  });
+
+  it("issues a different token each time", async () => {
+    const tokens = new Set<string>();
+    for (let i = 0; i < 3; i += 1) {
+      const result = await setup().service.accept(CODE, {}, GUEST_INPUT, GUARD);
+      tokens.add(result.guestToken!);
+    }
+    expect(tokens.size).toBe(3);
+  });
+
+  it("refuses any signed-in visitor with GUEST_NOT_ALLOWED, before the limiter or the database", async () => {
+    const { service, rateLimiter, em } = setup();
+    const error = await errorOf(service.accept(CODE, { userId: USER }, GUEST_INPUT, GUARD));
+    expect(error.status).toBe(409);
+    expect(error.code).toBe("GUEST_NOT_ALLOWED");
+    expect(rateLimiter.assertBelow).not.toHaveBeenCalled();
+    expect(em.transactional).not.toHaveBeenCalled();
+  });
+
+  it("requires the acknowledged warning on the server", async () => {
+    const { service, em } = setup();
+    for (const input of [{ as: "guest" }, { as: "guest", acknowledgedGuestWarning: false }] as const) {
+      const error = await errorOf(service.accept(CODE, {}, input, GUARD));
+      expect(error.status).toBe(400);
+      expect(error.fieldErrors).toHaveProperty("acknowledgedGuestWarning");
+    }
+    expect(em.transactional).not.toHaveBeenCalled();
+  });
+
+  it("lets a returning guest back in without a second token", async () => {
+    const { service, calls } = setup({
+      member: [{ seat: 2 }],
+      invitation: [invitationRow({ status: "active", consumed_at: NOW })],
+    });
+
+    const result = await service.accept(CODE, { guestTokenHash: TOKEN_HASH }, GUEST_INPUT, GUARD);
+
+    expect(result).toEqual({ gameId: "game-1" });
+    const member = calls.find(({ sql }) => sql.includes("guest_token_hash") && sql.includes("select p.seat"))!;
+    expect(member.params).toEqual(["game-1", TOKEN_HASH, new Date(NOW.getTime() - GUEST_TOKEN_GRACE_MS)]);
+    expect(calls.some(({ sql }) => sql.includes("insert into game_players"))).toBe(false);
+  });
+
+  it("refuses a browser whose token still holds another game (BR-13, Q7), locking that game", async () => {
+    const held = { game_id: "a-held", status: "active", seat: 2 };
+    const { service, calls, rateLimiter } = setup({ slot: [[held], [held]] });
+
+    const error = await errorOf(service.accept(CODE, { guestTokenHash: TOKEN_HASH }, GUEST_INPUT, GUARD));
+
+    expect(error.status).toBe(409);
+    expect(error.code).toBe("ACTIVE_GAME_EXISTS");
+    expect(error.data).toEqual({ gameId: "a-held" });
+    expect(calls.find(({ sql }) => sql.includes("from games where id in"))!.params).toEqual(["a-held", "game-1"]);
+    // The held game is swept for the 15-minute rule (Q21), so a dead game does not block a guest.
+    expect(calls.filter(({ sql }) => sql.startsWith("with")).map(({ params }) => params)).toContainEqual([
+      CUTOFF,
+      "a-held",
+    ]);
+    expect(rateLimiter.hit).not.toHaveBeenCalled();
+  });
+
+  it("joins a browser whose old token holds nothing (the old game ended)", async () => {
+    const { service } = setup({ slot: [[], []] });
+    const result = await service.accept(CODE, { guestTokenHash: TOKEN_HASH }, GUEST_INPUT, GUARD);
+    expect(result.guestToken).toBeDefined();
+  });
+
+  it("answers the uniform 410 for a used invitation and counts it", async () => {
+    const { service, rateLimiter } = setup({ invitation: [invitationRow({ consumed_at: NOW })] });
+    const error = await errorOf(service.accept(CODE, {}, GUEST_INPUT, GUARD));
+    expect(error.code).toBe("INVALID_INVITATION");
+    expect(rateLimiter.hit).toHaveBeenCalledOnce();
+  });
+
+  it("gives no token when the join is rolled back", async () => {
+    const { service } = setup({ consume: [] });
+    await expect(service.accept(CODE, {}, GUEST_INPUT, GUARD)).rejects.toMatchObject({ status: 410 });
+  });
+
+  it("keeps the account's own cookie out of an account join", async () => {
+    const { service, calls } = setup();
+    const result = await service.accept(
+      CODE,
+      { userId: USER, guestTokenHash: TOKEN_HASH },
+      AS_USER,
+      GUARD,
+    );
+    expect(result).toEqual({ gameId: "game-1" });
+    expect(JSON.stringify(calls.map(({ params }) => params))).not.toContain(TOKEN_HASH);
+  });
+});
+
 describe("InvitationService.preview", () => {
   it("shows a free invitation to an anonymous visitor without touching state", async () => {
     const { service, calls, rateLimiter, em, timeoutSettler } = setup();
@@ -413,6 +532,19 @@ describe("InvitationService.preview", () => {
     const error = await errorOf(service.preview("x", {}, GUARD));
     expect(error.code).toBe("INVALID_INVITATION");
     expect(rateLimiter.hit).toHaveBeenCalledOnce();
+  });
+
+  it("recognizes a returning guest and a guest busy elsewhere", async () => {
+    const back = setup({ member: [{ seat: 2 }], invitation: [invitationRow({ status: "active" })] });
+    expect(await back.service.preview(CODE, { guestTokenHash: TOKEN_HASH }, GUARD)).toMatchObject({
+      state: "participant",
+      gameId: "game-1",
+    });
+    const busy = setup({ slot: [[{ game_id: "other", status: "active", seat: 2 }]] });
+    expect(await busy.service.preview(CODE, { guestTokenHash: TOKEN_HASH }, GUARD)).toMatchObject({
+      state: "has-active-game",
+      gameId: "other",
+    });
   });
 
   it("flags a viewer who is busy with a game in progress", async () => {

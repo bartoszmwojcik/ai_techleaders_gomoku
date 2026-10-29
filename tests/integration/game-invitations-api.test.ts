@@ -1,8 +1,19 @@
 // The invitation flow over HTTP (E02 phase 2) against the built app and a real PostgreSQL:
 // create a game, get the code, join with a second account, refuse a third person, cancel.
-import { describe, expect, inject, it } from "vitest";
+import { createOrm, type Orm } from "@gomoku/db";
+import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 
 const baseUrl = inject("baseUrl");
+
+// Direct database access only to move time (finished_at, started_at), which no API can do.
+let orm: Orm;
+beforeAll(async () => {
+  orm = await createOrm({ clientUrl: inject("databaseUrl") });
+});
+afterAll(async () => {
+  await orm.close();
+});
+const run = (text: string, params: unknown[] = []) => orm.em.fork().execute(text, params);
 
 // Every request uses its own client address (X-Forwarded-For, one trusted hop), so the pool of
 // failed code lookups (20 per address) of one test never spends another's budget.
@@ -251,5 +262,130 @@ describe("invitation flow over HTTP", () => {
     expect(refused.headers.get("Retry-After")).not.toBeNull();
     // Another address is not affected and the game was never joined by that attempt.
     expect((await accept(code, { as: "user" }, bob)).status).toBe(200);
+  });
+});
+
+const guestCookieOf = (response: Response): string | undefined => {
+  const header = (response.headers.getSetCookie?.() ?? []).find((line) => line.startsWith("gomoku_guest="));
+  return header?.split(";")[0];
+};
+const GUEST = { as: "guest", acknowledgedGuestWarning: true };
+
+describe("guest flow over HTTP", () => {
+  it("lets a visitor without an account join after the warning, with the token only in a cookie", async () => {
+    const alice = await signedUp();
+    const { gameId, code } = await createGame(alice);
+
+    // The warning must be acknowledged on the server.
+    const unwarned = await accept(code, { as: "guest" });
+    expect(unwarned.status).toBe(400);
+    expect(((await unwarned.json()) as { error: Json }).error.fieldErrors).toHaveProperty(
+      "acknowledgedGuestWarning",
+    );
+    expect((await stateOf(gameId, alice)).body.data.status).toBe("waiting");
+
+    const joined = await accept(code, GUEST);
+    expect(joined.status).toBe(200);
+    const setCookie = (joined.headers.getSetCookie?.() ?? []).find((line) => line.startsWith("gomoku_guest="))!;
+    expect(setCookie).toMatch(/HttpOnly/i);
+    expect(setCookie).toMatch(/SameSite=lax/i);
+    expect(setCookie).toMatch(/Path=\//);
+    expect(setCookie).toMatch(/Max-Age=7200/);
+    const guest = guestCookieOf(joined)!;
+    const body = await joined.text();
+    expect(JSON.parse(body)).toEqual({ ok: true, data: { gameId } });
+    expect(body).not.toContain(guest.split("=")[1]);
+
+    // The guest sees the game; the creator sees an unnamed guest who has already been seen.
+    const forGuest = await stateOf(gameId, guest);
+    expect(forGuest.body.data).toMatchObject({ status: "active", you: { seat: 2, kind: "guest" } });
+    expect(forGuest.body.data.players[1]).toEqual({ seat: 2, kind: "guest", displayName: null, seen: true });
+    const forAlice = await stateOf(gameId, alice);
+    expect(forAlice.body.data.players[1]).toMatchObject({ kind: "guest", displayName: null, seen: true });
+
+    // Another browser (no cookie) and a stranger's token get nothing.
+    expect((await stateOf(gameId)).status).toBe(404);
+    expect((await stateOf(gameId, "gomoku_guest=" + "x".repeat(43))).status).toBe(404);
+
+    // A returning guest gets the game back without a new cookie; a third person is refused.
+    const back = await accept(code, GUEST, guest);
+    expect(back.status).toBe(200);
+    expect(guestCookieOf(back)).toBeUndefined();
+    expect((await accept(code, GUEST)).status).toBe(410);
+
+    // A guest has no account: no game creation, no cancelling.
+    expect((await post("/api/games", undefined, { cookie: guest })).status).toBe(401);
+    expect((await post(`/api/games/${gameId}/cancel`, undefined, { cookie: guest })).status).toBe(401);
+  });
+
+  it("refuses a signed-in visitor as a guest", async () => {
+    const alice = await signedUp();
+    const bob = await signedUp();
+    const { code } = await createGame(alice);
+
+    const response = await accept(code, GUEST, bob);
+    expect(response.status).toBe(409);
+    expect(await errorCode(response)).toBe("GUEST_NOT_ALLOWED");
+  });
+
+  it("keeps a guest to one game per browser (BR-13) until the game is over", async () => {
+    const alice = await signedUp();
+    const first = await createGame(alice);
+    const guest = guestCookieOf(await accept(first.code, GUEST))!;
+    const bob = await signedUp();
+    const second = await createGame(bob);
+
+    const blocked = await accept(second.code, GUEST, guest);
+    expect(blocked.status).toBe(409);
+    expect(await errorCode(blocked)).toBe("ACTIVE_GAME_EXISTS");
+
+    await run(`update games set status = 'finished', finished_at = now() where id = ?`, [first.gameId]);
+    await run(`update game_players set is_active = false where game_id = ?`, [first.gameId]);
+    const again = await accept(second.code, GUEST, guest);
+    expect(again.status).toBe(200);
+    const fresh = guestCookieOf(again)!;
+    expect(fresh).not.toBe(guest);
+    // The new token replaces the old one: the finished game is no longer reachable with it.
+    expect((await stateOf(second.gameId, fresh)).status).toBe(200);
+    expect((await stateOf(first.gameId, fresh)).status).toBe(404);
+  });
+
+  it("expires the token one hour after the game finished (BR-22)", async () => {
+    const alice = await signedUp();
+    const { gameId, code } = await createGame(alice);
+    const guest = guestCookieOf(await accept(code, GUEST))!;
+
+    await run(`update games set status = 'finished', finished_at = now() - interval '30 minutes' where id = ?`, [gameId]);
+    expect((await stateOf(gameId, guest)).status).toBe(200);
+    // The account is never subject to the one-hour window.
+    expect((await stateOf(gameId, alice)).status).toBe(200);
+
+    await run(`update games set finished_at = now() - interval '61 minutes' where id = ?`, [gameId]);
+    expect((await stateOf(gameId, guest)).status).toBe(404);
+    expect((await stateOf(gameId, alice)).status).toBe(200);
+  });
+
+  it("voids the token of a game nobody opened within 15 minutes (Q21)", async () => {
+    const alice = await signedUp();
+    const { gameId, code } = await createGame(alice);
+    const guest = guestCookieOf(await accept(code, GUEST))!;
+    await run(`update game_players set seen_at = null where game_id = ? and seat = 1`, [gameId]);
+    await run(`update games set started_at = now() - interval '16 minutes' where id = ?`, [gameId]);
+
+    // The read that notices it reports the cancellation once; the token is void afterwards.
+    expect((await stateOf(gameId, guest)).body.data.status).toBe("cancelled");
+    expect((await stateOf(gameId, guest)).status).toBe(404);
+    // The creator's slot is free again.
+    await createGame(alice);
+  });
+
+  it("lets exactly one of several parallel guests win", async () => {
+    const alice = await signedUp();
+    const { code } = await createGame(alice);
+
+    const responses = await Promise.all(Array.from({ length: 5 }, () => accept(code, GUEST)));
+
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 410, 410, 410, 410]);
+    expect(responses.filter((response) => guestCookieOf(response) !== undefined)).toHaveLength(1);
   });
 });

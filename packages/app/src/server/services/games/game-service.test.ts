@@ -1,6 +1,7 @@
 import {
   CREATE_GAME_LIMIT,
   CREATE_GAME_WINDOW_MS,
+  GUEST_TOKEN_GRACE_MS,
   INVITATION_TTL_MS,
   READY_DEADLINE_MS,
   TooManyRequestsError,
@@ -196,12 +197,15 @@ describe("GameService.cancel", () => {
 });
 
 describe("GameService.findParticipant", () => {
+  const HASH = "b".repeat(64);
+
   it("finds the account's player in the game", async () => {
     const { service, em } = setup({ player: { id: "player-7" } });
     expect(await service.findParticipant({ userId: "user-1" }, "game-1")).toEqual({
       playerId: "player-7",
     });
     expect(em.findOne).toHaveBeenCalledWith(GamePlayer, { game: "game-1", user: "user-1" });
+    expect(em.execute).not.toHaveBeenCalled();
   });
 
   it("is null for a stranger", async () => {
@@ -209,10 +213,35 @@ describe("GameService.findParticipant", () => {
     expect(await service.findParticipant({ userId: "user-1" }, "game-1")).toBeNull();
   });
 
-  it("is null without an identity, without asking the database", async () => {
+  it("is null without any identity, without asking the database", async () => {
     const { service, em } = setup();
     expect(await service.findParticipant({}, "game-1")).toBeNull();
     expect(em.findOne).not.toHaveBeenCalled();
+    expect(em.execute).not.toHaveBeenCalled();
+  });
+
+  it("finds a guest by the token hash, valid until one hour after the end (BR-22)", async () => {
+    const { service, em } = setup({ executeRows: [[{ id: "guest-3" }]] });
+    expect(await service.findParticipant({ guestTokenHash: HASH }, "game-1")).toEqual({
+      playerId: "guest-3",
+    });
+    expect(em.findOne).not.toHaveBeenCalled();
+    expect(em.execute).toHaveBeenCalledWith(
+      expect.stringContaining("g.finished_at > ?"),
+      ["game-1", HASH, new Date(NOW.getTime() - GUEST_TOKEN_GRACE_MS)],
+    );
+  });
+
+  it("is null for a token that matches no valid player", async () => {
+    const { service } = setup({ executeRows: [[]] });
+    expect(await service.findParticipant({ guestTokenHash: HASH }, "game-1")).toBeNull();
+  });
+
+  it("falls back to the guest token when the signed-in account does not play there", async () => {
+    const { service } = setup({ executeRows: [[{ id: "guest-3" }]] });
+    expect(
+      await service.findParticipant({ userId: "user-1", guestTokenHash: HASH }, "game-1"),
+    ).toEqual({ playerId: "guest-3" });
   });
 });
 

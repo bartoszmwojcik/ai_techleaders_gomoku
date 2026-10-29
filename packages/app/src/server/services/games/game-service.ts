@@ -2,6 +2,7 @@ import {
   CREATE_GAME_LIMIT,
   CREATE_GAME_WINDOW_MS,
   ConflictError,
+  GUEST_TOKEN_GRACE_MS,
   INVITATION_TTL_MS,
   NotFoundError,
   READY_DEADLINE_MS,
@@ -24,6 +25,7 @@ import type { ServerConfig } from "../../config";
 import type { Clock } from "../email/email-sender";
 import type { RateLimiter } from "../rate-limit/rate-limiter";
 import type { InvitationCodes } from "./invitation-codes";
+import { GUEST_TOKEN_VALID_SQL } from "./guest-token";
 import {
   CANCEL_NOT_STARTED_OF_GAME,
   CANCEL_NOT_STARTED_OF_USER,
@@ -52,6 +54,11 @@ export const GAME_NOT_FOUND_MESSAGE = "Nie znaleziono partii.";
 
 /** Used only outside production, where `APP_ORIGIN` may be unset (as in e-mail links). */
 const DEV_ORIGIN = "http://localhost:3000";
+
+// The player a guest token stands for in this game, while the token is valid (BR-22).
+const FIND_GUEST_SQL = `
+  select p.id from game_players p join games g on g.id = p.game_id
+  where p.game_id = ? and p.guest_token_hash = ? and ${GUEST_TOKEN_VALID_SQL}`;
 
 // First successful read of the page by a participant (#21 Q20); only while the game is open.
 const MARK_SEEN_SQL = `
@@ -205,18 +212,28 @@ export class GameService {
 
   /**
    * The participant behind an identity in a game, or `null` (the caller answers `404`, so
-   * nobody learns whether the game exists). Only accounts for now; guests arrive with their cookie.
+   * nobody learns whether the game exists). Order: the signed-in account, then the guest
+   * token (#21 step 6). A guest token counts while the game is in progress and for one hour
+   * after it finished (BR-22); a game closed unplayed (Q21) voids it.
    */
   async findParticipant(
-    identity: { userId?: string },
+    identity: { userId?: string; guestTokenHash?: string },
     gameId: string,
   ): Promise<GameParticipant | null> {
-    if (!identity.userId) return null;
-    const player = await this.#em.findOne(GamePlayer, {
-      game: gameId,
-      user: identity.userId,
-    });
-    return player ? { playerId: player.id } : null;
+    if (identity.userId) {
+      const player = await this.#em.findOne(GamePlayer, {
+        game: gameId,
+        user: identity.userId,
+      });
+      if (player) return { playerId: player.id };
+    }
+    if (!identity.guestTokenHash) return null;
+    const cutoff = new Date(this.#clock.now().getTime() - GUEST_TOKEN_GRACE_MS);
+    const [guest] = await this.#em.execute<{ id: string }[]>(
+      FIND_GUEST_SQL,
+      [gameId, identity.guestTokenHash, cutoff],
+    );
+    return guest ? { playerId: guest.id } : null;
   }
 
   /**
