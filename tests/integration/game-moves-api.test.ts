@@ -2,9 +2,12 @@
 // five in a row, a draw and a five with the 225th stone (boards written straight into the
 // database, they pass every CHECK), retries, races and the error codes.
 import { createOrm, type Orm } from "@gomoku/db";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 
 const baseUrl = inject("baseUrl");
+const execFileAsync = promisify(execFile);
 
 let orm: Orm;
 beforeAll(async () => {
@@ -102,6 +105,40 @@ async function setBoard(game: Game, black: number[], white: number[], moves: num
     `update games set stones_black = ?::bit(225), stones_white = ?::bit(225), moves = ?::bytea, move_count = ? where id = ?`,
     [bits(black), bits(white), Buffer.from(moves), moves.length, game.gameId],
   );
+}
+
+/**
+ * The statements PostgreSQL ran while `action` was running, read from the container log
+ * (`log_statement = all`, switched on without a restart). Markers (`select 'marker'`) delimit the
+ * window; the files run one after another, so nothing else talks to the database in between.
+ */
+async function statementsDuring(action: () => Promise<unknown>): Promise<string[]> {
+  const port = new URL(inject("databaseUrl")).port;
+  const { stdout } = await execFileAsync("docker", ["ps", "--filter", `publish=${port}`, "--format", "{{.ID}}"]);
+  const container = stdout.trim().split("\n")[0]!;
+  const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+  const logs = async () => (await execFileAsync("docker", ["logs", container], { maxBuffer: 1 << 28 })).stderr;
+  await run(`alter system set log_statement = 'all'`);
+  await run(`select pg_reload_conf()`);
+  // The pooled connections of the app pick the new setting up on their next command; make sure of it.
+  await new Promise((done) => setTimeout(done, 500));
+  await run(`select 'start-${id}'`);
+  await action();
+  await run(`select 'end-${id}'`);
+  let text = "";
+  for (let attempt = 0; attempt < 50 && !text.includes(`end-${id}'`); attempt++) {
+    text = await logs();
+    if (!text.includes(`end-${id}'`)) await new Promise((done) => setTimeout(done, 100));
+  }
+  await run(`alter system reset log_statement`);
+  await run(`select pg_reload_conf()`);
+  // A log entry starts with a timestamp; a multi-line statement continues on the lines after it.
+  const lines = text.split(/\n(?=\d{4}-\d\d-\d\d )/).filter((entry) => /LOG:\s+(statement|execute [^:]*):/.test(entry));
+  const from = lines.findIndex((line) => line.includes(`start-${id}`));
+  const to = lines.findIndex((line) => line.includes(`end-${id}`));
+  expect(from, "start marker in the log").toBeGreaterThanOrEqual(0);
+  expect(to, "end marker in the log").toBeGreaterThan(from);
+  return lines.slice(from + 1, to).map((line) => line.replace(/^[^]*?LOG:\s+(statement|execute [^:]*):\s*/, "").replace(/'[^']*'/g, "?").replace(/= \d+/g, "= ?").replace(/\s+/g, " ").trim());
 }
 
 describe("a game to five in a row over HTTP", () => {
@@ -354,6 +391,39 @@ describe("the end of the board", () => {
     // Retry of the final move, and a move on the full board.
     expect((await move(game.gameId, game.black, last % 15, Math.floor(last / 15), 225)).status).toBe(200);
     expect(await errorCode(await move(game.gameId, game.white, 0, 0, 225))).toBe("GAME_FINISHED");
+  });
+
+  it("runs the same statements for move 1 and move 100, and the whole game stays in one small row", async () => {
+    const early = await startedGame();
+    const late = await startedGame();
+    const { black, white } = drawLayout();
+    await setBoard(late, black.slice(0, 50), white.slice(0, 49), interleave(black.slice(0, 50), white.slice(0, 49)));
+    const cellOf = (c: number) => [c % 15, Math.floor(c / 15)] as const;
+
+    const first = await statementsDuring(async () => {
+      expect((await move(early.gameId, early.black, 7, 7, 1)).status).toBe(200);
+    });
+    const [lx, ly] = cellOf(white[49]!);
+    const hundredth = await statementsDuring(async () => {
+      expect((await move(late.gameId, late.white, lx, ly, 100)).status).toBe(200);
+    });
+
+    // Spec #22: a hot path of a constant number of statements (lock + update + the state read), no loop over moves.
+    expect(first.length).toBeGreaterThan(0);
+    expect(first.length).toBeLessThanOrEqual(12);
+    expect(hundredth).toEqual(first);
+
+    // The same game played to the 225th stone: the row of a finished game, history included.
+    const full = await startedGame();
+    await setBoard(full, black.slice(0, -1), white, interleave(black.slice(0, -1), white));
+    const last = black.at(-1)!;
+    expect((await move(full.gameId, full.black, last % 15, Math.floor(last / 15), 225)).status).toBe(200);
+    const [row] = await run(`select pg_column_size(games.*) as row_bytes, octet_length(moves) as moves_bytes from games where id = ?`, [full.gameId]);
+    // Spec #22 estimated "about 300 B"; measured on PostgreSQL 17: 402 B for the whole row, of which
+    // the 225 B of `moves` alone plus 2 x 33 B of bitboards already make 291 B, and the rest are
+    // ids, timestamps and status fields. The bound keeps ~10% headroom over the measurement.
+    expect(row!.moves_bytes).toBe(225);
+    expect(row!.row_bytes).toBeLessThan(450);
   });
 
   it("a five with the 225th stone wins instead of a draw", async () => {
