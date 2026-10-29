@@ -56,3 +56,9 @@ Gracz nie może zmienić motywu, mimo że DS i prototypy go przewidują, a czę�
 1. **11.2 Mechanizm motywu:** moduł `core/src/theme/` (typy, `parseTheme`, `themeCookie`, `themeInitScript`) z testami 100%; layout `(frontend)` (ciasteczko, `data-theme`, skrypt, `suppressHydrationWarning`) z testami (`renderToStaticMarkup`, mock `next/headers`).
 2. **11.3 Komponent i użycie:** `ThemeSwitch` w DS (testy, stories w obu motywach, `check:tokens`, `test:stories`), opakowanie `theme-toggle.tsx` w aplikacji, umieszczenie w layoucie, sprawdzenie układu przy 320/360/1280 px.
 3. **11.4 Testy i przegląd:** testy integracyjne (agent-browser): pierwsza wizyta z `prefers-color-scheme: light` bez ciasteczka → jasny bez migotania, kliknięcie zapisuje ciasteczko, odświeżenie zachowuje, ciemny domyślny, układ 360 px, brak nakładania na treść; przegląd WSZYSTKICH ekranów E01 w obu motywach (kontrast, fokus, stany błędów), poprawki tokenów, jeśli trzeba; README.
+
+## Adnotacje z wdrożenia (2026-10-29)
+
+- Przełącznik jest wierszem w normalnym przepływie nad stroną (`flex justify-end` w `<body>` layoutu), nie elementem `absolute`: nigdy nie nachodzi na treść, a wiersz ma stałą wysokość. Dlatego `<main>` stron ma `flex-1` (zamiast `min-h-svh`), żeby wyśrodkowanie pionowe treści działało bez przewijania.
+- Przegląd wszystkich ekranów E01 w obu motywach (360/1280 px, 320 px dla wybranych): brak problemów z kontrastem, układem i fokusem, żadnych zmian tokenów (Q5 potwierdzone). Najniższy kontrast tekstu w jasnym motywie: 4,58:1 (`text-muted`). Szczegóły: `.ai/analysis/2026-10-29-theme-review-e01.md`.
+- Scenariusze integracyjne: `tests/integration/theme-switch.test.ts` (preferencja systemu, ciasteczko, niepoprawna wartość, wiele stron, klawiatura, 360 px).

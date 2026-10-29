@@ -115,7 +115,7 @@ Ręczny test po fazie: przełączenie motywu na `/`, `/register`, `/login`, `/ac
 - [x] 11.1 Mini-specyfikacja `.ai/specs/YYYY-MM-DD-theme-switcher.md` (zachowanie, miejsce przełącznika, ciasteczko vs `localStorage`, brak migotania, dostępność, testy); pytania do właściciela przed kodem
 - [x] 11.2 Mechanizm motywu (czysta logika w `core`/`ui`, ustawienie `data-theme` w layoucie `(frontend)`, ciasteczko)
 - [x] 11.3 Komponent przełącznika w `@gomoku/ui/game/*` (Storybook, oba motywy) i użycie w nagłówku stron gracza
-- [ ] 11.4 Testy jednostkowe, integracyjne (agent-browser) i przegląd obu motywów wszystkich ekranów E01 (w tym jasny motyw, dotąd nieoglądany)
+- [x] 11.4 Testy jednostkowe, integracyjne (agent-browser) i przegląd obu motywów wszystkich ekranów E01 (w tym jasny motyw, dotąd nieoglądany)
 
 ## Poza zakresem tego przebiegu
 
