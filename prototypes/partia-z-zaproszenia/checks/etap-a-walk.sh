@@ -31,7 +31,7 @@ stage() { sel sc-stage "$1"; }
 go() { $AB eval "document.dispatchEvent(new CustomEvent('prototype:navigate',{detail:'$1'}))" >/dev/null 2>&1; sleep 0.4; }
 reset() { $AB eval "[...document.querySelectorAll('.scenario-bar button')].find(b=>b.textContent==='Reset symulacji').click()" >/dev/null 2>&1; sleep 0.4; }
 dialog() { ev "document.querySelector('[role=dialog],[role=alertdialog]')?.innerText.replace(/\\n+/g,' ')||'brak'"; }
-shot() { $AB screenshot "$EV/$1.png" >/dev/null 2>&1; }
+shot() { $AB eval "(document.querySelector('[role=dialog],[role=alertdialog]')||document.querySelector('.screen.is-current .frame')).scrollIntoView({block:'start'});1" >/dev/null 2>&1; sleep 0.2; $AB screenshot "$EV/$1.png" >/dev/null 2>&1; }
 vp() { $AB set viewport "$1" "${2:-800}" >/dev/null 2>&1; sleep 0.3; }
 theme() { $AB eval "(()=>{const want='$1';if(document.documentElement.dataset.theme!==want)document.getElementById('theme-toggle').click();return document.documentElement.dataset.theme})()" >/dev/null 2>&1; sleep 0.3; }
 noscroll() { local W; W=$(ev "document.documentElement.scrollWidth <= window.innerWidth"); [[ "$W" == "true" ]] && echo "PASS $1 | $2" >> $LOG || echo "FAIL $1 | $2 | poziome przewijanie" >> $LOG; }
@@ -148,7 +148,7 @@ reset; go p02; $AB eval "document.getElementById('join-code').focus()" >/dev/nul
 $AB keyboard type "abcdefgh" >/dev/null 2>&1; $AB press Enter >/dev/null 2>&1; sleep 0.6; at G.1 "Enter w polu kodu wysyła (→ s07)" s07
 F=$(ev "document.activeElement.tagName"); [[ "$F" == "H1" ]] && echo "PASS G.2 | fokus na nagłówku nowego ekranu" >> $LOG || echo "FAIL G.2 | $F" >> $LOG
 stage "p03: Ala"; ORDER=""; $AB eval "(()=>{const h=document.querySelector('.screen.is-current h1');h.setAttribute('tabindex','-1');h.focus()})()" >/dev/null 2>&1
-for i in 1 2 3 4; do $AB press Tab >/dev/null 2>&1; ORDER="$ORDER|$(ev "document.activeElement.textContent.trim()")"; done
+for i in 1 2 3; do $AB press Tab >/dev/null 2>&1; ORDER="$ORDER|$(ev "document.activeElement.textContent.trim()")"; done
 echo "INFO G.3 | Tab od nagłówka p03:$ORDER" >> $LOG
 [[ "$ORDER" == *"Kopiuj"*"Udostępnij"*"Anuluj zaproszenie"* ]] && echo "PASS G.4 | kolejność Tab: Kopiuj, Udostępnij, Anuluj" >> $LOG || echo "FAIL G.4 | $ORDER" >> $LOG
 O=$(ev "(()=>{const s=getComputedStyle(document.activeElement);return s.outlineStyle+' '+s.outlineWidth})()"); [[ "$O" != *"none"* && "$O" != *" 0px"* ]] && echo "PASS G.5 | fokus widoczny ($O)" >> $LOG || echo "FAIL G.5 | $O" >> $LOG

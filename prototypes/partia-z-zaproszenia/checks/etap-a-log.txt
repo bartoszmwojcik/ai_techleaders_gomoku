@@ -1,0 +1,259 @@
+## A. p01: utworzenie partii
+PASS A.1 | start na p01
+PASS A.2 | p01.1 przycisk
+PASS A.3 | Utwórz zaproszenie i Masz kod? na stronie głównej
+PASS A.4 | T1 tworzy partię → p03
+PASS A.5 | p03.1
+PASS A.6 | kod ABCD-EFGH, link i Ważne do
+PASS A.7 | link
+PASS A.8 | Ważne do wtorek
+PASS A.9 | Masz partię z linkiem „Wróć do partii”
+PASS A.10 | „Wróć do partii” → p03
+PASS A.11 | druga próba utworzenia: oczekująca partia → p03
+PASS A.12 | p03.1 + p01.4
+PASS A.13 | komunikat L01
+PASS A.14 | T3 (partia w toku) → p01.3
+PASS A.15 | Masz już partię
+PASS A.16 | link do partii w toku → Poza tym prototypem
+PASS A.17 | T4 (własna oczekująca) → p03
+PASS A.18 | kod partii Ewy
+PASS A.19 | T2: baner potwierdzenia e-maila nie blokuje
+PASS A.20 | T2 niepotwierdzony tworzy partię (BR-26)
+PASS A.21 | T6: bez przycisku Utwórz zaproszenie
+PASS A.22 | T6 nie tworzy
+PASS A.23 | Załóż konto → dialog Poza tym prototypem (konta)
+PASS A.24 | wymuszony limit → p01.5
+PASS A.25 | tekst limitu
+PASS A.26 | wymuszony błąd serwera → p01.6
+PASS A.27 | ponowienie nadal p01.6
+PASS A.28 | brak sieci → p01.7
+PASS A.29 | treść
+PASS A.30 | wymuszone p01.3
+## B. p02: kod zaproszenia
+PASS B.1 | Masz kod? → p02
+PASS B.2 | p02.1
+PASS B.3 | za krótki kod → p02.2
+PASS B.4 | komunikat
+PASS B.5 | limit → p02.3
+PASS B.6 | komunikat
+PASS B.7 | kod z małych liter bez myślnika → s07
+PASS B.8 | s07.3
+PASS B.9 | nieistniejący kod → s07
+PASS B.10 | s07.9
+PASS B.11 | 6. nieudane sprawdzenie → s07.8
+## C. s07: zaproszenie
+PASS C.1 | T6 otwiera zaproszenie
+PASS C.2 | s07.1
+PASS C.3 | trzy wybory
+PASS C.4 | zaprasza
+PASS C.5 | s07.2
+PASS C.6 | ostrzeżenie dla gościa
+PASS C.7 | Wróć → s07.1
+PASS C.8 | Zaloguj się → dialog
+PASS C.9 | gość dołączył → p04
+PASS C.10 | p04.1 + p04.4
+PASS C.11 | czekamy, aż Ala_7 otworzy
+PASS C.12 | ostrzeżenie gościa stałe
+PASS C.13 | pasek: sesja gościa
+PASS C.14 | twórca widzi Przeciwnik dołączył (p03.5)
+PASS C.15 | p03.5
+PASS C.16 | → p04
+PASS C.17 | p04.2
+PASS C.18 | T2 zalogowany: s07.3
+PASS C.19 | zalogowany bez opcji gościa
+PASS C.20 | T2 dołączył → p04
+PASS C.21 | p04.1
+PASS C.22 | uczestnik ponownie na linku (s07.4) → partia
+PASS C.23 | twórca na własnym linku (s07.5) → partia (p03.5, jeszcze nie widział dołączenia)
+PASS C.24 | T3 (partia w toku): s07.6
+PASS C.25 | Masz już partię
+PASS C.26 | T4 (własna oczekująca): s07.7
+PASS C.27 | przycisk Q18
+PASS C.28 | anulowanie własnej i dołączenie → p04
+PASS C.29 | partia Ewy anulowana, jest nowa
+PASS C.30 | T7 widzi s07.3
+PASS C.31 | po dołączeniu przeciwnika link jest nieważny dla trzeciej osoby (BR-11)
+PASS C.32 | kontrolka: s07.8
+PASS C.33 | kontrolka: s07.9
+PASS C.34 | Masz kod? / Wróć na stronę główną w s07.9
+## D. p03: oczekiwanie
+PASS D.1 | skrót p03
+PASS D.2 | Kopiuj → p03.2
+PASS D.3 | komunikat
+PASS D.4 | przycisk Skopiowano
+PASS D.5 | schowek niedostępny → p03.3
+PASS D.6 | zaznaczone ręcznie
+PASS D.7 | link zaznaczony w stronie
+PASS D.8 | Udostępnij → komunikat o telefonie
+PASS D.9 | Udostępnij ukryty (p03.4)
+PASS D.10 | dialog → p03.6
+PASS D.11 | treść dialogu anulowania
+PASS D.12 | fokus w dialogu zaczyna na drodze wyjścia („Wróć”)
+PASS D.13 | Escape zamyka dialog
+PASS D.14 | po Escape p03.1/p03.4
+PASS D.15 | Wróć → p03.1
+PASS D.16 | błąd odpytywania po 3 próbach → p03.10
+PASS D.17 | baner
+PASS D.18 | po ustąpieniu błędu p03.1
+PASS D.19 | przeciwnik dołączył → p03.5
+PASS D.20 | Przeciwnik dołączył
+PASS D.21 | po 2,5 s automatycznie → p04
+PASS D.22 | p04.2
+PASS D.23 | anulowanie → strona główna
+PASS D.24 | komunikat o anulowaniu
+PASS D.25 | link po anulowaniu jest nieważny (s07.9)
+PASS D.26 | twórca nie ma już strony partii (p07.2)
+PASS D.27 | przeciwnik zdążył dołączyć → p03.5
+PASS D.28 | komunikat
+PASS D.29 | +24 h → p03.9
+PASS D.30 | treść
+PASS D.31 | nowe zaproszenie po wygaśnięciu
+PASS D.32 | inny kod
+PASS D.33 | wygasłe zaproszenie dla znajomego: s07.9
+PASS D.34 | osoba spoza partii: p07.2
+## E. p04: partia gotowa
+PASS E.1 | skrót p04.1 (widok Kuby)
+PASS E.2 | p04.1
+PASS E.3 | tekst oczekiwania
+PASS E.4 | zegary 10:00
+PASS E.5 | bez Przejdź do planszy przed otwarciem
+PASS E.6 | twórca otwiera → p04.2
+PASS E.7 | Partia gotowa
+PASS E.8 | Przejdź do planszy → dialog (etap B)
+PASS E.9 | Wróć do panelu głównego → p01
+PASS E.10 | +15 min bez otwarcia → p04.3 (widok Kuby)
+PASS E.11 | zdanie gracza, który otworzył
+PASS E.12 | p04.3 u twórcy
+PASS E.13 | zdanie twórcy
+PASS E.14 | → p01
+PASS E.15 | partia zwolniona (BR-13)
+PASS E.16 | po anulowaniu można utworzyć nową
+PASS E.17 | gość: p04.1 + p04.4
+PASS E.18 | ostrzeżenie dla gościa
+PASS E.19 | gość w innej przeglądarce (T6): p07.3
+PASS E.20 | to samo 404 co p07.2
+PASS E.21 | partia w toku (T3) wskazuje etap B
+PASS E.22 | twórca po otwarciu: p04.2
+## F. kontrolki i silnik
+PASS F.1 | +1 h zmienia zegar
+PASS F.2 | Wróć do 10:00
+PASS F.3 | podgląd 320 px: ramka 320 px
+PASS F.4 | tryb Clickable/Comment przełącza się
+PASS F.5 | Show hotspots
+PASS F.6p02 | pasek ekranów → p02
+PASS F.6s07 | pasek ekranów → s07
+PASS F.6p03 | pasek ekranów → p03
+PASS F.6p04 | pasek ekranów → p04
+PASS F.6p01 | pasek ekranów → p01
+## G. klawiatura
+PASS G.1 | Enter w polu kodu wysyła (→ s07)
+PASS G.2 | fokus na nagłówku nowego ekranu
+INFO G.3 | Tab od nagłówka p03:|Kopiuj|Udostępnij|Anuluj zaproszenie
+PASS G.4 | kolejność Tab: Kopiuj, Udostępnij, Anuluj
+PASS G.5 | fokus widoczny (solid 2px)
+PASS G.6 | Enter na Anuluj otwiera dialog
+PASS G.7 | po Escape fokus wraca na „Anuluj zaproszenie”
+## H. szerokości i motywy: brak poziomego przewijania, zrzuty
+PASS H.1440.dark.p01 | p01 przy 1440 px, motyw dark
+PASS H.1440.dark.p01.5 | p01.5 przy 1440 px, motyw dark
+PASS H.1440.dark.p02 | p02.2 przy 1440 px, motyw dark
+PASS H.1440.dark.p03 | p03.1 przy 1440 px, motyw dark
+PASS H.1440.dark.p03.2 | p03.2 przy 1440 px, motyw dark
+PASS H.1440.dark.p03.6 | p03.6 (dialog) przy 1440 px, motyw dark
+PASS H.1440.dark.p03.5 | p03.5 przy 1440 px, motyw dark
+PASS H.1440.dark.p04.2 | p04.2 przy 1440 px, motyw dark
+PASS H.1440.dark.p04.1 | p04.1 przy 1440 px, motyw dark
+PASS H.1440.dark.p04.4 | p04.1 + p04.4 przy 1440 px, motyw dark
+PASS H.1440.dark.p04.3 | p04.3 przy 1440 px, motyw dark
+PASS H.1440.dark.p03.9 | p03.9 przy 1440 px, motyw dark
+PASS H.1440.dark.s07 | s07.1 przy 1440 px, motyw dark
+PASS H.1440.dark.s07.2 | s07.2 przy 1440 px, motyw dark
+PASS H.1440.dark.s07.6 | s07.6 przy 1440 px, motyw dark
+PASS H.1440.dark.s07.7 | s07.7 przy 1440 px, motyw dark
+PASS H.1440.dark.p07.2 | p07.2 przy 1440 px, motyw dark
+PASS H.1440.light.p01 | p01 przy 1440 px, motyw light
+PASS H.1440.light.p01.5 | p01.5 przy 1440 px, motyw light
+PASS H.1440.light.p02 | p02.2 przy 1440 px, motyw light
+PASS H.1440.light.p03 | p03.1 przy 1440 px, motyw light
+PASS H.1440.light.p03.2 | p03.2 przy 1440 px, motyw light
+PASS H.1440.light.p03.6 | p03.6 (dialog) przy 1440 px, motyw light
+PASS H.1440.light.p03.5 | p03.5 przy 1440 px, motyw light
+PASS H.1440.light.p04.2 | p04.2 przy 1440 px, motyw light
+PASS H.1440.light.p04.1 | p04.1 przy 1440 px, motyw light
+PASS H.1440.light.p04.4 | p04.1 + p04.4 przy 1440 px, motyw light
+PASS H.1440.light.p04.3 | p04.3 przy 1440 px, motyw light
+PASS H.1440.light.p03.9 | p03.9 przy 1440 px, motyw light
+PASS H.1440.light.s07 | s07.1 przy 1440 px, motyw light
+PASS H.1440.light.s07.2 | s07.2 przy 1440 px, motyw light
+PASS H.1440.light.s07.6 | s07.6 przy 1440 px, motyw light
+PASS H.1440.light.s07.7 | s07.7 przy 1440 px, motyw light
+PASS H.1440.light.p07.2 | p07.2 przy 1440 px, motyw light
+PASS H.360.dark.p01 | p01 przy 360 px, motyw dark
+PASS H.360.dark.p01.5 | p01.5 przy 360 px, motyw dark
+PASS H.360.dark.p02 | p02.2 przy 360 px, motyw dark
+PASS H.360.dark.p03 | p03.1 przy 360 px, motyw dark
+PASS H.360.dark.p03.2 | p03.2 przy 360 px, motyw dark
+PASS H.360.dark.p03.6 | p03.6 (dialog) przy 360 px, motyw dark
+PASS H.360.dark.p03.5 | p03.5 przy 360 px, motyw dark
+PASS H.360.dark.p04.2 | p04.2 przy 360 px, motyw dark
+PASS H.360.dark.p04.1 | p04.1 przy 360 px, motyw dark
+PASS H.360.dark.p04.4 | p04.1 + p04.4 przy 360 px, motyw dark
+PASS H.360.dark.p04.3 | p04.3 przy 360 px, motyw dark
+PASS H.360.dark.p03.9 | p03.9 przy 360 px, motyw dark
+PASS H.360.dark.s07 | s07.1 przy 360 px, motyw dark
+PASS H.360.dark.s07.2 | s07.2 przy 360 px, motyw dark
+PASS H.360.dark.s07.6 | s07.6 przy 360 px, motyw dark
+PASS H.360.dark.s07.7 | s07.7 przy 360 px, motyw dark
+PASS H.360.dark.p07.2 | p07.2 przy 360 px, motyw dark
+PASS H.360.light.p01 | p01 przy 360 px, motyw light
+PASS H.360.light.p01.5 | p01.5 przy 360 px, motyw light
+PASS H.360.light.p02 | p02.2 przy 360 px, motyw light
+PASS H.360.light.p03 | p03.1 przy 360 px, motyw light
+PASS H.360.light.p03.2 | p03.2 przy 360 px, motyw light
+PASS H.360.light.p03.6 | p03.6 (dialog) przy 360 px, motyw light
+PASS H.360.light.p03.5 | p03.5 przy 360 px, motyw light
+PASS H.360.light.p04.2 | p04.2 przy 360 px, motyw light
+PASS H.360.light.p04.1 | p04.1 przy 360 px, motyw light
+PASS H.360.light.p04.4 | p04.1 + p04.4 przy 360 px, motyw light
+PASS H.360.light.p04.3 | p04.3 przy 360 px, motyw light
+PASS H.360.light.p03.9 | p03.9 przy 360 px, motyw light
+PASS H.360.light.s07 | s07.1 przy 360 px, motyw light
+PASS H.360.light.s07.2 | s07.2 przy 360 px, motyw light
+PASS H.360.light.s07.6 | s07.6 przy 360 px, motyw light
+PASS H.360.light.s07.7 | s07.7 przy 360 px, motyw light
+PASS H.360.light.p07.2 | p07.2 przy 360 px, motyw light
+PASS H.320.dark.p01 | p01 przy 320 px, motyw dark
+PASS H.320.dark.p01.5 | p01.5 przy 320 px, motyw dark
+PASS H.320.dark.p02 | p02.2 przy 320 px, motyw dark
+PASS H.320.dark.p03 | p03.1 przy 320 px, motyw dark
+PASS H.320.dark.p03.2 | p03.2 przy 320 px, motyw dark
+PASS H.320.dark.p03.6 | p03.6 (dialog) przy 320 px, motyw dark
+PASS H.320.dark.p03.5 | p03.5 przy 320 px, motyw dark
+PASS H.320.dark.p04.2 | p04.2 przy 320 px, motyw dark
+PASS H.320.dark.p04.1 | p04.1 przy 320 px, motyw dark
+PASS H.320.dark.p04.4 | p04.1 + p04.4 przy 320 px, motyw dark
+PASS H.320.dark.p04.3 | p04.3 przy 320 px, motyw dark
+PASS H.320.dark.p03.9 | p03.9 przy 320 px, motyw dark
+PASS H.320.dark.s07 | s07.1 przy 320 px, motyw dark
+PASS H.320.dark.s07.2 | s07.2 przy 320 px, motyw dark
+PASS H.320.dark.s07.6 | s07.6 przy 320 px, motyw dark
+PASS H.320.dark.s07.7 | s07.7 przy 320 px, motyw dark
+PASS H.320.dark.p07.2 | p07.2 przy 320 px, motyw dark
+PASS H.320.light.p01 | p01 przy 320 px, motyw light
+PASS H.320.light.p01.5 | p01.5 przy 320 px, motyw light
+PASS H.320.light.p02 | p02.2 przy 320 px, motyw light
+PASS H.320.light.p03 | p03.1 przy 320 px, motyw light
+PASS H.320.light.p03.2 | p03.2 przy 320 px, motyw light
+PASS H.320.light.p03.6 | p03.6 (dialog) przy 320 px, motyw light
+PASS H.320.light.p03.5 | p03.5 przy 320 px, motyw light
+PASS H.320.light.p04.2 | p04.2 przy 320 px, motyw light
+PASS H.320.light.p04.1 | p04.1 przy 320 px, motyw light
+PASS H.320.light.p04.4 | p04.1 + p04.4 przy 320 px, motyw light
+PASS H.320.light.p04.3 | p04.3 przy 320 px, motyw light
+PASS H.320.light.p03.9 | p03.9 przy 320 px, motyw light
+PASS H.320.light.s07 | s07.1 przy 320 px, motyw light
+PASS H.320.light.s07.2 | s07.2 przy 320 px, motyw light
+PASS H.320.light.s07.6 | s07.6 przy 320 px, motyw light
+PASS H.320.light.s07.7 | s07.7 przy 320 px, motyw light
+PASS H.320.light.p07.2 | p07.2 przy 320 px, motyw light
+DONE
