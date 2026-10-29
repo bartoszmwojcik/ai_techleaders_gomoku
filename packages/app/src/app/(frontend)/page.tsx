@@ -1,9 +1,13 @@
 import { BOARD_SIZE } from "@gomoku/core";
+import { Alert } from "@gomoku/ui/game/alert";
 import { Button } from "@gomoku/ui/game/button";
+import { TextLink } from "@gomoku/ui/game/text-link";
 import { connection } from "next/server";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { VerifyEmailNotice } from "@/components/auth/verify-email-banner";
+import { CreateGameButton } from "@/components/games/create-game-button";
+import { DismissibleNotice } from "@/components/games/dismissible-notice";
 import { getCurrentUserWith } from "@/server/http/auth";
 
 // Static preview position: a few stones near the centre of the board.
@@ -16,15 +20,25 @@ const PREVIEW_STONES = new Map<string, "black" | "white">([
   ["8:6", "white"],
 ]);
 
-export default async function HomePage() {
+type HomePageProps = {
+  searchParams: Promise<{ notice?: string | string[] }>;
+};
+
+const GAME_PHASE_TEXT = { waiting: "Czeka na przeciwnika.", active: "W toku." } as const;
+
+export default async function HomePage({ searchParams }: HomePageProps) {
   // Reads the session cookie, so the page is rendered per request.
   await connection();
   // One request scope reads the session and the game state together.
   const session = await getCurrentUserWith(({ id }, { gameParticipation }) =>
-    gameParticipation.hasActiveGame(id),
+    gameParticipation.currentGame(id),
   );
   const user = session?.user ?? null;
-  const hasActiveGame = session?.data ?? false;
+  const currentGame = session?.data ?? null;
+  const hasActiveGame = currentGame?.status === "active";
+  // Only the first `notice` counts; the only known one is the message after cancelling a game.
+  const { notice } = await searchParams;
+  const cancelled = (Array.isArray(notice) ? notice[0] : notice) === "cancelled";
 
   const cells = Array.from({ length: BOARD_SIZE * BOARD_SIZE }, (_, i) => {
     const row = Math.floor(i / BOARD_SIZE);
@@ -34,6 +48,11 @@ export default async function HomePage() {
 
   return (
     <main className="mx-auto flex w-full flex-1 max-w-5xl flex-col items-center justify-center gap-section px-panel py-section">
+      {cancelled && user && (
+        <DismissibleNotice title="Zaproszenie anulowane" closeLabel="Zamknij">
+          Zaproszenie zostało anulowane. Link jest już nieważny.
+        </DismissibleNotice>
+      )}
       {user && !user.emailVerifiedAt && (
         <VerifyEmailNotice userId={user.id} email={user.email} />
       )}
@@ -59,11 +78,30 @@ export default async function HomePage() {
                 Zalogowano jako{" "}
                 <strong className="font-strong">{user.displayName}</strong>
               </p>
+              {currentGame && (
+                <Alert status="info" title="Masz partię">
+                  {GAME_PHASE_TEXT[currentGame.status]}{" "}
+                  <TextLink href={`/games/${currentGame.gameId}`}>
+                    Wróć do partii
+                  </TextLink>
+                </Alert>
+              )}
+              <CreateGameButton
+                heldGame={
+                  currentGame && {
+                    gameId: currentGame.gameId,
+                    status: currentGame.status,
+                  }
+                }
+              />
               <div className="flex flex-wrap items-center justify-center gap-group md:justify-start">
-                <Button asChild>
+                <Button asChild variant="secondary">
                   <a href="/account">Konto</a>
                 </Button>
                 <LogoutButton hasActiveGame={hasActiveGame} />
+                <TextLink href="/join" placement="standalone">
+                  Masz kod?
+                </TextLink>
               </div>
             </div>
           ) : (
@@ -74,6 +112,9 @@ export default async function HomePage() {
               <Button asChild variant="secondary">
                 <a href="/login">Zaloguj się</a>
               </Button>
+              <TextLink href="/join" placement="standalone">
+                Masz kod?
+              </TextLink>
             </div>
           )}
         </section>
