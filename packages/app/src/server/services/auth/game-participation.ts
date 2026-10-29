@@ -1,7 +1,10 @@
 import type { Seat } from "@gomoku/core";
 import { GamePlayer, type EntityManager } from "@gomoku/db";
 
-type Deps = { em: EntityManager };
+import type { Clock } from "../email/email-sender";
+import { closeStaleSlotsOfUser } from "../games/lazy-closing";
+
+type Deps = { em: EntityManager; clock: Clock };
 
 export type CurrentGame = { gameId: string; status: "waiting" | "active"; seat: Seat };
 
@@ -14,9 +17,11 @@ export type CurrentGame = { gameId: string; status: "waiting" | "active"; seat: 
  */
 export class GameParticipation {
   readonly #em: EntityManager;
+  readonly #clock: Clock;
 
-  constructor({ em }: Deps) {
+  constructor({ em, clock }: Deps) {
     this.#em = em;
+    this.#clock = clock;
   }
 
   /**
@@ -52,9 +57,12 @@ export class GameParticipation {
   /**
    * The game that holds the user's slot (waiting or active), for the home page's "return to
    * your game" and for sending a second "create" to the game they already wait in; `null`
-   * without one.
+   * without one. Stale slots (an expired invitation, a game nobody opened within 15 minutes)
+   * are closed first, so the page never claims "you have a game" where joining would succeed
+   * (#21 Q16, Q21).
    */
   async currentGame(userId: string): Promise<CurrentGame | null> {
+    await closeStaleSlotsOfUser(this.#em, userId, this.#clock.now());
     const player = await this.#em.findOne(
       GamePlayer,
       { user: userId, isActive: true, game: { status: { $in: ["waiting", "active"] } } },

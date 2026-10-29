@@ -21,9 +21,8 @@ import {
 import {
   CANCEL_NOT_STARTED_OF_GAME,
   CANCEL_NOT_STARTED_OF_GUEST,
-  CANCEL_NOT_STARTED_OF_USER,
   EXPIRE_WAITING_OF_GAME,
-  EXPIRE_WAITING_OF_USER,
+  closeStaleSlotsOfUser,
 } from "./lazy-closing";
 import { GUEST_TOKEN_VALID_SQL } from "./guest-token";
 import type { TimeoutSettler } from "./timeout-settler";
@@ -348,8 +347,7 @@ export class InvitationService {
     await tx.execute(EXPIRE_WAITING_OF_GAME, [now, gameId], "run");
     await tx.execute(CANCEL_NOT_STARTED_OF_GAME, [cutoff, gameId], "run");
     if (userId) {
-      await tx.execute(EXPIRE_WAITING_OF_USER, [now, userId], "run");
-      await tx.execute(CANCEL_NOT_STARTED_OF_USER, [cutoff, userId], "run");
+      await closeStaleSlotsOfUser(tx, userId, now);
     } else if (extraGame) {
       await tx.execute(CANCEL_NOT_STARTED_OF_GAME, [cutoff, extraGame], "run");
     }
@@ -425,11 +423,10 @@ export class InvitationService {
    */
   async #closeStaleSlots({ userId, guestTokenHash }: Viewer): Promise<void> {
     const now = this.#clock.now();
-    const cutoff = new Date(now.getTime() - READY_DEADLINE_MS);
     if (userId) {
-      await this.#em.execute(EXPIRE_WAITING_OF_USER, [now, userId], "run");
-      await this.#em.execute(CANCEL_NOT_STARTED_OF_USER, [cutoff, userId], "run");
+      await closeStaleSlotsOfUser(this.#em, userId, now);
     } else if (guestTokenHash) {
+      const cutoff = new Date(now.getTime() - READY_DEADLINE_MS);
       await this.#em.execute(CANCEL_NOT_STARTED_OF_GUEST, [cutoff, guestTokenHash], "run");
     }
   }

@@ -1,3 +1,6 @@
+import { READY_DEADLINE_MS } from "@gomoku/core";
+import type { EntityManager } from "@gomoku/db";
+
 /** SQL of the lazy closing of games (#21 Q16, Q21), shared by `GameService` and `InvitationService`. */
 
 // Frees the slots of waiting games whose invitation expired (#21 Q16). One statement, in the
@@ -41,3 +44,18 @@ export const CANCEL_NOT_STARTED_OF_USER = cancelNotStartedSql(OF_USER);
 export const CANCEL_NOT_STARTED_OF_GAME = cancelNotStartedSql(OF_GAME);
 
 export const CANCEL_NOT_STARTED_OF_GUEST = cancelNotStartedSql(OF_GUEST);
+
+/**
+ * Closes the stale slots of an account (#21 Q16, Q21): its waiting games whose invitation
+ * expired and its active games nobody opened within READY_DEADLINE_MS. Two idempotent single
+ * statements in the lock order games -> game_players; pass the `tx` when inside a transaction.
+ */
+export async function closeStaleSlotsOfUser(
+  em: Pick<EntityManager, "execute">,
+  userId: string,
+  now: Date,
+): Promise<void> {
+  const cutoff = new Date(now.getTime() - READY_DEADLINE_MS);
+  await em.execute(EXPIRE_WAITING_OF_USER, [now, userId], "run");
+  await em.execute(CANCEL_NOT_STARTED_OF_USER, [cutoff, userId], "run");
+}

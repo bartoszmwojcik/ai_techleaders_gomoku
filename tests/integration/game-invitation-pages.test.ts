@@ -247,6 +247,44 @@ describe("the invitation pages", () => {
     await bodyHas(creator, "Zaproszenie wygasło");
   });
 
+  it("does not show 'Masz partię' on the home page for an expired invitation, and frees the slot (Q16)", async () => {
+    await visitor(creator);
+    const player = await signedUp(creator);
+    const own = await createdGame(player.cookie);
+    await run("update invitations set expires_at = now() - interval '1 hour' where game_id = ?", [own.gameId]);
+
+    await creator.open(`${baseUrl}/`);
+    await creator.waitFor("[data-testid=create-game]");
+    expect(await creator.text("main")).not.toContain("Masz partię");
+    const [slot] = await run(
+      "select count(*) filter (where is_active) as held from game_players where game_id = ?",
+      [own.gameId],
+    );
+    expect(Number(slot.held)).toBe(0);
+    // The slot is really free: a new game can be created.
+    await createdGame(player.cookie);
+  });
+
+  it("does not show 'Masz partię' on the home page for a game nobody opened within 15 minutes, and frees the slot (Q21)", async () => {
+    await visitor(creator);
+    const player = await signedUp(creator);
+    const own = await createdGame(player.cookie);
+    const friend = await signedUp();
+    const joined = await api("POST", `/api/invitations/${own.code}/accept`, { as: "user" }, friend.cookie);
+    expect(joined.status).toBe(200);
+    await run("update games set started_at = now() - interval '16 minutes' where id = ?", [own.gameId]);
+
+    await creator.open(`${baseUrl}/`);
+    await creator.waitFor("[data-testid=create-game]");
+    expect(await creator.text("main")).not.toContain("Masz partię");
+    const [slot] = await run(
+      "select count(*) filter (where is_active) as held from game_players where game_id = ?",
+      [own.gameId],
+    );
+    expect(Number(slot.held)).toBe(0);
+    await createdGame(player.cookie);
+  });
+
   it("tells a second 'create' to go to the game the player already waits in (L01)", async () => {
     await visitor(creator);
     const player = await signedUp(creator);

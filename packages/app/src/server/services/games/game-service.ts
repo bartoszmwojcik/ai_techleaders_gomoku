@@ -28,9 +28,8 @@ import type { InvitationCodes } from "./invitation-codes";
 import { GUEST_TOKEN_VALID_SQL } from "./guest-token";
 import {
   CANCEL_NOT_STARTED_OF_GAME,
-  CANCEL_NOT_STARTED_OF_USER,
   EXPIRE_WAITING_OF_GAME,
-  EXPIRE_WAITING_OF_USER,
+  closeStaleSlotsOfUser,
 } from "./lazy-closing";
 import type { TimeoutSettler } from "./timeout-settler";
 
@@ -139,12 +138,7 @@ export class GameService {
     const code = this.#invitationCodes.generate();
     try {
       const gameId = await this.#em.transactional(async (tx) => {
-        await tx.execute(EXPIRE_WAITING_OF_USER, [now, userId], "run");
-        await tx.execute(
-          CANCEL_NOT_STARTED_OF_USER,
-          [new Date(now.getTime() - READY_DEADLINE_MS), userId],
-          "run",
-        );
+        await closeStaleSlotsOfUser(tx, userId, now);
         const game = tx.create(Game, {
           origin: "invite",
           status: "waiting",
