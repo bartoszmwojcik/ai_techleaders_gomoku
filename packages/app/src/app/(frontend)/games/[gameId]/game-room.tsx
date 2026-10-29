@@ -14,11 +14,15 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type Re
 import { CreateGameButton } from "@/components/games/create-game-button";
 import { DismissibleNotice } from "@/components/games/dismissible-notice";
 import { GameGate } from "@/components/games/game-gate";
+import { PlayField } from "@/components/games/play-field";
 import { apiCall } from "@/lib/api-client";
+import { mergeState, playerName } from "@/lib/games/play";
 import type { GameView } from "@/server/http/game-view";
 
 /** Polling of a waiting game (#21 Q6): short polling every 3 s until a transport from #30 exists. */
 export const POLL_INTERVAL_MS = 3000;
+/** Polling of a game in progress (#22 Q5): the opponent's move is read every 2 s. */
+export const PLAY_POLL_INTERVAL_MS = 2000;
 /** "Przeciwnik dołączył" stays this long before the page moves on (A-04 of the prototype). */
 export const JOIN_STEP_MS = 2500;
 /** Failed polls in a row before the banner appears (L02). */
@@ -55,6 +59,13 @@ export function formatValidUntil(iso: string): string {
 
 // `navigator.share` exists only in some browsers; the server cannot know, so the first render says no.
 const subscribeNothing = () => () => {};
+// A hidden tab does not poll (#22 UI); coming back reads the state at once.
+const subscribeVisibility = (notify: () => void) => {
+  document.addEventListener("visibilitychange", notify);
+  return () => document.removeEventListener("visibilitychange", notify);
+};
+const tabHidden = () => document.visibilityState === "hidden";
+const tabVisibleOnServer = () => false;
 const canShareNow = () => typeof navigator.share === "function";
 const cannotShareOnServer = () => false;
 
@@ -69,7 +80,8 @@ function Shell({ children }: { children: ReactNode }) {
 /**
  * `/games/[gameId]` while the game is not played yet: the creator's wait (p03), the ready
  * state (p04), the cancelled and expired ends (p03.9, p04.3) and the errors of the polling.
- * The board and the moves come with the next phase (#22); until then "ready" is the last state.
+ * Once both players opened the page the board takes over (p05, p06: `PlayField`); this component
+ * polls the state and merges it, `PlayField` shows it and sends the moves.
  */
 export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
   const router = useRouter();
@@ -84,37 +96,63 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
   const canShare = useSyncExternalStore(subscribeNothing, canShareNow, cannotShareOnServer);
   const cardRef = useRef<HTMLDivElement>(null);
   const status = useRef(initial.status);
+  // The newest state, so a poll asks only for the moves it does not know yet (`?after=`).
+  const latest = useRef(initial);
   const polling = useRef(false);
+  const hidden = useSyncExternalStore(subscribeVisibility, tabHidden, tabVisibleOnServer);
+  const wasHidden = useRef(false);
   // State alone lags a double click by one render; the ref closes that gap.
   const cancelInFlight = useRef(false);
 
   const everyoneSeen = game.players.every((player) => player.seen);
   // `waiting` waits for the opponent; `active` waits for the player who has not opened the page yet (Q20).
-  const needsPolling = !gone && (game.status === "waiting" || (game.status === "active" && !everyoneSeen));
+  const waitingForOpponent = game.status === "waiting" || (game.status === "active" && !everyoneSeen);
+  const playing = game.status === "active" && everyoneSeen;
+  // Own turn: nothing to read (the opponent cannot move); the clock phase (#23) adds reads for a timeout.
+  const waitingForMove = playing && game.turnSeat !== game.you.seat;
+  const needsPolling = !gone && !hidden && (waitingForOpponent || waitingForMove);
+
+  // The move just played answers with the new state (`after` = moves known before it).
+  const applyState = useCallback((next: GameView, after: number) => {
+    const merged = mergeState(latest.current, next, after);
+    latest.current = merged;
+    status.current = merged.status;
+    setGame(merged);
+  }, []);
 
   const poll = useCallback(async () => {
     if (polling.current) return;
     polling.current = true;
-    const result = await apiCall<GameView>(`/api/games/${gameId}`, { method: "GET" });
+    const after = latest.current.moves.length;
+    const result = await apiCall<GameView>(`/api/games/${gameId}?after=${after}`, { method: "GET" });
     polling.current = false;
     if (result.ok) {
       setFails(0);
       // The creator sees "Przeciwnik dołączył" for a moment before the ready state (p03.5).
       if (status.current === "waiting" && result.data.status === "active") setJoinStep(true);
-      status.current = result.data.status;
-      setGame(result.data);
+      applyState(result.data, after);
     } else if (result.error.code === "NOT_FOUND") {
       setGone(true);
     } else {
       setFails((count) => count + 1);
     }
-  }, [gameId]);
+  }, [gameId, applyState]);
 
   useEffect(() => {
     if (!needsPolling) return;
-    const timer = setInterval(() => void poll(), POLL_INTERVAL_MS);
+    const timer = setInterval(() => void poll(), playing ? PLAY_POLL_INTERVAL_MS : POLL_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [needsPolling, poll]);
+  }, [needsPolling, playing, poll]);
+
+  // Back in the tab: read the state at once instead of waiting for the next tick.
+  useEffect(() => {
+    if (hidden) {
+      wasHidden.current = true;
+    } else if (wasHidden.current) {
+      wasHidden.current = false;
+      if (!gone && (game.status === "waiting" || game.status === "active")) void poll();
+    }
+  }, [hidden, gone, game.status, poll]);
 
   useEffect(() => {
     if (!joinStep) return;
@@ -132,8 +170,7 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
 
   const other = game.players.find((player) => player.seat !== game.you.seat);
   const mine = game.players.find((player) => player.seat === game.you.seat);
-  const nameOf = (player: typeof other) =>
-    player?.kind === "guest" ? "Gość" : (player?.displayName ?? "Usunięty gracz");
+  const nameOf = playerName;
   const isGuest = game.you.kind === "guest";
 
   async function onCopy() {
@@ -311,40 +348,42 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
     );
   }
 
-  if (game.status === "active") {
+  if (playing || game.status === "finished") {
     return (
       <Shell>
-        <h1 className="m-0 text-section font-strong">{everyoneSeen ? "Partia gotowa" : "Czekamy na otwarcie partii"}</h1>
-        {cancelProblem}
-        {isGuest && (
-          // p04.4: permanent for a guest (BR-22).
-          <Alert status="warning" title="Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii">
-            Stracisz dostęp do partii, a Twój zegar będzie biegł dalej.
-          </Alert>
-        )}
-        <div className="flex max-w-(--layout-width-board) flex-col gap-stack">
-          <TurnStatus>
-            {everyoneSeen
-              ? "Partia gotowa"
-              : `Czekamy, aż ${nameOf(other)} otworzy partię — zegar ruszy, gdy obaj będziecie na stronie (do 15 min)`}
-          </TurnStatus>
-          <PlayerClock name={nameOf(other)} remainingMs={TEN_MINUTES_MS} />
-          <PlayerClock name={`Ty (${nameOf(mine)})`} remainingMs={TEN_MINUTES_MS} />
-          <TextLink href="/" placement="standalone">
-            Wróć na stronę główną
-          </TextLink>
-        </div>
+        <PlayField
+          gameId={gameId}
+          game={game}
+          pollFails={fails}
+          onState={applyState}
+          onRefresh={() => void poll()}
+          onGone={() => setGone(true)}
+        />
       </Shell>
     );
   }
 
-  // `finished`: the result screen belongs to the next phase (#22), nothing can finish a game yet.
+  // `active`, but the other player has not opened the page yet (p04.1): the clocks do not run (Q20).
   return (
     <Shell>
-      <h1 className="m-0 text-section font-strong">Partia zakończona</h1>
-      <TextLink href="/" placement="standalone">
-        Wróć na stronę główną
-      </TextLink>
+      <h1 className="m-0 text-section font-strong">Czekamy na otwarcie partii</h1>
+      {cancelProblem}
+      {isGuest && (
+        // p04.4: permanent for a guest (BR-22).
+        <Alert status="warning" title="Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii">
+          Stracisz dostęp do partii, a Twój zegar będzie biegł dalej.
+        </Alert>
+      )}
+      <div className="flex max-w-(--layout-width-board) flex-col gap-stack">
+        <TurnStatus>
+          {`Czekamy, aż ${nameOf(other)} otworzy partię — zegar ruszy, gdy obaj będziecie na stronie (do 15 min)`}
+        </TurnStatus>
+        <PlayerClock name={nameOf(other)} remainingMs={TEN_MINUTES_MS} />
+        <PlayerClock name={`Ty (${nameOf(mine)})`} remainingMs={TEN_MINUTES_MS} />
+        <TextLink href="/" placement="standalone">
+          Wróć na stronę główną
+        </TextLink>
+      </div>
     </Shell>
   );
 }
