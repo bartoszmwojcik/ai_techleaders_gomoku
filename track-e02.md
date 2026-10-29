@@ -40,10 +40,24 @@ Ręczny test po fazie: `curl` — utworzenie partii, kod `ABCD-EFGH`, dołączen
 - [x] 2.1 `InvitationService.accept(as=user)` i `preview` (#21 krok 4)
 - [x] 2.2 `resolveParticipant` (konto), route'y `POST /api/games`, `/api/invitations/[code]/accept`, `/api/games/[id]/cancel`, `GET /api/games/[id]`, testy współbieżności (#21 krok 5)
 - [x] 2.3 Gość: `GuestCookie`, `accept(as=guest)`, `resolveParticipant` (gość), wygasanie tokenu (#21 krok 6)
-- [!] 2.4 Strony `/invite/[code]`, `/join`, `/games/[gameId]` w stanie oczekiwania (#21 kroki 7–8) — po zatwierdzeniu prototypu etapu A (D3.1)
-  - Uwagi z review Fazy 2: (a) `/invite`: leniwe zamykanie przeterminowanych w `preview` (dziś tylko odczyt); (b) blokada podwójnego kliknięcia przy `accept`.
-- [ ] 2.5 Dokumentacja (README, lekcje)
+- [x] 2.4 Strony `/invite/[code]`, `/join`, `/games/[gameId]` w stanie oczekiwania (#21 kroki 7–8) — wg zatwierdzonego prototypu etapu A (D3.1); akcja „Utwórz zaproszenie” na `/`
+  - Uwagi z review Fazy 2 załatwione: (a) `preview` zamyka leniwie przeterminowane sloty widza (Q16/Q21) jak `accept` (`#closeStaleSlots`, test jednostkowy i integracyjny); (b) „Graj jako gość”, „Dołącz”, „Utwórz” i „Anuluj” wysyłają żądanie dokładnie raz (`useRef` + wyłączony przycisk).
+  - Odstępstwa od prototypu: bez nagłówka strony (strony E01 go nie mają); `/join` sprawdza tylko kształt kodu (p02.3/p02.4 to s07.8/s07.9); brak p07.1 jako szkieletu (loading.tsx ukrywa status 404); „Partia gotowa” bez „Przejdź do planszy” (faza 3).
+  - Poza zakresem (faza 3): p05–p06 (plansza, wynik, rewanż, powrót po rozłączeniu), p07.3 dla gościa w trakcie partii (bez zegara nie ma co ukrywać).
+- [x] 2.5 Dokumentacja (README: sekcja „Partia z zaproszenia” z API, odstępstwami i ręcznym testem; lekcje w `.ai/lessons/`)
 - [ ] Faza 10 z `track.md` (usunięcie konta, #37) po zadaniu 1.3 i 2.2 — **odblokowana po 2.2** (`GameService.cancel`, `occupiesSlot`, kolejność blokad users → games i `game_players.user_id ON DELETE SET NULL` są gotowe); nie wykonana w fazie 2
+
+#### Ręczny test po fazie 2 (krok po kroku)
+
+Na świeżej bazie (osobna baza jednorazowa, nie `gomoku` z danymi: `docker compose exec postgres psql -U gomoku -d postgres -c 'create database gomoku_e02'`, `DATABASE_URL=… npm run db:migration:up`, `DATABASE_URL=… EMAIL_TRANSPORT=file npm run dev`). Wszystkie `POST` z nagłówkami `Origin: http://localhost:3000`, `X-Gomoku-Request: 1`, `Content-Type: application/json` (przykłady w README, „Partia z zaproszenia”).
+1. `curl`: zarejestruj `a` i `b` (`POST /api/auth/register`, `-c a.jar`), `a` tworzy partię (`POST /api/games`): `201`, kod `ABCD-EFGH`; drugie utworzenie przez `a` to `409 ACTIVE_GAME_EXISTS`.
+2. `curl`: `b` dołącza (`POST /api/invitations/{kod}/accept`, `{"as":"user"}`): `200 { gameId }`; trzecia osoba (`c`, także gość z `acknowledgedGuestWarning`) dostaje `410`; gość bez `acknowledgedGuestWarning: true` dostaje `400`.
+3. `curl`: `GET /api/games/{id}` jako `a`/`b`: `status: active`; bez ciasteczka `404`; `POST …/cancel` na aktywnej partii: `409 GAME_NOT_CANCELLABLE`.
+4. Strony (dwie przeglądarki albo okno prywatne): `a` rejestruje się na `/register`, na `/` klika „Utwórz zaproszenie” → `/games/{id}` z Kartą kodu, „Kopiuj” (komunikat), przy 360 px bez poziomego przewijania.
+5. Druga przeglądarka: `/join`, wpisz kod małymi literami bez myślnika → `/invite/ABCD-EFGH`: „{nazwa} zaprasza Cię…”, „Zaloguj się”/„Załóż konto” (z `?next`) i „Graj jako gość”. „Graj jako gość” → ostrzeżenie → „Rozumiem, graj jako gość” → „Partia gotowa” ze stałym ostrzeżeniem; u twórcy po kilku sekundach „Przeciwnik dołączył” i „Partia gotowa”.
+6. Trzecia przeglądarka: ten sam link → „To zaproszenie jest już nieważne”; `/games/{id}` → 404 „Ta partia nie istnieje albo nie masz do niej dostępu”.
+7. Nowa partia: „Anuluj zaproszenie” → okno potwierdzenia → powrót na `/` z komunikatem „Zaproszenie anulowane”; stary link: „nieważne”. Konto z własną oczekującą partią otwiera cudzy link: „Anuluj moją partię i dołącz”. 21 błędnych kodów na `/invite/…` z jednego adresu: „Zbyt wiele prób”.
+8. Oba motywy (przełącznik w rogu) i szerokości 360 oraz 1280 px na każdej stronie.
 
 ### Faza 3 — Ruchy i wygrana (#22)
 Ręczny test po fazie: partia przez `curl`/dwie karty do piątki w linii, remis (stan 224 kamieni w bazie), ruch poza turą i na zajęte pole odrzucony.
