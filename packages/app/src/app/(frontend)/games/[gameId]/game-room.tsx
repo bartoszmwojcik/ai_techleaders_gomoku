@@ -165,6 +165,8 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
     if (cancelInFlight.current) return;
     cancelInFlight.current = true;
     setCancelling(true);
+    // The previous attempt's message does not outlive a new attempt.
+    setCancelProblem(null);
     const result = await apiCall(`/api/games/${gameId}/cancel`);
     if (result.ok) {
       // L04: the creator leaves for the home page, the link is void. Stay busy while navigating.

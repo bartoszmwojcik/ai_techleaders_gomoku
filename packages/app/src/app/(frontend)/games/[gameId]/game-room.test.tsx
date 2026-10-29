@@ -260,6 +260,18 @@ describe("GameRoom, cancelling (p03.6-p03.8)", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
+  it("clears the previous failure message when the cancel is tried again", async () => {
+    apiCall.mockResolvedValueOnce(failure("INTERNAL"));
+    apiCall.mockReturnValueOnce(new Promise(() => {}));
+    room(waiting());
+    const u = await openDialog();
+    await u.click(screen.getByRole("button", { name: "Tak, anuluj zaproszenie" }));
+    expect(screen.getByText("Nie udało się anulować zaproszenia")).toBeTruthy();
+    await u.click(screen.getByRole("button", { name: "Anuluj zaproszenie" }));
+    await u.click(screen.getByRole("button", { name: "Tak, anuluj zaproszenie" }));
+    expect(screen.queryByText("Nie udało się anulować zaproszenia")).toBeNull();
+  });
+
   it.each([
     ["network", /Nie udało się połączyć z serwerem. Spróbuj ponownie./],
     ["INTERNAL", /^Spróbuj ponownie\.$/],
