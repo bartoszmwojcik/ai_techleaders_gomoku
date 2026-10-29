@@ -17,6 +17,12 @@ import {
 } from "./services/auth/session-service";
 import { EmailVerificationService } from "./services/auth/email-verification-service";
 import { GameParticipation } from "./services/auth/game-participation";
+import { GameService } from "./services/games/game-service";
+import { InvitationCodes } from "./services/games/invitation-codes";
+import {
+  NoopTimeoutSettler,
+  type TimeoutSettler,
+} from "./services/games/timeout-settler";
 import { createInvalidateResetTokens } from "./services/auth/invalidate-reset-tokens";
 import { PasswordResetService } from "./services/auth/password-reset-service";
 import {
@@ -41,7 +47,7 @@ export type AppCradle = {
   passwordHasher: PasswordHasher;
   /** Resolved lazily: invalid production settings fail the routes that use it, not `/api/health`. */
   serverConfig: ServerConfig;
-  /** Games do not exist yet (G5); the games feature replaces this registration. */
+  /** G5: does the user have a game that was running when the session expired. Request-scoped. */
   hasActiveGame: HasActiveGame;
   /** Marks a user's unused reset tokens as used; writes only through the `em` it is given. */
   invalidateResetTokens: InvalidateResetTokens;
@@ -51,6 +57,10 @@ export type AppCradle = {
   /** Request-scoped (needs `em`): resolve only from a `withRequestScope` scope. */
   sessionService: SessionService;
   gameParticipation: GameParticipation;
+  gameService: GameService;
+  invitationCodes: InvitationCodes;
+  /** No-op until the clock (#23) delivers the real settlement of timed-out games. */
+  timeoutSettler: TimeoutSettler;
   rateLimiter: RateLimiter;
   emailVerificationService: EmailVerificationService;
   userService: UserService;
@@ -104,7 +114,11 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     ).singleton(),
     passwordHasher: asClass(PasswordHasher).singleton(),
     serverConfig: asFunction(() => readServerConfig(process.env)).singleton(),
-    hasActiveGame: asValue<HasActiveGame>(async () => false),
+    hasActiveGame: asFunction(
+      ({ gameParticipation }: AppCradle): HasActiveGame =>
+        (userId, expiredAt) =>
+          gameParticipation.hasActiveGame(userId, { startedBefore: expiredAt }),
+    ).scoped(),
     invalidateResetTokens: asFunction(
       ({ clock }: AppCradle): InvalidateResetTokens =>
         createInvalidateResetTokens({ clock }),
@@ -121,7 +135,10 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
           : new UnconfiguredEmailSender(),
     ).singleton(),
     sessionService: asClass(SessionService).scoped(),
-    gameParticipation: asClass(GameParticipation).singleton(),
+    gameParticipation: asClass(GameParticipation).scoped(),
+    gameService: asClass(GameService).scoped(),
+    invitationCodes: asClass(InvitationCodes).singleton(),
+    timeoutSettler: asClass(NoopTimeoutSettler).singleton(),
     rateLimiter: asClass(RateLimiter).scoped(),
     emailVerificationService: asClass(EmailVerificationService).scoped(),
     userService: asClass(UserService).scoped(),

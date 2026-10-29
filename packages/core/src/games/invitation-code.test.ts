@@ -4,6 +4,7 @@ import { INVITATION_CODE_ALPHABET, INVITATION_CODE_LENGTH } from "./constants";
 import {
   formatInvitationCode,
   generateInvitationCode,
+  invitationUrl,
   normalizeInvitationCode,
 } from "./invitation-code";
 
@@ -58,5 +59,13 @@ describe("normalizeInvitationCode", () => {
     expect(normalizeInvitationCode("ABCDEFG0")).toBeNull();
     expect(normalizeInvitationCode("ABCDEFGL")).toBeNull();
     expect(normalizeInvitationCode("ABCD*FGH")).toBeNull();
+  });
+});
+
+describe("invitationUrl", () => {
+  it("points at /invite with the grouped code", () => {
+    expect(invitationUrl("https://gomoku.test", "ABCDEFGH")).toBe(
+      "https://gomoku.test/invite/ABCD-EFGH",
+    );
   });
 });

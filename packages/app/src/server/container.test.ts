@@ -5,19 +5,20 @@ import { join } from "node:path";
 import type { Orm } from "@gomoku/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { createOrm, entities, PasswordResetToken } = vi.hoisted(() => ({
+const { createOrm, entities, PasswordResetToken, GamePlayer } = vi.hoisted(() => ({
   createOrm: vi.fn(),
   entities: [] as unknown[],
   PasswordResetToken: { name: "PasswordResetToken" },
+  GamePlayer: { name: "GamePlayer" },
 }));
-vi.mock("@gomoku/db", () => ({ createOrm, entities, PasswordResetToken }));
+vi.mock("@gomoku/db", () => ({ createOrm, entities, PasswordResetToken, GamePlayer }));
 
 const globalForOrm = globalThis as typeof globalThis & {
   __gomokuOrms?: WeakMap<object, Promise<Orm>>;
 };
 
 function fakeOrm() {
-  const forkedEm = { id: "forked" };
+  const forkedEm = { id: "forked", count: vi.fn(async () => 0) };
   const orm = { em: { fork: vi.fn(() => forkedEm) } } as unknown as Orm;
   return { orm, forkedEm };
 }
@@ -85,12 +86,14 @@ describe("getContainer", () => {
       createOrm,
       entities: [],
       PasswordResetToken,
+      GamePlayer,
     }));
     const { getContainer: forRoutes } = await loadContainer();
     vi.doMock("@gomoku/db", () => ({
       createOrm,
       entities,
       PasswordResetToken,
+      GamePlayer,
     }));
 
     expect((await forRoutes()).cradle.orm).toBe(routeOrm);
@@ -127,7 +130,15 @@ describe("auth services", () => {
       );
       expect(cradle.gameParticipation).toBe(cradle.gameParticipation);
       expect(await cradle.gameParticipation.hasActiveGame("user")).toBe(false);
-      expect(await cradle.hasActiveGame("user", new Date())).toBe(false);
+      const expiredAt = new Date("2026-10-27T11:00:00Z");
+      expect(await cradle.hasActiveGame("user", expiredAt)).toBe(false);
+      expect(forkedEm.count).toHaveBeenLastCalledWith(
+        GamePlayer,
+        expect.objectContaining({ user: "user", isActive: true }),
+      );
+      expect(cradle.gameService).toBe(cradle.gameService);
+      expect(cradle.invitationCodes).toBe(cradle.invitationCodes);
+      expect(await cradle.timeoutSettler.settleFor("user")).toBeUndefined();
       expect(cradle.passwordResetService).toBe(cradle.passwordResetService);
       const nativeUpdate = vi.fn(async () => 1);
       await cradle.invalidateResetTokens("user", { nativeUpdate } as never);

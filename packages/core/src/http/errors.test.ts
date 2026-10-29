@@ -4,6 +4,7 @@ import {
   AppError,
   ConflictError,
   ForbiddenError,
+  NotFoundError,
   TooManyRequestsError,
   UnauthorizedError,
   ValidationError,
@@ -32,6 +33,7 @@ describe.each([
   ["ValidationError", ValidationError, 400, "VALIDATION"],
   ["UnauthorizedError", UnauthorizedError, 401, "UNAUTHORIZED"],
   ["ForbiddenError", ForbiddenError, 403, "FORBIDDEN"],
+  ["NotFoundError", NotFoundError, 404, "NOT_FOUND"],
   ["ConflictError", ConflictError, 409, "CONFLICT"],
   ["TooManyRequestsError", TooManyRequestsError, 429, "RATE_LIMITED"],
 ] as const)("%s", (name, ErrorClass, status, code) => {

@@ -31,3 +31,8 @@ export function normalizeInvitationCode(input: string): string | null {
   }
   return code;
 }
+
+/** Link to the invitation page; the code is shown grouped, the page normalizes it back. */
+export function invitationUrl(origin: string, code: string): string {
+  return `${origin}/invite/${formatInvitationCode(code)}`;
+}
