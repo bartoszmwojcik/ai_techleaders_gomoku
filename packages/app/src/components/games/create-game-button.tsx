@@ -91,7 +91,7 @@ export function CreateGameButton({ heldGame }: { heldGame: HeldGame | null }) {
           {retry}
         </Alert>
       )}
-      <Button loading={busy} onClick={() => void onCreate()}>
+      <Button data-testid="create-game" loading={busy} onClick={() => void onCreate()}>
         {busy ? "Tworzenie zaproszenia…" : "Utwórz zaproszenie"}
       </Button>
     </>
