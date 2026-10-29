@@ -162,7 +162,7 @@ describe("PlayField, refusals and errors (p05.7, p05.8, p05.9)", () => {
 describe("PlayField, the opponent's turn (p05.2)", () => {
   it("is read-only and says so", async () => {
     field({ turnSeat: 2, moveCount: 1, moves: [112] });
-    expect(screen.getByText("Ruch przeciwnika")).toBeTruthy();
+    expect(screen.getAllByText("Ruch przeciwnika")).toHaveLength(2);
     expect(screen.queryByText(/Wylosowano/)).toBeNull();
     expect(grid().getAttribute("aria-readonly")).toBe("true");
     await press(cell(CENTER.replace("puste", "czarny kamień")));

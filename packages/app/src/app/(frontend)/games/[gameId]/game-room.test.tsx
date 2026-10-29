@@ -469,7 +469,7 @@ describe("GameRoom, play (p05, p06)", () => {
     await press(document.querySelector<HTMLElement>('[aria-label="Kolumna H, rząd 8, puste"]')!);
     await tick(0);
     expect(apiCall).toHaveBeenCalledWith("/api/games/g1/moves", { body: { x: 7, y: 7, moveNumber: 1 } });
-    expect(screen.getByText("Ruch przeciwnika")).toBeTruthy();
+    expect(screen.getAllByText("Ruch przeciwnika")).toHaveLength(2);
     expect(stonesOnBoard()).toHaveLength(1);
     apiCall.mockResolvedValue({ ok: true, data: active({ turnSeat: 1, moveCount: 2, moves: [113] }) });
     await tick(PLAY_POLL_INTERVAL_MS);

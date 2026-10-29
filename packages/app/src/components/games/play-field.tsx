@@ -61,6 +61,22 @@ const subscribePointer = (notify: () => void) => {
 const isTouch = () => window.matchMedia("(pointer: coarse)").matches;
 const notTouchOnServer = () => false;
 
+// Reserve for the clocks (#23): the bar has the size and the outline of the Zegar gracza, the digits
+// come with the clock. The player on turn is marked by the outline and a word, not by colour alone.
+function ClockSlot({ name, active, activeLabel }: { name: string; active: boolean; activeLabel: string }) {
+  return (
+    <div
+      data-slot="clock"
+      className={`flex min-h-target flex-col rounded-base border bg-surface-raised p-4 wrap-anywhere ${
+        active ? "border-text-primary" : "border-border-default"
+      }`}
+    >
+      <span className="text-meta font-strong text-text-secondary">{name}</span>
+      {active && <span className="text-meta text-text-primary">{activeLabel}</span>}
+    </div>
+  );
+}
+
 /**
  * The board of a game in progress or finished (p05, p06). It owns what the player is doing (the
  * selected intersection, the move in flight, the refusal); the room owns the game state and polls.
@@ -161,10 +177,7 @@ export function PlayField({ gameId, game, pollFails, onState, onRefresh, onGone 
         ) : (
           <TurnStatus color={game.turnSeat === null ? undefined : colorOfSeat(game.blackSeat, game.turnSeat)!}>{status}</TurnStatus>
         )}
-        {/* Reserve for the clocks (#23): the row stays, the digits come with the clock. */}
-        <p data-slot="clock" className="m-0 text-meta font-strong text-text-secondary wrap-anywhere">
-          {playerName(other)}
-        </p>
+        <ClockSlot name={playerName(other)} active={!myTurn && !finished} activeLabel="Ruch przeciwnika" />
         <Board
           label="Plansza 15 na 15"
           cellLabel={cellLabel}
@@ -175,9 +188,7 @@ export function PlayField({ gameId, game, pollFails, onState, onRefresh, onGone 
           readOnly={!myTurn || busy}
           onCellSelect={onCellSelect}
         />
-        <p data-slot="clock" className="m-0 text-meta font-strong text-text-secondary wrap-anywhere">
-          Ty ({playerName(mine)})
-        </p>
+        <ClockSlot name={`Ty (${playerName(mine)})`} active={myTurn} activeLabel="Twój ruch" />
         <p className="m-0 text-body text-text-secondary" data-testid="my-color">
           {finished ? "Grałeś" : "Grasz"} {COLOR_PLAYS[myColor]}.
         </p>
