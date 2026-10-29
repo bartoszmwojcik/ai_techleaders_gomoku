@@ -175,7 +175,7 @@ export function PlayField({ gameId, game, pollFails, onState, onRefresh, onGone 
             {outcome.detail}
           </GameResultBanner>
         ) : (
-          <TurnStatus color={game.turnSeat === null ? undefined : colorOfSeat(game.blackSeat, game.turnSeat)!}>{status}</TurnStatus>
+          <TurnStatus color={colorOfSeat(game.blackSeat, game.turnSeat!)!}>{status}</TurnStatus>
         )}
         <ClockSlot name={playerName(other)} active={!myTurn && !finished} activeLabel="Ruch przeciwnika" />
         <Board

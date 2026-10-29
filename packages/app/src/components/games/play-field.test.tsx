@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { apiCall } = vi.hoisted(() => ({ apiCall: vi.fn() }));
@@ -57,6 +58,17 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+});
+
+describe("PlayField, on the server", () => {
+  it("renders the mouse variant first (the pointer is unknown there) without a confirm button", () => {
+    stubPointer(true);
+    const html = renderToStaticMarkup(
+      <PlayField gameId="g1" game={game()} pollFails={0} onState={onState} onRefresh={onRefresh} onGone={onGone} />,
+    );
+    expect(html).toContain("Twój ruch (czarne)");
+    expect(html).not.toContain("Postaw kamień");
+  });
 });
 
 describe("PlayField, own turn with a mouse (p05.1, p05.5)", () => {

@@ -327,6 +327,15 @@ describe("GameRoom, active (p04)", () => {
     expect(apiCall).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps the guest warning while the guest waits for the other player to open the page (p04.4)", () => {
+    room({ ...active({ you: { seat: 2, kind: "guest" } }, [false, true]), players: [
+      { seat: 1, kind: "account", displayName: "Ala_7", seen: false },
+      { seat: 2, kind: "guest", displayName: null, seen: true },
+    ] });
+    expect(screen.getByRole("heading", { name: "Czekamy na otwarcie partii" })).toBeTruthy();
+    expect(screen.getByText("Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii")).toBeTruthy();
+  });
+
   it("keeps the guest warning on the page for a guest (p04.4)", () => {
     room({ ...guestOpponent(), you: { seat: 2, kind: "guest" } });
     expect(screen.getByText("Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii")).toBeTruthy();
@@ -475,6 +484,14 @@ describe("GameRoom, play (p05, p06)", () => {
     await tick(PLAY_POLL_INTERVAL_MS);
     expect(apiCall).toHaveBeenLastCalledWith("/api/games/g1?after=1", { method: "GET" });
     expect(stonesOnBoard()).toHaveLength(2);
+  });
+
+  it("shows the 404 text when a move finds the game gone", async () => {
+    room(active({ moveCount: 0 }));
+    apiCall.mockResolvedValue(failure("NOT_FOUND"));
+    await press(document.querySelector<HTMLElement>('[aria-label="Kolumna H, rząd 8, puste"]')!);
+    await tick(0);
+    expect(screen.getByText("Ta partia nie istnieje albo nie masz do niej dostępu")).toBeTruthy();
   });
 
   it("refreshes after a refused move (STALE_MOVE) and shows the opponent's move", async () => {
