@@ -21,7 +21,7 @@ export default async function AccountPage() {
   const verified = user.emailVerifiedAt !== null;
 
   return (
-    <main className="mx-auto flex min-h-svh w-full max-w-xl flex-col justify-center gap-stack px-panel py-section">
+    <main className="mx-auto flex w-full flex-1 max-w-xl flex-col justify-center gap-stack px-panel py-section">
       <h1 className="m-0 text-section font-strong">Konto</h1>
       {!verified && <VerifyEmailNotice userId={user.id} email={user.email} />}
       <Panel title="Dane konta">

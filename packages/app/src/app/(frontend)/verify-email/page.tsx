@@ -26,7 +26,7 @@ export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageP
   const user = await getCurrentUser();
 
   return (
-    <main className="mx-auto flex min-h-svh w-full max-w-md flex-col justify-center gap-stack px-panel py-section">
+    <main className="mx-auto flex w-full flex-1 max-w-md flex-col justify-center gap-stack px-panel py-section">
       <ConfirmEmail
         token={token}
         nextPath={nextPath}

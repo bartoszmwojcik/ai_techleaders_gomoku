@@ -33,7 +33,7 @@ export default async function HomePage() {
   });
 
   return (
-    <main className="mx-auto flex min-h-svh max-w-5xl flex-col items-center justify-center gap-section px-panel py-section">
+    <main className="mx-auto flex w-full flex-1 max-w-5xl flex-col items-center justify-center gap-section px-panel py-section">
       {user && !user.emailVerifiedAt && (
         <VerifyEmailNotice userId={user.id} email={user.email} />
       )}

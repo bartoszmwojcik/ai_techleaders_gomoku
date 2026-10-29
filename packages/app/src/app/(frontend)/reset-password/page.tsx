@@ -19,7 +19,7 @@ export default async function ResetPasswordPage({ searchParams }: ResetPasswordP
   const first = (Array.isArray(token) ? token[0] : token) || undefined;
 
   return (
-    <main className="mx-auto flex min-h-svh w-full max-w-md flex-col justify-center gap-stack px-panel py-section">
+    <main className="mx-auto flex w-full flex-1 max-w-md flex-col justify-center gap-stack px-panel py-section">
       <h1 className="m-0 text-section font-strong">Ustaw nowe hasło</h1>
       <ResetPasswordForm token={first} />
     </main>

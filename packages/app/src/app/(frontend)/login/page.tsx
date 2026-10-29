@@ -19,7 +19,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   if (await getCurrentUser()) redirect(nextPath);
 
   return (
-    <main className="mx-auto flex min-h-svh w-full max-w-md flex-col justify-center gap-stack px-panel py-section">
+    <main className="mx-auto flex w-full flex-1 max-w-md flex-col justify-center gap-stack px-panel py-section">
       <h1 className="m-0 text-section font-strong">Zaloguj się</h1>
       <LoginForm nextPath={nextPath} />
     </main>
