@@ -30,6 +30,9 @@ export const JOIN_STEP_MS = 2500;
 /** Failed polls in a row before the banner appears (L02). */
 export const POLL_FAILURES_BEFORE_BANNER = 3;
 
+/** A read that takes longer is abandoned, so one hung request cannot stop the polling for good. */
+export const POLL_TIMEOUT_MS = 8000;
+
 /** "Wróciłeś do partii" disappears by itself after this long (A-20 of the prototype), or with the next move. */
 export const RETURN_NOTICE_MS = 8000;
 
@@ -107,7 +110,10 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
   const polling = useRef(false);
   // After a long absence the next successful read says "Wróciłeś do partii" (#24 Q2), with the time the server reports.
   const [notice, setNotice] = useState<{ text: string; moveCount: number } | null>(null);
-  const noticeDue = useRef(false);
+  // When the tab came back after a long absence; set means the notice is due. Cleared once shown, expired or moot.
+  const returnedAt = useRef<number | null>(null);
+  // The tab came back while a read was in flight; that read may predate the return, so one more follows it.
+  const readAgain = useRef(false);
   // State alone lags a double click by one render; the ref closes that gap.
   const cancelInFlight = useRef(false);
 
@@ -121,22 +127,31 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
     const merged = mergeState(latest.current, next, after);
     latest.current = merged;
     status.current = merged.status;
+    // The game is over (or void): there is nobody to welcome back.
+    if (merged.status !== "waiting" && merged.status !== "active") returnedAt.current = null;
     setGame(merged);
   }, []);
 
-  const poll = useCallback(async () => {
-    if (polling.current) return;
-    polling.current = true;
+  const markGone = useCallback(() => {
+    returnedAt.current = null;
+    setGone(true);
+  }, []);
+
+  const readOnce = useCallback(async () => {
+    const startedAt = Date.now();
     const after = latest.current.moves.length;
-    const result = await apiCall<GameView>(`/api/games/${gameId}?after=${after}`, { method: "GET" });
-    polling.current = false;
+    const result = await apiCall<GameView>(`/api/games/${gameId}?after=${after}`, {
+      method: "GET",
+      signal: AbortSignal.timeout(POLL_TIMEOUT_MS),
+    });
     if (result.ok) {
       setFails(0);
       // The creator sees "Przeciwnik dołączył" for a moment before the ready state (p03.5).
       if (status.current === "waiting" && result.data.status === "active") setJoinStep(true);
       applyState(result.data, after);
-      if (noticeDue.current) {
-        noticeDue.current = false;
+      // A read that started before the return may carry the time from before the sleep: it waits for the next one.
+      if (returnedAt.current !== null && startedAt >= returnedAt.current) {
+        returnedAt.current = null;
         const merged = latest.current;
         // A game that ended while the player was away shows its result instead (p06.3).
         if (merged.status === "active" && merged.players.every((player) => player.seen)) {
@@ -145,18 +160,30 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
         }
       }
     } else if (result.error.code === "NOT_FOUND") {
-      setGone(true);
+      markGone();
     } else {
       setFails((count) => count + 1);
     }
-  }, [gameId, applyState]);
+  }, [gameId, applyState, markGone]);
+
+  const poll = useCallback(async () => {
+    if (polling.current) return;
+    polling.current = true;
+    do {
+      readAgain.current = false;
+      await readOnce();
+    } while (readAgain.current);
+    polling.current = false;
+  }, [readOnce]);
 
   // A hidden tab does not poll (#22 UI); coming back reads the state at once (#24 Q5).
   const hidden = usePageVisibility({
     onReturn: ({ longAbsence }) => {
       if (gone || (status.current !== "waiting" && status.current !== "active")) return;
-      if (longAbsence) noticeDue.current = true;
-      void poll();
+      returnedAt.current = longAbsence ? Date.now() : null;
+      // A read in flight may predate the return: the one after it is the one that counts.
+      if (polling.current) readAgain.current = true;
+      else void poll();
     },
   });
   const needsPolling = !gone && !hidden && (waitingForOpponent || playing);
@@ -242,7 +269,7 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
       );
       void poll();
     } else if (code === "NOT_FOUND") {
-      setGone(true);
+      markGone();
     } else {
       setCancelProblem(
         <Alert status="danger" title="Nie udało się anulować zaproszenia">
@@ -382,7 +409,7 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
           returnNotice={notice?.moveCount === game.moveCount ? notice.text : null}
           onState={applyState}
           onRefresh={() => void poll()}
-          onGone={() => setGone(true)}
+          onGone={markGone}
         />
       </Shell>
     );

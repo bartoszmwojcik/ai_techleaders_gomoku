@@ -10,7 +10,7 @@ vi.mock("@/lib/api-client", () => ({ apiCall }));
 
 import type { GameView } from "@/server/http/game-view";
 
-import { formatValidUntil, GameRoom, JOIN_STEP_MS, PLAY_POLL_INTERVAL_MS, POLL_INTERVAL_MS, RETURN_NOTICE_MS } from "./game-room";
+import { formatValidUntil, GameRoom, JOIN_STEP_MS, PLAY_POLL_INTERVAL_MS, POLL_INTERVAL_MS, POLL_TIMEOUT_MS, RETURN_NOTICE_MS } from "./game-room";
 
 vi.setConfig({ testTimeout: 20_000 });
 
@@ -152,7 +152,7 @@ describe("GameRoom, waiting (p03)", () => {
     room(waiting());
     expect(apiCall).not.toHaveBeenCalled();
     await tick();
-    expect(apiCall).toHaveBeenCalledWith("/api/games/g1?after=0", { method: "GET" });
+    expect(apiCall).toHaveBeenCalledWith("/api/games/g1?after=0", { method: "GET", signal: expect.any(AbortSignal) });
     await tick();
     expect(apiCall).toHaveBeenCalledTimes(2);
     apiCall.mockResolvedValue({ ok: true, data: active() });
@@ -292,7 +292,7 @@ describe("GameRoom, cancelling (p03.6-p03.8)", () => {
     const u = await openDialog();
     await u.click(screen.getByRole("button", { name: "Tak, anuluj zaproszenie" }));
     expect(screen.getByText("Przeciwnik zdążył dołączyć, zanim anulowałeś")).toBeTruthy();
-    expect(apiCall).toHaveBeenLastCalledWith("/api/games/g1?after=0", { method: "GET" });
+    expect(apiCall).toHaveBeenLastCalledWith("/api/games/g1?after=0", { method: "GET", signal: expect.any(AbortSignal) });
     expect(replace).not.toHaveBeenCalled();
   });
 
@@ -440,7 +440,7 @@ describe("GameRoom, play (p05, p06)", () => {
     room(theirTurn([112]));
     apiCall.mockResolvedValue({ ok: true, data: active({ turnSeat: 1, moveCount: 2, moves: [113] }) });
     await tick(PLAY_POLL_INTERVAL_MS);
-    expect(apiCall).toHaveBeenCalledWith("/api/games/g1?after=1", { method: "GET" });
+    expect(apiCall).toHaveBeenCalledWith("/api/games/g1?after=1", { method: "GET", signal: expect.any(AbortSignal) });
     expect(stonesOnBoard()).toHaveLength(2);
     expect(screen.getByText("Twój ruch (czarne)")).toBeTruthy();
     // Own turn: the clock runs for the player and the game can end without a move, so it is read too (#23).
@@ -590,6 +590,55 @@ describe("GameRoom, play (p05, p06)", () => {
       expect(screen.getByText(NOTICE)).toBeTruthy();
     });
 
+    it("reads again after an in-flight read and takes the time from that later read", async () => {
+      room(theirTurn([112]));
+      let first!: (value: unknown) => void;
+      let second!: (value: unknown) => void;
+      apiCall
+        .mockReturnValueOnce(new Promise((resolve) => (first = resolve)))
+        .mockReturnValueOnce(new Promise((resolve) => (second = resolve)));
+      await tick(PLAY_POLL_INTERVAL_MS);
+      expect(apiCall).toHaveBeenCalledTimes(1);
+      hide(true);
+      await tick(45_000);
+      await back();
+      // The read in flight is not repeated yet, and its answer (the time from before the sleep) says nothing.
+      expect(apiCall).toHaveBeenCalledTimes(1);
+      await act(async () => first({ ok: true, data: { ...withClock(600_000), moves: [], clock: { remainingMs: [600_000, 600_000], running: 2, now: 8_000_000 } } }));
+      expect(apiCall).toHaveBeenCalledTimes(2);
+      expect(screen.queryByText(/Wróciłeś/)).toBeNull();
+      await act(async () => second({ ok: true, data: { ...withClock(), moves: [] } }));
+      expect(screen.getByText(NOTICE)).toBeTruthy();
+      expect(screen.queryByText(/Twój zegar: 10:00/)).toBeNull();
+    });
+
+    it("does not multiply reads when the player comes back several times during one read", async () => {
+      room(theirTurn([112]));
+      let first!: (value: unknown) => void;
+      apiCall.mockReturnValueOnce(new Promise((resolve) => (first = resolve)));
+      await tick(PLAY_POLL_INTERVAL_MS);
+      for (let i = 0; i < 3; i++) {
+        hide(true);
+        await tick(1_000);
+        await back();
+      }
+      expect(apiCall).toHaveBeenCalledTimes(1);
+      apiCall.mockReturnValue(new Promise(() => {}));
+      await act(async () => first({ ok: true, data: withClock() }));
+      expect(apiCall).toHaveBeenCalledTimes(2);
+      await tick(0);
+      expect(apiCall).toHaveBeenCalledTimes(2);
+    });
+
+    it("gives every read a timeout so one hung request cannot stop the polling", async () => {
+      const timeout = vi.spyOn(AbortSignal, "timeout");
+      room(theirTurn([112]));
+      apiCall.mockResolvedValue({ ok: true, data: theirTurn([112]) });
+      await tick(PLAY_POLL_INTERVAL_MS);
+      expect(timeout).toHaveBeenCalledWith(POLL_TIMEOUT_MS);
+      timeout.mockRestore();
+    });
+
     it("is not shown while still waiting for the opponent to open the page", async () => {
       room(active({}, [true, false]));
       await away(45_000);
@@ -632,7 +681,7 @@ describe("GameRoom, play (p05, p06)", () => {
     expect(stonesOnBoard()).toHaveLength(1);
     apiCall.mockResolvedValue({ ok: true, data: active({ turnSeat: 1, moveCount: 2, moves: [113] }) });
     await tick(PLAY_POLL_INTERVAL_MS);
-    expect(apiCall).toHaveBeenLastCalledWith("/api/games/g1?after=1", { method: "GET" });
+    expect(apiCall).toHaveBeenLastCalledWith("/api/games/g1?after=1", { method: "GET", signal: expect.any(AbortSignal) });
     expect(stonesOnBoard()).toHaveLength(2);
   });
 
@@ -652,7 +701,7 @@ describe("GameRoom, play (p05, p06)", () => {
     await press(document.querySelector<HTMLElement>('[aria-label="Kolumna H, rząd 8, puste"]')!);
     await tick(0);
     expect(screen.getByText("Plansza była nieaktualna i została odświeżona. Spróbuj ponownie.")).toBeTruthy();
-    expect(apiCall).toHaveBeenLastCalledWith("/api/games/g1?after=0", { method: "GET" });
+    expect(apiCall).toHaveBeenLastCalledWith("/api/games/g1?after=0", { method: "GET", signal: expect.any(AbortSignal) });
     expect(stonesOnBoard()).toHaveLength(1);
   });
 });
