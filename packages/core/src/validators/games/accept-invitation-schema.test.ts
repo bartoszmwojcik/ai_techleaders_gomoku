@@ -32,4 +32,27 @@ describe("acceptInvitationSchema", () => {
     expect(acceptInvitationSchema.safeParse({ as: "admin" }).success).toBe(false);
     expect(acceptInvitationSchema.safeParse({}).success).toBe(false);
   });
+
+  it("normalizes a guest nickname and treats an empty one as none", () => {
+    const base = { as: "guest", acknowledgedGuestWarning: true } as const;
+    expect(acceptInvitationSchema.parse({ ...base, nickname: "  Ala  " }).nickname).toBe("Ala");
+    expect(acceptInvitationSchema.parse({ ...base, nickname: "  " }).nickname).toBeUndefined();
+  });
+
+  it("rejects an invalid guest nickname on that field", () => {
+    const result = acceptInvitationSchema.safeParse({
+      as: "guest",
+      acknowledgedGuestWarning: true,
+      nickname: "<b>",
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.path).toEqual(["nickname"]);
+  });
+
+  it("rejects a nickname for a signed-in user, on that field", () => {
+    const result = acceptInvitationSchema.safeParse({ as: "user", nickname: "Ala" });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.path).toEqual(["nickname"]);
+    expect(acceptInvitationSchema.safeParse({ as: "user", nickname: "  " }).success).toBe(true);
+  });
 });
