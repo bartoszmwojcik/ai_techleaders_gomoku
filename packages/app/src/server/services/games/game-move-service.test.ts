@@ -22,6 +22,9 @@ type Row = {
   white?: number[];
   moves?: number[];
   seat?: Seat;
+  clocks?: [number, number];
+  /** Epoch ms the turn started at; `null` = the clock has not started. */
+  started?: number | null;
 };
 
 function lockedRow(row: Row) {
@@ -34,6 +37,9 @@ function lockedRow(row: Row) {
     stones_white: bits(row.white ?? []),
     moves: Buffer.from(encodeMoves(moves)),
     seat: row.seat ?? 1,
+    clock_ms_1: row.clocks?.[0] ?? 600_000,
+    clock_ms_2: row.clocks?.[1] ?? 600_000,
+    turn_started_ms: row.started === undefined ? NOW.getTime() - 5_000 : row.started,
   };
 }
 
@@ -54,6 +60,7 @@ function setup(row: Row | null, options: { written?: { id: string }[]; settled?:
   const timeoutSettler = {
     settleFor: vi.fn(async () => undefined),
     settleGame: vi.fn(async () => options.settled ?? false),
+    settleExpired: vi.fn(async () => false),
   };
   const service = new GameMoveService({
     em: em as unknown as EntityManager,
@@ -79,7 +86,7 @@ describe("GameMoveService.play", () => {
     expect(em.transactional).toHaveBeenCalledOnce();
     expect(calls[0]!.sql).toContain("for no key update of g");
     expect(calls[0]!.params).toEqual(["game-1", "player-1"]);
-    expect(timeoutSettler.settleGame).toHaveBeenCalledWith("game-1", em);
+    expect(timeoutSettler.settleGame).toHaveBeenCalledWith("game-1", em, NOW);
     const update = calls[1]!;
     expect(update.sql).toContain("move_count = ?");
     expect(update.sql).not.toContain("finished");
@@ -87,17 +94,20 @@ describe("GameMoveService.play", () => {
       bits([cellOf(7, 7)]),
       bits([]),
       Buffer.from([cellOf(7, 7)]),
+      595_000,
+      600_000,
+      NOW,
       "game-1",
       0,
     ]);
     expect(calls).toHaveLength(2);
-    expect(gameService.stateOf).toHaveBeenCalledWith(em, P, "game-1", 0);
+    expect(gameService.stateOf).toHaveBeenCalledWith(em, P, "game-1", 0, NOW);
   });
 
   it("places white on the second move for the other seat", async () => {
     const { service, calls } = setup({ black_seat: 2, black: [112], moves: [112], seat: 1 });
     await service.play(P, "game-1", move(8, 7, 2));
-    expect(calls[1]!.params).toEqual([bits([112]), bits([cellOf(8, 7)]), Buffer.from([cellOf(8, 7)]), "game-1", 1]);
+    expect(calls[1]!.params).toEqual([bits([112]), bits([cellOf(8, 7)]), Buffer.from([cellOf(8, 7)]), 595_000, 600_000, NOW, "game-1", 1]);
   });
 
   it("finishes the game with a five, stamps the time and frees both slots", async () => {
@@ -113,6 +123,9 @@ describe("GameMoveService.play", () => {
       bits([...black, 109]),
       bits(white),
       Buffer.from([109]),
+      595_000,
+      600_000,
+      NOW,
       1,
       "five_in_row",
       NOW,
@@ -143,7 +156,7 @@ describe("GameMoveService.play", () => {
     await service.play(P, "game-1", move(last % 15, Math.floor(last / 15), 225));
 
     const finish = calls.find(({ sql }) => sql.includes("status = 'finished'"))!;
-    expect(finish.params.slice(3, 6)).toEqual([null, "draw", NOW]);
+    expect(finish.params.slice(6, 9)).toEqual([null, "draw", NOW]);
   });
 
   it("answers a retry of the same move with the state and writes nothing", async () => {
@@ -156,7 +169,7 @@ describe("GameMoveService.play", () => {
     await service.play(P, "game-1", move(7, 7, 1));
     expect(calls).toHaveLength(1);
     expect(timeoutSettler.settleGame).not.toHaveBeenCalled();
-    expect(gameService.stateOf).toHaveBeenCalledWith(expect.anything(), P, "game-1", 0);
+    expect(gameService.stateOf).toHaveBeenCalledWith(expect.anything(), P, "game-1", 0, NOW);
   });
 
   it("answers a retry of the move that ended the game, too", async () => {
@@ -187,6 +200,35 @@ describe("GameMoveService.play", () => {
     const { service, calls } = setup({}, { settled: true });
     expect(await code(service.play(P, "game-1", move(0, 0, 1)))).toMatchObject({ status: 409, code: "GAME_FINISHED" });
     expect(calls).toHaveLength(1);
+  });
+
+  it("charges the time of the turn to the mover only and restarts the turn", async () => {
+    const { service, calls } = setup({ clocks: [300_000, 200_000], started: NOW.getTime() - 12_345 });
+    await service.play(P, "game-1", move(7, 7, 1));
+    expect(calls[1]!.params.slice(3, 6)).toEqual([287_655, 200_000, NOW]);
+  });
+
+  it("charges seat 2 into its own clock", async () => {
+    const { service, calls } = setup({ black: [112], moves: [112], seat: 2, black_seat: 1, clocks: [400_000, 300_000] });
+    await service.play(P, "game-1", move(8, 7, 2));
+    expect(calls[1]!.params.slice(3, 6)).toEqual([400_000, 295_000, NOW]);
+  });
+
+  it("charges nothing for a negative elapsed time (clock set back)", async () => {
+    const { service, calls } = setup({ started: NOW.getTime() + 60_000 });
+    await service.play(P, "game-1", move(7, 7, 1));
+    expect(calls[1]!.params.slice(3, 6)).toEqual([600_000, 600_000, NOW]);
+  });
+
+  it("rejects a move before the clock started, whoever is to move", async () => {
+    for (const seat of [1, 2] as const) {
+      const { service, calls } = setup({ started: null, seat });
+      expect(await code(service.play(P, "game-1", move(7, 7, 1)))).toMatchObject({
+        status: 409,
+        code: "GAME_NOT_STARTED",
+      });
+      expect(calls).toHaveLength(1);
+    }
   });
 
   it("rejects a move in a finished game", async () => {

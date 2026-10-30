@@ -18,7 +18,7 @@ const globalForOrm = globalThis as typeof globalThis & {
 };
 
 function fakeOrm() {
-  const forkedEm = { id: "forked", count: vi.fn(async () => 0) };
+  const forkedEm = { id: "forked", count: vi.fn(async () => 0), execute: vi.fn(async () => []) };
   const orm = { em: { fork: vi.fn(() => forkedEm) } } as unknown as Orm;
   return { orm, forkedEm };
 }

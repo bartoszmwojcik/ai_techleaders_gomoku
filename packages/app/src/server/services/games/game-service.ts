@@ -8,7 +8,9 @@ import {
   READY_DEADLINE_MS,
   ValidationError,
   boardView,
+  clockView,
   type BoardView,
+  type ClockView,
   type EndReason,
   formatInvitationCode,
   invitationUrl,
@@ -74,6 +76,15 @@ const MARK_SEEN_SQL = `
   from games g
   where p.id = ? and g.id = p.game_id and p.seen_at is null and g.status in ('waiting', 'active')`;
 
+// Starts the clock once, when nobody else is missing a `seen_at` (#23 Q5); the caller counts
+// as seen because `MARK_SEEN_SQL` follows. Runs before `MARK_SEEN_SQL` so the locks are taken in
+// the order games, then game_players.
+const START_CLOCK_SQL = `
+  update games set turn_started_at = ?
+  where id = ? and status = 'active' and turn_started_at is null
+    and not exists (
+      select 1 from game_players p where p.game_id = games.id and p.seen_at is null and p.id <> ?)`;
+
 // Cancels a game only while it waits; the conditional update is what makes a race with a join safe.
 const CANCEL_WAITING_SQL = `
   update games set status = 'cancelled' where id = ? and status = 'waiting' returning id`;
@@ -90,6 +101,8 @@ export type GameParticipant = { playerId: string };
 
 export type GameState = BoardView & {
   status: GameStatus;
+  /** Time left to each player, computed by the server at the moment of the answer (#23). */
+  clock: ClockView;
   you: { seat: Seat; kind: ParticipantKind };
   players: {
     seat: Seat;
@@ -242,8 +255,10 @@ export class GameService {
   /**
    * State of a game for one of its participants (404 for anybody else). A read that also
    * does the lazy bookkeeping, in this order: an expired waiting game is cancelled (Q16),
-   * a game nobody opened within 15 minutes is cancelled (Q21), then the caller's `seen_at`
-   * is set once (Q20). Cancellation comes first, so a late first visit does not revive it.
+   * a game nobody opened within 15 minutes is cancelled (Q21), the clock starts when the
+   * caller is the last one to open the game (#23 Q5), a game whose time is up is finished
+   * (#23 Q3), then the caller's `seen_at` is set once (Q20). Cancellation comes first, so a
+   * late first visit does not revive it.
    */
   async getState(
     participant: GameParticipant,
@@ -270,16 +285,21 @@ export class GameService {
         [new Date(now.getTime() - READY_DEADLINE_MS), gameId],
         "run",
       );
+      await tx.execute(START_CLOCK_SQL, [now, gameId, participant.playerId], "run");
+      // Lazy loss on time (#23 Q3): takes the game lock only when the time is up, and before
+      // `seen_at` is written, which keeps the order games -> game_players.
+      await this.#timeoutSettler.settleExpired(gameId, tx, now);
       await tx.execute(MARK_SEEN_SQL, [now, participant.playerId], "run");
 
-      return this.stateOf(tx, participant, gameId, after);
+      return this.stateOf(tx, participant, gameId, after, now);
     });
   }
 
   /**
    * Builds the state of a game inside the caller's transaction, without bookkeeping:
    * `getState` calls it after the lazy updates, `GameMoveService` after a move.
-   * `after` is the number of moves the client already knows (#22 Q5).
+   * `after` is the number of moves the client already knows (#22 Q5); `now` is the instant
+   * the caller settled the clock at, so the clock view never disagrees with the status.
    * @throws AppError 400 when `after` is greater than the number of moves
    */
   async stateOf(
@@ -287,6 +307,7 @@ export class GameService {
     participant: GameParticipant,
     gameId: string,
     after = 0,
+    now: Date = this.#clock.now(),
   ): Promise<GameState> {
     const game = await tx.findOneOrFail(Game, gameId);
     if (after > game.moveCount) {
@@ -298,8 +319,29 @@ export class GameService {
       { populate: ["user"], orderBy: { seat: "asc" } },
     );
     const you = players.find(({ id }) => id === participant.playerId)!;
+    const board = boardView(
+      {
+        status: game.status as GameStatus,
+        blackSeat: game.blackSeat ?? null,
+        moveCount: game.moveCount,
+        stonesBlack: game.stonesBlack,
+        stonesWhite: game.stonesWhite,
+        moves: game.moves,
+        winnerSeat: game.winnerSeat ?? null,
+        endReason: (game.endReason ?? null) as EndReason | null,
+      },
+      after,
+    );
     const state: GameState = {
       status: game.status as GameStatus,
+      clock: clockView(
+        {
+          clockMs: [game.clockMs1, game.clockMs2],
+          turnStartedAtMs: game.turnStartedAt?.getTime() ?? null,
+          turnSeat: board.turnSeat,
+        },
+        now.getTime(),
+      ),
       you: { seat: you.seat as Seat, kind: you.kind as ParticipantKind },
       players: players.map((player) => ({
         seat: player.seat as Seat,
@@ -307,19 +349,7 @@ export class GameService {
         displayName: player.user?.displayName ?? null,
         seen: player.seenAt !== null,
       })),
-      ...boardView(
-        {
-          status: game.status as GameStatus,
-          blackSeat: game.blackSeat ?? null,
-          moveCount: game.moveCount,
-          stonesBlack: game.stonesBlack,
-          stonesWhite: game.stonesWhite,
-          moves: game.moves,
-          winnerSeat: game.winnerSeat ?? null,
-          endReason: (game.endReason ?? null) as EndReason | null,
-        },
-        after,
-      ),
+      ...board,
     };
     if (you.seat === 1 && game.status === "waiting") {
       const invitation = await tx.findOneOrFail(Invitation, { game: gameId });
