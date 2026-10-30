@@ -20,6 +20,12 @@ x-app: &app
     APP_ORIGIN: ${APP_ORIGIN:?set APP_ORIGIN in .env.production (e.g. https://gomoku.byst.re)}
     TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:?set TRUST_PROXY_HOPS in .env.production (e.g. 1)}
     CLIENT_IP_HEADER: ${CLIENT_IP_HEADER:-x-forwarded-for}
+    # Outgoing mail (#38): empty EMAIL_TRANSPORT means sending fails with 502; see README.md.
+    EMAIL_TRANSPORT: ${EMAIL_TRANSPORT:-}
+    BREVO_API_KEY: ${BREVO_API_KEY:-}
+    EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:-}
+    EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-}
+    EMAIL_DAILY_LIMIT: ${EMAIL_DAILY_LIMIT:-}
 
 services:
   postgres:
