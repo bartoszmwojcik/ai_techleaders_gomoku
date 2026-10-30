@@ -116,8 +116,20 @@ Specyfikacje (zatwierdzone): `.ai/specs/2026-10-29-game-reconnection.md`, `…-g
 Ręczny test po fazie: powrót do trwającej i zakończonej partii z drugiego urządzenia, poddanie (obie strony), rewanż z odwróconymi kolorami (konto–konto, konto–gość), wygaśnięcie i odrzucenie propozycji.
 
 #### 5A — Powrót po rozłączeniu (#24, jeden krótki PR)
-- [ ] 5.1 `core`: `shouldShowReturnNotice` i stała progu (granice, odwrócony czas) + hook `usePageVisibility` z odczytem natychmiastowym przy powrocie + komunikat „Wróciłeś do partii” (p05.10), znika po ruchu i po czasie (#24 kroki 1–3)
-- [ ] 5.2 Wejście do zakończonej partii: wynik i tryb tylko do odczytu (p06.5, p06.6); testy integracyjne: koniec przez czas w nieobecności, drugie urządzenie konta, gość z innej przeglądarki `404`, gość po 1 h `404` (#24 krok 4)
+- [x] 5.1 `core`: `shouldShowReturnNotice` i stała progu (granice, odwrócony czas) + hook `usePageVisibility` z odczytem natychmiastowym przy powrocie + komunikat „Wróciłeś do partii” (p05.10), znika po ruchu i po czasie (#24 kroki 1–3)
+- [x] 5.2 Wejście do zakończonej partii: wynik i tryb tylko do odczytu (p06.5, p06.6); testy integracyjne: koniec przez czas w nieobecności, drugie urządzenie konta, gość z innej przeglądarki `404`, gość po 1 h `404` (#24 krok 4)
+  - Zrobione 5.1–5.2: `shouldShowReturnNotice` + `RETURN_NOTICE_THRESHOLD_MS` (30 s) w `core`; `usePageVisibility`; odczyt przy każdym powrocie i komunikat p05.10 (tekst z serwera, 8 s lub następny ruch, bez komunikatu gdy partia się skończyła); p06.5 (zdanie „Powrót do zakończonej partii…” tylko po wejściu na zakończoną partię) i p06.6 (zdanie o 1 h zamiast ostrzeżenia gościa); scenariusze `tests/integration/game-reconnection-pages.test.ts`. Do `@gomoku/ui` doszedł eksport `./game/format-clock`. Odstępstwa od prototypu: komunikat p05.10 wchodzi w układ jak w prototypie (przesuwa treść poniżej), zegar w nim nie tyka.
+
+#### Ręczny test po fazie 5A (krok po kroku)
+
+Świeża baza jednorazowa i `npm run dev` (nie baza `gomoku`). Dwie przeglądarki / okna prywatne: konta `a`, `b`; trzecia przeglądarka jako „drugie urządzenie” konta `a`. Czas przesuwasz `psql` na bazie jednorazowej.
+1. `a` tworzy partię, `b` dołącza, obaj na `/games/{id}`. Karta `a` w tle przez ~20 s (inna karta), powrót: stan odświeża się od razu, **bez** komunikatu.
+2. To samo przez ponad 30 s: po powrocie „Wróciłeś do partii. Twój zegar: m:ss.” (wartość z serwera, nie tyka); znika po ~8 s albo po następnym ruchu.
+3. Odświeżenie strony w trakcie partii: bez komunikatu „Wróciłeś”, plansza i zegary z serwera.
+4. Czas w nieobecności: zamknij kartę `b`, `update games set turn_started_at = now() - interval '11 minutes' where id = '…'` (gracz na ruchu przegrywa); `b` otwiera partię ponownie: wynik („Wygrałeś/Przegrałeś — …czas”), plansza tylko do odczytu, „Powrót do zakończonej partii: wynik jest ten sam, ruch nie jest możliwy.”, bez „Wróciłeś do partii”.
+5. Drugie urządzenie konta `a` (trzecia przeglądarka, logowanie): ten sam wynik i tryb tylko do odczytu; po `update games set finished_at = now() - interval '3 hours'` nadal działa.
+6. Gość: partia z gościem (`Graj jako gość`), koniec partii; w tej samej przeglądarce wynik + „Wynik zobaczysz w tej przeglądarce do 1 godziny…”, bez ostrzeżenia „Grasz bez konta”. Inna przeglądarka / okno prywatne na ten sam adres: „Ta partia nie istnieje albo nie masz do niej dostępu” (status `404`). `update games set finished_at = now() - interval '61 minutes'` i odświeżenie: ten sam `404`.
+7. Oba motywy, 360 i 1280 px: komunikaty czytelne, bez poziomego przewijania.
 
 #### 5B — Poddanie (#87, jeden PR)
 - [ ] 5.3 Backend: `resolve` w `core`; `end_reason = resignation` już jest w `CHECK` z fazy 3 (zweryfikować, migracja tylko jeśli brakuje); `GameMoveService.resign` (wyścig z ruchem i z czasem, idempotencja, rollback przez `tx`) + route `POST /api/games/[id]/resign` (200/404/409/403, konto i gość) (#87 kroki 1–4)
