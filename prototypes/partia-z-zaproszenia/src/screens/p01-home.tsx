@@ -33,6 +33,8 @@ export function openGame(sim: Sim, game: Game) {
 }
 
 const PHASE_TEXT = { waiting: "Czeka na przeciwnika.", ready: "Gotowa do gry.", playing: "W toku." } as const;
+/** L27 (approved assumption): a guest sees "Masz partię" only for a waiting or an active game. */
+const GUEST_PHASE_TEXT = { waiting: "Czekasz na przeciwnika.", ready: "Partia w toku.", playing: "Partia w toku." } as const;
 
 export function P01Home() {
   const sim = useSim();
@@ -61,12 +63,13 @@ export function P01Home() {
     } else setFailure(result);
   }
 
-  let stateId = "p01.1";
+  let stateId = account ? "p01.1" : "p01.8"; // p01.8: the signed-out home page with "Zagraj ze znajomym bez konta"
   if (busy) stateId = "p01.2";
   else if (failure?.kind === "active") stateId = "p01.3";
   else if (failure?.kind === "limit") stateId = "p01.5";
   else if (failure?.kind === "server") stateId = "p01.6";
   else if (failure?.kind === "network") stateId = "p01.7";
+  if (guest && live) stateId = `${stateId} + p01.9`;
   useStateId("p01", stateId);
 
   const notice = sim.notice?.screen === "p01" ? sim.notice : null;
@@ -96,16 +99,15 @@ export function P01Home() {
           <section className="flex max-w-(--layout-width-narrow) flex-1 basis-(--layout-width-narrow) flex-col gap-stack">
             <h1 className="m-0 text-title font-strong tracking-(--letter-spacing-title)">Gomoku</h1>
             <p className="m-0 text-lead text-text-secondary">
-              {guest
-                ? "Grasz bez konta. Zaproszenia tworzą tylko zalogowani gracze."
-                : account
-                  ? "Zaproś znajomego do partii: wyślij mu link albo podyktuj kod."
-                  : "Zagraj w Gomoku z bliską osobą. Załóż konto, żeby tworzyć zaproszenia, albo wpisz kod od znajomego."}
+              {account
+                ? "Zaproś znajomego do partii: wyślij mu link albo podyktuj kod."
+                : "Zagraj w Gomoku z bliską osobą. Załóż konto albo zagraj bez konta: zaproś znajomego linkiem albo wpisz kod od niego."}
             </p>
             <p className="m-0 text-meta text-text-muted">Swobodne zasady · plansza 15×15 · 10 minut na gracza</p>
             {live && (
+              <div data-assumption={guest ? "L27" : undefined} data-testid="have-game">
               <Alert status="info" title="Masz partię">
-                {PHASE_TEXT[phaseOf(sim, live) as keyof typeof PHASE_TEXT]}{" "}
+                {(guest ? GUEST_PHASE_TEXT : PHASE_TEXT)[phaseOf(sim, live) as keyof typeof PHASE_TEXT]}{" "}
                 <TextLink
                   href="#wroc-do-partii"
                   onClick={(event) => {
@@ -116,6 +118,7 @@ export function P01Home() {
                   Wróć do partii
                 </TextLink>
               </Alert>
+              </div>
             )}
             {failure?.kind === "active" && (
               <Alert status="warning" title="Masz już partię">
@@ -147,9 +150,13 @@ export function P01Home() {
             )}
             <div className="flex flex-wrap items-center gap-group">
               {account && <Button loading={busy} onClick={onCreate}>{busy ? "Tworzenie zaproszenia…" : "Utwórz zaproszenie"}</Button>}
-              {!account && !guest && <Button onClick={() => showOutside("Załóż konto", "account")}>Załóż konto</Button>}
+              {!account && <Button onClick={() => showOutside("Załóż konto", "account")}>Załóż konto</Button>}
               <TextLink href="#p02" placement="standalone">Masz kod?</TextLink>
             </div>
+            {!account && (
+              // p01.8, L34 (resolved 2026-10-30): a secondary button, full width in the action column; "Załóż konto" stays primary.
+              <Button variant="secondary" className="w-full" data-assumption="L34" onClick={() => go("p08")}>Zagraj ze znajomym bez konta</Button>
+            )}
             {account && (
               <p className="m-0 text-meta text-text-muted">
                 Szukanie przeciwnika w lobby jest poza tym prototypem. <OutsideLink name="Lobby">Co to znaczy?</OutsideLink>

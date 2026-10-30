@@ -4,7 +4,7 @@ import { PageHeader } from "@gomoku/ui/game/page-header";
 import { TextLink } from "@gomoku/ui/game/text-link";
 import { useEffect, useState, type ReactNode } from "react";
 
-import { gameRoute, guestToken, showOutside, useSim, viewer, type GameScreenId, type OutsideKind } from "./sim";
+import { gameRoute, playerName, showOutside, tokenOf, useSim, viewer, type GameScreenId, type OutsideKind } from "./sim";
 
 declare global {
   interface Window {
@@ -105,11 +105,14 @@ export function SiteHeader() {
       </PageHeader>
     );
   }
-  if (guestToken(sim) !== null) {
-    // A guest has no account, no name and no history (BR-22, BR-24).
+  const token = tokenOf(sim);
+  const tokenGame = token ? sim.games.find((g) => g.id === token.game) : undefined;
+  if (token && tokenGame) {
+    // A guest has no account and no history, but has a nickname (BR-29). Logging in or registering is not blocked (decision 3).
     return (
       <PageHeader brand="Gomoku" homeHref="#p01">
-        <span className="text-body text-text-secondary">Gość (bez konta)</span>
+        <span className="text-body text-text-secondary" data-testid="guest-who">Grasz jako {playerName(tokenGame, token.side).label}</span>
+        <Button onClick={() => showOutside("Zaloguj się", "account")}>Zaloguj się</Button>
       </PageHeader>
     );
   }
@@ -120,9 +123,10 @@ export function SiteHeader() {
   );
 }
 
-export function Main({ children, narrow = false, state }: { children: ReactNode; narrow?: boolean; state?: string }) {
+/** `assumption` lists the working assumptions (L25–L35 of the map, section 0d) that this view shows, e.g. "L28, L30". */
+export function Main({ children, narrow = false, state, assumption }: { children: ReactNode; narrow?: boolean; state?: string; assumption?: string }) {
   return (
-    <main data-state={state} className="mx-auto flex max-w-(--layout-width-content) flex-col gap-section px-panel py-section">
+    <main data-state={state} data-assumption={assumption} className="mx-auto flex max-w-(--layout-width-content) flex-col gap-section px-panel py-section">
       <div className={narrow ? "flex max-w-sm flex-col gap-stack" : "flex flex-col gap-stack"}>{children}</div>
     </main>
   );

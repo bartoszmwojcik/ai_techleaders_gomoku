@@ -449,14 +449,14 @@ describe("p04 partia gotowa", () => {
     expect(inFrame().getByRole("grid", { name: "Plansza 15 na 15" })).toBeTruthy();
   });
 
-  it("p04.4: gość widzi stałe ostrzeżenie; przeciwnik gościa to „Gość”", () => {
+  it("p04.4: gość widzi stałe ostrzeżenie; przeciwnik gościa to „Gracz 2 (gość)”", () => {
     start();
     act(() => setupDemo("guest"));
     goTo("p04");
     expect(stateId()).toBe("p04.1 + p04.4");
     act(() => setRole("T1"));
     goTo("p03");
-    expect(inFrame().getByText(/Gość dołączył do partii/)).toBeTruthy();
+    expect(inFrame().getByText(/Gracz 2 \(gość\) dołączył do partii/)).toBeTruthy();
   });
 
   it("p04.3: po +15 min bez otwarcia partia jest anulowana, każdy czyta swoje zdanie (L06)", () => {

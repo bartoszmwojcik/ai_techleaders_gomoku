@@ -23,7 +23,7 @@ import {
 } from "../sim";
 import { useStateId } from "../stateId";
 import { GameGate, gateStateId, useGameBlock } from "./game-gate";
-import { COLOR_PLAYS, GameClock, playerNames } from "./play-shared";
+import { COLOR_PLAYS, GameClock, PlayerLabel, playerNames } from "./play-shared";
 
 // p06 Koniec partii `/games/{id}` (finished; map p06.1–p06.15, game-moves #22 K3 K4, clock #23 K3, reconnection #24 K3,
 // guest token #21 K8, resignation, rematch). The result is the server's; the board is read-only and the clocks stand still.
@@ -109,7 +109,7 @@ export function P06Result() {
   return (
     <>
       <SiteHeader />
-      <Main state={ids.join(" + ")}>
+      <Main state={ids.join(" + ")} assumption={guest || names.theirs.guest ? "L30" : undefined}>
         <h1 className="m-0 text-section font-strong">Koniec partii</h1>
         <div className="flex max-w-(--layout-width-board) flex-col gap-stack">
           {play.tokenNotice && (
@@ -123,7 +123,7 @@ export function P06Result() {
           {sim.refreshed && (
             <p role="status" className="m-0 text-body text-text-secondary" data-testid="reload-note">Powrót do zakończonej partii: wynik jest ten sam, ruch nie jest możliwy.</p>
           )}
-          <GameClock sim={sim} play={play} side={side === "creator" ? "opponent" : "creator"} name={names.theirs} activeLabel="" />
+          <GameClock sim={sim} play={play} side={side === "creator" ? "opponent" : "creator"} name={<PlayerLabel name={names.theirs} />} activeLabel="" />
           <Board
             label="Plansza 15 na 15"
             cellLabel={cellLabel}
@@ -132,7 +132,7 @@ export function P06Result() {
             winLine={result.line.length > 0 ? result.line : undefined}
             readOnly
           />
-          <GameClock sim={sim} play={play} side={side} name={`Ty (${names.mine})`} activeLabel="" />
+          <GameClock sim={sim} play={play} side={side} name={<PlayerLabel name={names.mine} you />} activeLabel="" />
           <p className="m-0 text-body text-text-secondary">Grałeś {COLOR_PLAYS[myColor]}.</p>
           {/* LUKA D06: no component for the actions after the end of a game; the rematch block is built from Alert and Button. */}
           <section aria-labelledby="rematch-h" className="flex flex-col gap-stack" data-testid="rematch-box">
@@ -160,7 +160,7 @@ export function P06Result() {
             )}
             {rematch.kind === "theirs" && (
               <>
-                <p role="status" className="m-0 text-body text-text-primary" data-testid="rm-status">{names.theirs} proponuje rewanż. Kolory zostaną zamienione.</p>
+                <p role="status" className="m-0 text-body text-text-primary" data-testid="rm-status">{names.theirs.label} proponuje rewanż. Kolory zostaną zamienione.</p>
                 {guestNote}
                 {conflict && (
                   <Alert status="warning" title="Masz już partię">

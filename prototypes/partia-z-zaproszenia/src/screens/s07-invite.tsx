@@ -1,17 +1,21 @@
 import { Alert } from "@gomoku/ui/game/alert";
 import { Button } from "@gomoku/ui/game/button";
+import { Field } from "@gomoku/ui/game/field";
+import { TextInput } from "@gomoku/ui/game/text-input";
 import { TextLink } from "@gomoku/ui/game/text-link";
 import { useState } from "react";
 
 import { go, Main, SiteHeader, useScreenEnter } from "../chrome";
 import {
   acceptInvite,
+  creatorName,
+  guestToken,
+  NICKNAME_ERROR,
   foreignInviteCode,
   findByCode,
   getSim,
   inviteView,
   liveGame,
-  nameOf,
   openInvite,
   prepareDemoInvitation,
   screenForGame,
@@ -40,10 +44,14 @@ export function S07Invite() {
   const sim = useSim();
   const [asking, setAsking] = useState(false);
   const [joining, setJoining] = useState<"user" | "guest" | "cancel" | null>(null);
+  const [nick, setNick] = useState("");
+  const [nickError, setNickError] = useState<keyof typeof NICKNAME_ERROR | null>(null);
 
   // Every visit starts at the first choice; the guest warning opens only after "Graj jako gość".
   useScreenEnter("s07", () => {
     setAsking(false);
+    setNick("");
+    setNickError(null);
     let current = getSim();
     if (current.inviteCode === null) {
       // Opened from the review bar without a link: show somebody else's waiting invitation, or prepare Ala_7's (a prototype shortcut).
@@ -61,24 +69,31 @@ export function S07Invite() {
 
   const view = inviteView(sim);
   const game = findByCode(sim, sim.inviteCode);
-  const stateId = view === "visitor" && asking ? "s07.2" : STATE_OF[view];
+  // s07.11: the invitation comes from a guest ("{nick} (gość)"); s07.10: the nickname was refused.
+  const fromGuest = game !== null && game.creator === "" && (view === "visitor" || view === "signed-in");
+  const stateId = [view === "visitor" && asking ? "s07.2" : STATE_OF[view], ...(nickError ? ["s07.10"] : []), ...(fromGuest ? ["s07.11"] : [])].join(" + ");
   useStateId("s07", stateId);
 
   async function join(as: "user" | "guest", cancelOwn = false) {
     if (joining) return;
     setJoining(cancelOwn ? "cancel" : as);
-    const result = await acceptInvite(as, cancelOwn);
+    setNickError(null);
+    const result = await acceptInvite(as, cancelOwn, nick);
     setJoining(null);
-    if (result.kind === "ok") go("p04");
+    if (result.kind === "nickname") {
+      // s07.10: the value stays in the field and the error sits next to it.
+      setNickError(result.error);
+      document.getElementById("s07-nick")?.focus();
+    } else if (result.kind === "ok") go("p04");
   }
 
   const mine = liveGame(sim);
-  const heading = view === "invalid" ? "To zaproszenie jest już nieważne" : view === "limit" ? "Zaproszenie do partii" : `${game ? nameOf(game.creator) : "Ala_7"} zaprasza Cię do partii Gomoku`;
+  const heading = view === "invalid" ? "To zaproszenie jest już nieważne" : view === "limit" ? "Zaproszenie do partii" : `${game ? creatorName(game) : "Ala_7"} zaprasza Cię do partii Gomoku`;
 
   return (
     <>
       <SiteHeader />
-      <Main narrow state={stateId}>
+      <Main narrow state={stateId} assumption={asking || fromGuest || view === "waiting-game" ? "L25, L35" : undefined}>
         <h1 className="m-0 text-section font-strong">{heading}</h1>
         {view !== "invalid" && view !== "limit" && (
           <p className="m-0 text-meta text-text-muted">Kod zaproszenia: {sim.inviteCode} (fikcyjny). Swobodne zasady · plansza 15×15 · 10 minut na gracza.</p>
@@ -97,9 +112,20 @@ export function S07Invite() {
 
         {view === "visitor" && asking && (
           <>
+            {/* D11: the sentence "Gość nie ma nazwy ani historii" is gone: a guest has a nickname now (BR-29). */}
             <Alert status="warning" title="Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii">
-              Stracisz do niej dostęp, a Twój zegar będzie biegł dalej. Gość nie ma nazwy ani historii.
+              Stracisz do niej dostęp, a Twój zegar będzie biegł dalej. Gość nie ma historii partii.
             </Alert>
+            {/* LUKA D08: Pole tekstowe has no counter and `maxLength` counts UTF-16 units, not code points; the server validates. LUKA D10: no pattern for a nickname + warning screen. */}
+            <Field
+              label="Twój nick"
+              requirement="(opcjonalnie)"
+              id="s07-nick"
+              hint={`Zostaw puste, a będziesz „Gracz 2”`}
+              error={nickError ? NICKNAME_ERROR[nickError] : undefined}
+            >
+              {(control) => <TextInput {...control} autoComplete="off" value={nick} onChange={(event) => setNick(event.target.value)} />}
+            </Field>
             <div className="flex flex-wrap gap-group">
               <Button loading={joining === "guest"} onClick={() => join("guest")}>{joining === "guest" ? "Dołączanie…" : "Rozumiem, graj jako gość"}</Button>
               <Button variant="secondary" disabled={joining !== null} onClick={() => setAsking(false)}>Wróć</Button>
@@ -152,7 +178,7 @@ export function S07Invite() {
           <>
             <Alert status="warning" title="Masz oczekującą partię">Żeby dołączyć do tej, musisz najpierw anulować swoją.</Alert>
             <div>
-              <Button loading={joining === "cancel"} onClick={() => join("user", true)}>{joining === "cancel" ? "Dołączanie…" : "Anuluj moją partię i dołącz"}</Button>
+              <Button loading={joining === "cancel"} onClick={() => join(guestToken(sim) !== null ? "guest" : "user", true)}>{joining === "cancel" ? "Dołączanie…" : "Anuluj moją partię i dołącz"}</Button>
             </div>
           </>
         )}

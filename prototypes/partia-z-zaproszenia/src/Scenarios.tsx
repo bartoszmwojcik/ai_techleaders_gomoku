@@ -83,9 +83,11 @@ const ROLES: readonly (readonly [RoleCode, string])[] = [
   ["T2", "T2 Kuba_P, e-mail niepotwierdzony, bez partii"],
   ["T3", "T3 Marek_Z, partia w toku (BR-13)"],
   ["T4", "T4 Ewa_B, własna oczekująca partia (Q18)"],
-  ["T5", "T5 gość partii (przeglądarka z tokenem)"],
+  ["T5", "T5 gość-dołączający bez nicku (Gracz 2), token po dołączeniu"],
   ["T6", "T6 niezalogowany"],
   ["T7", "T7 Zofia_K, spoza partii (404)"],
+  ["T9", "T9 gość-twórca (np. Ola), token miejsca 1 po utworzeniu"],
+  ["T10", "T10 gość-dołączający z nickiem (np. Piotr)"],
 ];
 
 const REMATCH_ACTIONS: readonly (readonly [OpponentRematch, string])[] = [
@@ -110,6 +112,18 @@ const STAGES: readonly (readonly [DemoStage, string])[] = [
   ["won", "p06.1: wygrana z linią (Ala_7)"],
   ["lost", "p06.2: przegrana (Ala_7)"],
   ["draw", "p06.4: remis (Ala_7)"],
+  ["g-waiting", "Q13 p03.11 + p03.12: Ola (gość) czeka z zaproszeniem (T9)"],
+  ["g-waiting-anon", "Q13 p03.11: gość bez nicku czeka („Gracz 1 (gość)”, T9)"],
+  ["g-ready-ola", "Q20 p04: Ola (gość) i Gracz 2 (gość), widok Oli"],
+  ["g-ready-g2", "Q20 p04.1 + p04.4: ci sami, widok Gracza 2 (T5)"],
+  ["g-play-ola", "Q20 p05.1: Ola (gość) czarne, widok Oli"],
+  ["g-play-g2", "Q20 p05.2: widok Gracza 2 (gość, T5)"],
+  ["g-play-nicks", "Q20 p05: Ola (gość) i Piotr (gość), widok Oli"],
+  ["g-play-long", "L30 p05: nick 24 znaki + (gość) wobec Piotr (gość)"],
+  ["g-won", "Q20 p06.1: Ola wygrała (gość–gość)"],
+  ["g-lost", "Q20 p06.2: Ola przegrała (gość–gość)"],
+  ["g-vs-account", "Q22 p04: Ola (gość) zaprosiła Kubę_P, widok Kuby"],
+  ["a-vs-guest-nick", "Q22 p04: Ala_7 gra z Piotr (gość), widok Ali"],
 ];
 
 export function Scenarios() {
@@ -147,6 +161,7 @@ export function Scenarios() {
         <Group title="Przeciwnik i anulowanie (Q02, Q09)">
           <Act id="sc-join-account" label="Przeciwnik dołącza z kontem" onClick={() => opponentJoins("account")} />
           <Act id="sc-join-guest" label="Przeciwnik dołącza jako gość" onClick={() => opponentJoins("guest")} />
+          <Act id="sc-join-guest-nick" label="Przeciwnik dołącza jako gość z nickiem „Piotr”" onClick={() => opponentJoins("guest", "Piotr")} />
           <Act id="sc-opens" label="Twórca otwiera stronę partii" onClick={() => creatorOpens()} />
           <Check id="sc-join-cancel" label="Przeciwnik dołączy, zanim potwierdzę anulowanie" flag="joinBeforeCancel" />
         </Group>
@@ -165,13 +180,26 @@ export function Scenarios() {
             Wynik „Utwórz zaproszenie”
             <select id="sc-create" value={s.createOutcome} onChange={(e) => patchScenario({ createOutcome: e.target.value as CreateOutcome })}>
               <option value="auto">Według konta i partii</option>
-              <option value="active">Masz już partię (p01.3)</option>
-              <option value="waiting">Masz oczekującą partię (p01.4)</option>
-              <option value="limit">Limit utworzeń (p01.5)</option>
-              <option value="server">Błąd serwera (p01.6)</option>
-              <option value="network">Brak sieci (p01.7)</option>
+              <option value="active">Masz już partię (p01.3 / p08.6)</option>
+              <option value="waiting">Masz oczekującą partię (p01.4 / p08.7)</option>
+              <option value="limit">Limit utworzeń (p01.5 / p08.4)</option>
+              <option value="server">Błąd serwera (p01.6 / p08.5)</option>
+              <option value="network">Brak sieci (p01.7 / p08.8)</option>
             </select>
           </label>
+        </Group>
+        <Group title="Gra bez konta (Q13–Q22)">
+          <p className="t-hint">Gość = przeglądarka z tokenem (T5 bez nicku, T9 twórca, T10 z nickiem). Nick wpisujesz na p08 i s07.2; skróty wyżej budują gotowe pary. Wynik „Utwórz zaproszenie” działa też na p08.</p>
+          <Act
+            id="sc-open-guest-invite"
+            label="Otwórz zaproszenie gościa-twórcy"
+            onClick={() => {
+              const guestGame = [...getSim().games].reverse().find((g) => g.creator === "");
+              if (!guestGame) return;
+              openInvite(guestGame.code);
+              go("s07");
+            }}
+          />
         </Group>
         <Group title="Kod i zaproszenie (Q10)">
           <Check id="sc-limit" label="Limit prób sprawdzania kodu (p02.3, s07.8)" flag="forceLimit" />
@@ -213,6 +241,7 @@ export function Scenarios() {
           <div className="row" style={{ flexWrap: "wrap" }}>
             <Act id="sc-other-browser" label="Gość w innej przeglądarce (p07.3)" onClick={() => setRole("T6")} />
             <Act id="sc-guest-browser" label="Wróć do przeglądarki gościa" onClick={() => setRole("T5")} />
+            <Act id="sc-creator-browser" label="Wróć do przeglądarki gościa-twórcy" onClick={() => setRole("T9")} />
           </div>
         </Group>
         <Group title="Zegar partii (Q03)">

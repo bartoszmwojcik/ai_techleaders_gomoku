@@ -5,7 +5,7 @@ import { TextLink } from "@gomoku/ui/game/text-link";
 import { useEffect, useState } from "react";
 
 import { Main, SiteHeader, useScreenEnter } from "../chrome";
-import { getSim, guestTokenValid, LOAD_DELAY, useSim, type GameScreenId, type Sim } from "../sim";
+import { anyGuestToken, getSim, guestTokenValid, LOAD_DELAY, tokenOf, useSim, type GameScreenId, type Sim } from "../sim";
 
 // p07 Brak dostępu i błędy `/games/{id}` (map p07.1–p07.4, plus p06.7 for a guest whose token ran out). Every game
 // screen shows one of these instead of its content when the page cannot be shown.
@@ -35,9 +35,12 @@ export function useGameBlock(screen: string, route: GameScreenId | null): GateKi
 export function gateStateId(sim: Sim, kind: Exclude<GateKind, "none">): string {
   if (kind === "loading") return "p07.1";
   if (kind === "db") return "p07.4";
-  if (sim.role === "T6" && sim.guestGame !== null) return "p07.3";
-  const expired = sim.role === "T5" && sim.guestGame !== null && sim.games.some((g) => g.id === sim.guestGame && !guestTokenValid(sim, g));
-  return expired ? "p06.7" : "p07.2";
+  if (sim.role === "T6" && anyGuestToken(sim)) return "p07.3";
+  const token = tokenOf(sim);
+  const game = token ? sim.games.find((g) => g.id === token.game) : undefined;
+  // L29 (resolved 2026-10-30): an expired guest invitation shows "Zaproszenie wygasło" for 1 h, then this 404.
+  if (game && !guestTokenValid(sim, game) && game.opponent !== null) return "p06.7";
+  return "p07.2";
 }
 
 export function GameGate({ kind }: { kind: Exclude<GateKind, "none"> }) {

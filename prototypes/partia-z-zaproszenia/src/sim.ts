@@ -4,7 +4,9 @@ import { useSyncExternalStore } from "react";
 // Simulated back end of the prototype: accounts, session, invitations, games and the outcomes the scenario
 // controls can force. Everything is in memory and fictitious; nothing here talks to a server (map section 3).
 // Rules come from .ai/specs/2026-10-24-game-invitations.md (#21): BR-01, BR-11, BR-13, BR-22, BR-26, Q3, Q5,
-// Q13, Q18, Q20, Q21.
+// Q13, Q18, Q20, Q21. Stage C (2026-10-30) adds play without an account: BR-29, D-27, a nickname for guests
+// (.ai/specs/2026-10-30-participant-nickname.md, E02-S07 #94) and a guest who creates a game
+// (.ai/specs/2026-10-30-guest-creates-game.md, E02-S08 #95).
 
 /** Cell index of a 1-based row and column. */
 const at = (row: number, column: number) => (row - 1) * 15 + (column - 1);
@@ -30,7 +32,19 @@ export const CODES = ["ABCD-EFGH", "JKMN-PQRS", "TUVW-XYZ2", "3456-789A", "BCDE-
 export const DEFAULT_CODE = CODES[0];
 
 /** The demo identities of map section 3 (T8, the operator, has no basis in the materials, L10). */
-export type RoleCode = "T1" | "T2" | "T3" | "T4" | "T5" | "T6" | "T7";
+export type RoleCode = "T1" | "T2" | "T3" | "T4" | "T5" | "T6" | "T7" | "T9" | "T10";
+
+/**
+ * The demo identities that are a guest browser (no account). T5 is a guest without a nickname ("Gracz 2"), T9 a guest who
+ * created a game ("Ola"), T10 a guest with a nickname ("Piotr"). The viewer is one person who plays all of them, so every
+ * guest identity holds its own token (a real browser holds exactly one).
+ */
+export type GuestRole = "T5" | "T9" | "T10";
+export const GUEST_ROLES: readonly GuestRole[] = ["T5", "T9", "T10"];
+export const isGuestRole = (role: RoleCode): role is GuestRole => (GUEST_ROLES as readonly string[]).includes(role);
+
+/** A guest token (cookie of one browser): the game it opens and the seat it holds (BR-29, guest Q6). */
+export type GuestToken = { game: number; side: "creator" | "opponent" };
 
 export type Account = { email: string; name: string; verified: boolean };
 
@@ -52,12 +66,18 @@ const ROLE_EMAIL: Partial<Record<RoleCode, string>> = {
   T7: "zofia@example.com",
 };
 
-export type Opponent = { kind: "account"; email: string } | { kind: "guest" };
+/** A guest may carry an explicit nickname; `null` means the default "Gracz {seat}", computed on read (nick Q1). */
+export type Opponent = { kind: "account"; email: string } | { kind: "guest"; nick: string | null };
 
 export type Game = {
   id: number;
   code: string;
+  /** E-mail of the creator's account, or "" when a guest created the game (BR-29, #95). */
   creator: string;
+  /** The nickname of a guest creator; `null` = default "Gracz 1". Always null for an account. */
+  creatorNick: string | null;
+  /** A rematch swaps the seats: the default names follow the seat, not the person (nick Architecture, #88). */
+  swapped: boolean;
   opponent: Opponent | null;
   /** Absolute times in ms. */
   createdAt: number;
@@ -139,11 +159,13 @@ export type Sim = {
   /** Time moved forward by scenario controls (ms). */
   clock: number;
   role: RoleCode;
-  /** The game the guest browser (T5) holds a token for (BR-22). */
-  guestGame: number | null;
+  /** The tokens of the guest identities (T5, T9, T10): the game each one can open (BR-29). */
+  tokens: Partial<Record<GuestRole, GuestToken>>;
   games: Game[];
   /** Timestamps of game creations per account (Q13). */
   creates: Record<string, number[]>;
+  /** Timestamps of game creations by guests: the limit is per client address, and the prototype has one address (#95 Q5). */
+  guestCreates: number[];
   failedLookups: number;
   /** The invitation code the invitation page shows. */
   inviteCode: string | null;
@@ -198,6 +220,8 @@ const seedGames = (): Game[] => [
     id: 1,
     code: "BCDE-FGHJ",
     creator: "marek@example.com",
+    creatorNick: null,
+    swapped: false,
     opponent: { kind: "account", email: "olek@example.com" },
     createdAt: NOW_BASE - 40 * MINUTE,
     expiresAt: NOW_BASE - 40 * MINUTE + INVITATION_TTL,
@@ -231,6 +255,8 @@ const seedGames = (): Game[] => [
     id: 2,
     code: "KMNP-QRST",
     creator: "ewa@example.com",
+    creatorNick: null,
+    swapped: false,
     opponent: null,
     createdAt: NOW_BASE - 30 * MINUTE,
     expiresAt: NOW_BASE - 30 * MINUTE + INVITATION_TTL,
@@ -245,9 +271,10 @@ const seedGames = (): Game[] => [
 const fresh = (): Sim => ({
   clock: 0,
   role: "T1",
-  guestGame: null,
+  tokens: {},
   games: seedGames(),
   creates: {},
+  guestCreates: [],
   failedLookups: 0,
   inviteCode: null,
   scenario: defaultScenario(),
@@ -308,14 +335,69 @@ export function viewer(sim: Sim): Account | null {
   return email ? (ACCOUNTS[email] ?? null) : null;
 }
 
-/** This browser holds a guest token for a game (T5 after joining as a guest, BR-22). */
-export const guestToken = (sim: Sim): number | null => (sim.role === "T5" ? sim.guestGame : null);
+/** The token of the browser being viewed (T5, T9 or T10 once they hold one, BR-29), or null. */
+export const tokenOf = (sim: Sim): GuestToken | null => (isGuestRole(sim.role) ? (sim.tokens[sim.role] ?? null) : null);
+
+/** The game this browser holds a guest token for, or null. */
+export const guestToken = (sim: Sim): number | null => tokenOf(sim)?.game ?? null;
+
+/** Some guest browser holds a token: another browser (T6) would be refused with 404 (p07.3). */
+export const anyGuestToken = (sim: Sim): boolean => GUEST_ROLES.some((role) => sim.tokens[role] !== undefined);
 
 /** Waiting for the game page after a link (p07.1) takes this long. */
 export const LOAD_DELAY = typeof location !== "undefined" && location.search.includes("fast") ? 800 : 1500;
 
 export const nameOf = (email: string) => ACCOUNTS[email]?.name ?? email;
-export const opponentName = (g: Game): string => (g.opponent === null ? "" : g.opponent.kind === "guest" ? "Gość" : nameOf(g.opponent.email));
+
+// ---- nicknames (E02-S07, #94) ----------------------------------------------------------------------------------
+
+export const NICKNAME_MAX = 24;
+export type NicknameCheck = { ok: true; nick: string | null } | { ok: false; error: "length" | "chars" };
+export const NICKNAME_ERROR = {
+  length: `Nick może mieć najwyżej ${NICKNAME_MAX} znaków.`,
+  chars: "Nick może zawierać tylko litery, cyfry, spacje oraz znaki _ i -.",
+} as const;
+
+/**
+ * The server's normalisation and validation of a nickname (nick Q2, `nicknameSchema`): NFC, control characters to spaces,
+ * format characters removed (not ZWNJ/ZWJ), all Zs collapsed to one space, trimmed, length in code points 1–24, only
+ * letters, marks, digits, space, `_` and `-`. An empty result means "use the default name" (`nick: null`).
+ */
+export function checkNickname(raw: string): NicknameCheck {
+  const normalized = raw
+    .normalize("NFC")
+    .replace(/\p{Cc}/gu, " ")
+    .replace(/(?![\u200C\u200D])\p{Cf}/gu, "")
+    .replace(/\p{Zs}+/gu, " ")
+    .trim();
+  if (normalized === "") return { ok: true, nick: null };
+  if (Array.from(normalized).length > NICKNAME_MAX) return { ok: false, error: "length" };
+  if (!/^[\p{L}\p{M}\p{N} _-]+$/u.test(normalized)) return { ok: false, error: "chars" };
+  return { ok: true, nick: normalized };
+}
+
+/** How a player is named on the screens: the nickname or the account name, and whether "(gość)" follows (nick Q3). */
+export type PlayerName = { nick: string; guest: boolean; label: string };
+
+/** Seat number of a side: the creator holds seat 1, the joiner seat 2; a rematch swaps them (nick Q1, #88). */
+export const seatOf = (g: Game, side: "creator" | "opponent"): 1 | 2 => ((side === "creator") !== g.swapped ? 1 : 2);
+
+/** The name of a side. The "(gość)" suffix is added by the UI from the kind, never stored (nick Proposed Solution). */
+export function playerName(g: Game, side: "creator" | "opponent"): PlayerName {
+  const known = (nick: string): PlayerName => ({ nick, guest: false, label: nick });
+  const guest = (nick: string | null): PlayerName => {
+    const name = nick ?? `Gracz ${seatOf(g, side)}`;
+    return { nick: name, guest: true, label: `${name} (gość)` };
+  };
+  if (side === "creator") return g.creator === "" ? guest(g.creatorNick) : known(nameOf(g.creator));
+  if (g.opponent === null) return known("");
+  return g.opponent.kind === "guest" ? guest(g.opponent.nick) : known(nameOf(g.opponent.email));
+}
+
+/** Full label of the opponent ("Gracz 2 (gość)", "Kuba_P"), empty before somebody joins. */
+export const opponentName = (g: Game): string => playerName(g, "opponent").label;
+/** Full label of the creator. */
+export const creatorName = (g: Game): string => playerName(g, "creator").label;
 
 // ---- games ------------------------------------------------------------------------------------------
 
@@ -334,7 +416,8 @@ export function sideOf(sim: Sim, g: Game): Side | null {
   const account = viewer(sim);
   if (account && g.creator === account.email) return "creator";
   if (account && g.opponent?.kind === "account" && g.opponent.email === account.email) return "opponent";
-  if (g.opponent?.kind === "guest" && guestToken(sim) === g.id) return guestTokenValid(sim, g) ? "opponent" : null;
+  const token = tokenOf(sim);
+  if (token && token.game === g.id) return guestTokenValid(sim, g) ? token.side : null;
   return null;
 }
 
@@ -351,8 +434,14 @@ export function accessibleGame(sim: Sim): Game | null {
   return game && phaseOf(sim, game) !== "cancelled" ? game : null;
 }
 
-/** A guest sees the result until 1 h after the end, then the token stops working (BR-22, #21 K8, p06.7). */
-export const guestTokenValid = (sim: Sim, g: Game): boolean => g.play?.finishedAt == null || nowMs(sim) - g.play.finishedAt < GUEST_RESULT_TTL;
+/**
+ * A guest token works while the invitation is valid and for 1 h after it expired (L29, resolved 2026-10-30: the guest
+ * creator sees "Zaproszenie wygasło" like an account, then a 404), and after the end of a game for 1 h (BR-29, #21 K8, p06.7).
+ */
+export function guestTokenValid(sim: Sim, g: Game): boolean {
+  if (g.play?.finishedAt != null) return nowMs(sim) - g.play.finishedAt < GUEST_RESULT_TTL;
+  return g.opponent !== null || nowMs(sim) < g.expiresAt + GUEST_RESULT_TTL;
+}
 
 export type GameScreenId = "p03" | "p04" | "p05" | "p06";
 
@@ -404,7 +493,9 @@ export function inviteView(sim: Sim): InviteView {
     if (!mine) return "signed-in";
     return phaseOf(sim, mine) === "waiting" ? "waiting-game" : "other-game";
   }
-  return mine ? "other-game" : "visitor";
+  // L35: a guest with a waiting game may cancel it and join, like an account; with an active game only go back to it.
+  if (mine) return phaseOf(sim, mine) === "waiting" ? "waiting-game" : "other-game";
+  return "visitor";
 }
 
 /** A looked-up code that points to no waiting game counts as a failed lookup (Q13). */
@@ -455,13 +546,16 @@ function nextCode(sim: Sim): string {
   return CODES.find((code) => !used.has(code)) ?? `Z${String(sim.seq).padStart(3, "0")}-AAAA`.replace("Z", "Q");
 }
 
-function addGame(creator: string): Game {
+/** A new waiting game. `creator` is the account e-mail, or "" for a guest (then `nick` is the guest's nickname). */
+function addGame(creator: string, nick: string | null = null): Game {
   const sim = state;
   const now = nowMs(sim);
   const game: Game = {
     id: sim.seq,
     code: nextCode(sim),
     creator,
+    creatorNick: nick,
+    swapped: false,
     opponent: null,
     createdAt: now,
     expiresAt: now + INVITATION_TTL,
@@ -471,7 +565,13 @@ function addGame(creator: string): Game {
     cancelled: false,
     play: null,
   };
-  set({ games: [...sim.games, game], seq: sim.seq + 1, creates: { ...sim.creates, [creator]: [...(sim.creates[creator] ?? []), now] } });
+  set({
+    games: [...sim.games, game],
+    seq: sim.seq + 1,
+    ...(creator === ""
+      ? { guestCreates: [...sim.guestCreates, now] }
+      : { creates: { ...sim.creates, [creator]: [...(sim.creates[creator] ?? []), now] } }),
+  });
   return game;
 }
 
@@ -496,44 +596,100 @@ export async function createGame(): Promise<CreateResult> {
   return { kind: "ok", gameId: addGame(account.email).id };
 }
 
-export type AcceptResult = { kind: "ok" } | { kind: "invalid" };
+export type GuestCreateResult =
+  | { kind: "ok"; gameId: number }
+  | { kind: "nickname"; error: "length" | "chars" } // p08.2: 400 VALIDATION, fieldErrors.nickname
+  | { kind: "limit"; minutes: number } // p08.4: 429 + Retry-After
+  | { kind: "server" } // p08.5: 500, also when the client address is unknown (fail closed)
+  | { kind: "network" } // p08.8
+  | { kind: "active"; gameId: number | null } // p08.6: 409 ACTIVE_GAME_EXISTS
+  | { kind: "waiting"; gameId: number }; // p08.7: 409 OWN_WAITING_GAME
 
-/** "Dołącz do partii", "Rozumiem, graj jako gość", "Anuluj moją partię i dołącz" (Q18). */
-export async function acceptInvite(as: "user" | "guest", cancelOwnWaiting = false): Promise<AcceptResult> {
+/**
+ * "Rozumiem, utwórz zaproszenie" on p08 (`POST /api/games` without a session, `acknowledgedGuestWarning: true`).
+ * Order of the checks: validation of the nickname, the limit per client address, then one game per browser (BR-13 by token,
+ * guest Q7). `cancelOwnWaiting` is `cancelOwnWaitingGame`: it cancels the waiting game and creates the new one together.
+ * The browser being viewed becomes the creator (T9 unless it is already a guest identity). Scenario control "Wynik
+ * Utwórz zaproszenie" can force an outcome, as for accounts (Q15, Q16).
+ */
+export async function createGuestGame(rawNickname: string, cancelOwnWaiting = false): Promise<GuestCreateResult> {
+  await wait(LATENCY);
+  const sim = state;
+  const forced = sim.scenario.createOutcome;
+  if (viewer(sim)) return { kind: "server" }; // accounts create from the home page; the API ignores guest fields for them
+  if (forced === "network") return { kind: "network" };
+  if (forced === "server") return { kind: "server" };
+  const check = checkNickname(rawNickname);
+  if (!check.ok) return { kind: "nickname", error: check.error };
+  const recent = sim.guestCreates.filter((at) => nowMs(sim) - at < HOUR);
+  if (forced === "limit" || recent.length >= CREATE_LIMIT) {
+    const minutes = recent.length >= CREATE_LIMIT ? Math.max(1, Math.ceil((recent[0]! + HOUR - nowMs(sim)) / MINUTE)) : 23;
+    return { kind: "limit", minutes };
+  }
+  const mine = liveGame(sim);
+  const isWaiting = mine !== null && phaseOf(sim, mine) === "waiting";
+  if (forced === "active" || (mine && !isWaiting)) return { kind: "active", gameId: mine?.id ?? null };
+  if (isWaiting && !cancelOwnWaiting) return { kind: "waiting", gameId: mine.id };
+  if (isWaiting) set({ games: sim.games.map((other) => (other.id === mine.id ? { ...other, cancelled: true } : other)) });
+  const game = addGame("", check.nick);
+  const role: GuestRole = isGuestRole(sim.role) ? sim.role : "T9";
+  set((current) => ({ role, tokens: { ...current.tokens, [role]: { game: game.id, side: "creator" as const } } }));
+  // Forced "waiting" without a game of his own: the browser now holds a waiting game, so the 409 is real (p08.7).
+  return !isWaiting && forced === "waiting" ? { kind: "waiting", gameId: game.id } : { kind: "ok", gameId: game.id };
+}
+
+export type AcceptResult = { kind: "ok" } | { kind: "invalid" } | { kind: "nickname"; error: "length" | "chars" };
+
+/**
+ * "Dołącz do partii", "Rozumiem, graj jako gość", "Anuluj moją partię i dołącz" (Q18). A guest may give a nickname
+ * (s07.2); a wrong one is `400 VALIDATION` and nothing changes (s07.10). A guest who cancels his own waiting game and joins
+ * keeps the nickname of that game (L35, prototype assumption).
+ */
+export async function acceptInvite(as: "user" | "guest", cancelOwnWaiting = false, rawNickname = ""): Promise<AcceptResult> {
   await wait(LATENCY);
   const sim = state;
   const g = findByCode(sim, sim.inviteCode);
   if (!g || phaseOf(sim, g) !== "waiting") return { kind: "invalid" };
   const account = viewer(sim);
   if (as === "user" && !account) return { kind: "invalid" };
+  const own = cancelOwnWaiting ? liveGame(sim) : null;
+  const check = as === "guest" && own === null ? checkNickname(rawNickname) : null;
+  if (check && !check.ok) return { kind: "nickname", error: check.error };
+  const nick = own ? (own.creator === "" ? own.creatorNick : null) : (check?.ok ? check.nick : null);
   const now = nowMs(sim);
   const games = sim.games.map((other) => {
-    if (cancelOwnWaiting && account && other.creator === account.email && phaseOf(sim, other) === "waiting") return { ...other, cancelled: true };
+    if (own && other.id === own.id && phaseOf(sim, other) === "waiting") return { ...other, cancelled: true };
     if (other.id !== g.id) return other;
     return {
       ...other,
-      opponent: (as === "guest" ? { kind: "guest" } : { kind: "account", email: account!.email }) as Opponent,
+      opponent: (as === "guest" ? { kind: "guest", nick } : { kind: "account", email: account!.email }) as Opponent,
       joinedAt: now,
       seenCreator: false,
       sawJoin: false,
     };
   });
-  // A guest browser is the T5 identity: it now holds the token of this game.
-  set(as === "guest" ? { games, role: "T5", guestGame: g.id } : { games });
+  if (as !== "guest") {
+    set({ games });
+    return { kind: "ok" };
+  }
+  // The browser becomes a guest identity that holds the token of this game: T5 without a nickname, T10 with one.
+  const role: GuestRole = isGuestRole(sim.role) ? sim.role : nick === null ? "T5" : "T10";
+  set({ games, role, tokens: { ...sim.tokens, [role]: { game: g.id, side: "opponent" } } });
   return { kind: "ok" };
 }
 
 /** The opponent joins a waiting game while the creator watches (scenario control). */
-export function opponentJoins(kind: "account" | "guest") {
+export function opponentJoins(kind: "account" | "guest", nick: string | null = null) {
   const sim = state;
   const g = liveGame(sim);
   if (!g || phaseOf(sim, g) !== "waiting" || sideOf(sim, g) !== "creator") return;
   const email = g.creator === "kuba@example.com" ? "ala@example.com" : "kuba@example.com";
-  const opponent: Opponent = kind === "guest" ? { kind: "guest" } : { kind: "account", email };
+  const opponent: Opponent = kind === "guest" ? { kind: "guest", nick } : { kind: "account", email };
+  // The joining guest is another browser: T5 without a nickname, T10 with one (never the identity being viewed).
+  const role = (nick === null ? (["T5", "T10"] as const) : (["T10", "T5"] as const)).find((candidate) => candidate !== sim.role)!;
   set({
     games: sim.games.map((other) => (other.id === g.id ? { ...other, opponent, joinedAt: nowMs(sim), seenCreator: false, sawJoin: false } : other)),
-    // The guest browser of this demo is T5; the token belongs to this game.
-    ...(kind === "guest" ? { guestGame: g.id } : {}),
+    ...(kind === "guest" ? { tokens: { ...sim.tokens, [role]: { game: g.id, side: "opponent" as const } } } : {}),
   });
 }
 
@@ -940,9 +1096,11 @@ export type RematchAccept = { kind: "ok"; gameId: number } | { kind: "conflict" 
 function createRematch(old: Game): Game {
   const sim = state;
   const now = nowMs(sim);
-  const guest = old.opponent?.kind === "guest";
+  const heldByViewer = guestToken(sim) === old.id;
   const game: Game = {
     ...old,
+    // The seats swap with the colours: a default name follows the seat, an explicit nickname stays (nick Architecture, #88).
+    swapped: !old.swapped,
     id: sim.seq,
     code: nextCode(sim),
     createdAt: now,
@@ -951,9 +1109,11 @@ function createRematch(old: Game): Game {
     seenCreator: true,
     sawJoin: true,
     cancelled: false,
-    play: initialPlay(otherColor(old.play!.creatorColor), true, guest && sim.role === "T5", sim),
+    play: initialPlay(otherColor(old.play!.creatorColor), true, heldByViewer, sim),
   };
-  set({ games: [...sim.games, game], seq: sim.seq + 1, ...(guest ? { guestGame: game.id } : {}), refreshed: false });
+  // Every guest of the old game gets a new token for the new game, in the same browser (L24, rematch Q5).
+  const tokens = Object.fromEntries(Object.entries(sim.tokens).map(([role, token]) => [role, token.game === old.id ? { ...token, game: game.id } : token]));
+  set({ games: [...sim.games, game], seq: sim.seq + 1, tokens, refreshed: false });
   return game;
 }
 
@@ -1031,6 +1191,8 @@ export function prepareDemoInvitation(onlyIfNone = false) {
     id: sim.seq,
     code: nextCode(sim),
     creator: "ala@example.com",
+    creatorNick: null,
+    swapped: false,
     opponent: null,
     createdAt: now,
     expiresAt: now + INVITATION_TTL,
@@ -1043,12 +1205,37 @@ export function prepareDemoInvitation(onlyIfNone = false) {
   set({ games: [...sim.games, game], seq: sim.seq + 1 });
 }
 
-export type DemoStage = "waiting" | "joined" | "opponent-waits" | "ready" | "guest" | "play-black" | "play-white" | "play-guest" | "won" | "lost" | "draw";
+export type DemoStage =
+  | "waiting"
+  | "joined"
+  | "opponent-waits"
+  | "ready"
+  | "guest"
+  | "play-black"
+  | "play-white"
+  | "play-guest"
+  | "won"
+  | "lost"
+  | "draw"
+  // Stage C (play without an account, 2026-10-30). "Ola" = T9, "Piotr" = T10, "Gracz 2" = T5.
+  | "g-waiting" // p03.11 + p03.12: Ola (gość) waits with the invitation
+  | "g-waiting-anon" // the same without a nickname: "Gracz 1 (gość)"
+  | "g-ready-ola" // p04: Ola (gość) and Gracz 2 (gość), view of Ola
+  | "g-ready-g2" // p04.1 + p04.4: the same, view of Gracz 2
+  | "g-play-ola" // p05.1: Ola (gość) vs Gracz 2 (gość), Ola black
+  | "g-play-g2" // p05.2: the same from Gracz 2
+  | "g-play-nicks" // Ola (gość) vs Piotr (gość)
+  | "g-play-long" // a 24-character nickname against Piotr (gość)
+  | "g-won" // p06.1: Ola won
+  | "g-lost" // p06.2: Ola lost
+  | "g-vs-account" // Ola (gość) invited Kuba_P: view of Kuba_P, p04
+  | "a-vs-guest-nick" // Ala_7 against Piotr (gość): view of Ala_7, p04
 
 /** Shortcuts for reviewers: rebuilds the simulation at a given point of the flow (prototype control, not a product feature). Returns the screen to show. */
 export function setupDemo(stage: DemoStage): GameScreenId {
   state = { ...fresh(), epoch: state.epoch + 1, width: state.width };
   emit();
+  if (stage.startsWith("g-") || stage === "a-vs-guest-nick") return setupGuestDemo(stage);
   set({ role: "T1" });
   const game = addGame("ala@example.com");
   if (stage === "waiting") return "p03";
@@ -1065,4 +1252,39 @@ export function setupDemo(stage: DemoStage): GameScreenId {
   if (stage === "play-guest" || stage === "play-black" || stage === "play-white") return "p05";
   if (stage === "won" || stage === "lost" || stage === "draw") return "p06";
   return "p04";
+}
+
+/** A nickname of exactly 24 characters, the longest allowed: for the narrow-screen checks (L30). */
+export const LONG_NICKNAME = "Maximilian_Bartholomew_1";
+
+/** Stage C shortcuts: a guest creator (Ola, T9), guest joiners (Gracz 2 = T5, Piotr = T10) and the mixed pairs (Q13, Q20–Q22). */
+function setupGuestDemo(stage: DemoStage): GameScreenId {
+  const long = stage === "g-play-long" ? LONG_NICKNAME : null;
+  if (stage === "a-vs-guest-nick") {
+    set({ role: "T1" });
+    const game = addGame("ala@example.com");
+    opponentJoins("guest", "Piotr");
+    creatorOpens(game.id);
+    return "p04";
+  }
+  set({ role: "T9" });
+  const nick = stage === "g-waiting-anon" ? null : (long ?? "Ola");
+  const game = addGame("", nick);
+  set((s) => ({ tokens: { ...s.tokens, T9: { game: game.id, side: "creator" } } }));
+  if (stage === "g-waiting" || stage === "g-waiting-anon") return "p03";
+  const withNick = stage === "g-play-nicks" || stage === "g-play-long";
+  if (stage === "g-vs-account") opponentJoins("account");
+  else opponentJoins("guest", withNick ? "Piotr" : null);
+  creatorOpens(game.id);
+  if (stage === "g-vs-account") {
+    set({ role: "T2" });
+    return "p04";
+  }
+  if (stage === "g-ready-g2") set({ role: "T5" });
+  if (stage === "g-ready-ola" || stage === "g-ready-g2") return "p04";
+  startPlay(game.id, "black");
+  if (stage === "g-play-g2") set({ role: "T5" });
+  if (stage === "g-won") showPosition("win");
+  if (stage === "g-lost") showPosition("loss");
+  return stage === "g-won" || stage === "g-lost" ? "p06" : "p05";
 }
