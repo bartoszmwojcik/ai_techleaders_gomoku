@@ -1,5 +1,6 @@
 "use client";
 
+import { isReturnNoticeFresh } from "@gomoku/core/games/return-notice";
 import { Alert } from "@gomoku/ui/game/alert";
 import { Button } from "@gomoku/ui/game/button";
 import { ConfirmDialog } from "@gomoku/ui/game/confirm-dialog";
@@ -151,10 +152,11 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
       applyState(result.data, after);
       // A read that started before the return may carry the time from before the sleep: it waits for the next one.
       if (returnedAt.current !== null && startedAt >= returnedAt.current) {
+        const fresh = isReturnNoticeFresh({ returnedAtMs: returnedAt.current, readAtMs: Date.now() });
         returnedAt.current = null;
         const merged = latest.current;
         // A game that ended while the player was away shows its result instead (p06.3).
-        if (merged.status === "active" && merged.players.every((player) => player.seen)) {
+        if (fresh && merged.status === "active" && merged.players.every((player) => player.seen)) {
           const left = merged.clock.remainingMs[merged.you.seat - 1]!;
           setNotice({ text: `Wróciłeś do partii. Twój zegar: ${formatClock(left)}.`, moveCount: merged.moveCount });
         }

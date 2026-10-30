@@ -630,6 +630,32 @@ describe("GameRoom, play (p05, p06)", () => {
       expect(apiCall).toHaveBeenCalledTimes(2);
     });
 
+    it("shows the notice for a read that ends within 10 s of the return", async () => {
+      room(theirTurn([112]));
+      await away(45_000);
+      apiCall.mockResolvedValue(failure("network"));
+      await back();
+      await tick(PLAY_POLL_INTERVAL_MS * 3);
+      apiCall.mockResolvedValue({ ok: true, data: withClock() });
+      await tick(PLAY_POLL_INTERVAL_MS);
+      expect(screen.getByText(NOTICE)).toBeTruthy();
+    });
+
+    it("drops the notice when the first successful read comes more than 10 s after the return", async () => {
+      room(theirTurn([112]));
+      await away(45_000);
+      apiCall.mockResolvedValue(failure("network"));
+      await back();
+      await tick(PLAY_POLL_INTERVAL_MS * 6);
+      expect(screen.getByText(/Nie udało się sprawdzić/)).toBeTruthy();
+      apiCall.mockResolvedValue({ ok: true, data: withClock() });
+      await tick(PLAY_POLL_INTERVAL_MS);
+      expect(screen.queryByText(/Wróciłeś/)).toBeNull();
+      // And it is not kept for later: the flag was cleared without showing.
+      await tick(PLAY_POLL_INTERVAL_MS * 2);
+      expect(screen.queryByText(/Wróciłeś/)).toBeNull();
+    });
+
     it("gives every read a timeout so one hung request cannot stop the polling", async () => {
       const timeout = vi.spyOn(AbortSignal, "timeout");
       room(theirTurn([112]));
