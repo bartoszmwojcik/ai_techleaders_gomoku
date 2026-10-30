@@ -34,6 +34,7 @@ import type { InvitationCodes } from "./invitation-codes";
 import { GUEST_TOKEN_VALID_SQL } from "./guest-token";
 import {
   CANCEL_NOT_STARTED_OF_GAME,
+  CANCEL_WAITING_GAME_SQL,
   EXPIRE_WAITING_OF_GAME,
   closeStaleSlotsOfUser,
 } from "./lazy-closing";
@@ -85,10 +86,6 @@ const START_CLOCK_SQL = `
     and not exists (
       select 1 from game_players p where p.game_id = games.id and p.seen_at is null and p.id <> ?)`;
 
-// Cancels a game only while it waits; the conditional update is what makes a race with a join safe.
-const CANCEL_WAITING_SQL = `
-  update games set status = 'cancelled' where id = ? and status = 'waiting' returning id`;
-
 const RELEASE_SLOTS_SQL = `update game_players set is_active = false where game_id = ? and is_active`;
 
 export type CreatedGame = {
@@ -114,7 +111,14 @@ export type GameState = BoardView & {
   }[];
   /** Only for the creator, only while the game waits. */
   invitation?: { code: string; url: string; expiresAt: Date };
+  /**
+   * Only for a `cancelled` game: cancelled by its creator, expired unjoined (24 h), or closed
+   * because somebody did not open it in 15 minutes (Q21).
+   */
+  closedReason?: ClosedReason;
 };
+
+export type ClosedReason = "cancelled" | "expired" | "not_opened";
 
 export class GameService {
   readonly #em: EntityManager;
@@ -214,8 +218,8 @@ export class GameService {
       });
       if (creator === 0) throw new NotFoundError(GAME_NOT_FOUND_MESSAGE);
       const cancelled = await tx.execute<{ id: string }[]>(
-        CANCEL_WAITING_SQL,
-        [gameId],
+        CANCEL_WAITING_GAME_SQL,
+        [gameId, this.#clock.now()],
       );
       if (cancelled.length === 0) {
         throw new ConflictError(GAME_NOT_CANCELLABLE_MESSAGE, {
@@ -358,6 +362,15 @@ export class GameService {
         url: invitationUrl(this.#origin(), invitation.code),
         expiresAt: invitation.expiresAt,
       };
+    }
+    if (game.status === "cancelled") {
+      if (players.length > 1) {
+        state.closedReason = "not_opened";
+      } else {
+        // A creator's cancel voids the invitation (`consumed_at`); an expiry leaves it untouched.
+        const invitation = await tx.findOneOrFail(Invitation, { game: gameId });
+        state.closedReason = invitation.consumedAt ? "cancelled" : "expired";
+      }
     }
     return state;
   }

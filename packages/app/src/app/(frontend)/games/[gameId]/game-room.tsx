@@ -45,16 +45,24 @@ const COPY_FEEDBACK: Record<Exclude<Copy, "idle">, string> = {
   "share-fail": "Nie udało się otworzyć udostępniania. Skopiuj link ręcznie.",
 };
 
-/** "wtorek 27 października, 10:00": a fixed zone, so the server and the browser print the same text. */
+const VALID_UNTIL_ZONE = "Europe/Warsaw";
+const validUntilFormat = new Intl.DateTimeFormat("pl-PL", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: VALID_UNTIL_ZONE,
+});
+// The zone abbreviation comes from en-GB, which prints "CET"/"CEST" (en-US would print "GMT+1"), so it
+// is correct in both seasons and identical on the server and in the browser.
+const validUntilZone = new Intl.DateTimeFormat("en-GB", { timeZone: VALID_UNTIL_ZONE, timeZoneName: "short" });
+
+/** "wtorek 27 października, 10:00 CET": a fixed zone, so the server and the browser print the same text. */
 export function formatValidUntil(iso: string): string {
-  return new Intl.DateTimeFormat("pl-PL", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Europe/Warsaw",
-  }).format(new Date(iso));
+  const date = new Date(iso);
+  const zone = validUntilZone.formatToParts(date).find((part) => part.type === "timeZoneName")!.value;
+  return `${validUntilFormat.format(date)} ${zone}`;
 }
 
 // `navigator.share` exists only in some browsers; the server cannot know, so the first render says no.
@@ -234,13 +242,17 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
   }
 
   if (game.status === "cancelled") {
-    // The creator's own cancel leaves the page, so a one-player game that is cancelled here ran out (24 h, L05).
-    if (game.players.length === 1) {
+    // `closedReason` tells the endings apart: the creator may have cancelled in another tab or device.
+    if (game.closedReason === "cancelled" || game.closedReason === "expired") {
+      const ending =
+        game.closedReason === "cancelled"
+          ? { heading: "Zaproszenie zostało anulowane", details: "Link i kod nie działają." }
+          : { heading: "Zaproszenie wygasło", details: "Zaproszenie jest ważne 24 godziny. Link i kod nie działają." };
       return (
         <Shell>
-          <h1 className="m-0 text-section font-strong">Zaproszenie wygasło</h1>
-          <Alert status="warning" title="Zaproszenie wygasło. Utwórz nowe." role="status">
-            Zaproszenie jest ważne 24 godziny. Link i kod nie działają.
+          <h1 className="m-0 text-section font-strong">{ending.heading}</h1>
+          <Alert status="warning" title={`${ending.heading}. Utwórz nowe.`} role="status">
+            {ending.details}
           </Alert>
           <div className="flex flex-wrap items-center gap-group">
             <CreateGameButton heldGame={null} />

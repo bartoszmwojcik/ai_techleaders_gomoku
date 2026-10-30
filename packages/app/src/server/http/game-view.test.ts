@@ -36,6 +36,11 @@ describe("loadGameView", () => {
     });
   });
 
+  it("carries the closing reason of a cancelled game", async () => {
+    getState.mockResolvedValue({ ...base, status: "cancelled", closedReason: "cancelled" });
+    expect((await loadGameView("g1"))!.closedReason).toBe("cancelled");
+  });
+
   it.each([["resolving", () => resolveParticipant], ["reading", () => getState]])(
     "is null when %s answers 404",
     async (_name, mock) => {

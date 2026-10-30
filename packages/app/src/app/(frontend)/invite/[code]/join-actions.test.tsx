@@ -106,6 +106,22 @@ describe("JoinActions as a member", () => {
     expect(refresh).toHaveBeenCalledOnce();
     expect(replace).not.toHaveBeenCalled();
     await waitFor(() => expect((screen.getByRole("button", { name: "Dołącz do partii" }) as HTMLButtonElement).disabled).toBe(false));
+    // L6: a quiet status line says why the page was reloaded.
+    const note = screen.getByTestId("state-changed-note");
+    expect(note.getAttribute("role")).toBe("status");
+    expect(note.textContent).toBe("Coś się zmieniło, odświeżyliśmy stronę");
+  });
+
+  it("says nothing about a refresh before one happens, and drops the note at the next attempt", async () => {
+    apiCall.mockResolvedValueOnce(failure("INVALID_INVITATION")).mockResolvedValue(failure("RATE_LIMITED"));
+    render(<JoinActions code="ABCD-EFGH" mode="member" />);
+    expect(screen.getByTestId("state-changed-note").textContent).toBe("");
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Dołącz do partii" }));
+    await waitFor(() => expect(screen.getByTestId("state-changed-note").textContent).not.toBe(""));
+    await user.click(screen.getByRole("button", { name: "Dołącz do partii" }));
+    await waitFor(() => expect(screen.getByText("Zbyt wiele prób — spróbuj za chwilę")).toBeTruthy());
+    expect(screen.getByTestId("state-changed-note").textContent).toBe("");
   });
 
   it("shows the spent pool inline", async () => {

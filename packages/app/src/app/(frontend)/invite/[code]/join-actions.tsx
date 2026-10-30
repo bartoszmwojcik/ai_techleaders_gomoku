@@ -51,6 +51,9 @@ export function JoinActions({ code, mode }: Props) {
   const [guestWarning, setGuestWarning] = useState(false);
   const [joining, setJoining] = useState<Joining | null>(null);
   const [failure, setFailure] = useState<Failure | null>(null);
+  // L6: the page was refreshed because its state was out of date. Shown once the refresh is done and
+  // only if this component is still there; when the new state replaces it, the page itself says what changed.
+  const [outdated, setOutdated] = useState(false);
   // State alone lags a double click by one render; the ref closes that gap.
   const inFlight = useRef(false);
 
@@ -63,6 +66,7 @@ export function JoinActions({ code, mode }: Props) {
     inFlight.current = true;
     setJoining(as);
     setFailure(null);
+    setOutdated(false);
     const result = await apiCall<{ gameId: string }>(`/api/invitations/${encodeURIComponent(code)}/accept`, {
       body: { as, ...body },
     });
@@ -76,6 +80,7 @@ export function JoinActions({ code, mode }: Props) {
     const errorCode = result.error.code;
     if (STATE_CHANGED.has(errorCode)) {
       // The invitation or the viewer changed under the page: the server decides what it shows now.
+      setOutdated(true);
       startRefresh(() => router.refresh());
     } else if (errorCode === "RATE_LIMITED") {
       setFailure({ title: "Zbyt wiele prób — spróbuj za chwilę", details: "Sprawdź kod albo wróć później." });
@@ -158,6 +163,12 @@ export function JoinActions({ code, mode }: Props) {
           </Button>
         </div>
       )}
+
+      {/* Very quiet on purpose: small muted text, no alert or icon. It is the last element and
+          hidden while empty (`empty:hidden`), so it neither adds a gap nor moves anything above it. */}
+      <p role="status" className="m-0 text-meta text-text-muted empty:hidden" data-testid="state-changed-note">
+        {outdated && !refreshing ? "Coś się zmieniło, odświeżyliśmy stronę" : ""}
+      </p>
     </>
   );
 }

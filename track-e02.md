@@ -45,10 +45,10 @@ Ręczny test po fazie: `curl` — utworzenie partii, kod `ABCD-EFGH`, dołączen
   - Odstępstwa od prototypu: bez nagłówka strony (strony E01 go nie mają); `/join` sprawdza tylko kształt kodu (p02.3/p02.4 to s07.8/s07.9); brak p07.1 jako szkieletu (loading.tsx ukrywa status 404); „Partia gotowa” bez „Przejdź do planszy” (faza 3).
   - Poprawki po code review stron fazy 2: `retry()` zamiast `reset()` w `error.tsx` (M1); strona główna zamyka przeterminowane sloty przed odczytem (`closeStaleSlotsOfUser`, M2); `setCancelProblem(null)` przy kolejnej próbie anulowania (L2); odblokowanie `/join` po powrocie z bfcache i blokada przez `useRef` (L4); `CREATE_GAME_LIMIT` w komunikacie limitu (L7).
   - Otwarte uwagi z review (do decyzji):
-    - L1: anulowana przez twórcę partia jest pokazywana jako „Zaproszenie wygasło” — potrzebne pole z powodem zamknięcia (anulowana / wygasła / nieotwarta).
-    - L3: godzina „Ważne do” jest pokazywana w strefie Europe/Warsaw bez oznaczenia strefy.
-    - L5: `error.tsx` pokazuje jeden ogólny komunikat („Nie udało się połączyć z serwerem”) dla każdego błędu, nie tylko braku bazy.
-    - L6: brak komunikatu, gdy odpowiedź `STATE_CHANGED` nie zmienia widoku.
+    - [x] L1: anulowana przez twórcę partia była pokazywana jako „Zaproszenie wygasło” — dodano `closedReason` (`cancelled` / `expired` / `not_opened`) w `GameState`/`GameView`/`GET /api/games/[id]`; anulowanie unieważnia zaproszenie (`consumed_at` bez `consumed_by`, w jednej instrukcji SQL ze zmianą statusu), bez migracji; komunikat „Zaproszenie zostało anulowane”.
+    - [x] L3: godzina „Ważne do” ma skrót strefy (CET/CEST z `Intl`, en-GB, Europe/Warsaw).
+    - L5: `error.tsx` pokazuje jeden ogólny komunikat („Nie udało się połączyć z serwerem”) dla każdego błędu, nie tylko braku bazy. Rozstrzygnięte: bez zmian (decyzja właściciela, zostaje jak jest).
+    - [x] L6: po `STATE_CHANGED` bardzo dyskretny komunikat „Coś się zmieniło, odświeżyliśmy stronę” (mały, stonowany, `role="status"`, znika przy kolejnej akcji lub gdy nowy stan zastąpi komponent).
   - Poza zakresem (faza 3): p05–p06 (plansza, wynik, rewanż, powrót po rozłączeniu), p07.3 dla gościa w trakcie partii (bez zegara nie ma co ukrywać).
 - [x] 2.5 Dokumentacja (README: sekcja „Partia z zaproszenia” z API, odstępstwami i ręcznym testem; lekcje w `.ai/lessons/`)
 - [ ] Faza 10 z `track.md` (usunięcie konta, #37) po zadaniu 1.3 i 2.2 — **odblokowana po 2.2** (`GameService.cancel`, `occupiesSlot`, kolejność blokad users → games i `game_players.user_id ON DELETE SET NULL` są gotowe); nie wykonana w fazie 2

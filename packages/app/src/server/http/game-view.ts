@@ -11,6 +11,8 @@ import { resolveParticipant } from "./participant";
 export type GameView = Omit<GameState, "invitation"> & {
   /** Only for the creator while the game waits. */
   invitation?: { code: string; url: string; expiresAt: string };
+  /** Only for a cancelled game: why it was closed (creator's cancel, expiry, nobody opened it). */
+  closedReason?: "cancelled" | "expired" | "not_opened";
 };
 
 /**
