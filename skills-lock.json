@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "eliminate-no-op": {
+      "source": "pat-lewczuk/skills",
+      "sourceType": "github",
+      "skillPath": "skills/eliminate-no-op/SKILL.md",
+      "computedHash": "9f6b46a55e5a8da2f72f7809fa309fa15568ac796bcfbcc3abf4345b1b404392"
+    },
     "grill-me": {
       "source": "mattpocock/skills",
       "sourceType": "github",
@@ -258,6 +264,12 @@
       "sourceType": "github",
       "skillPath": "skills/om-verify-in-repo/SKILL.md",
       "computedHash": "b68ff4bb3d8305df4d71adbf0a26fba5991258a775700cb7ae16024d1b6a9edf"
+    },
+    "task-router": {
+      "source": "pat-lewczuk/skills",
+      "sourceType": "github",
+      "skillPath": "skills/task-router/SKILL.md",
+      "computedHash": "8208f1224a46e435398fce1f804d5ce2422aa65937415d80ca00572feb438fca"
     }
   }
 }
