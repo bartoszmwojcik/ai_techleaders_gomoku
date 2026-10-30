@@ -1,10 +1,10 @@
 # Mapa ekranów: Epik 02, partia z zaproszenia
 
-- Data: 2026-10-26, aktualizacja 2026-10-29. Status: **szkic do zatwierdzenia** (nic nie zbudowano). Uwzględnia decyzje właściciela z 2026-10-26 (sekcja 0a), specyfikacje #23 (zegar), #24 (powrót), poddania i rewanżu z 2026-10-29 oraz założenia robocze do prototypu (sekcja 0b).
-- Przepływ: Epik E02 (#16): tworzenie partii i zaproszenia (#21), dołączenie (zalogowany albo gość), ruchy i wygrana (#22), zegar 10 minut (#23), powrót po rozłączeniu (#24). Kończy się ekranem wyniku. Historia (#27), lobby (#25, #26) i zarządzanie kontem są poza tą mapą.
-- Materiały: `.ai/specs/product-brief.md` (po zmianie 2026-10-26), `.ai/specs/backlog.md`, `2026-10-24-game-invitations.md` (#21), `2026-10-25-game-moves-win-detection.md` (#22), zgłoszenia #23 i #24 (**nie mają specyfikacji**: kryteria z tracker'a), design system (`packages/ui/docs/design-system.md`, `docs/epics/partia.mdx`, `docs/screens/game-screen.tsx`, `invite-screens.tsx`), mapa E01 (`lekcja-07/mapa-ekranow.md`, ekran s07). Persony: brak.
-- **Ekran `/invite/[code]` jest wspólny z E01:** to s07 z `mapa-ekranow.md` (stany s07.1–s07.9). Tutaj go nie powielam; wchodzi w przepływ jako krok 2. ID ekranów tej mapy mają przedrostek `p` (p01, p02, …), żeby nie kolidowały z `s01–s07`. ID są stałe.
-- Różnice względem poleceń z lekcji: w projekcie nie ma ról mentee, mentor i operator, GitHuba ani płatności. Role to: twórca zaproszenia, zaproszony zalogowany, gość (token jednej partii), niezalogowany, osoba spoza partii (brak dostępu, N-05: bez obserwatorów).
+- Data: 2026-10-26, aktualizacje 2026-10-29 i 2026-10-30. Status: **szkic do zatwierdzenia (aktualizacja 2026-10-30)** (nic nie zbudowano). Uwzględnia decyzje właściciela z 2026-10-26 (sekcja 0a), specyfikacje #23 (zegar), #24 (powrót), poddania i rewanżu z 2026-10-29, założenia robocze do prototypu (sekcja 0b) oraz zmianę z 2026-10-30: gra bez konta, nick uczestnika (E02-S07 #94) i gość tworzy partię (E02-S08 #95) (sekcja 0c).
+- Przepływ: Epik E02 (#16): tworzenie partii i zaproszenia (#21; od 2026-10-30 także przez gościa, #95), dołączenie (zalogowany albo gość z nickiem, #94), ruchy i wygrana (#22), zegar 10 minut (#23), powrót po rozłączeniu (#24). Kończy się ekranem wyniku. Historia (#27), lobby (#25, #26) i zarządzanie kontem są poza tą mapą.
+- Materiały: `.ai/specs/product-brief.md` (po zmianie 2026-10-26), `.ai/specs/backlog.md`, `2026-10-24-game-invitations.md` (#21), `2026-10-25-game-moves-win-detection.md` (#22), zgłoszenia #23 i #24 (**nie mają specyfikacji**: kryteria z tracker'a), design system (`packages/ui/docs/design-system.md`, `docs/epics/partia.mdx`, `docs/screens/game-screen.tsx`, `invite-screens.tsx`), mapa E01 (`lekcja-07/mapa-ekranow.md`, ekran s07). Persony: brak. Od 2026-10-30 także: `2026-10-30-participant-nickname.md` (E02-S07, #94) i `2026-10-30-guest-creates-game.md` (E02-S08, #95), brief po zmianie 2026-10-30 (BR-29, D-27), `2026-10-29-game-rematch.md` i `…-game-resignation.md` (gość w rewanżu i poddaniu, kontrakty bez zmian).
+- **Ekran `/invite/[code]` jest wspólny z E01:** to s07 z `mapa-ekranow.md` (stany s07.1–s07.9). Tutaj go nie powielam; wchodzi w przepływ jako krok 2 (zmiany tego ekranu z 2026-10-30 opisuje sekcja 1a „s07: zmiany z 2026-10-30”). ID ekranów tej mapy mają przedrostek `p` (p01, p02, …), żeby nie kolidowały z `s01–s07`. ID są stałe.
+- Różnice względem poleceń z lekcji: w projekcie nie ma ról mentee, mentor i operator, GitHuba ani płatności. Role to: twórca zaproszenia (konto), zaproszony zalogowany, gość (token jednej przeglądarki; od 2026-10-30 **gość-twórca**, który sam tworzy partię, i gość-dołączający, obaj z nickiem lub „Gracz 1/2”), niezalogowany, osoba spoza partii (brak dostępu, N-05: bez obserwatorów). Zmiana z 2026-10-30: gość nie jest już rolą wyłącznie „dołączającą” (BR-22 zastąpione przez BR-29).
 
 ## 0a. Decyzje właściciela z 2026-10-26 (rozstrzygnięte luki)
 
@@ -52,9 +52,56 @@ Z zatwierdzonych specyfikacji (`2026-10-26-game-clock.md`, `2026-10-29-game-reco
 | L18 | Plansza ma min. 320 px szerokości (DS), zgodnie z dwukrokowym potwierdzeniem na dotyku; BR-20 (360 px) spełnione z zapasem |
 | L19 | `?next=` z logowania i rejestracji zawsze wraca na `/invite/{kod}` (jak w prototypie E01) |
 
+## 0c. Zmiana z 2026-10-30 (gra bez konta)
+
+Źródła: brief (BR-29, D-27; BR-22 i wyjątek w D-23 zastąpione; BR-24 przeredagowane), `2026-10-30-participant-nickname.md` (E02-S07, #94), `2026-10-30-guest-creates-game.md` (E02-S08, #95), adnotacja w #21 (`2026-10-24-game-invitations.md`: etykieta gościa z L14), kontrakty rewanżu (#88) i poddania (#87) bez zmian. Zasada jak w całej mapie: niczego nie rozstrzygam; rozstrzygnięcia poniżej pochodzą z zatwierdzonych specyfikacji, a to, czego one nie opisują, jest w sekcji 4 jako L25–L34.
+
+**Co się zmienia (BR-29, D-27).** Osoba niezalogowana może **tworzyć** zaproszenie (dotąd tylko je przyjmować), przed wejściem do partii podaje nick (1–24 znaki) albo zatwierdza domyślne „Gracz 1” / „Gracz 2” (numer miejsca: twórca = 1, dołączający = 2; kolory losowane osobno), a przeciwnik widzi ją jako „{nick} (gość)”. Nadal tylko przez kod lub link: bez lobby, historii i konta. Dwie osoby bez kont mogą grać ze sobą.
+
+| Obszar mapy | Skutek | Stany |
+|---|---|---|
+| p01 (`/`, niezalogowany) | nowa akcja „Zagraj ze znajomym bez konta”; „Masz partię” dla gościa-twórcy | p01.8, p01.9 (nowe) |
+| **p08** (nowy ekran) | nick + ostrzeżenie + tworzenie partii przez gościa, błędy `400`/`409`/`429`/`500` | p08.1–p08.8 (nowe) |
+| p03 | widok gościa-twórcy (ta sama Karta kodu), anulowanie przez gościa, utrata dostępu przy zmianie przeglądarki, wygaśnięcie po 24 h | p03.11–p03.13 (nowe); p03.8 zmienione |
+| p04, p05, p06 | etykiety graczy „{nick} (gość)” / „Gracz 1 (gość)”, „Gracz 2 (gość)” zamiast „Gość”; gość nie jest już bez nazwy | zmienione: p04.1, p04.4, p05.1, p05.2, p05.11, p06.6, p06.11–p06.13, p06.15 (bez nowych ID) |
+| p07 | gość-twórca w innej przeglądarce lub po wygaśnięciu zaproszenia: `404` | p07.2, p07.3 rozszerzone (bez nowych ID) |
+| s07 (wspólny z E01) | pole „Twój nick (opcjonalnie)”, błąd nicku, twórca-gość w nagłówku | s07.2 zmienione; s07.10, s07.11 proponowane (E01 wymaga aktualizacji) |
+
+**Decyzje właściciela z 2026-10-30 (wprost ze specyfikacji, bez zmian):**
+
+| Źródło | Decyzja | Skutek dla mapy |
+|---|---|---|
+| nick Q1 | Domyślna nazwa to „Gracz 1” / „Gracz 2” wg miejsca, wyliczana przy odczycie, nie zapisywana; nie zależy od koloru | podpowiedzi p08.1 i s07.2, etykiety p04–p06 |
+| nick Q2 | Nick 1–24 znaków: litery, cyfry, spacje, `_`, `-`; przycinanie, bez unikalności i filtra wulgaryzmów; puste pole = domyślna nazwa | p08.2, s07.10 |
+| nick Q3 | „{nick} (gość)” w partii (i w historii kont, E04); dla konta sama nazwa | p04–p06, s07.11 |
+| nick Q8 / gość Q8 | Dwie specyfikacje: nick (E02-S07), gość-twórca (E02-S08, po nicku) | kolejność prac 6.3–6.8 w `track-e02.md` |
+| gość Q4 | Dwie osoby bez kont mogą zagrać ze sobą; partia nie trafia do historii (BR-24) | scenariusz Q20 |
+| gość Q5 | Limit tworzenia na adres klienta (`CREATE_GAME_LIMIT`, 10/godz.), bez CAPTCHA; adres nieustalony w produkcji: `500` (fail closed) | p08.4, p08.5 |
+| gość Q6 | Ciasteczko twórcy-gościa ważne do wygaśnięcia zaproszenia (24 h) przy oczekującej partii, potem do końca partii + 1 h; utrata ciasteczka = utrata partii; ostrzeżenie przed utworzeniem | p08.1, p03.11–p03.13, p07.3 |
+| gość Q7 | Jedna partia oczekująca/aktywna na przeglądarkę (BR-13 przez token); `cancelOwnWaitingGame` anuluje oczekującą i tworzy nową | p08.6, p08.7 |
+| kierunkowa 1 | Zarządzanie slotem gościa (refaktor bez zmiany zachowania) jako pierwsze commity PR E02-S08 | bez ekranu; zadanie 6.5 |
+| kierunkowa 2 | Brief (BR-22 → BR-29, BR-24, D-23 → D-27) zmieniony w osobnym PR dokumentacyjnym | źródło reguł w sekcji 0 |
+| kierunkowa 3 | Gość po zalogowaniu lub rejestracji w tej samej przeglądarce: **bez blokady** i bez ostrzeżenia (konsekwencje przyjęte świadomie); rozbieżność z prototypem E01 rozstrzygnięta na korzyść kodu | L33; notatka dla E01 (s01, s02) |
+
+**Rozstrzygnięte w specyfikacjach i przyjęte jako założenia robocze do prototypu** (prototyp pokazuje je jako założenia, Ty potwierdzasz lub zmieniasz po obejrzeniu):
+
+| Element | Założenie (źródło) |
+|---|---|
+| Akcja na `/` | „Zagraj ze znajomym bez konta”, tylko dla niezalogowanego; zalogowany bez zmian (gość-twórca Architecture, UI/UX) |
+| Ekran p08 | pole nicku z podpowiedzią „Zostaw puste, a będziesz „Gracz 1””, ostrzeżenie „Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii”, przycisk „Rozumiem, utwórz zaproszenie” (gość-twórca UI/UX) |
+| Pole nicku w s07.2 | „Twój nick (opcjonalnie)”, podpowiedź „Zostaw puste, a będziesz „Gracz 2””, przed przyciskiem „Rozumiem, graj jako gość”; błąd w linii, wartość zostaje po błędzie; bez dodatkowego kroku (nick UI/UX) |
+| Po utworzeniu | `/games/{id}` jak dla konta: Karta kodu, kopiuj/udostępnij, anuluj (gość-twórca UI/UX) |
+| Strona główna gościa-twórcy | „Masz partię” z przejściem do niej, także po zamknięciu karty (gość-twórca UI/UX i Architecture) |
+| Nagłówek zaproszenia od gościa | „{nick} (gość) zaprasza Cię do partii”; dla konta bez zmian (nick UI/UX, gość-twórca Architecture) |
+| Sufiks „(gość)” | dodaje warstwa UI na podstawie `kind`; komponenty DS bez wbudowanych tekstów (nick Proposed Solution) |
+| Własne zaproszenie gościa-twórcy | `409 OWN_INVITATION` → jak s07.5 (przekierowanie do partii) (gość-twórca Edge Cases) |
+| Rewanż i poddanie gościa | kontrakty #87/#88 bez zmian; nowy token przy rewanżu, nick zachowany; nazwa domyślna podąża za nowym miejscem (nick Architecture) |
+| L14 (stare rozstrzygnięcie „Gość”) | zastąpione: „{nick} (gość)”; wcześniejsze „Zaproszony przez link” w historii kont też znika (BR-24) |
+
+
 ## 0. Historie i kryteria w zakresie
 
-Oznaczenia: `#21/K1` = kryterium 1 zgłoszenia #21 (kolejność jak w zgłoszeniu). Reguły: BR-01, BR-04…BR-07, BR-09…BR-11, BR-13, BR-20, BR-22, BR-24, BR-26 (konto aktywne bez potwierdzenia e-maila), D-07, D-10, D-21.
+Oznaczenia: `#21/K1` = kryterium 1 zgłoszenia #21 (kolejność jak w zgłoszeniu). Reguły: BR-01, BR-04…BR-07, BR-09…BR-11, BR-13, BR-20, BR-24, BR-26 (konto aktywne bez potwierdzenia e-maila), **BR-29** (gra bez konta: gość tworzy i przyjmuje zaproszenie, ma nick; od 2026-10-30), D-07, D-10, D-21, **D-27**. ~~BR-22~~ zastąpione przez BR-29 (od 2026-10-30), ~~wyjątek w D-23~~ zastąpiony przez D-27. Skróty `#94/K1`, `#95/K1` liczą kryteria zgłoszeń w kolejności z tracker'a.
 
 | Historia | Kryteria akceptacji (skrót) |
 |---|---|
@@ -62,6 +109,10 @@ Oznaczenia: `#21/K1` = kryterium 1 zgłoszenia #21 (kolejność jak w zgłoszeni
 | E02-S02 #22 Ruchy i wygrana | K1 poprawny ruch: przeciwnik go widzi, tura przechodzi. K2 ruch poza turą lub na zajęte pole: odrzucony, stan bez zmian. K3 5 w linii: wygrana (BR-10). K4 pełna plansza bez piątki: remis. K5 o stanie rozstrzyga serwer. |
 | E02-S03 #23 Zegar | K1 start: każdy ma 10:00 (BR-04). K2 maleje tylko zegar gracza na ruchu (BR-05). K3 zegar 0: gracz przegrywa (BR-07). K4 obowiązuje czas serwera. |
 | E02-S04 #24 Powrót po rozłączeniu | K1 powrót przed upływem czasu: aktualna plansza i zegar pomniejszony o nieobecność (BR-06). K2 zegar wyczerpał się podczas rozłączenia: partia zakończona jego przegraną. K3 po końcu odświeżenie pokazuje wynik, ruch niemożliwy. |
+| E02-S07 #94 Nick uczestnika (gość podaje nick albo „Gracz 1/2”) | K1 gość przyjmujący zaproszenie podaje poprawny nick: zapisany przy uczestniku, widoczny dla przeciwnika jako „{nick} (gość)”. K2 pole puste: „Gracz {miejsce}” (wyliczane przy odczycie, niezapisywane). K3 nick z niedozwolonymi znakami lub dłuższy niż 24 punkty kodowe: `400 VALIDATION` z `fieldErrors.nickname`; nick przy `as = user` też `400`. K4 istniejący goście sprzed zmiany: migracja rozszerzająca (kolumna NULL, bez backfillu). |
+| E02-S08 #95 Użytkownik bez konta tworzy partię | K1 brak sesji + `POST /api/games` z `acknowledgedGuestWarning: true`: `201` z kodem i linkiem oraz ciasteczko gościa ważne do wygaśnięcia zaproszenia. K2 gość-twórca z oczekującą partią próbuje utworzyć drugą lub dołączyć do innej: `409` (jedna partia na przeglądarkę); może ją anulować. K3 dwie osoby bez kont: jedna tworzy, druga przyjmuje jako gość: mogą rozegrać partię (bez historii). K4 wiele żądań z jednego adresu ponad limit: `429`; nieustalony adres w produkcji: `500` (fail closed). K5 wygasłe zaproszenie gościa, nikt nie odczytał partii: sprzątanie usuwa wiersze, a przeglądarka nie dostaje `409` wskazującego niedostępną partię. |
+
+Decyzje ze specyfikacji E02-S07 i E02-S08 (nick Q1–Q3, Q8; gość Q4–Q8), z których wynikają stany nowe od 2026-10-30, zebrano w sekcji 0c.
 
 Decyzje ze specyfikacji, z których wynikają stany: #21 Q3 (zaproszenie ważne 24 h), Q5 (anulowanie), Q6 (odpytywanie co 3 s), Q11 (ostrzeżenie dla gościa), Q12 (link niczego nie zużywa), Q13 (limity), Q18 (własna oczekująca partia), Q20 i Q21 (zegar rusza, gdy obaj otworzyli stronę; 15 min na otwarcie), Q22 (Kopiuj, Udostępnij); #22 Q1 (losowanie koloru przy dołączeniu), Q4 (idempotentny ruch), Q5 (odpytywanie co 2 s), Q6 (bez poddania i remisu na prośbę), Q7 (dotyk: dwa kroki, mysz: jedno kliknięcie).
 
