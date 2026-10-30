@@ -99,21 +99,21 @@ Z zatwierdzonych specyfikacji (`2026-10-26-game-clock.md`, `2026-10-29-game-reco
 | L14 (stare rozstrzygnięcie „Gość”) | zastąpione: „{nick} (gość)”; wcześniejsze „Zaproszony przez link” w historii kont też znika (BR-24) |
 
 
-## 0d. Założenia robocze do prototypu (gra bez konta, 2026-10-30)
+## 0d. Rozstrzygnięcia z 2026-10-30 i założenia do prototypu (gra bez konta)
 
-Właściciel zatwierdził mapę 2026-10-30 **z otwartymi lukami L25–L35**. Do zbudowania prototypu przyjmuję poniższe założenia robocze (jak w sekcji 0b); **nie są decyzjami**, każde jest oznaczone w prototypie i podlega przeglądowi: właściciel może je zmienić komentarzem, a wtedy zmienia się rewizja prototypu i luka pozostaje otwarta lub zostaje rozstrzygnięta.
+Właściciel zatwierdził mapę 2026-10-30, a następnie luki L25–L35 jedną decyzją „zgoda na rekomendacje” (2026-10-30). Poniżej ostateczne brzmienie: trzy rekomendacje różnią się od pierwszych założeń roboczych (L25, L29, L34) i są oznaczone **zmienione**. Prototyp pokazuje te rozstrzygnięcia; właściciel może je jeszcze zmienić komentarzem w przeglądzie prototypu.
 
 | Luka | Założenie robocze do prototypu |
 |---|---|
-| L25 | p08: tytuł „Zagraj ze znajomym bez konta”; pole „Twój nick (opcjonalnie)” z podpowiedzią „Zostaw puste, a będziesz „Gracz 1””; ostrzeżenie „Grasz bez konta. Jeśli zmienisz przeglądarkę albo wyczyścisz dane, stracisz dostęp do tej partii.”; przycisk „Rozumiem, utwórz zaproszenie”; błąd nicku jak w s07.10 |
+| L25 | p08: tytuł „Zagraj ze znajomym bez konta”; pole „Twój nick (opcjonalnie)” z podpowiedzią „Zostaw puste, a będziesz „Gracz 1””; ostrzeżenie „Grasz bez konta. Jeśli zmienisz przeglądarkę albo wyczyścisz dane, stracisz dostęp do tej partii.”; przycisk „Rozumiem, utwórz zaproszenie”; błąd nicku jak w s07.10; **zmienione:** dodatkowa linia „Zaproszenie jest ważne 24 godziny.” |
 | L26 | Błąd serwera/500: „Nie udało się utworzyć zaproszenia. Spróbuj ponownie.” z przyciskiem ponowienia (jak założenie L02) |
 | L27 | „Masz partię” na `/` dla gościa (twórcy i dołączającego) tylko przy partii oczekującej („Czekasz na przeciwnika”) i aktywnej („Partia w toku”); zakończona nie |
 | L28 | p03.12: gość-twórca widzi stałe, krótkie ostrzeżenie pod Kartą kodu („Nie zmieniaj przeglądarki, bo stracisz dostęp do partii.”) |
-| L29 | Po wygaśnięciu zaproszenia gość-twórca widzi p07.2 (partia nie istnieje), bo token przestaje działać; konto nadal widzi p03.9 |
+| L29 | **Zmienione:** po wygaśnięciu zaproszenia gość-twórca widzi „Zaproszenie wygasło” (p03.9, jak konto) przez 1 h od wygaśnięcia, potem p07.2; wymaga zmiany w specyfikacji E02-S08 (ważność tokenu dla wygasłej oczekującej partii) |
 | L30 | Długi nick jest obcinany wielokropkiem w jednej linii, a sufiks „(gość)” jest zawsze widoczny i nie kurczy się; pełny nick w `title` i w nazwie dostępnej |
 | L31 | s07.10 i s07.11 zostają tylko w mapie E02; mapa E01 do aktualizacji osobnym PR-em dokumentacyjnym po zatwierdzeniu prototypu |
 | L32 | p08.7: „Anuluj i utwórz nową” z dialogiem potwierdzenia jak p03.6 (jak dla konta) |
-| L34 | „Zagraj ze znajomym bez konta” to akcja drugorzędna (link-przycisk pod „Załóż konto” i „Zaloguj się”) |
+| L34 | **Zmienione:** „Zagraj ze znajomym bez konta” to drugorzędny **przycisk** (nie mały link) obok „Załóż konto” i „Zaloguj się”; „Załóż konto” zostaje główną akcją |
 | L35 | Gość-twórca oczekującej partii może ją anulować i dołączyć z s07.7 (jak konto); przy partii aktywnej tylko wrócić do niej (s07.6) |
 
 ## 0. Historie i kryteria w zakresie
@@ -375,17 +375,17 @@ Typy: **K** = kryterium bez ekranu lub stanu, **S** = stan bez kryterium, **X** 
 
 | ID | Typ | Luka | Gdzie | Pytanie do właściciela |
 |---|---|---|---|---|
-| L25 | S | Pełna treść ekranu p08: tytuł, etykieta pola nicku (spec nick: „Twój nick (opcjonalnie)” tylko dla s07), komunikat błędu nicku, i dalsza część ostrzeżenia. Prototypowe zdania ostrzeżenia dla dołączającego („Stracisz do niej dostęp, a Twój zegar będzie biegł dalej. Gość nie ma nazwy ani historii”) nie pasują do twórcy: zegar nie biegnie, gdy partia czeka, a gość ma teraz nick | #95 UI/UX, #94 UI | Czy twórca-gość dostaje to samo ostrzeżenie co dołączający, z jakim dopiskiem o oczekującej partii i wygaśnięciu po 24 h? |
-| L26 | S | Błąd `500` przy nieustalonym adresie klienta jest stały (fail closed): „Spróbuj ponownie” nic nie zmieni; spec nie podaje treści ani akcji | #95 API Contracts | Jaki komunikat i czy przycisk ponowienia (założenie L02: „Nie udało się połączyć z serwerem. Spróbuj ponownie.”)? |
-| L27 | S | „Masz partię” gościa na `/`: spec mówi „z trwającą partią” dla gościa-twórcy; nie mówi, czy obejmuje partię oczekującą i zakończoną (do +1 h), ani gościa-dołączającego | #95 UI/UX, Architecture | Dla jakich partii i której roli gość widzi „Masz partię”, i jaki tekst (oczekująca: „Czekasz na przeciwnika”)? |
-| L28 | S | Stałe ostrzeżenie o zmianie przeglądarki na ekranie oczekiwania (p03.12): spec wymaga ostrzeżenia przed utworzeniem, a stałe opisuje dla p04.4 i p05.11 | #95 Q6, Edge Cases; #21 UI | Czy p03 gościa-twórcy ma stałe ostrzeżenie (utrata dostępu = utrata partii)? |
-| L29 | S | Zaproszenie gościa wygasło po 24 h: po wygaśnięciu token przestaje działać (`404`), a ciasteczko ma to samo wygaśnięcie; spec nie mówi, czy gość widzi komunikat „Zaproszenie wygasło” (jak konto, p03.9, L05) czy `404` p07.2 | #95 Architecture, K5 | Co widzi gość-twórca po wygaśnięciu (jeśli odświeży stronę przed i po wygaśnięciu)? |
-| L30 | S | Wygląd „(gość)” w nagłówku zegara i wyniku: sufiks dodaje UI, ale nick ma do 24 znaków, a szerokość 320 px (L18) i `PlayerClock` mają jedną linię nazwy | #94 UI, nick Proposed Solution | Czy długi nick jest obcinany, zawijany; czy sufiks „(gość)” zawsze widoczny? |
-| L31 | D | Kolizja ID s07 z E01: stany s07.10 i s07.11 są proponowane w tej mapie, a stany s07 należą do mapy E01 (stałe ID); `mapa-ekranow.md` nie jest tu edytowana | #94 UI, mapa E01 | Czy zaktualizować mapę E01 (kto, w jakim PR), czy zostawić s07.10–s07.11 tylko w mapie E02? |
-| L32 | D | Rozwiązanie `409 OWN_WAITING_GAME` dla gościa na p08.7: przycisk „Anuluj i utwórz nową” (potwierdzenie przez Dialog potwierdzenia?) czy przejście do istniejącej partii (założenie L01 dla konta, p01.4) | #95 K2, Q7 | Jaki przepływ dla gościa: z potwierdzeniem, bez, czy przejście do istniejącej partii? |
+| L25 | S | Pełna treść ekranu p08: tytuł, etykieta pola nicku (spec nick: „Twój nick (opcjonalnie)” tylko dla s07), komunikat błędu nicku, i dalsza część ostrzeżenia. Prototypowe zdania ostrzeżenia dla dołączającego („Stracisz do niej dostęp, a Twój zegar będzie biegł dalej. Gość nie ma nazwy ani historii”) nie pasują do twórcy: zegar nie biegnie, gdy partia czeka, a gość ma teraz nick | #95 UI/UX, #94 UI | Czy twórca-gość dostaje to samo ostrzeżenie co dołączający, z jakim dopiskiem o oczekującej partii i wygaśnięciu po 24 h? **Rozstrzygnięte 2026-10-30 (sekcja 0d).** |
+| L26 | S | Błąd `500` przy nieustalonym adresie klienta jest stały (fail closed): „Spróbuj ponownie” nic nie zmieni; spec nie podaje treści ani akcji | #95 API Contracts | Jaki komunikat i czy przycisk ponowienia (założenie L02: „Nie udało się połączyć z serwerem. Spróbuj ponownie.”)? **Rozstrzygnięte 2026-10-30 (sekcja 0d).** |
+| L27 | S | „Masz partię” gościa na `/`: spec mówi „z trwającą partią” dla gościa-twórcy; nie mówi, czy obejmuje partię oczekującą i zakończoną (do +1 h), ani gościa-dołączającego | #95 UI/UX, Architecture | Dla jakich partii i której roli gość widzi „Masz partię”, i jaki tekst (oczekująca: „Czekasz na przeciwnika”)? **Rozstrzygnięte 2026-10-30 (sekcja 0d).** |
+| L28 | S | Stałe ostrzeżenie o zmianie przeglądarki na ekranie oczekiwania (p03.12): spec wymaga ostrzeżenia przed utworzeniem, a stałe opisuje dla p04.4 i p05.11 | #95 Q6, Edge Cases; #21 UI | Czy p03 gościa-twórcy ma stałe ostrzeżenie (utrata dostępu = utrata partii)? **Rozstrzygnięte 2026-10-30 (sekcja 0d).** |
+| L29 | S | Zaproszenie gościa wygasło po 24 h: po wygaśnięciu token przestaje działać (`404`), a ciasteczko ma to samo wygaśnięcie; spec nie mówi, czy gość widzi komunikat „Zaproszenie wygasło” (jak konto, p03.9, L05) czy `404` p07.2 | #95 Architecture, K5 | Co widzi gość-twórca po wygaśnięciu (jeśli odświeży stronę przed i po wygaśnięciu)? **Rozstrzygnięte 2026-10-30 (sekcja 0d).** |
+| L30 | S | Wygląd „(gość)” w nagłówku zegara i wyniku: sufiks dodaje UI, ale nick ma do 24 znaków, a szerokość 320 px (L18) i `PlayerClock` mają jedną linię nazwy | #94 UI, nick Proposed Solution | Czy długi nick jest obcinany, zawijany; czy sufiks „(gość)” zawsze widoczny? **Rozstrzygnięte 2026-10-30 (sekcja 0d).** |
+| L31 | D | Kolizja ID s07 z E01: stany s07.10 i s07.11 są proponowane w tej mapie, a stany s07 należą do mapy E01 (stałe ID); `mapa-ekranow.md` nie jest tu edytowana | #94 UI, mapa E01 | Czy zaktualizować mapę E01 (kto, w jakim PR), czy zostawić s07.10–s07.11 tylko w mapie E02? **Rozstrzygnięte 2026-10-30 (sekcja 0d).** |
+| L32 | D | Rozwiązanie `409 OWN_WAITING_GAME` dla gościa na p08.7: przycisk „Anuluj i utwórz nową” (potwierdzenie przez Dialog potwierdzenia?) czy przejście do istniejącej partii (założenie L01 dla konta, p01.4) | #95 K2, Q7 | Jaki przepływ dla gościa: z potwierdzeniem, bez, czy przejście do istniejącej partii? **Rozstrzygnięte 2026-10-30 (sekcja 0d).** |
 | ~~L33~~ (rozstrzygnięta 2026-10-30) | X | Rozbieżność prototypu E01 i briefu: gość z partią nie może się logować ani rejestrować (blokada), a backend E01 tego nie egzekwuje | #95 Risks, kierunkowa 3 | Rozstrzygnięte: **bez blokady** i bez ostrzeżenia (partia gościa i partia konta naraz dozwolone); prototyp E01 i notatki do poprawienia w zadaniu 6.2 |
-| L34 | S | Miejsce i ranga akcji „Zagraj ze znajomym bez konta” obok „Załóż konto” i „Zaloguj się” na `/` (s04.3 w E01) | #95 UI/UX | Czy to akcja drugorzędna (link) czy równorzędna z „Załóż konto”? |
-| L35 | S | Gość z tokenem (twórca oczekującej lub aktywnej partii) otwiera cudzy link: `409` (#95/K2), ale nie wiadomo, czy s07.6 i s07.7 (z „Anuluj moją partię i dołącz”) dotyczą także gościa | #95 K2, #21 Q18; E01 s07.6, s07.7 | Czy gość-twórca oczekującej partii może ją anulować i dołączyć z s07.7, czy tylko wrócić do swojej partii? |
+| L34 | S | Miejsce i ranga akcji „Zagraj ze znajomym bez konta” obok „Załóż konto” i „Zaloguj się” na `/` (s04.3 w E01) | #95 UI/UX | Czy to akcja drugorzędna (link) czy równorzędna z „Załóż konto”? **Rozstrzygnięte 2026-10-30 (sekcja 0d).** |
+| L35 | S | Gość z tokenem (twórca oczekującej lub aktywnej partii) otwiera cudzy link: `409` (#95/K2), ale nie wiadomo, czy s07.6 i s07.7 (z „Anuluj moją partię i dołącz”) dotyczą także gościa | #95 K2, #21 Q18; E01 s07.6, s07.7 | Czy gość-twórca oczekującej partii może ją anulować i dołączyć z s07.7, czy tylko wrócić do swojej partii? **Rozstrzygnięte 2026-10-30 (sekcja 0d).** |
 
 ## 5. Luki w design systemie
 
@@ -416,7 +416,7 @@ Stan na 2026-10-30, policzony ze stanów w sekcji 1a (każdy ID raz; wiersze-adn
 | Stany ze zmienioną etykietą lub treścią 2026-10-30 (bez nowych ID) | 15: p03.5, p03.8, p04.1, p04.4, p05.1, p05.2, p05.11, p06.6, p06.11, p06.12, p06.13, p06.15, p07.3, s07.2, s07.5 |
 | Scenariusze do przełączania | 22 (Q01–Q22; nowe Q13–Q22; Q01 i Q04 uzupełnione) |
 | Konta demo | 10 (T1–T10; T8 operator bez podstaw w materiałach; nowe T9, T10; T5 istnieje w prototypie E02, zmienione na „Gracz 2”) |
-| Luki w specyfikacji | 35 (L01–L35): rozstrzygnięte 2026-10-26 (L04, L11, L12, L13, L14, L16, L20), 2026-10-29 (L07, L09, L17, L21–L24) i 2026-10-30 (L33) = 15; stare z założeniami roboczymi z sekcji 0b 10 (L01–L03, L05, L06, L08, L10, L15, L18, L19); nowe otwarte 10 (L25–L32, L34, L35) |
+| Luki w specyfikacji | 35 (L01–L35): rozstrzygnięte 2026-10-26 (L04, L11, L12, L13, L14, L16, L20), 2026-10-29 (L07, L09, L17, L21–L24) i 2026-10-30 (L25–L35, w tym L33) = 25; stare z założeniami roboczymi z sekcji 0b 10 (L01–L03, L05, L06, L08, L10, L15, L18, L19); otwarte bez założenia 0 |
 | Luki w design systemie | 12 (D01–D12; nowe D08–D12) |
 | Historie w zakresie / kryteria akceptacji | 6 / 30 aktywnych (#21: 9, #22: 5, #23: 4, #24: 3, #94: 4, #95: 5); poddanie i rewanż to nowe historie bez zgłoszeń w tej mapie |
 
