@@ -18,15 +18,19 @@ export type ServerConfig = {
   passwordHashCost: number;
   /** `file` writes to the outbox (dev/tests); unset means no transport (sending fails, #34 Q1). */
   emailTransport?: EmailTransport;
-  /** Sender shown in outgoing mail. */
+  /** Sender name shown in outgoing mail (`EMAIL_FROM_NAME`, else `EMAIL_FROM`, default "Gomoku"). */
   emailFrom: string;
+  /** Verified sender address of the `brevo` transport (`EMAIL_FROM_ADDRESS`); without it the sender is the failing one (see `createEmailSender`). */
+  emailFromAddress?: string;
+  /** Brevo API key (`BREVO_API_KEY`); a secret, never log it; needed by `brevo`. */
+  brevoApiKey?: string;
   /** Outbox file of the `file` transport (relative paths resolve against the process cwd). */
   emailOutboxPath: string;
   /** Global daily send limit (#34 Q10); unset means no limit is enforced. */
   emailDailyLimit?: number;
 };
 
-export const EMAIL_TRANSPORTS = ["file"] as const;
+export const EMAIL_TRANSPORTS = ["file", "brevo"] as const;
 export type EmailTransport = (typeof EMAIL_TRANSPORTS)[number];
 
 export const DEFAULT_EMAIL_FROM = "Gomoku";
@@ -146,6 +150,11 @@ export function readServerConfig(
   if (production && sessionCookieSecure && !appOrigin?.startsWith("https://")) {
     throw new Error("APP_ORIGIN must start with https:// in production.");
   }
+  const emailTransport = parseEmailTransport(
+    env.EMAIL_TRANSPORT,
+    production,
+    appOrigin,
+  );
   return {
     production,
     trustProxyHops,
@@ -153,12 +162,10 @@ export function readServerConfig(
     appOrigin,
     sessionCookieSecure,
     passwordHashCost: parsePasswordHashCost(env.PASSWORD_HASH_COST),
-    emailTransport: parseEmailTransport(
-      env.EMAIL_TRANSPORT,
-      production,
-      appOrigin,
-    ),
-    emailFrom: env.EMAIL_FROM || DEFAULT_EMAIL_FROM,
+    emailTransport,
+    emailFrom: env.EMAIL_FROM_NAME || env.EMAIL_FROM || DEFAULT_EMAIL_FROM,
+    brevoApiKey: env.BREVO_API_KEY || undefined,
+    emailFromAddress: env.EMAIL_FROM_ADDRESS || undefined,
     emailOutboxPath: env.EMAIL_OUTBOX_PATH || DEFAULT_EMAIL_OUTBOX_PATH,
     emailDailyLimit: parseEmailDailyLimit(env.EMAIL_DAILY_LIMIT),
   };

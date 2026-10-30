@@ -37,8 +37,7 @@ import {
   type Clock,
   type EmailSender,
 } from "./services/email/email-sender";
-import { FileEmailSender } from "./services/email/file-email-sender";
-import { UnconfiguredEmailSender } from "./services/email/unconfigured-email-sender";
+import { createEmailSender } from "./services/email/create-email-sender";
 import { HealthService } from "./services/health-service";
 import { RateLimiter } from "./services/rate-limit/rate-limiter";
 
@@ -55,7 +54,7 @@ export type AppCradle = {
   /** Marks a user's unused reset tokens as used; writes only through the `em` it is given. */
   invalidateResetTokens: InvalidateResetTokens;
   clock: Clock;
-  /** Chosen by EMAIL_TRANSPORT; resolved lazily, so a bad setting fails only the routes that send mail. */
+  /** Chosen by EMAIL_TRANSPORT (`file` | `brevo`); resolved lazily, so a bad setting fails only the routes that send mail. */
   emailSender: EmailSender;
   /** Request-scoped (needs `em`): resolve only from a `withRequestScope` scope. */
   sessionService: SessionService;
@@ -131,15 +130,8 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
         createInvalidateResetTokens({ clock }),
     ).singleton(),
     clock: asValue(systemClock),
-    emailSender: asFunction(
-      ({ serverConfig, clock }: AppCradle): EmailSender =>
-        serverConfig.emailTransport === "file"
-          ? new FileEmailSender({
-              outboxPath: serverConfig.emailOutboxPath,
-              from: serverConfig.emailFrom,
-              clock,
-            })
-          : new UnconfiguredEmailSender(),
+    emailSender: asFunction(({ serverConfig, clock }: AppCradle): EmailSender =>
+      createEmailSender({ serverConfig, clock, fetch: globalThis.fetch }),
     ).singleton(),
     sessionService: asClass(SessionService).scoped(),
     gameParticipation: asClass(GameParticipation).scoped(),

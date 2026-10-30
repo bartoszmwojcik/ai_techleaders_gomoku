@@ -5,20 +5,31 @@ import { join } from "node:path";
 import type { Orm } from "@gomoku/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { createOrm, entities, PasswordResetToken, GamePlayer } = vi.hoisted(() => ({
-  createOrm: vi.fn(),
-  entities: [] as unknown[],
-  PasswordResetToken: { name: "PasswordResetToken" },
-  GamePlayer: { name: "GamePlayer" },
+const { createOrm, entities, PasswordResetToken, GamePlayer } = vi.hoisted(
+  () => ({
+    createOrm: vi.fn(),
+    entities: [] as unknown[],
+    PasswordResetToken: { name: "PasswordResetToken" },
+    GamePlayer: { name: "GamePlayer" },
+  }),
+);
+vi.mock("@gomoku/db", () => ({
+  createOrm,
+  entities,
+  PasswordResetToken,
+  GamePlayer,
 }));
-vi.mock("@gomoku/db", () => ({ createOrm, entities, PasswordResetToken, GamePlayer }));
 
 const globalForOrm = globalThis as typeof globalThis & {
   __gomokuOrms?: WeakMap<object, Promise<Orm>>;
 };
 
 function fakeOrm() {
-  const forkedEm = { id: "forked", count: vi.fn(async () => 0), execute: vi.fn(async () => []) };
+  const forkedEm = {
+    id: "forked",
+    count: vi.fn(async () => 0),
+    execute: vi.fn(async () => []),
+  };
   const orm = { em: { fork: vi.fn(() => forkedEm) } } as unknown as Orm;
   return { orm, forkedEm };
 }
@@ -236,6 +247,54 @@ describe("email sender", () => {
       from: "Gomoku",
     });
     await rm(dir, { recursive: true });
+  });
+
+  it("uses the Brevo sender with the global fetch for EMAIL_TRANSPORT=brevo", async () => {
+    const { orm } = fakeOrm();
+    createOrm.mockResolvedValue(orm);
+    vi.stubEnv("EMAIL_TRANSPORT", "brevo");
+    vi.stubEnv("BREVO_API_KEY", "k");
+    vi.stubEnv("EMAIL_FROM_ADDRESS", "gra@example.com");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { getContainer } = await loadContainer();
+
+    const { cradle } = await getContainer();
+    await cradle.emailSender.send({
+      to: "a@b.c",
+      subject: "s",
+      text: "t",
+      html: "h",
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.brevo.com/v3/smtp/email",
+      expect.any(Object),
+    );
+  });
+
+  it("uses the failing sender, with a warning, when brevo lacks its key", async () => {
+    const { orm } = fakeOrm();
+    createOrm.mockResolvedValue(orm);
+    vi.stubEnv("EMAIL_TRANSPORT", "brevo");
+    vi.stubEnv("BREVO_API_KEY", "");
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { getContainer } = await loadContainer();
+
+    const { cradle } = await getContainer();
+
+    await expect(
+      cradle.emailSender.send({
+        to: "a@b.c",
+        subject: "s",
+        text: "t",
+        html: "h",
+      }),
+    ).rejects.toThrow(/EMAIL_TRANSPORT/);
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
   });
 
   it("fails only the email sender on a bad EMAIL_TRANSPORT", async () => {
