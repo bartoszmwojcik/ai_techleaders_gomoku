@@ -136,6 +136,7 @@ describe("auth services", () => {
       expect(cradle.sessionService).toBe(cradle.sessionService);
       expect(cradle.rateLimiter).toBe(cradle.rateLimiter);
       expect(cradle.userService).toBe(cradle.userService);
+      expect(cradle.accountService).toBe(cradle.accountService);
       expect(cradle.emailVerificationService).toBe(
         cradle.emailVerificationService,
       );

@@ -10,6 +10,7 @@ import {
 import { createOrm, entities, type EntityManager, type Orm } from "@gomoku/db";
 
 import { readServerConfig, type ServerConfig } from "./config";
+import { AccountService } from "./services/auth/account-service";
 import { PasswordHasher } from "./services/auth/password-hasher";
 import {
   SessionService,
@@ -70,6 +71,7 @@ export type AppCradle = {
   rateLimiter: RateLimiter;
   emailVerificationService: EmailVerificationService;
   userService: UserService;
+  accountService: AccountService;
   passwordResetService: PasswordResetService;
 };
 
@@ -144,6 +146,7 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     rateLimiter: asClass(RateLimiter).scoped(),
     emailVerificationService: asClass(EmailVerificationService).scoped(),
     userService: asClass(UserService).scoped(),
+    accountService: asClass(AccountService).scoped(),
     passwordResetService: asClass(PasswordResetService).scoped(),
   });
   return container;
