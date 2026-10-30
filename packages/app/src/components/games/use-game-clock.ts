@@ -63,7 +63,6 @@ class ClockSource {
 export function useGameClock(clock: ClockView, { finished = false, onExpire }: Options = {}) {
   const [source] = useState(() => new ClockSource());
   const localNow = useSyncExternalStore(source.subscribe, source.reading, source.reading).at;
-  const expiredFor = useRef<ClockView | null>(null);
   const expire = useRef(onExpire);
 
   useEffect(() => {
@@ -90,10 +89,8 @@ export function useGameClock(clock: ClockView, { finished = false, onExpire }: O
   useEffect(() => {
     if (left === null) return;
     if (left <= 0) {
-      if (expiredFor.current !== clock) {
-        expiredFor.current = clock;
-        expire.current?.();
-      }
+      // Once per answer and per second reached: the effect depends on `left` and `clock`, nothing else.
+      expire.current?.();
       return;
     }
     // The shown seconds round up: the next change is when the time drops to the next full second.
