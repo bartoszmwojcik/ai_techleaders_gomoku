@@ -153,6 +153,42 @@ describe("readServerConfig email settings", () => {
     }
   });
 
+  it("reads the brevo transport with its key, sender address and name", () => {
+    const brevo = {
+      EMAIL_TRANSPORT: "brevo",
+      BREVO_API_KEY: "xkeysib-test",
+      EMAIL_FROM_ADDRESS: "gra@example.com",
+    };
+    expect(readServerConfig(brevo)).toMatchObject({
+      emailTransport: "brevo",
+      brevoApiKey: "xkeysib-test",
+      emailFromAddress: "gra@example.com",
+      emailFrom: "Gomoku",
+    });
+    expect(
+      readServerConfig({
+        ...brevo,
+        EMAIL_FROM: "Stara",
+        EMAIL_FROM_NAME: "Nowa",
+      }).emailFrom,
+    ).toBe("Nowa");
+    expect(readServerConfig({ ...brevo, EMAIL_FROM: "Stara" }).emailFrom).toBe(
+      "Stara",
+    );
+    // Allowed in production over https (unlike the file transport).
+    expect(readServerConfig({ ...production, ...brevo })).toMatchObject({
+      emailTransport: "brevo",
+    });
+  });
+
+  it("reads brevo settings as unset when missing (the sender factory warns)", () => {
+    expect(readServerConfig({ EMAIL_TRANSPORT: "brevo" })).toMatchObject({
+      emailTransport: "brevo",
+      brevoApiKey: undefined,
+      emailFromAddress: undefined,
+    });
+  });
+
   it("allows the file transport in production only with an http:// origin", () => {
     expect(() =>
       readServerConfig({ ...production, EMAIL_TRANSPORT: "file" }),
