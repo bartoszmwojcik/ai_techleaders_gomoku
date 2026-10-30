@@ -47,6 +47,11 @@ describe("loadGameView", () => {
     });
   });
 
+  it("serializes when a finished game ended", async () => {
+    getState.mockResolvedValue({ ...base, status: "finished", finishedAt: new Date("2026-10-30T10:00:00Z") });
+    expect((await loadGameView("g1"))!.finishedAt).toBe("2026-10-30T10:00:00.000Z");
+  });
+
   it("carries the closing reason of a cancelled game", async () => {
     getState.mockResolvedValue({ ...base, status: "cancelled", closedReason: "cancelled" });
     expect((await loadGameView("g1"))!.closedReason).toBe("cancelled");

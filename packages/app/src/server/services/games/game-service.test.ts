@@ -540,6 +540,14 @@ describe("GameService.getState", () => {
     expect("fromRematch" in (await plain.service.getState({ playerId: "p1" }, "game-1"))).toBe(false);
   });
 
+  it("says when a finished game ended, and only for a finished one", async () => {
+    const finishedAt = new Date(NOW.getTime() - 60_000);
+    const done = setup({ game: { status: "finished", endReason: "draw", finishedAt }, players: [creator, guest] });
+    expect((await done.service.getState({ playerId: "p1" }, "game-1")).finishedAt).toEqual(finishedAt);
+    const open = setup({ game: { status: "active", finishedAt }, players: [creator, guest] });
+    expect("finishedAt" in (await open.service.getState({ playerId: "p1" }, "game-1"))).toBe(false);
+  });
+
   it("shows a rematch offer: pending, expired by the time of the read, and the accepted game", async () => {
     const finished = { status: "finished", endReason: "draw", rematchOfferedBySeat: 2 };
     const expiresAt = new Date(NOW.getTime() + 1000);

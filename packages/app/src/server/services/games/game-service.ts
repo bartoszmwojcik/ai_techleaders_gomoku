@@ -171,6 +171,11 @@ export type GameState = BoardView & {
    */
   rematch?: RematchView;
   /**
+   * Only for a finished game: when it ended. A guest's token for it works for an hour from then
+   * (BR-22), so the page knows when to stop reading a result nobody can read any more.
+   */
+  finishedAt?: Date;
+  /**
    * Only for a game created by an accepted rematch (`origin = 'rematch'`): the page says the
    * colours were swapped instead of "drawn" (p05, p06.15).
    */
@@ -535,6 +540,7 @@ export class GameService {
       now,
     );
     if (rematch) state.rematch = rematch;
+    if (game.status === "finished" && game.finishedAt) state.finishedAt = game.finishedAt;
     if (game.origin === "rematch") state.fromRematch = true;
     if (game.status === "cancelled") {
       if (players.length > 1) {
