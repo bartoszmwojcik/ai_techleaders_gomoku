@@ -32,3 +32,10 @@ export const INVITATION_CODE_LENGTH = 8;
 export const INVITATION_LOOKUP_LIMIT = 20;
 export const INVITATION_LOOKUP_GLOBAL_LIMIT = 300;
 export const INVITATION_LOOKUP_WINDOW_MS = 15 * 60 * 1000;
+
+/** A rematch offer stays open this long (rematch spec, Q2). */
+export const REMATCH_TTL_MS = 5 * 60 * 1000;
+
+/** Rematch offers one player may make per hour (rematch spec, Q7). */
+export const REMATCH_OFFER_LIMIT = 10;
+export const REMATCH_OFFER_WINDOW_MS = 60 * 60 * 1000;
