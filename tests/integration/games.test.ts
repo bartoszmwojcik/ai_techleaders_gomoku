@@ -152,7 +152,7 @@ describe("GameService.create", () => {
     const user = await insertUser();
     for (let i = 0; i < 10; i += 1) {
       const { gameId } = await scope().gameService.create({ kind: "account", userId: user });
-      await scope().gameService.cancel(user, gameId);
+      await scope().gameService.cancel({ playerId: await playerOf(gameId, user) }, gameId);
     }
     await expect(scope().gameService.create({ kind: "account", userId: user })).rejects.toBeInstanceOf(TooManyRequestsError);
   });
@@ -163,7 +163,7 @@ describe("GameService.cancel", () => {
     const user = await insertUser();
     const { gameId } = await scope().gameService.create({ kind: "account", userId: user });
 
-    await scope().gameService.cancel(user, gameId);
+    await scope().gameService.cancel({ playerId: await playerOf(gameId, user) }, gameId);
 
     expect(await status(gameId)).toBe("cancelled");
     expect(await scope().participation.occupiesSlot(user)).toBe(false);
@@ -174,11 +174,11 @@ describe("GameService.cancel", () => {
     const user = await insertUser();
     const { gameId } = await scope().gameService.create({ kind: "account", userId: user });
 
-    await expect(scope().gameService.cancel(await insertUser(), gameId)).rejects.toMatchObject({ status: 404 });
-    await expect(scope().gameService.cancel(user, crypto.randomUUID())).rejects.toMatchObject({ status: 404 });
+    await expect(scope().gameService.cancel({ playerId: crypto.randomUUID() }, gameId)).rejects.toMatchObject({ status: 404 });
+    await expect(scope().gameService.cancel({ playerId: await playerOf(gameId, user) }, crypto.randomUUID())).rejects.toMatchObject({ status: 404 });
 
     await join(gameId, await insertUser());
-    await expect(scope().gameService.cancel(user, gameId)).rejects.toMatchObject({
+    await expect(scope().gameService.cancel({ playerId: await playerOf(gameId, user) }, gameId)).rejects.toMatchObject({
       status: 409,
       code: "GAME_NOT_CANCELLABLE",
     });
@@ -215,8 +215,8 @@ describe("GameService.getState", () => {
   });
 
   it("answers 404 to somebody else's game", async () => {
-    const { gameId } = await scope().gameService.create(await insertUser());
-    const other = await scope().gameService.create(await insertUser());
+    const { gameId } = await scope().gameService.create({ kind: "account", userId: await insertUser() });
+    const other = await scope().gameService.create({ kind: "account", userId: await insertUser() });
     const otherPlayer = await run(`select id from game_players where game_id = ?`, [other.gameId]);
     await expect(
       scope().gameService.getState({ playerId: otherPlayer[0]!.id as string }, gameId),

@@ -76,6 +76,12 @@ async function newGame() {
   return { creator, gameId, code: invitation.code };
 }
 
+/** The creator's seat as the cancel route resolves it (`resolveParticipant`). */
+async function participantOf(userId: string, gameId: string) {
+  const [row] = await run(`select id from game_players where game_id = ? and user_id = ?`, [gameId, userId]);
+  return { playerId: row!.id as string };
+}
+
 const asUser = { as: "user" } as const;
 const status = async (gameId: string) =>
   (await run(`select status from games where id = ?`, [gameId]))[0]!.status;
@@ -157,7 +163,7 @@ describe("InvitationService.accept", () => {
 
   it("refuses a cancelled game's invitation", async () => {
     const { creator, code, gameId } = await newGame();
-    await scope().games.cancel(creator, gameId);
+    await scope().games.cancel(await participantOf(creator, gameId), gameId);
     await expect(
       scope().invitations.accept(code, { userId: await insertUser() }, asUser, guard()),
     ).rejects.toMatchObject({ code: "INVALID_INVITATION" });
@@ -267,7 +273,7 @@ describe("InvitationService.accept", () => {
 
       const [joined, cancelled] = await Promise.allSettled([
         scope().invitations.accept(code, { userId: joiner }, asUser, guard()),
-        scope().games.cancel(creator, gameId),
+        scope().games.cancel(await participantOf(creator, gameId), gameId),
       ]);
 
       const finalStatus = await status(gameId);
@@ -528,6 +534,7 @@ describe("InvitationService.preview", () => {
     expect(await invitations.preview(code, { userId: viewer }, guard())).toMatchObject({ state: "joinable" });
     expect(await invitations.preview(code, { userId: creator }, guard())).toEqual({
       creatorName: expect.stringMatching(/^Inv_/),
+      creatorKind: "account",
       state: "own-invitation",
       gameId,
     });
