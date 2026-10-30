@@ -208,6 +208,20 @@ describe("rejected resignations", () => {
   });
 });
 
+describe("a guest creator of a waiting game", () => {
+  it("cannot resign it: 409 GAME_NOT_ACTIVE, and the game stays waiting (it is cancelled instead)", async () => {
+    const created = await call("POST", "/api/games", { acknowledgedGuestWarning: true });
+    expect(created.status).toBe(201);
+    const cookie = cookieOf(created);
+    const waiting = { gameId: (await json(created)).data.gameId } as Game;
+    const refused = await resign(waiting, cookie);
+    expect(refused.status).toBe(409);
+    expect((await json(refused)).error.code).toBe("GAME_NOT_ACTIVE");
+    expect(await row(waiting)).toMatchObject({ status: "waiting" });
+    expect((await call("POST", `/api/games/${waiting.gameId}/cancel`, {}, cookie)).status).toBe(200);
+  });
+});
+
 describe("races", () => {
   it("lets exactly one of a resignation and a five-completing move end the game", async () => {
     const game = await joinedGame();

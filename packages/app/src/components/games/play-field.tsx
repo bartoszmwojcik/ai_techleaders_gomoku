@@ -299,7 +299,11 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
                 setResignError(null);
                 setAsking(open);
               }}
-              trigger={<Button variant="secondary">Poddaj partię</Button>}
+              trigger={
+                <Button variant="secondary" data-testid="resign">
+                  Poddaj partię
+                </Button>
+              }
               title="Czy na pewno chcesz się poddać?"
               description={
                 <>
