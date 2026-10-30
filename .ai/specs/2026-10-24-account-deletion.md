@@ -16,7 +16,7 @@ Q1–Q4 zatwierdzone 2026-10-24 i obowiązujące; Q5–Q9 wynikają z przesłuch
 | Q2 | Potwierdzenie usunięcia | Ponowne podanie hasła + pole „Rozumiem, że tego nie da się cofnąć”; limit 10 nieudanych prób na konto w 15 min (wzorzec H1, jak `PASSWORD_CHANGE_LIMIT`). | Nieodwracalność; skradziona sesja nie usunie konta bez hasła. | Wzorzec gotowy w `api/auth/password/route.ts`. |
 | Q3 | Karencja / przywrócenie | Brak — natychmiast i nieodwracalnie. ✅ właściciel | BR-17 „kasuje od razu”. | — |
 | Q4 | Ponowna rejestracja tym samym e-mailem / nazwą | Dozwolona od razu. | Stare partie wskazują „Usunięty gracz”, nie nazwę (brak ryzyka podszycia się). | — |
-| Q5 | Co blokuje (BR-21) | Tylko partia `active` konta (`GameParticipation.hasActiveGame`). Partia `waiting` i wpis w lobby nie blokują. ✅ właściciel (grill-me 2026-10-24) | Zgodnie z przesłuchaniem. | `hasActiveGame` vs `occupiesSlot` rozdzielone w kodzie. |
+| Q5 | Co blokuje (BR-21) | Tylko partia `active` konta; w serwisie rozstrzyga ją zapytanie pod blokadą (krok 4b–c, status `active` niezależnie od `is_active`), a UI pokazuje stan przez `currentGame`/`hasActiveGame`. Partia `waiting` i wpis w lobby nie blokują. ✅ właściciel (grill-me 2026-10-24) | Zgodnie z przesłuchaniem. | `hasActiveGame` vs `occupiesSlot` rozdzielone w kodzie. |
 | Q6 | Co z partią `waiting` konta | **Usuwana w transakcji usunięcia** (wiersze `games`; `game_players` i `invitations` kaskadą). Nie `GameService.cancel`. | Nie ma przeciwnika ani historii; `cancelled` zostawiłby „widmo” na 25 h do sprzątania (#39) i inny komunikat pod linkiem. Zgodne ze specyfikacją zaproszeń („twórca usuwa konto z oczekującą partią: link → nieważne”). | `cancel` nie jest używany. |
 | Q7 | Partia `active`, której zegar wygasł albo nikt jej nie otworzył | Przed sprawdzeniem BR-21 serwis leniwie zamyka stare sloty konta: `timeoutSettler.settleFor(userId)` (przegrana na czas) i `closeStaleSlotsOfUser` (nieotwarta 15 min → `cancelled`). Blokuje tylko partia naprawdę w toku. | Inaczej fałszywe `409` (jak Q16/Q17 specyfikacji zaproszeń). | Oba mechanizmy istnieją (`timeout-settler.ts`, `lazy-closing.ts`). |
 | Q8 | E-mail o usunięciu konta | **Nie wysyłamy.** Brief tego nie wymaga (BR-17 mówi o danych, nie o powiadomieniach); #38 **nie** jest zależnością tej funkcji. | Zakres i koszt poczty (D-20). | — |
@@ -44,21 +44,23 @@ Q1–Q4 zatwierdzone 2026-10-24 i obowiązujące; Q5–Q9 wynikają z przesłuch
 
 ## 📝 Proposed Solution
 
-`POST /api/account/delete` (`apiHandler` + CSRF; POST zamiast DELETE z treścią — proxy bywa, że gubią treść DELETE) → `requireSessionWithId` (401) → `accountDeleteSchema` (`password`, `confirm: true`; 400, nie zużywa próby) → `rateLimiter.hit("account-delete:user:{id}", 10, 15 min)` przed wolnym sprawdzeniem hasła → `AccountService.delete(userId, password)` → `clearSessionCookie` → `200`. Po sukcesie `reset` licznika; odpowiedź `409` oddaje próbę (`release`), bo hasło było poprawne (limit liczy tylko złe hasła).
+`POST /api/account/delete` (`apiHandler` + CSRF; POST zamiast DELETE z treścią — proxy bywa, że gubią treść DELETE) → `requireSessionWithId` (401) → `accountDeleteSchema` (`password`, `confirm: true`; 400, nie zużywa próby) → `rateLimiter.hit("account-delete:user:{id}", 10, 15 min)` przed wolnym sprawdzeniem hasła → `AccountService.delete(userId, password)` → `clearSessionCookie` → `200`. Limit liczy tylko złe hasła: sukces robi `reset`, pozostałe wyniki przy poprawnym haśle oddają próbę (`release`).
 
 **`AccountService.delete`** (nowy serwis, `src/server/services/auth/account-service.ts`, zależności `{ em, passwordHasher, timeoutSettler, clock }`, rejestrowany jawnie w `container.ts`):
 
-1. `findOne(User)`; brak → `UnauthorizedError` (m.in. przegrany wyścig dwóch usunięć).
+1. `findOne(User)`; brak → `UnauthorizedError` (konto już usunięte).
 2. `passwordHasher.verify` **przed** transakcją (bcrypt nie trzyma połączenia); błąd → `ValidationError` `INVALID_PASSWORD` z `fieldErrors.password` (400).
 3. Leniwe zamykanie starych slotów (Q7), poza transakcją, własnymi krótkimi transakcjami: `timeoutSettler.settleFor(userId)` i `closeStaleSlotsOfUser(em, userId, now)`.
 4. **Jedna transakcja `em.transactional(tx)`, zapisy wyłącznie przez `tx`**, surowy SQL przez `tx.execute` z `?`:
-   a. blokada wiersza użytkownika: `select id from users where id = ? for no key update`;
+   a. blokada wiersza użytkownika: `select id from users where id = ? for no key update`; 0 wierszy (przegrany wyścig dwóch usunięć) → `UnauthorizedError` (401, nie `INVALID_PASSWORD`);
    b. blokada gier konta w statusach `waiting`/`active`: `select g.id, g.status from games g join game_players p on p.game_id = g.id where p.user_id = ? and g.status in ('waiting','active') order by g.id for update of g`;
    c. **BR-21:** jeśli którakolwiek z gier ma `status = 'active'` → `ConflictError` `ACTIVE_GAME` z `data: { gameId }` (rzut przed jakimkolwiek zapisem);
    d. usunięcie gier `waiting` konta (Q6): `delete from games where id in (…)` (kaskada: `game_players`, `invitations`);
-   e. zamknięcie propozycji rewanżu z udziałem konta (O2): `update games set rematch_state = 'declined' where rematch_state = 'pending' and id in (select game_id from game_players where user_id = ?)`;
-   f. `delete from users where id = ? and password_hash = ?` (warunek na zweryfikowanym haszu — ochrona przed wyścigiem ze zmianą hasła, jak w `changePassword`); 0 wierszy → `INVALID_PASSWORD`. Akcje FK: patrz Data Model.
-5. Poza transakcją: `rateLimiter.reset`, usunięcie ciasteczka sesji.
+   e. zamknięcie propozycji rewanżu z udziałem konta (O2), z zachowaniem kolejności blokad: `select g.id from games g join game_players p on p.game_id = g.id where p.user_id = ? and g.rematch_state = 'pending' order by g.id for update of g`, potem `update games set rematch_state = 'declined' where id in (…)`;
+   f. `delete from users where id = ? and password_hash = ?` (warunek na zweryfikowanym haszu — ochrona przed wyścigiem ze zmianą hasła, jak w `changePassword`); 0 wierszy przy istniejącym użytkowniku (hasz zmieniony) → `INVALID_PASSWORD`. Akcje FK: patrz Data Model.
+
+**Tworzenie partii a usuwanie (wymóg wobec `GameService.create`):** wstawienie `game_players` z `user_id` bierze na `users` tylko `FOR KEY SHARE`, który nie koliduje z blokadą z kroku 4a — bez zmiany `create` równoległe utworzenie partii i usunięcie konta zostawiłoby partię `waiting` z uczestnikiem `account`/`user_id NULL`/`is_active` i żywym zaproszeniem. Dlatego `GameService.create` (konto) w swojej transakcji, przed `#insertGame`, blokuje `select id from users where id = ? for no key update` (jak już robi dołączanie w `invitation-service`); krok 3 planu.
+5. Poza transakcją: `rateLimiter.reset`, usunięcie ciasteczka sesji. Licznik próby: `release` w `finally` dla każdego wyniku poza błędnym hasłem (409, 401, 500 po poprawnym haśle); `reset` po sukcesie.
 
 **Odrzucone:** miękkie usunięcie z flagą i anonimizacja przez nadpisanie e-maila/nazwy (sprzeczne z BR-17, stare dane w kopiach); dodatkowa kolumna „konto usunięte” w `game_players` (redundantna wobec `kind = 'account' AND user_id IS NULL`); `GameService.cancel` dla `waiting` (Q6); automatyczne poddawanie partii w toku za użytkownika (nieodwracalny wynik bez jego woli — użytkownik sam wybiera poddanie); e-mail o usunięciu (Q8). **Poza zakresem:** eksport danych, panel administratora do usuwania kont, ciasteczka gościa (niezwiązane z kontem).
 
@@ -67,7 +69,7 @@ Q1–Q4 zatwierdzone 2026-10-24 i obowiązujące; Q5–Q9 wynikają z przesłuch
 - `@gomoku/core`: `accountDeleteSchema` (wzorem `passwordChangeSchema`); bez zależności od Reacta i ORM.
 - `@gomoku/db`: migracja z indeksem (krok 2), reguła sprzątania (krok 8); encje bez zmian poza `.index()` na `GamePlayer.user`.
 - `@gomoku/app`: `AccountService` (scoped, nowy), `api/account/delete/route.ts`, `account/delete-account-form.tsx`, komunikat na `/` (`notice=account-deleted`).
-- Reużywane bez zmian: `GameParticipation`, `TimeoutSettler`, `closeStaleSlotsOfUser`, `RateLimiter` (`hit`/`release`/`reset`), `PasswordHasher`, `clearSessionCookie`, `apiHandler` (CSRF: `Origin` + nagłówek `x-gomoku-request`), wzorzec ze `ChangePasswordForm`.
+- Reużywane bez zmian: `GameParticipation.currentGame` (UI), `TimeoutSettler`, `closeStaleSlotsOfUser`, `RateLimiter` (`hit`/`release`/`reset`), `PasswordHasher`, `clearSessionCookie`, `apiHandler` (CSRF: `Origin` + nagłówek `x-gomoku-request`), wzorzec ze `ChangePasswordForm`.
 - **Kolejność blokad w całej aplikacji:** `users` (rosnąco po `id`) → `games` (rosnąco po `id`) → `game_players`. Usunięcie ją zachowuje (blokuje jednego użytkownika, potem swoje gry rosnąco). Samo `DELETE FROM users` najpierw blokuje wiersz użytkownika, a dopiero potem wykonuje akcje referencyjne (`set null` na `game_players`), więc nie odwraca kolejności względem usług, które trzymają blokadę gry i modyfikują `game_players`. Tego rozumowania nie zastępuje test: zakleszczenie sprawdza test współbieżny na PostgreSQL (krok 4).
 
 ## 📝 Data Model
@@ -97,7 +99,7 @@ Q1–Q4 zatwierdzone 2026-10-24 i obowiązujące; Q5–Q9 wynikają z przesłuch
 | Błędne hasło (także przegrany wyścig ze zmianą hasła) | `400` | `code: "INVALID_PASSWORD"`, `fieldErrors.password` |
 | Brak potwierdzenia / puste hasło | `400` | `code: "VALIDATION"`, `fieldErrors.confirm` / `fieldErrors.password` |
 | Aktywna partia (BR-21) | `409` | `code: "ACTIVE_GAME"`, „Najpierw dokończ albo poddaj partię.”, `data: { gameId }` |
-| Brak sesji / konto już usunięte | `401` | `code: "UNAUTHORIZED"` |
+| Brak sesji / konto już usunięte (także przegrane równoległe usunięcie) | `401` | `code: "UNAUTHORIZED"`; trasa usuwa ciasteczko sesji (sesji i tak już nie ma) |
 | Limit (Q2) | `429` | `code: "RATE_LIMITED"` + `Retry-After` |
 | CSRF | `403` | `code: "FORBIDDEN"` |
 | Baza niedostępna | `500` | nic nie usunięto; ciasteczko **nie** jest usuwane (inaczej niż przy wylogowaniu: tu użytkownik ma ponowić operację) |
@@ -138,7 +140,9 @@ Dostępność: `alertdialog` (jest w `ConfirmDialog`), etykiety pól, błędy po
 | Wyścig: przeciwnik dołącza do `waiting` konta w trakcie usuwania | Dołączanie blokuje `users` → `games`, usunięcie blokuje użytkownika i swoje gry. Wygrywa pierwszy: dołączenie zatwierdzone → usunięcie widzi `active` i daje `409`; usunięcie zatwierdzone → dołączenie dostaje `INVALID_INVITATION`. |
 | Wyścig: rewanż z udziałem konta | `accept` sprawdza BR-13 obu graczy pod blokadą `users`; jeśli powstał `active`, usunięcie daje `409`. Jeśli usunięcie wygrało, `accept` kończy `409 REMATCH_UNAVAILABLE`. |
 | Oferta rewanżu `pending` złożona przez usuwane konto lub do niego | Zamykana w transakcji (`declined`, O2). Nowa oferta lub akceptacja wobec uczestnika `kind = 'account'` z `user_id NULL` → `409 REMATCH_UNAVAILABLE`, UI nie pokazuje „Rewanż”. **Wymaganie wobec #88**; kto wdraża drugi, dopisuje test. |
-| Konta obojga graczy usunięte | Wiersze partii zostają z dwoma „Usunięty gracz”; partia nikomu nie jest widoczna (historia po `user_id`). Akceptowane (rozmiar pomijalny); sprzątanie takich partii poza zakresem. |
+| Konta obojga graczy usunięte | Wiersze partii zostają z dwoma „Usunięty gracz”; partia nikomu nie jest widoczna (historia po `user_id`). Świadomy dług: żadna reguła `CLEANUP_RULES` nie obejmuje partii `finished`; do zapisania jako osobna pozycja w #39 / `track.md`, poza zakresem #37. |
+| Partia `active`, do której przeciwnik jeszcze nie wszedł (< 15 min, brak `seen_at`) | Blokuje usunięcie (BR-21), a nieotwarta partia zamyka się dopiero po 15 min (Q7). **Do sprawdzenia przy 5.3:** czy poddanie jest możliwe przed `seen_at` obu graczy; jeśli nie, użytkownik czeka do 15 min bez drogi wyjścia — wtedy komunikat mówi o tym wprost albo 5.3 dopuszcza poddanie. |
+| Utworzenie partii równolegle z usuwaniem | `GameService.create` blokuje wiersz użytkownika (zob. Proposed Solution): wygrywa pierwszy; po usunięciu `create` kończy się `401`/brakiem użytkownika, po `create` usunięcie usuwa świeżą partię `waiting` (Q6). |
 | Partia zakończona z gościem | Gość widzi „Usunięty gracz” jako przeciwnika w oknie 1 h od końca (token gościa, BR-22). |
 | Inne urządzenia zalogowane | Sesje znikają kaskadą; następne żądanie `401`/przekierowanie na `/login`. Ciasteczko gościa tej przeglądarki (E02-S08) zostaje nietknięte i niezwiązane z kontem. |
 | Hasło zmienione równolegle | Warunek `password_hash = <zweryfikowany>` w `DELETE` → 0 wierszy → `INVALID_PASSWORD`. |
@@ -150,7 +154,8 @@ Dostępność: `alertdialog` (jest w `ConfirmDialog`), etykiety pól, błędy po
 ## 📝 Risks & Impact Review
 
 - **Nieodwracalność (Q3)** — błąd w kaskadach usuwa za dużo/za mało; mitygacja: test-strażnik FK, testy integracyjne każdej tabeli po usunięciu i tego, że partie przeciwnika zostały bez zmian (wynik, plansza, czas).
-- **Zakleszczenia** — nowy `DELETE FROM users` w systemie z blokadami `users → games → game_players`; mitygacja: ta sama kolejność, test równoległy na PostgreSQL (usunięcie vs dołączenie, vs poddanie, vs ruch; vs rewanż po jego wdrożeniu); fałszywy `em` tego nie wykryje.
+- **Zakleszczenia i partie „widma”** — nowy `DELETE FROM users` w systemie z blokadami `users → games → game_players`; mitygacja: ta sama kolejność (także w kroku 4e), blokada użytkownika w `GameService.create`, testy deterministyczne na dwóch połączeniach PostgreSQL (krok 4); fałszywy `em` i `Promise.all` tego nie dowodzą.
+- **Migracja i snapshot:** `.snapshot-gomoku.json` w głównym repo ma niezacommitowaną zmianę — krok 2 zaczyna od czystego `origin/main`; indeks generować (`db:migration:create`), nie pisać ręcznie; sprawdzić nazwę zgodną z `sessions_user_id_index`.
 - **Wydajność** — bez indeksu `game_players(user_id)` usunięcie konta, sprzątanie i historia skanują tabelę; migracja addytywna.
 - **Zgodność wsteczna** — nowa trasa (§2) i indeks (§4) są addytywne; bez zmian kolumn i kodów istniejących tras. Etykieta `risk-high` (dane konta, sesje, destrukcja danych), review drugiej osoby, QA bez self-QA.
 - **Kopie zapasowe** (jeśli powstaną) zawierają usunięte dane — poza zakresem (D-22).
@@ -168,25 +173,25 @@ Do rozstrzygnięcia przez właściciela przed kodem; do czasu odpowiedzi spec za
 |---|---|---|
 | O1 | Ścieżka endpointu: `POST /api/account/delete` (jak w zatwierdzonej wersji; strona to `/account`) czy `POST /api/auth/account/delete` (obok `api/auth/password`)? | `/api/account/delete` — zgodna z tekstem zatwierdzonym 24.10, pierwszy punkt wejścia dla przyszłych operacji na koncie. |
 | O2 | Oferta rewanżu `pending` z udziałem usuwanego konta: zamykać jako `declined` (przeciwnik widzi „Zaproszenie do rewanżu odrzucone”) czy pokazać „Przeciwnik usunął konto”? | `declined` (bez zmiany `CHECK`) + guard `REMATCH_UNAVAILABLE`; osobny tekst „usunął konto” dopiero przy UI rewanżu (p06.x, mapa `mapa-ekranow-partia.md`). |
-| O3 | Czy przed kodem UI potrzebny jest prototyp (s05: panel, błąd hasła, blokada z linkiem, sukces na `/`, wariant z `waiting`, telefon)? Proces wymaga prototypu przed kodem ekranu. | Tak, mały: dopisać stany do `prototypes/konta-i-role` i mapy (s05.10+) przed krokiem 6; kroki 1–5 nie czekają. |
+| O3 | Czy przed kodem UI potrzebny jest prototyp (s05: panel, błąd hasła, blokada z linkiem, sukces na `/`, wariant z `waiting`, telefon)? Proces wymaga prototypu przed kodem ekranu. | Tak, mały: dopisać stany do `prototypes/konta-i-role` i mapy (s05.10+) przed krokiem 6; kroki 1–5 nie czekają (krok 5 po 5.3). |
 | O4 | Reguła 9.4 (niepotwierdzone konto bez partii po 14 dniach, BR-28): w tym samym PR co #37 czy osobne zgłoszenie? | Ten sam PR jako odrębny krok 8 (wspólny indeks i test kaskad; „mało, ale pełnych PR-ów”). Warunek: `NOT EXISTS (… game_players …)` nie usuwa konta z jakąkolwiek partią, także `cancelled`. |
 | O5 | Hasło w panelu (obok pola wyboru) czy w oknie dialogu? `ConfirmDialog` ma dziś tylko `description` — pole w dialogu wymaga zmiany komponentu DS. | W panelu (wzorzec DS i wersja z 24.10); dialog to ostatnie pytanie. Bez zmian w DS. |
 | O6 | Czy po usunięciu wysłać e-mail „Twoje konto zostało usunięte”? Brief tego nie wymaga; wymagałoby #38. | Nie (Q8). Gdy właściciel zechce: osobna historia po #38, z cichym pominięciem przy braku dostawcy. |
 
 ## 📋 Phasing
 
-Jedna faza, jeden PR (`Closes #37`). **Start kodu po scaleniu 5.3–5.4 z `track-e02.md`** (poddanie z UI jako droga wyjścia z blokady; reszta zależności jest na `main`). Rewanż (#88) nie jest warunkiem: kolumny rewanżu są od fazy 1, a guard `REMATCH_UNAVAILABLE` dopisuje ten, kto wdraża drugi. Każdy krok zostawia działającą aplikację; funkcja jest niewidoczna dla gracza do kroku 6.
+Jedna faza, jeden PR (`Closes #37`). Zależności z `track-e02.md`: kroki 1–4 nie czekają na nic; krok 5 (test „po poddaniu usunięcie przechodzi”) wymaga endpointu poddania (5.3); kroki 6–7 wymagają UI poddania (5.4) i O3. Reszta zależności jest na `main`. Rewanż (#88) nie jest warunkiem: kolumny rewanżu są od fazy 1, a guard `REMATCH_UNAVAILABLE` dopisuje ten, kto wdraża drugi. Każdy krok zostawia działającą aplikację; funkcja jest niewidoczna dla gracza do kroku 6.
 
-- **A (kroki 1–5):** core → db → serwis → testy PostgreSQL → API.
+- **A (kroki 1–5):** core → db → `create` i serwis → testy PostgreSQL → API.
 - **B (kroki 6–7):** UI (po O3), testy przeglądarkowe, dokumentacja.
-- **C (krok 8, O4):** reguła 14 dni, osobny commit; w razie potrzeby wydzielany do osobnego PR bez zmian w A i B.
+- **C (krok 8, O4):** reguła 14 dni, osobny commit; w razie potrzeby wydzielany do osobnego PR bez zmian w A i B. Wymaga rozszerzenia unii `key` w `CleanupRule` i typu wyniku `cleanupExpired`, testu kolejności względem `waitingGames`/`cancelledGames` (konto traci ostatnią partię dopiero po ich sprzątnięciu — zgodne z BR-28, jeśli ta kolejność jest oczekiwana) i testu na PostgreSQL kwalifikacji `users.id` w podzapytaniu.
 
 ## 📋 Implementation Plan
 
 1. **`core`:** `accountDeleteSchema` (`password` niepuste, `confirm: z.literal(true)`) + testy (100%).
 2. **`db`:** migracja z indeksem `game_players_user_id_index` + `.index()` w encji `GamePlayer`; sprawdzenie **w górę i w dół na jednorazowym PostgreSQL** (osobny kontener; przed poleceniem wypisz `DATABASE_URL`, nigdy `down`/drop na bazie dev); aktualizacja `.snapshot-gomoku.json`.
-3. **`AccountService.delete`** + rejestracja w `container.ts` + testy jednostkowe na fałszywym `em`/`tx`: błędne hasło, brak użytkownika, `409` z `gameId`, usunięcie gier `waiting`, zamknięcie rewanżu, 0 wierszy `DELETE` → `INVALID_PASSWORD`, `settleFor`/`closeStaleSlotsOfUser` przed transakcją, zapisy tylko przez `tx`.
-4. **Testy na prawdziwym PostgreSQL** (`tests/integration/account-delete-db.test.ts`): test-strażnik FK do `users`; kaskady po usunięciu (każda tabela); partie przeciwnika bez zmian; rollback przy `409` i przy błędzie w środku; współbieżność bez zakleszczenia (usunięcie vs dołączenie do `waiting`, vs poddanie/ruch w `active`, wielokrotnie w `Promise.all`); dwa konta usunięte w jednej partii.
+3. **`GameService.create`:** blokada `users … for no key update` przed `#insertGame` (konto) + test jednostkowy i PostgreSQL (create ∥ delete). **`AccountService.delete`** + rejestracja w `container.ts` + testy jednostkowe na fałszywym `em`/`tx`: błędne hasło, brak użytkownika, `409` z `gameId`, usunięcie gier `waiting`, zamknięcie rewanżu, 0 wierszy `DELETE` → `INVALID_PASSWORD`, `settleFor`/`closeStaleSlotsOfUser` przed transakcją, zapisy tylko przez `tx`.
+4. **Testy na prawdziwym PostgreSQL** (`tests/integration/account-delete-db.test.ts`): test-strażnik FK do `users`; kaskady po usunięciu (każda tabela); partie przeciwnika bez zmian; rollback przy `409` i przy błędzie w środku; dwa konta usunięte w jednej partii. **Współbieżność deterministycznie, nie `Promise.all`:** dwa połączenia `pg`, transakcja A wstrzymana na blokadzie (np. po wstawieniu uczestnika albo `FOR UPDATE` gry), B uruchamia usunięcie, asercja przez `pg_locks`/`pg_stat_activity`, że B czeka, commit A i sprawdzenie stanu końcowego; niskie `deadlock_timeout`/`lock_timeout`. Obowiązkowe scenariusze: create ∥ delete, join ∥ delete, delete ∥ delete tego samego konta (drugi → 401), delete ∥ zmiana hasła, delete ∥ poddanie/ruch. Inwariant po każdym: brak `game_players` z `kind='account' AND user_id IS NULL AND is_active`.
 5. **Route `api/account/delete/route.ts`** (`POST`, `connection()`, `apiHandler`, `requireSessionWithId`, limit `hit`/`release`/`reset`, `clearSessionCookie`) + testy jednostkowe + HTTP w `tests/integration/account-delete-api.test.ts`: `200` (sesja przestaje działać, także w drugiej przeglądarce; logowanie `INVALID_CREDENTIALS`; ponowna rejestracja), `400`, `401`, `403`, `409` z `data.gameId` (prawdziwa partia `active`) i przejście po poddaniu, `429`, `waiting` usunięte, ciasteczko gościa nietknięte, partia zakończona widoczna u przeciwnika jako „Usunięty gracz” (`displayName: null`, `kind: "account"`).
 6. **UI** (po O3): `delete-account-form.tsx` na `/account` (stany z tabeli), `notice=account-deleted` na `/`; testy komponentu (`@testing-library/react`: przycisk nieaktywny bez zaznaczenia, dialog, błąd hasła przy polu, `409` z linkiem, brak podwójnego wysłania — dwa `click()` w jednym `act`), strona `/account` ze stanem partii `active`; `npm run check:tokens` i `test:stories`, jeśli zmieniono DS.
 7. **Testy przeglądarkowe** (`agent-browser`, `tests/integration/account-delete-pages.test.ts`): pełny przepływ, błędne hasło, blokada z klikalnym linkiem do partii, poddanie → ponowne usunięcie, sukces z komunikatem na `/`, oba motywy i 360 px. **Dokumentacja:** README (konto), `track.md` (Faza 10), lekcja, jeśli przegląd wykaże korektę.
@@ -198,7 +203,7 @@ Jedna faza, jeden PR (`Closes #37`). **Start kodu po scaleniu 5.3–5.4 z `track
 
 Potwierdzone przez właściciela — Bartosza Wójcika.
 
-- **Definicja „aktywnej partii” (BR-21):** blokuje tylko partia **w toku** (obaj gracze, zegar biegnie). Partia oczekująca na przeciwnika i wpis w lobby nie blokują — są usuwane razem z kontem. Dokładny status: `active` w `GameParticipation.hasActiveGame` (wdrożone).
+- **Definicja „aktywnej partii” (BR-21):** blokuje tylko partia **w toku** (obaj gracze, zegar biegnie). Partia oczekująca na przeciwnika i wpis w lobby nie blokują — są usuwane razem z kontem. Dokładny status: `active` (to samo znaczenie co `GameParticipation.hasActiveGame`).
 - **Limity per adres klienta** działają tylko przy wiarygodnie ustalonym adresie (spike #30); limit 10 prób na konto zostaje zawsze.
 
 > **Adnotacja 2026-10-30 (BR-29 / D-27, E02-S07):** gość nie jest już „Zaproszony przez link”: przeciwnik zapisanej partii jest nazwany „{nick} (gość)” (nick jawny albo „Gracz {miejsce}”); „Usunięty gracz” dotyczy wyłącznie konta usuniętego. Wiersze z „Zaproszony przez link” w wersji z 24.10 czytaj jako „{nick} (gość)”.
