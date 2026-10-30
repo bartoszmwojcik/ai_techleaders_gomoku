@@ -8,6 +8,7 @@ import { S04Home } from "./screens/s04-home";
 import { S05Account } from "./screens/s05-account";
 import { S06Mailbox } from "./screens/s06-mailbox";
 import { S07Invite } from "./screens/s07-invite";
+import { S08Opponent } from "./screens/s08-opponent";
 import { Toolbar } from "./Toolbar";
 import { useSim } from "./sim";
 
@@ -71,11 +72,12 @@ export function App() {
       <ScreenSection
         id="s05"
         title="Konto"
-        meta="Rola: zalogowany. Historia #20 (E01-S02). Stany s05.1–s05.9."
+        meta="Rola: zalogowany. Historie #20 (E01-S02) i #37 (E01-S06, usunięcie konta). Stany s05.1–s05.9 (mapa) oraz s05.10–s05.20 (dopisek 2026-10-30, do zatwierdzenia)."
         notes={[
           "Historia: #20 (E01-S02), kryteria K1 i K3; Q4 (potwierdzenie przy aktywnej partii). Stany: s05.1–s05.9.",
-          "Symulacja: konto A3 (Marek_Z) ma aktywną partię, więc „Wyloguj” pyta o potwierdzenie. Sesja w tej przeglądarce kończy się też wtedy, gdy serwer nie potwierdzi wylogowania (założenie, L20). Zmiana hasła i usunięcie konta są poza prototypem (L19).",
+          "Symulacja: konto A3 (Marek_Z) ma aktywną partię, więc „Wyloguj” pyta o potwierdzenie. Sesja w tej przeglądarce kończy się też wtedy, gdy serwer nie potwierdzi wylogowania (założenie, L20). Zmiana hasła jest poza prototypem (L19).",
           "Nie rozstrzyga: L06 (czy „Wyloguj” także w nagłówku; dziś jest na koncie i na stronie głównej), L20 (stan „w toku” i błąd wylogowania), L18.",
+          "Usuń konto (dopisek 2026-10-30, #37): sekcja pod danymi konta, hasło w panelu (O5), dialog z fokusem na „Zostaw konto”. Konta demo: Ala_7 (A1, bez partii), Marek_Z (A3, partia w toku: blokada z linkiem), Ola_W (A8, oczekująca partia: ostrzeżenie). Stany s05.10–s05.20 wybierasz w panelu Scenariusze („Usunięcie konta”). Założenia są oznaczone [ASSUMPTION] w README.",
         ]}
       >
         <S05Account key={epoch} />
@@ -103,6 +105,18 @@ export function App() {
         ]}
       >
         <S07Invite key={epoch} />
+      </ScreenSection>
+      <ScreenSection
+        id="s08"
+        title="Partia: widok przeciwnika"
+        meta="Rola: przeciwnik usuniętego gracza (konto albo gość). Historia #37 (E01-S06), BR-17, BR-24, BR-29. Stany s08.1–s08.4 (dopisek 2026-10-30, do zatwierdzenia)."
+        notes={[
+          "Zastępuje ekran p06 prototypu partii tam, gdzie zmienia się treść po usunięciu konta przeciwnika: „Usunięty gracz” zamiast nazwy (kind = account, user_id NULL, displayName null). Reszta ekranu partii jest bez zmian i nie jest tu rysowana.",
+          "Symulacja: po usunięciu konta w s05 nazwa przeciwnika zmienia się sama. Kontrolki „Widok przeciwnika” w Scenariuszach wybierają gościa jako oglądającego i warianty rewanżu (O2, założenie).",
+          "Nie rozstrzyga: tekstu o rewanżu (O2: właściciel decyduje przy UI rewanżu, #88), historii kont (#27, jeszcze nie ma).",
+        ]}
+      >
+        <S08Opponent key={epoch} />
       </ScreenSection>
       <OutsideDialog />
     </div>

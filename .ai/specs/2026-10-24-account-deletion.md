@@ -1,6 +1,6 @@
 # Usunięcie konta z anonimizacją partii (E01-S06, #37)
 
-> Status: **zatwierdzona 2026-10-24** (`om-auto-write-spec`; założenia Q1–Q4 potwierdzone przez właściciela — Bartosz Wójcik). **Zaktualizowana 2026-10-30** (`om-spec-writing`, tryb interaktywny) do stanu kodu po E02 (#29, #21–#24, E02-S07, E02-S08; poddanie #87 i rewanż #88 w toku): zmiany względem wersji z 24.10 opisuje sekcja „Zmiany względem wersji z 2026-10-24”. Decyzje właściciela Q1–Q4 i z przesłuchania **nie zmieniły się**; nowe, nierozstrzygnięte kwestie to **Open Questions O1–O6** — przed startem kodu potrzebna odpowiedź właściciela.
+> Status: **zatwierdzona 2026-10-24** (`om-auto-write-spec`; założenia Q1–Q4 potwierdzone przez właściciela — Bartosz Wójcik). **Zaktualizowana 2026-10-30** (`om-spec-writing`, tryb interaktywny) do stanu kodu po E02 (#29, #21–#24, E02-S07, E02-S08; poddanie #87 i rewanż #88 w toku): zmiany względem wersji z 24.10 opisuje sekcja „Zmiany względem wersji z 2026-10-24”. Decyzje właściciela Q1–Q4 i z przesłuchania **nie zmieniły się**; kwestie **O1–O6** i pięć pytań z przeglądu prototypu (PR #105) **rozstrzygnął właściciel 2026-10-30** („zgoda na rekomendacje”) — sekcja „Open Questions (Resolved 2026-10-30)”.
 
 ## 📝 TLDR
 
@@ -165,18 +165,26 @@ Dostępność: `alertdialog` (jest w `ConfirmDialog`), etykiety pól, błędy po
 
 D-16, BR-17 (kasuje e-mail, hash, sesje; partie jako „Usunięty gracz”), BR-21 (blokada, komunikat), BR-24 (historia kont; gość bez historii), BR-29 / D-27 („{nick} (gość)”), BR-13 (slot), BR-18, BR-20, BR-22, BR-28 (reguła 14 dni), D-22; **nie nadpisuje żadnej aktywnej decyzji** i brief pozostaje bez zmian. Specyfikacje: #20 (H1, `requireSession`), zaproszeń (blokady, Q16/Q17/Q21), poddania (Q6), rewanżu, E02-S07/S08, sprzątania (#39), uproszczenia konta. Właściciel: Bartosz Wójcik.
 
-## ❓ Open Questions
+## ❓ Open Questions (Resolved 2026-10-30)
 
-Do rozstrzygnięcia przez właściciela przed kodem; do czasu odpowiedzi spec zakłada rekomendacje.
+Wszystkie rozstrzygnięte **2026-10-30 — decyzja właściciela** („zgoda na rekomendacje”). Kolumna „Rozstrzygnięcie” zastępuje dawną „Rekomendację”.
 
-| # | Pytanie | Rekomendacja |
+| # | Pytanie | Rozstrzygnięcie (Resolved, decyzja właściciela 2026-10-30) |
 |---|---|---|
-| O1 | Ścieżka endpointu: `POST /api/account/delete` (jak w zatwierdzonej wersji; strona to `/account`) czy `POST /api/auth/account/delete` (obok `api/auth/password`)? | `/api/account/delete` — zgodna z tekstem zatwierdzonym 24.10, pierwszy punkt wejścia dla przyszłych operacji na koncie. |
-| O2 | Oferta rewanżu `pending` z udziałem usuwanego konta: zamykać jako `declined` (przeciwnik widzi „Zaproszenie do rewanżu odrzucone”) czy pokazać „Przeciwnik usunął konto”? | `declined` (bez zmiany `CHECK`) + guard `REMATCH_UNAVAILABLE`; osobny tekst „usunął konto” dopiero przy UI rewanżu (p06.x, mapa `mapa-ekranow-partia.md`). |
-| O3 | Czy przed kodem UI potrzebny jest prototyp (s05: panel, błąd hasła, blokada z linkiem, sukces na `/`, wariant z `waiting`, telefon)? Proces wymaga prototypu przed kodem ekranu. | Tak, mały: dopisać stany do `prototypes/konta-i-role` i mapy (s05.10+) przed krokiem 6; kroki 1–5 nie czekają (krok 5 po 5.3). |
-| O4 | Reguła 9.4 (niepotwierdzone konto bez partii po 14 dniach, BR-28): w tym samym PR co #37 czy osobne zgłoszenie? | Ten sam PR jako odrębny krok 8 (wspólny indeks i test kaskad; „mało, ale pełnych PR-ów”). Warunek: `NOT EXISTS (… game_players …)` nie usuwa konta z jakąkolwiek partią, także `cancelled`. |
-| O5 | Hasło w panelu (obok pola wyboru) czy w oknie dialogu? `ConfirmDialog` ma dziś tylko `description` — pole w dialogu wymaga zmiany komponentu DS. | W panelu (wzorzec DS i wersja z 24.10); dialog to ostatnie pytanie. Bez zmian w DS. |
-| O6 | Czy po usunięciu wysłać e-mail „Twoje konto zostało usunięte”? Brief tego nie wymaga; wymagałoby #38. | Nie (Q8). Gdy właściciel zechce: osobna historia po #38, z cichym pominięciem przy braku dostawcy. |
+| O1 | Ścieżka endpointu: `POST /api/account/delete` czy `POST /api/auth/account/delete`? | **`POST /api/account/delete`** — zgodna z tekstem zatwierdzonym 24.10, pierwszy punkt wejścia dla przyszłych operacji na koncie. |
+| O2 | Oferta rewanżu `pending` z udziałem usuwanego konta: `declined` czy „Przeciwnik usunął konto”? | **Zamykana jako `declined`** (bez zmiany `CHECK`) + guard `REMATCH_UNAVAILABLE`. UI przeciwnika: tylko „Rewanż niedostępny”; alertu „Zaproszenie do rewanżu odrzucone” **nie ma** — zaproszenie zamykamy po cichu. Osobny tekst „usunął konto” dopiero przy UI rewanżu. |
+| O3 | Czy przed kodem UI potrzebny jest prototyp? | **Tak — zrobione**: rozszerzenie `prototypes/konta-i-role` (stany s05.10–s05.20, s04.14, s08) w PR #105; krok 6 nie czeka na prototyp. |
+| O4 | Reguła 9.4 (14 dni, BR-28): ten sam PR czy osobne zgłoszenie? | **Ten sam PR jako odrębny krok 8** (osobny commit). Warunek: `NOT EXISTS (… game_players …)` nie usuwa konta z jakąkolwiek partią, także `cancelled`. |
+| O5 | Hasło w panelu czy w dialogu? | **W panelu**; dialog ma tylko opis i (patrz decyzja 4) slot na komunikat błędu. |
+| O6 | E-mail „Twoje konto zostało usunięte”? | **Nie** (Q8). Gdy właściciel zechce: osobna historia po #38, z cichym pominięciem przy braku dostawcy. |
+
+### Decyzje właściciela z przeglądu prototypu (2026-10-30)
+
+1. **Bez licznika prób.** Błędne hasło daje `400` bez `data.attemptsLeft` i komunikat „Nieprawidłowe hasło.”; po 10 błędach w 15 minutach `429` z czasem odczekania („Zbyt wiele prób — Spróbuj ponownie za {n} min.”). `attemptsLeft` NIE wchodzi do kontraktu API.
+2. **Widok przeciwnika:** komunikat „Rewanż niedostępny” — TAK; „Zaproszenie do rewanżu odrzucone” — NIE (oferta `pending` zamykana po cichu).
+3. **Blokada s05.12:** tekst wprost każe wybrać „Poddaj partię” na stronie partii i odświeżyć stronę „Konto”. Poddanie przed otwarciem partii jest możliwe (potwierdzone w kodzie: `GameMoveService.resign` dopuszcza poddanie w każdej partii `active`).
+4. **Komponenty DS:** `Alert`; panel z obramowaniem `status-danger` jako „strefa niebezpieczna”; slot na komunikat w `ConfirmDialog` — mała zmiana DS w tym samym PR co implementacja #37 (luki DU1/DU2 zostają w prototypie jako `LUKA` z adnotacją „zatwierdzone do wdrożenia”). To zastępuje „Bez zmian w DS” z dawnej rekomendacji O5; dotyczy tylko slotu komunikatu, pole hasła zostaje w panelu.
+5. **Mapa:** ekran s08 zostaje w mapie kont (`lekcja-07/mapa-ekranow.md`, sekcja 7), nie trafia do `mapa-ekranow-partia.md`.
 
 ## 📋 Phasing
 
