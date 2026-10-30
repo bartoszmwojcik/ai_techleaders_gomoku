@@ -56,8 +56,6 @@ export type Scenario = {
   deleteServerError: boolean;
   /** The session expired while the player was on /account: the next send answers 401 (s05.19). */
   deleteSessionExpired: boolean;
-  /** An opponent's rematch offer was pending when the account is deleted (s08.3). */
-  rematchPending: boolean;
   /** s08 shows a notice about the unavailable rematch (assumption, see README O2). */
   rematchNotice: boolean;
   /** s08 is viewed by a guest (BR-29) instead of an account. */
@@ -128,7 +126,6 @@ export const defaultScenario = (): Scenario => ({
   deleteLimit: false,
   deleteServerError: false,
   deleteSessionExpired: false,
-  rematchPending: false,
   rematchNotice: false,
   opponentIsGuest: false,
 });
@@ -469,7 +466,7 @@ export function deleteFailures(sim: Sim): number {
 
 export type DeleteResult =
   | { kind: "ok" }
-  | { kind: "wrong-password"; attemptsLeft: number }
+  | { kind: "wrong-password" }
   | { kind: "limit"; minutes: number }
   | { kind: "active-game" }
   | { kind: "unauthorized" }
@@ -497,7 +494,7 @@ export async function deleteAccount(password: string): Promise<DeleteResult> {
   if (password !== account.password) {
     const count = fails + 1;
     set({ deleteFails: { email: account.email, count, since: fails === 0 ? nowMs(sim) : sim.deleteFails.since } });
-    return { kind: "wrong-password", attemptsLeft: DELETE_LIMIT - count };
+    return { kind: "wrong-password" };
   }
   if (sim.scenario.deleteServerError) return { kind: "server" };
   if (account.activeGame) {

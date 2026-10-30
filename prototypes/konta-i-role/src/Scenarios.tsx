@@ -160,8 +160,7 @@ export function Scenarios() {
             <input id="sc-opp-deleted" type="checkbox" checked={sim.opponentDeleted} onChange={(e) => setOpponentDeleted(e.target.checked)} />
             Przeciwnik usunął konto (po usunięciu konta w s05 włącza się samo)
           </label>
-          <Check id="sc-rematch-pending" label="Oferta rewanżu czekała w chwili usunięcia (zamknięta jako odrzucona)" flag="rematchPending" />
-          <Check id="sc-rematch-notice" label="Pokaż komunikat „Rewanż niedostępny” (założenie)" flag="rematchNotice" />
+          <Check id="sc-rematch-notice" label="Pokaż komunikat „Rewanż niedostępny” (decyzja właściciela 2026-10-30)" flag="rematchNotice" />
           <Check id="sc-opp-guest" label="Oglądający jest gościem (BR-29)" flag="opponentIsGuest" />
         </Group>
         <Group title="Podgląd (P13)">

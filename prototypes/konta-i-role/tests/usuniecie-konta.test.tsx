@@ -76,7 +76,7 @@ describe("usunięcie konta, ekran s05", () => {
     expect(password().getAttribute("aria-invalid")).toBe("true");
   });
 
-  it("s05.16: błędne hasło zamyka dialog, pokazuje błąd przy polu i liczy próby", async () => {
+  it("s05.16: błędne hasło zamyka dialog i pokazuje błąd przy polu, bez licznika prób", async () => {
     start("A1");
     for (let i = 1; i <= 7; i++) {
       fireEvent.change(password(), { target: { value: `zle-${i}` } });
@@ -89,7 +89,9 @@ describe("usunięcie konta, ekran s05", () => {
         expect(password().getAttribute("aria-invalid")).toBe("true");
       }
     }
-    expect(inFrame().getByText("Nieprawidłowe hasło. Zostało prób: 3, potem blokada na 15 minut.")).toBeTruthy();
+    // Owner decision 2026-10-30: no attempts counter; only 429 with the wait time.
+    expect(inFrame().getByText("Nieprawidłowe hasło.")).toBeTruthy();
+    expect(inFrame().queryByText(/Zostało prób/)).toBeNull();
   });
 
   it("s05.17: po 10 błędach nawet dobre hasło daje limit z czasem; okno wygasa po zegarze demo", async () => {
@@ -215,11 +217,14 @@ describe("usunięcie konta, ekran s05", () => {
     goTo("s08");
     expect(inFrame().getByTestId("opponent-name").textContent).toContain("Usunięty gracz");
     expect(inFrame().queryByText("Rewanż niedostępny")).toBeNull();
+    // The header shows the viewer of s08 (Olek_R), never the deleted demo session.
+    expect(inFrame().getByText("Zalogowano jako Olek_R")).toBeTruthy();
     act(() => patchScenario({ rematchNotice: true }));
     expect(inFrame().getByText("Rewanż niedostępny")).toBeTruthy();
-    act(() => patchScenario({ rematchPending: true }));
-    expect(inFrame().getByText("Zaproszenie do rewanżu odrzucone")).toBeTruthy();
+    // A pending rematch offer is closed silently: no "odrzucone" alert anywhere.
+    expect(inFrame().queryByText(/Zaproszenie do rewanżu odrzucone/)).toBeNull();
     act(() => patchScenario({ opponentIsGuest: true }));
     expect(inFrame().getByText(/Piotr \(gość\)/)).toBeTruthy();
+    expect(inFrame().queryByText(/Zalogowano jako/)).toBeNull();
   });
 });

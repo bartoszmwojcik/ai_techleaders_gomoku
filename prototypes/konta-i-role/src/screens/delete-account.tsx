@@ -16,7 +16,7 @@ const SERVER_ERROR = "Nie udało się usunąć konta. Nic nie zostało zmienione
 
 /**
  * "Usuń konto" on /account (spec 2026-10-24-account-deletion.md, "UI/UX"), states s05.10–s05.20.
- * The password sits in the panel, not in the dialog (open question O5): ConfirmDialog has only a description (LUKA DU1).
+ * The password sits in the panel, not in the dialog (open question O5): ConfirmDialog has only a description (LUKA DU1, approved for implementation).
  */
 export function DeleteAccountSection() {
   const sim = useSim();
@@ -73,12 +73,8 @@ export function DeleteAccountSection() {
         setPhase("idle");
         setPassword("");
         setPasswordKey((key) => key + 1);
-        // No detail about the account; the counter only warns when the limit is near (assumption A-D5).
-        setFieldError(
-          result.attemptsLeft <= 3
-            ? `Nieprawidłowe hasło. Zostało prób: ${result.attemptsLeft}, potem blokada na 15 minut.`
-            : "Nieprawidłowe hasło.",
-        );
+        // No attempts counter: the API does not return one, only 429 with the wait time (owner decision 2026-10-30).
+        setFieldError("Nieprawidłowe hasło.");
         focusPassword();
         return;
       case "limit":
@@ -105,7 +101,7 @@ export function DeleteAccountSection() {
     }
   }
 
-  // LUKA DU2: no "danger zone" pattern in the design system; this is a Panel with a status-danger border.
+  // LUKA DU2 (approved for implementation, owner 2026-10-30): no "danger zone" pattern in the design system; this is a Panel with a status-danger border.
   return (
     <Panel title="Usuń konto" className="max-w-xl border-status-danger" data-testid="delete-account-panel">
       <Alert status="warning" title="Tego nie da się cofnąć" role="none">
@@ -173,7 +169,7 @@ export function DeleteAccountSection() {
               Twoje zakończone partie zostaną u przeciwników jako „Usunięty gracz”. Tego nie da się cofnąć.
               {waiting ? " Twoja oczekująca partia i jej zaproszenie zostaną usunięte." : ""}
             </span>
-            {/* LUKA DU1: ConfirmDialog has no slot for an error; the message is part of the description. */}
+            {/* LUKA DU1 (approved for implementation, owner 2026-10-30): ConfirmDialog has no slot for an error; the message is part of the description. */}
             {dialogError && <span role="alert" className="mt-group block font-strong text-status-danger">{SERVER_ERROR}</span>}
           </>
         }

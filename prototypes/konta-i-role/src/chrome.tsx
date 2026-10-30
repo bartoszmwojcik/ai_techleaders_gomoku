@@ -61,10 +61,11 @@ export function OutsideLink({ name, children, placement }: { name: string; child
 }
 
 /** `submitForm`: on the login page the header button submits the login form (review comment on s02). */
-export function SiteHeader({ submitForm }: { submitForm?: string } = {}) {
+/** `asViewer`: a screen drawn from another player's point of view (s08): their name, or `null` for a guest (no "Zalogowano jako"). */
+export function SiteHeader({ submitForm, asViewer }: { submitForm?: string; asViewer?: string | null } = {}) {
   const sim = useSim();
-  const account = viewer(sim);
-  if (!account) {
+  const name = asViewer === undefined ? viewer(sim)?.name : asViewer;
+  if (!name) {
     return (
       <PageHeader brand="Gomoku" homeHref="#s04">
         {submitForm ? <Button type="submit" form={submitForm}>Zaloguj się</Button> : <Button asChild><a href="#s02">Zaloguj się</a></Button>}
@@ -84,7 +85,7 @@ export function SiteHeader({ submitForm }: { submitForm?: string } = {}) {
       }
       navigationLabel="Główna nawigacja"
     >
-      <span className="text-body text-text-secondary">Zalogowano jako {account.name}</span>
+      <span className="text-body text-text-secondary">Zalogowano jako {name}</span>
       <TextLink href="#s05" placement="standalone">Konto</TextLink>
     </PageHeader>
   );
