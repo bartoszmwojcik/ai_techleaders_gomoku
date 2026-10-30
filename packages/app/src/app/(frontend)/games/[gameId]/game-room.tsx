@@ -378,6 +378,7 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
           gameId={gameId}
           game={game}
           pollFails={fails}
+          reopened={initial.status === "finished"}
           returnNotice={notice?.moveCount === game.moveCount ? notice.text : null}
           onState={applyState}
           onRefresh={() => void poll()}

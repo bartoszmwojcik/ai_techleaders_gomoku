@@ -48,6 +48,8 @@ type Props = {
   pollFails: number;
   /** "Wróciłeś do partii. Twój zegar: …" after a long absence (p05.10); the room decides when it shows and hides. */
   returnNotice?: string | null;
+  /** The page was opened on a game that was already over (reload, another device): p06.5 says nothing changes. */
+  reopened?: boolean;
   /** A fresh state read with `?after=<after>`; the room merges it. */
   onState: (next: GameView, after: number) => void;
   /** Reads the state now (after a refused move, or on "Sprawdź teraz"). */
@@ -76,7 +78,7 @@ const LOW_TIME_ANNOUNCEMENT = "Zostało mniej niż minuta";
  * the room reads the state at once, because only the server decides that the time is up. Resigning
  * and the rematch (phase 5) go under the board / the result.
  */
-export function PlayField({ gameId, game, pollFails, returnNotice, onState, onRefresh, onGone }: Props) {
+export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onState, onRefresh, onGone }: Props) {
   const touch = useSyncExternalStore(subscribePointer, isTouch, notTouchOnServer);
   // A selection belongs to the move it was made for: it lapses with the next move or the end of the turn.
   const [pick, setPick] = useState<{ cell: number; moveCount: number } | null>(null);
@@ -148,8 +150,8 @@ export function PlayField({ gameId, game, pollFails, returnNotice, onState, onRe
     <>
       <h1 className="m-0 text-section font-strong">{finished ? "Koniec partii" : "Partia w toku"}</h1>
       <div className="flex max-w-(--layout-width-board) flex-col gap-stack">
-        {game.you.kind === "guest" && (
-          // p05.11: permanent for a guest (BR-22).
+        {game.you.kind === "guest" && !finished && (
+          // p05.11: permanent for a guest (BR-22) while the game is played.
           <Alert status="warning" title="Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii">
             Stracisz dostęp do partii, a Twój zegar będzie biegł dalej.
           </Alert>
@@ -177,6 +179,18 @@ export function PlayField({ gameId, game, pollFails, returnNotice, onState, onRe
           </GameResultBanner>
         ) : (
           <TurnStatus color={colorOfSeat(game.blackSeat, game.turnSeat!)!}>{status}</TurnStatus>
+        )}
+        {finished && game.you.kind === "guest" && (
+          // p06.6: the guest token works for an hour after the end (BR-22).
+          <p className="m-0 text-body text-text-secondary" data-testid="guest-until">
+            Wynik zobaczysz w tej przeglądarce do 1 godziny po zakończeniu partii.
+          </p>
+        )}
+        {finished && reopened && (
+          // p06.5: back on a finished game; nothing can be played.
+          <p role="status" className="m-0 text-body text-text-secondary" data-testid="reload-note">
+            Powrót do zakończonej partii: wynik jest ten sam, ruch nie jest możliwy.
+          </p>
         )}
         <span role="status" className="sr-only" data-testid="low-live">
           {announced ? LOW_TIME_ANNOUNCEMENT : ""}

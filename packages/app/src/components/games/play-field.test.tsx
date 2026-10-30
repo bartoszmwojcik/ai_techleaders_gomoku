@@ -283,6 +283,29 @@ describe("PlayField, finished (p06)", () => {
     expect(screen.queryByText("Postaw kamień")).toBeNull();
   });
 
+  it("says it is a return when the page was opened on a finished game (p06.5), and not when it ended here", () => {
+    const view = finished(1, "five_in_row", [112, 113, 114, 115, 116]);
+    render(<PlayField gameId="g1" game={game(view)} pollFails={0} reopened onState={onState} onRefresh={onRefresh} onGone={onGone} />);
+    expect(screen.getByTestId("reload-note").textContent).toBe("Powrót do zakończonej partii: wynik jest ten sam, ruch nie jest możliwy.");
+    cleanup();
+    field(view);
+    expect(screen.queryByTestId("reload-note")).toBeNull();
+  });
+
+  it("tells a guest the result stays for an hour and drops the play-time warning (p06.6)", () => {
+    field({ ...finished(1, "five_in_row", [112, 113, 114, 115, 116]), you: { seat: 1, kind: "guest" }, players: [player(1, null, "guest"), player(2, "Kuba_P")] });
+    expect(screen.getByTestId("guest-until").textContent).toBe("Wynik zobaczysz w tej przeglądarce do 1 godziny po zakończeniu partii.");
+    expect(screen.queryByText(/Grasz bez konta/)).toBeNull();
+    cleanup();
+    field(finished(1, "five_in_row", [112, 113, 114, 115, 116]));
+    expect(screen.queryByTestId("guest-until")).toBeNull();
+  });
+
+  it("shows no return notice on a finished board", () => {
+    render(<PlayField gameId="g1" game={game(finished(1, "five_in_row", [112, 113, 114, 115, 116]))} pollFails={0} returnNotice="Wróciłeś do partii. Twój zegar: 9:15." onState={onState} onRefresh={onRefresh} onGone={onGone} />);
+    expect(screen.queryByText(/Wróciłeś/)).toBeNull();
+  });
+
   it("announces a loss and a draw", () => {
     field(finished(2, "five_in_row", [1, 2, 3, 4, 5]));
     expect(screen.getByText("Przegrałeś")).toBeTruthy();

@@ -23,7 +23,7 @@ type Options = {
  * absence is measured from the `visibilitychange` that hid the tab to the one that showed it; a
  * "visible" without a prior "hidden" is no return. Time comes from `now` (`Date.now` by default).
  */
-export function usePageVisibility({ onReturn, now = Date.now }: Options): boolean {
+export function usePageVisibility({ onReturn, now = () => Date.now() }: Options): boolean {
   const hidden = useSyncExternalStore(subscribe, isHidden, visibleOnServer);
   const hiddenAt = useRef<number | null>(null);
   const handler = useRef(onReturn);

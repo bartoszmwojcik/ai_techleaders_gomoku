@@ -576,6 +576,7 @@ describe("GameRoom, play (p05, p06)", () => {
       await back();
       expect(screen.getByText("Wygrałeś — przeciwnikowi skończył się czas")).toBeTruthy();
       expect(screen.queryByText(/Wróciłeś/)).toBeNull();
+      expect(screen.queryByTestId("reload-note")).toBeNull();
     });
 
     it("waits for the first successful read; a failed one leaves the notice due", async () => {
@@ -597,6 +598,20 @@ describe("GameRoom, play (p05, p06)", () => {
       expect(screen.queryByText(/Wróciłeś/)).toBeNull();
       expect(apiCall).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it("says it is a return when the page opens on a finished game, but not when the game ends on the page (p06.5)", async () => {
+    room(active({ status: "finished", turnSeat: null, result: { winnerSeat: 1, reason: "five_in_row", winLine: [0, 1, 2, 3, 4] } }));
+    expect(screen.getByTestId("reload-note")).toBeTruthy();
+    cleanup();
+    room(theirTurn([112]));
+    apiCall.mockResolvedValue({
+      ok: true,
+      data: active({ status: "finished", turnSeat: null, moveCount: 2, moves: [113], result: { winnerSeat: 2, reason: "five_in_row", winLine: [1, 2, 3, 4, 5] } }),
+    });
+    await tick(PLAY_POLL_INTERVAL_MS);
+    expect(screen.getByText("Przegrałeś")).toBeTruthy();
+    expect(screen.queryByTestId("reload-note")).toBeNull();
   });
 
   it("does not read the state on coming back to a game that is over", async () => {
