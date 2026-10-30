@@ -5,6 +5,8 @@
 
 > Status: **zatwierdzona** (`om-auto-write-spec`, 2026-10-24; założenia potwierdzone przez właściciela — Bartosz Wójcik, „a” — 2026-10-24).
 
+> **Adnotacja 2026-10-30 (decyzja właściciela, zgłoszenie #38; wymaga zatwierdzenia właściciela przy review PR):** dostawca poczty to **Brevo** (plan Free), przez API HTTPS `POST https://api.brevo.com/v3/smtp/email`, z jednego zweryfikowanego adresu nadawcy bez własnej domeny i kluczem API z uprawnieniem tylko do wiadomości transakcyjnych. **Zastępuje Q1 i Q2** (Gmail SMTP + `nodemailer`): adapter `BrevoEmailSender` używa wbudowanego `fetch`, bez nowej zależności; wybór przez istniejące `EMAIL_TRANSPORT=brevo` (+ `BREVO_API_KEY`, `EMAIL_FROM_ADDRESS`, `EMAIL_FROM_NAME`). Spike portów SMTP (Q5) nie dotyczy (HTTPS, port 443). **Q-02 zamknięte.** Kompromis: bez SPF/DKIM na naszej domenie wiadomości mogą trafiać do spamu; limit planu Free ok. 300 wiadomości dziennie (do potwierdzenia w cenniku), a przy sumujących się pulach `EMAIL_DAILY_LIMIT` ≤ 176.
+
 ## 📝 TLDR
 
 Potwierdzenie e-maila (#34) i reset hasła (#35) potrzebują wysyłki poczty; dziś nie ma dostawcy (Q-02). Ograniczenia: tylko darmowy plan (D-20) i **brak własnej domeny** (G1 — subdomena mikr.us `byst.re` nie jest nasza, więc nie ustawimy dla niej SPF/DKIM). Proponujemy (zachowanie przyszłe) jeden adapter `SmtpEmailSender` za portem `EmailSender` i konfigurację wskazującą skrzynkę **Gmail właściciela przez SMTP z hasłem aplikacji** jako start — z możliwością przełączenia na Brevo (SMTP) lub dostawcę z własną domeną samą konfiguracją.
@@ -57,11 +59,11 @@ Potwierdzenie e-maila (#34) i reset hasła (#35) potrzebują wysyłki poczty; dz
 
 ## 📋 Implementation Plan
 
-0. Spike na VPS mikr.us: wychodzące połączenie do `smtp.gmail.com:465`/`587` (Q5); sprawdzenie aktualnych dziennych limitów wysyłki Gmaila w dokumentacji Google przed ustawieniem `EMAIL_DAILY_LIMIT`. Wynik w komentarzu #38.
-1. `npm install nodemailer -w @gomoku/app` (+ typy, jeśli pakiet ich nie zawiera); `SmtpEmailSender` z testami jednostkowymi na zamockowanym transporcie (sukces, błąd uwierzytelnienia, timeout, brak adresu w logach). Opcjonalnie test integracyjny z kontenerem Mailpit (Testcontainers).
-2. Wybór w `container.ts` (`EMAIL_TRANSPORT=smtp`) i zmienne w `.env.example` (bez wartości); testy wyboru implementacji.
-3. README: konfiguracja Gmail (2FA, hasło aplikacji) i alternatyw; `EMAIL_DAILY_LIMIT`.
-4. Po wdrożeniu: ręczny test wysyłki na konto zewnętrzne (inbox vs spam) — wynik w komentarzu #38; zamknięcie Q-02 w briefie za zgodą właściciela.
+0. [x] ~~Spike na VPS~~ (nie dotyczy Brevo, 2026-10-30) mikr.us: wychodzące połączenie do `smtp.gmail.com:465`/`587` (Q5); sprawdzenie aktualnych dziennych limitów wysyłki Gmaila w dokumentacji Google przed ustawieniem `EMAIL_DAILY_LIMIT`. Wynik w komentarzu #38.
+1. [x] (2026-10-30: zastąpione adapterem `BrevoEmailSender` na `fetch`, bez nowej zależności) `npm install nodemailer -w @gomoku/app` (+ typy, jeśli pakiet ich nie zawiera); `SmtpEmailSender` z testami jednostkowymi na zamockowanym transporcie (sukces, błąd uwierzytelnienia, timeout, brak adresu w logach). Opcjonalnie test integracyjny z kontenerem Mailpit (Testcontainers).
+2. [x] Wybór w `container.ts` (`createEmailSender`) (`EMAIL_TRANSPORT=smtp`) i zmienne w `.env.example` (bez wartości); testy wyboru implementacji.
+3. [x] README: konfiguracja Gmail (2FA, hasło aplikacji) i alternatyw; `EMAIL_DAILY_LIMIT`.
+4. [ ] Po wdrożeniu: ręczny test wysyłki na konto zewnętrzne (inbox vs spam) — wynik w komentarzu #38; zamknięcie Q-02 w briefie za zgodą właściciela.
 
 Źródła: [Brevo — free SMTP](https://www.brevo.com/en/free-smtp-server/), [Resend — new free tier](https://resend.com/blog/new-free-tier), [Resend Review 2026](https://wpmailsmtp.com/resend-review/), [Resend free tier 2026](https://automationatlas.io/answers/resend-free-tier-explained-2026/), [Achromatic — Resend test domain](https://www.achromatic.dev/docs/starter-kits/pro-nextjs-prisma/email/configuration), [GoSMTP — Brevo](https://gosmtp.net/docs/gosmtp-mailers/brevo-formerly-sendinblue).
 
