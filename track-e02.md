@@ -140,7 +140,7 @@ Ręczny test po fazie: powrót do trwającej i zakończonej partii z drugiego ur
 
 #### 5C — Rewanż (#88, jeden PR)
 - [x] 5.5 Backend: `rematchBlackSeat`, `isRematchOpen` w `core`; `RematchService.offer/accept/decline` (wyścigi, BR-13 przy przyjęciu, gość z nowym tokenem, rollback przez `tx`); route'y i rozszerzenie `GET`; migracja tylko jeśli potrzebna (kolumny rewanżu są od fazy 1) (#88 kroki 1–4)
-- [ ] 5.6 UI: ekran wyniku z rewanżem, oczekiwanie, przyjęcie, odrzucenie, wygaśnięcie (p06.10–p06.15) (#88 krok 5)
+- [ ] 5.6 UI: ekran wyniku z rewanżem, oczekiwanie, przyjęcie, odrzucenie, wygaśnięcie (p06.10–p06.15) (#88 krok 5) Wymóg: proponujący gość odbiera token nowej partii tylko przez `GET /api/games/{id}` starej partii (`rematch.state === "accepted"`), więc klient musi wykonać ten `GET` PRZED nawigacją na `/games/{rematch.gameId}`, także po przeładowaniu strony (adnotacja w specyfikacji rewanżu).
 - [ ] 5.7 Dokumentacja (README), komentarz w #38 o dostawcy poczty jeśli nadal otwarty, lekcje; odblokowanie Fazy 10 z `track.md` (usunięcie konta, #37) po 5.3–5.4
 
 ### Faza 6 — Gra bez konta: nick (E02-S07) i gość tworzy partię (E02-S08)
