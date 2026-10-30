@@ -34,6 +34,7 @@ describe("game clock", () => {
     expect(clockView(notStarted, T0 + 5000)).toEqual({
       remainingMs: [INITIAL_CLOCK_MS, INITIAL_CLOCK_MS],
       running: null,
+      now: T0 + 5000,
     });
     expect(remainingMs(running(), 2, T0 + 5000)).toBe(INITIAL_CLOCK_MS);
     const over = running({ turnSeat: null });
@@ -48,6 +49,7 @@ describe("game clock", () => {
     expect(clockView(state, T0 + 1_000)).toEqual({
       remainingMs: [500_000, 399_000],
       running: 2,
+      now: T0 + 1_000,
     });
   });
 

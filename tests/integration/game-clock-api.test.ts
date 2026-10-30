@@ -106,7 +106,13 @@ describe("starting the clock", () => {
 
     // The joiner has seen the game from the moment of joining; their read starts nothing.
     const joinerView = await get(game, game.joiner);
-    expect(joinerView.data.clock).toEqual({ remainingMs: [INITIAL_CLOCK_MS, INITIAL_CLOCK_MS], running: null });
+    expect(joinerView.data.clock).toEqual({
+      remainingMs: [INITIAL_CLOCK_MS, INITIAL_CLOCK_MS],
+      running: null,
+      now: expect.any(Number),
+    });
+    // The server tells its own time (epoch ms), so the client does not trust its own clock.
+    expect(Math.abs(joinerView.data.clock.now - Date.now())).toBeLessThan(60_000);
     expect((await row(game)).turn_started_at).toBeNull();
     // Black cannot move before the clock runs, whoever black is.
     const early = await move(game, game.black, 7, 7, 1);

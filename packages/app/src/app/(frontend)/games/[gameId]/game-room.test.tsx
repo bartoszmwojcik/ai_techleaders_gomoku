@@ -21,7 +21,7 @@ const NO_BOARD = {
   turnSeat: null,
   moves: [],
   result: null,
-  clock: { remainingMs: [600_000, 600_000] as [number, number], running: null },
+  clock: { remainingMs: [600_000, 600_000] as [number, number], running: null, now: 0 },
 } as const;
 const waiting = (): GameView => ({
   ...NO_BOARD,
