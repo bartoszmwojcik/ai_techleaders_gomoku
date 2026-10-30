@@ -160,3 +160,26 @@ describe("SqlTimeoutSettler.settleFor", () => {
     expect(calls.some(({ sql }) => sql.startsWith("update games"))).toBe(false);
   });
 });
+
+describe("SqlTimeoutSettler.settleForGuest", () => {
+  it("does not lock anything for a token without a running game", async () => {
+    const { settler, em, calls } = setup(null);
+    await settler.settleForGuest("hash");
+    expect(em.transactional).not.toHaveBeenCalled();
+    expect(calls[0]!.params).toEqual(["hash"]);
+    expect(calls[0]!.sql).toContain("p.guest_token_hash = ?");
+  });
+
+  it("settles the running games of the token without locking a user", async () => {
+    const { settler, calls } = setup({ turnAgo: 700 }, { candidates: ["game-1"] });
+    await settler.settleForGuest("hash");
+    expect(calls.some(({ sql }) => sql.includes("from users"))).toBe(false);
+    expect(calls.some(({ sql }) => sql.startsWith("update games set status"))).toBe(true);
+  });
+
+  it("leaves a running game whose time is not up alone", async () => {
+    const { settler, calls } = setup({ turnAgo: 5 }, { candidates: ["game-1"] });
+    await settler.settleForGuest("hash");
+    expect(calls.some(({ sql }) => sql.startsWith("update games"))).toBe(false);
+  });
+});

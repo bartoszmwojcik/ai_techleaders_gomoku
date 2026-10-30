@@ -24,6 +24,7 @@ import {
   CANCEL_WAITING_GAME_SQL,
   CANCEL_NOT_STARTED_OF_GUEST,
   EXPIRE_WAITING_OF_GAME,
+  EXPIRE_WAITING_OF_GUEST,
   closeStaleSlotsOfUser,
 } from "./lazy-closing";
 import { GUEST_TOKEN_VALID_SQL } from "./guest-token";
@@ -222,8 +223,7 @@ export class InvitationService {
 
   async #preview(code: string, viewer: Viewer): Promise<InvitationPreview> {
     const invitation = await this.#find(code);
-    const { userId } = viewer;
-    if (userId) await this.#timeoutSettler.settleFor(userId);
+    await this.#settle(viewer);
 
     const member = invitation
       ? await this.#memberOf(this.#em, viewer, invitation.game_id)
@@ -307,11 +307,10 @@ export class InvitationService {
     viewer: Viewer,
     input: AcceptInput,
   ): Promise<AcceptResult> {
-    const { userId } = viewer;
     const normalized = normalizeInvitationCode(code);
     if (!normalized) throw invalidInvitation();
 
-    if (userId) await this.#timeoutSettler.settleFor(userId);
+    await this.#settle(viewer);
     // Only a guest who really joins gets a token; a returning one keeps the cookie.
     const guestToken = input.as === "guest" ? createOpaqueToken() : undefined;
     try {
@@ -356,7 +355,8 @@ export class InvitationService {
         : undefined;
 
     const userIds = [...new Set([userId, peek.creator_id].filter((id) => id != null))].sort();
-    await tx.execute(lockUsersSql(userIds.length), userIds, "run");
+    // Nobody to lock when a guest joins a guest's game (E02-S08).
+    if (userIds.length > 0) await tx.execute(lockUsersSql(userIds.length), userIds, "run");
     const gameIds = [...new Set([gameId, extraGame].filter((id) => id !== undefined))].sort();
     await tx.execute(lockGamesSql(gameIds.length), gameIds, "run");
 
@@ -368,6 +368,8 @@ export class InvitationService {
     if (userId) {
       await closeStaleSlotsOfUser(tx, userId, now);
     } else if (extraGame) {
+      // A guest browser's own game (Q7): an unjoined one that expired frees the slot too.
+      await tx.execute(EXPIRE_WAITING_OF_GAME, [now, extraGame], "run");
       await tx.execute(CANCEL_NOT_STARTED_OF_GAME, [cutoff, extraGame], "run");
     }
 
@@ -451,8 +453,15 @@ export class InvitationService {
       await closeStaleSlotsOfUser(this.#em, userId, now);
     } else if (guestTokenHash) {
       const cutoff = new Date(now.getTime() - READY_DEADLINE_MS);
+      await this.#em.execute(EXPIRE_WAITING_OF_GUEST, [now, guestTokenHash], "run");
       await this.#em.execute(CANCEL_NOT_STARTED_OF_GUEST, [cutoff, guestTokenHash], "run");
     }
+  }
+
+  /** Finishes the viewer's games lost on time (#23, E02-S08), so BR-13 sees a free slot. */
+  async #settle({ userId, guestTokenHash }: Viewer): Promise<void> {
+    if (userId) await this.#timeoutSettler.settleFor(userId);
+    else if (guestTokenHash) await this.#timeoutSettler.settleForGuest(guestTokenHash);
   }
 
   /** The viewer's seat in the game: the account wins over a guest token. */

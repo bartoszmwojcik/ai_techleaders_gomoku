@@ -208,17 +208,18 @@ export class GameService {
   }
 
   /**
-   * Cancels a waiting game; only its creator may (Q5). Atomic: of a concurrent cancel and
+   * Cancels a waiting game; only its creator may (Q5): the participant of seat 1, an account
+   * or a guest browser (E02-S08). Atomic: of a concurrent cancel and
    * join exactly one wins, and `active` is never overwritten.
    * @throws AppError 404 for a stranger or a missing game; 409 `GAME_NOT_CANCELLABLE`
    * when the game is not `waiting` any more.
    */
-  async cancel(userId: string, gameId: string): Promise<void> {
+  async cancel(participant: GameParticipant, gameId: string): Promise<void> {
     await this.#em.transactional(async (tx) => {
       const creator = await tx.count(GamePlayer, {
+        id: participant.playerId,
         game: gameId,
         seat: 1,
-        user: userId,
       });
       if (creator === 0) throw new NotFoundError(GAME_NOT_FOUND_MESSAGE);
       const cancelled = await tx.execute<{ id: string }[]>(

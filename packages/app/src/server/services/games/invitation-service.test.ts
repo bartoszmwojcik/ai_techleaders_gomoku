@@ -55,7 +55,7 @@ function setup(
     calls.push({ sql: sql.trim().replace(/\s+/g, " "), params });
     const { failWith } = options;
     if (failWith && sql.includes(failWith.match)) throw failWith.error;
-    if (sql.includes("from invitations i")) {
+    if (sql.includes("from invitations i\n") || sql.includes("from invitations i join")) {
       const row = invitations[Math.min(invitationReads, invitations.length - 1)];
       invitationReads += 1;
       return row ? [row] : [];
@@ -80,6 +80,7 @@ function setup(
   };
   const timeoutSettler = {
     settleFor: vi.fn(async () => undefined),
+    settleForGuest: vi.fn(async () => undefined),
     settleGame: vi.fn(async () => false),
     settleExpired: vi.fn(async () => false),
   };
@@ -411,6 +412,16 @@ describe("InvitationService.accept as a guest", () => {
     expect(rateLimiter.release).toHaveBeenCalledOnce();
   });
 
+  it("locks no user when a guest joins a guest's game (E02-S08)", async () => {
+    const { service, calls } = setup({
+      invitation: [invitationRow({ creator_id: null, creator_name: null, creator_kind: "guest" })],
+    });
+    const result = await service.accept(CODE, {}, GUEST_INPUT, GUARD);
+    expect(result.guestToken).toBeDefined();
+    expect(calls.some(({ sql }) => sql.includes("from users"))).toBe(false);
+    expect(calls.some(({ sql }) => sql.includes("from games where id in"))).toBe(true);
+  });
+
   it("issues a different token each time", async () => {
     const tokens = new Set<string>();
     for (let i = 0; i < 3; i += 1) {
@@ -476,14 +487,20 @@ describe("InvitationService.accept as a guest", () => {
 
   it("refuses a browser whose token still holds another game (BR-13, Q7), locking that game", async () => {
     const held = { game_id: "a-held", status: "active", seat: 2 };
-    const { service, calls, rateLimiter } = setup({ slot: [[held], [held]] });
+    const { service, calls, rateLimiter, timeoutSettler } = setup({ slot: [[held], [held]] });
 
     const error = await errorOf(service.accept(CODE, { guestTokenHash: TOKEN_HASH }, GUEST_INPUT, GUARD));
 
     expect(error.status).toBe(409);
     expect(error.code).toBe("ACTIVE_GAME_EXISTS");
     expect(error.data).toEqual({ gameId: "a-held" });
+    expect(timeoutSettler.settleForGuest).toHaveBeenCalledWith(TOKEN_HASH);
     expect(calls.find(({ sql }) => sql.includes("from games where id in"))!.params).toEqual(["a-held", "game-1"]);
+    // An unjoined game of the browser that expired meanwhile frees the slot too.
+    expect(calls.filter(({ sql }) => sql.startsWith("with")).map(({ params }) => params)).toContainEqual([
+      NOW,
+      "a-held",
+    ]);
     // The held game is swept for the 15-minute rule (Q21), so a dead game does not block a guest.
     expect(calls.filter(({ sql }) => sql.startsWith("with")).map(({ params }) => params)).toContainEqual([
       CUTOFF,
@@ -535,13 +552,17 @@ describe("InvitationService.preview", () => {
     expect(lastWrite).toBeLessThan(slotRead);
   });
 
-  it("closes a guest's game that nobody opened in time", async () => {
-    const { service, calls } = setup();
+  it("closes a guest's game that expired unjoined or that nobody opened in time, after settling the timeouts", async () => {
+    const { service, calls, timeoutSettler } = setup();
     await service.preview(CODE, { guestTokenHash: TOKEN_HASH }, GUARD);
+    expect(timeoutSettler.settleForGuest).toHaveBeenCalledWith(TOKEN_HASH);
+    expect(timeoutSettler.settleFor).not.toHaveBeenCalled();
     const writes = calls.filter(({ sql }) => !sql.startsWith("select"));
-    expect(writes).toHaveLength(1);
-    expect(writes[0]!.params).toEqual([CUTOFF, TOKEN_HASH]);
-    expect(writes[0]!.sql).toContain("guest_token_hash = ?");
+    expect(writes).toHaveLength(2);
+    expect(writes[0]!.params).toEqual([NOW, TOKEN_HASH]);
+    expect(writes[0]!.sql).toContain("status = 'cancelled'");
+    expect(writes[1]!.params).toEqual([CUTOFF, TOKEN_HASH]);
+    expect(writes[1]!.sql).toContain("guest_token_hash = ?");
   });
 
   it("names a guest creator by nickname, or by the default for seat 1", async () => {

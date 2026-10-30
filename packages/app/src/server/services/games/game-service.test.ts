@@ -95,6 +95,7 @@ function setup(options: {
   const invitationCodes = { generate: vi.fn(() => "ABCDEFGH") };
   const timeoutSettler = {
     settleFor: vi.fn(async () => undefined),
+    settleForGuest: vi.fn(async () => undefined),
     settleGame: vi.fn(async () => false),
     settleExpired: vi.fn(async () => false),
   };
@@ -193,9 +194,9 @@ describe("GameService.cancel", () => {
   it("cancels a waiting game and frees the slots in one transaction", async () => {
     const { service, em, calls } = setup({ executeRows: [[{ id: "game-1" }]] });
 
-    await service.cancel("user-1", "game-1");
+    await service.cancel({ playerId: "player-1" }, "game-1");
 
-    expect(em.count).toHaveBeenCalledWith(GamePlayer, { game: "game-1", seat: 1, user: "user-1" });
+    expect(em.count).toHaveBeenCalledWith(GamePlayer, { id: "player-1", game: "game-1", seat: 1 });
     expect(calls).toEqual(["count", "execute:cancel", "execute:update game_players"]);
     // The same statement voids the invitation, so the page can tell "cancelled" from "expired".
     expect(em.execute).toHaveBeenNthCalledWith(1, expect.stringContaining("update invitations"), ["game-1", NOW]);
@@ -204,7 +205,7 @@ describe("GameService.cancel", () => {
 
   it("answers 404 for a stranger or a missing game", async () => {
     const { service, em } = setup({ count: 0 });
-    await expect(service.cancel("user-2", "game-1")).rejects.toMatchObject({
+    await expect(service.cancel({ playerId: "player-2" }, "game-1")).rejects.toMatchObject({
       status: 404,
       message: GAME_NOT_FOUND_MESSAGE,
     });
@@ -213,7 +214,7 @@ describe("GameService.cancel", () => {
 
   it("answers 409 when the game is not waiting any more and frees nothing", async () => {
     const { service, em } = setup({ executeRows: [[]] });
-    await expect(service.cancel("user-1", "game-1")).rejects.toMatchObject({
+    await expect(service.cancel({ playerId: "player-1" }, "game-1")).rejects.toMatchObject({
       status: 409,
       code: "GAME_NOT_CANCELLABLE",
       message: GAME_NOT_CANCELLABLE_MESSAGE,
@@ -253,7 +254,7 @@ describe("GameService.findParticipant", () => {
     });
     expect(em.findOne).not.toHaveBeenCalled();
     expect(em.execute).toHaveBeenCalledWith(
-      expect.stringContaining("g.finished_at > ?"),
+      expect.stringContaining("g.finished_at else"),
       ["game-1", HASH, new Date(NOW.getTime() - GUEST_TOKEN_GRACE_MS)],
     );
   });

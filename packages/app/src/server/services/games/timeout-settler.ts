@@ -17,6 +17,12 @@ export interface TimeoutSettler {
    */
   settleFor(userId: string): Promise<void>;
   /**
+   * The same for a guest browser (E02-S08), found by the hash of its token: finishes the
+   * running games the token holds before BR-13 is checked. No user to lock; each game is locked
+   * by `settleExpired`.
+   */
+  settleForGuest(tokenHash: string): Promise<void>;
+  /**
    * Finishes one game whose row the caller has already locked, by the time `now` (default:
    * the clock now). Writes only through `tx` and never locks `users`.
    * @returns whether the game was finished by running out of time
@@ -54,6 +60,11 @@ const RUNNING_GAMES_OF_USER_SQL = `
   where p.user_id = ? and p.is_active and g.status = 'active' and g.turn_started_at is not null
   order by g.id`;
 
+const RUNNING_GAMES_OF_GUEST_SQL = `
+  select g.id from games g join game_players p on p.game_id = g.id
+  where p.guest_token_hash = ? and p.is_active and g.status = 'active' and g.turn_started_at is not null
+  order by g.id`;
+
 // One conditional update: of two settlers (or a settler and a move) exactly one writes. The
 // loser of the game ends with an empty clock (#23 invariants).
 const finishSql = (clockColumn: "clock_ms_1" | "clock_ms_2") => `
@@ -82,6 +93,17 @@ export class SqlTimeoutSettler implements TimeoutSettler {
     const now = this.#clock.now();
     await this.#em.transactional(async (tx) => {
       await tx.execute(LOCK_USER_SQL, [userId], "run");
+      for (const { id } of candidates) await this.settleExpired(id, tx, now);
+    });
+  }
+
+  async settleForGuest(tokenHash: string): Promise<void> {
+    const candidates = await this.#em.execute<{ id: string }[]>(RUNNING_GAMES_OF_GUEST_SQL, [
+      tokenHash,
+    ]);
+    if (candidates.length === 0) return;
+    const now = this.#clock.now();
+    await this.#em.transactional(async (tx) => {
       for (const { id } of candidates) await this.settleExpired(id, tx, now);
     });
   }
