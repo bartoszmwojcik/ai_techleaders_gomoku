@@ -45,6 +45,23 @@ describe("createEmailSender", () => {
     expect(init.headers).toMatchObject({ "api-key": "k" });
   });
 
+  it("warns, naming only variables, when brevo runs without EMAIL_DAILY_LIMIT", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const env = {
+      EMAIL_TRANSPORT: "brevo",
+      BREVO_API_KEY: "SECRET-KEY",
+      EMAIL_FROM_ADDRESS: "gra@example.com",
+    };
+    expect(pick(env)).toBeInstanceOf(BrevoEmailSender);
+    expect(pick({ ...env, EMAIL_DAILY_LIMIT: "100" })).toBeInstanceOf(
+      BrevoEmailSender,
+    );
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0]?.[0])).toContain("EMAIL_DAILY_LIMIT");
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("SECRET-KEY");
+    warn.mockRestore();
+  });
+
   it("falls back to the failing sender only when no transport is set", () => {
     expect(pick({})).toBeInstanceOf(UnconfiguredEmailSender);
   });
