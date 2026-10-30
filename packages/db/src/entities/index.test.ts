@@ -70,7 +70,9 @@ describe("game entities", () => {
       "game_players_user_id_active_unique",
     ]);
     expect(GamePlayer.meta.uniques[2]?.where).toBe("is_active");
-    const { guestTokenHash, seenAt, user } = GamePlayer.meta.properties;
+    const { guestTokenHash, nickname, seenAt, user } = GamePlayer.meta.properties;
+    expect(nickname.nullable).toBe(true);
+    expect(nickname.length).toBe(24);
     expect(guestTokenHash.unique).toBe(true);
     expect(guestTokenHash.nullable).toBe(true);
     expect(seenAt.nullable).toBe(true);

@@ -285,6 +285,21 @@ describe("game_players", () => {
     await expect(insertPlayer(game, { seat: 2, kind: "guest", guest_token_hash: null })).resolves.toBeTruthy();
   });
 
+  it("allows a nickname only for a guest and never an empty one", async () => {
+    const game = await insertGame();
+    await expectViolation(
+      insertPlayer(game, { kind: "account", user_id: await insertUser(), nickname: "Ala" }),
+      "game_players_nickname_only_guest_check",
+    );
+    await expectViolation(
+      insertPlayer(game, { kind: "guest", guest_token_hash: hash(), nickname: "" }),
+      "game_players_nickname_not_empty_check",
+    );
+    await expect(
+      insertPlayer(game, { seat: 2, kind: "guest", guest_token_hash: hash(), nickname: "Ala" }),
+    ).resolves.toBeTruthy();
+  });
+
   it("keeps guest token hashes unique", async () => {
     const token = hash();
     await insertPlayer(await insertGame(), { kind: "guest", guest_token_hash: token });

@@ -28,6 +28,10 @@ export const GamePlayer = defineEntity({
     // First successful read of the game page by this player (#21 Q20); starts the clock
     // once both players have it.
     seenAt: p.datetime().nullable(),
+    // A guest's own nickname (E02-S07), 1-24 code points, set once when the guest joins.
+    // NULL = no nickname: the default name "Gracz {seat}" is derived on every read. Always
+    // NULL for an account (its name is `users.display_name`).
+    nickname: p.string().length(24).nullable(),
   },
   uniques: [
     { name: "game_players_game_id_seat_unique", properties: ["game", "seat"] },
@@ -50,6 +54,14 @@ export const GamePlayer = defineEntity({
     {
       name: "game_players_token_only_guest_check",
       expression: `kind = 'guest' or guest_token_hash is null`,
+    },
+    {
+      name: "game_players_nickname_not_empty_check",
+      expression: `nickname is null or char_length(nickname) >= 1`,
+    },
+    {
+      name: "game_players_nickname_only_guest_check",
+      expression: `kind = 'guest' or nickname is null`,
     },
   ],
 });
