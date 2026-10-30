@@ -9,9 +9,13 @@
 
 ## 📝 TLDR
 
+> **ZASTĄPIONE decyzją z 2026-10-30 — patrz adnotacja na początku dokumentu.** Treść poniżej opisuje pierwotną propozycję (Gmail/SMTP) i zostaje jako historia.
+
 Potwierdzenie e-maila (#34) i reset hasła (#35) potrzebują wysyłki poczty; dziś nie ma dostawcy (Q-02). Ograniczenia: tylko darmowy plan (D-20) i **brak własnej domeny** (G1 — subdomena mikr.us `byst.re` nie jest nasza, więc nie ustawimy dla niej SPF/DKIM). Proponujemy (zachowanie przyszłe) jeden adapter `SmtpEmailSender` za portem `EmailSender` i konfigurację wskazującą skrzynkę **Gmail właściciela przez SMTP z hasłem aplikacji** jako start — z możliwością przełączenia na Brevo (SMTP) lub dostawcę z własną domeną samą konfiguracją.
 
 ## Resolved assumptions (autonomous defaults)
+
+> **Q1 i Q2 poniżej: ZASTĄPIONE decyzją z 2026-10-30 — patrz adnotacja na początku dokumentu.**
 
 | # | Pytanie | Zastosowane założenie | Dlaczego | Potwierdzenie |
 |---|---|---|---|---|
@@ -61,13 +65,15 @@ Potwierdzenie e-maila (#34) i reset hasła (#35) potrzebują wysyłki poczty; dz
 
 0. [x] ~~Spike na VPS~~ (nie dotyczy Brevo, 2026-10-30) mikr.us: wychodzące połączenie do `smtp.gmail.com:465`/`587` (Q5); sprawdzenie aktualnych dziennych limitów wysyłki Gmaila w dokumentacji Google przed ustawieniem `EMAIL_DAILY_LIMIT`. Wynik w komentarzu #38.
 1. [x] (2026-10-30: zastąpione adapterem `BrevoEmailSender` na `fetch`, bez nowej zależności) `npm install nodemailer -w @gomoku/app` (+ typy, jeśli pakiet ich nie zawiera); `SmtpEmailSender` z testami jednostkowymi na zamockowanym transporcie (sukces, błąd uwierzytelnienia, timeout, brak adresu w logach). Opcjonalnie test integracyjny z kontenerem Mailpit (Testcontainers).
-2. [x] Wybór w `container.ts` (`createEmailSender`) (`EMAIL_TRANSPORT=smtp`) i zmienne w `.env.example` (bez wartości); testy wyboru implementacji.
+2. [x] Wybór w `container.ts` (`createEmailSender`) (`EMAIL_TRANSPORT=brevo`) i zmienne w `.env.example` (bez wartości); testy wyboru implementacji.
 3. [x] README: konfiguracja Gmail (2FA, hasło aplikacji) i alternatyw; `EMAIL_DAILY_LIMIT`.
 4. [ ] Po wdrożeniu: ręczny test wysyłki na konto zewnętrzne (inbox vs spam) — wynik w komentarzu #38; zamknięcie Q-02 w briefie za zgodą właściciela.
 
 Źródła: [Brevo — free SMTP](https://www.brevo.com/en/free-smtp-server/), [Resend — new free tier](https://resend.com/blog/new-free-tier), [Resend Review 2026](https://wpmailsmtp.com/resend-review/), [Resend free tier 2026](https://automationatlas.io/answers/resend-free-tier-explained-2026/), [Achromatic — Resend test domain](https://www.achromatic.dev/docs/starter-kits/pro-nextjs-prisma/email/configuration), [GoSMTP — Brevo](https://gosmtp.net/docs/gosmtp-mailers/brevo-formerly-sendinblue).
 
 ## 📝 Ustalenia z przesłuchania (grill-me, 2026-10-24)
+
+> **Część dotycząca SMTP/`nodemailer` ZASTĄPIONA decyzją z 2026-10-30 — patrz adnotacja na początku dokumentu** (limit czasu, pule i kolejność wdrożenia zostają).
 
 Potwierdzone przez właściciela — Bartosza Wójcika.
 
