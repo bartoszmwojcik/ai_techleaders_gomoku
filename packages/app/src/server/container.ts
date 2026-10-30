@@ -19,6 +19,7 @@ import { EmailVerificationService } from "./services/auth/email-verification-ser
 import { GameParticipation } from "./services/auth/game-participation";
 import { ColorDraw } from "./services/games/color-draw";
 import { GameMoveService } from "./services/games/game-move-service";
+import { RematchService } from "./services/games/rematch-service";
 import { GameService } from "./services/games/game-service";
 import { InvitationCodes } from "./services/games/invitation-codes";
 import { InvitationService } from "./services/games/invitation-service";
@@ -61,6 +62,7 @@ export type AppCradle = {
   gameParticipation: GameParticipation;
   gameService: GameService;
   gameMoveService: GameMoveService;
+  rematchService: RematchService;
   invitationCodes: InvitationCodes;
   /** Draws who plays black when the opponent joins (#22 Q1). */
   colorDraw: ColorDraw;
@@ -137,6 +139,7 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     gameParticipation: asClass(GameParticipation).scoped(),
     gameService: asClass(GameService).scoped(),
     gameMoveService: asClass(GameMoveService).scoped(),
+    rematchService: asClass(RematchService).scoped(),
     invitationCodes: asClass(InvitationCodes).singleton(),
     colorDraw: asClass(ColorDraw).singleton(),
     invitationService: asClass(InvitationService).scoped(),

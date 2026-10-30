@@ -8,11 +8,13 @@ import { resolveParticipant } from "./participant";
  * The state of a game as the page and `GET /api/games/[id]` carry it (dates as ISO strings).
  * On the client `moves` holds all moves so far: polling merges the new ones into it.
  */
-export type GameView = Omit<GameState, "invitation"> & {
+export type GameView = Omit<GameState, "invitation" | "rematch"> & {
   /** Only for the creator while the game waits. */
   invitation?: { code: string; url: string; expiresAt: string };
   /** Only for a cancelled game: why it was closed (creator's cancel, expiry, nobody opened it). */
   closedReason?: "cancelled" | "expired" | "not_opened";
+  /** Only for a finished game with a rematch offer. */
+  rematch?: Omit<NonNullable<GameState["rematch"]>, "expiresAt"> & { expiresAt: string };
 };
 
 /**
@@ -25,8 +27,12 @@ export async function loadGameView(gameId: string): Promise<GameView | null> {
     const { gameId: id, participant } = await resolveParticipant(gameId);
     const state = await withRequestScope(({ cradle }) => cradle.gameService.getState(participant, id));
     // Dates cross the server/client boundary as ISO strings, like in the JSON API.
-    const { invitation, ...rest } = state;
-    return invitation ? { ...rest, invitation: { ...invitation, expiresAt: invitation.expiresAt.toISOString() } } : rest;
+    const { invitation, rematch, ...rest } = state;
+    return {
+      ...rest,
+      ...(invitation && { invitation: { ...invitation, expiresAt: invitation.expiresAt.toISOString() } }),
+      ...(rematch && { rematch: { ...rematch, expiresAt: rematch.expiresAt.toISOString() } }),
+    };
   } catch (error) {
     if (error instanceof NotFoundError) return null;
     throw error;

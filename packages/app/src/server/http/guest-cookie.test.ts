@@ -107,4 +107,11 @@ describe("guest cookie", () => {
     store.get.mockReturnValue(cookie);
     expect(await readGuestTokenHash(plain)).toBeUndefined();
   });
+
+  it("reads the token as the cookie carries it", async () => {
+    store.get.mockReturnValue({ value: "tok" });
+    expect(await readGuestToken(plain)).toBe("tok");
+    store.get.mockReturnValue(undefined);
+    expect(await readGuestToken(plain)).toBeUndefined();
+  });
 });
