@@ -4,7 +4,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { App } from "../src/App";
 import "../src/review/comments.js";
 import "../src/review/prototype.js";
-import { advanceClock, clockSteps, getSim, patchScenario, resetSim, resignElsewhere, switchAccount, opponentJoinsWaitingGame, refreshAccountView } from "../src/sim";
+import { deleteFailures, advanceClock, clockSteps, getSim, patchScenario, resetSim, resignElsewhere, switchAccount, opponentJoinsWaitingGame, refreshAccountView } from "../src/sim";
 
 // Account deletion (E01-S06, #37): states s05.10–s05.20, s04.14 and s08 of the prototype.
 const PASSWORD = "drewniana-plansza-2026";
@@ -113,6 +113,17 @@ describe("usunięcie konta, ekran s05", () => {
     await waitFor(() => expect(current()).toBe("s04"));
   });
 
+  it("licznik błędnych haseł jest per konto", async () => {
+    start("A1");
+    fireEvent.change(password(), { target: { value: "zle" } });
+    tick("Rozumiem, że tego nie da się cofnąć");
+    fireEvent.click(submit());
+    await dialogConfirm();
+    await waitFor(() => expect(getSim().deleteFails.count).toBe(1));
+    act(() => switchAccount("A3"));
+    expect(deleteFailures(getSim())).toBe(0);
+  });
+
   it("s05.17: wymuszony limit pokazuje 12 min", async () => {
     start("A1");
     act(() => patchScenario({ deleteLimit: true }));
@@ -174,6 +185,7 @@ describe("usunięcie konta, ekran s05", () => {
     await dialogConfirm();
     await waitFor(() => expect(document.querySelector("[data-testid=delete-account-active-game]")).not.toBeNull());
     expect(screen.queryByRole("alertdialog")).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(document.querySelector("[data-testid=delete-account-active-game]")));
     expect(getSim().accounts["ola@example.com"]).toBeTruthy();
   });
 

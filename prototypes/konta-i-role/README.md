@@ -123,7 +123,7 @@ Nic nie jest wysyłane. Hasło do usunięcia to hasło demo. Usunięcie jest w s
 | s05.12 | Alert „Najpierw dokończ albo poddaj partię.” z linkiem „Przejdź do partii” (w prototypie dialog „Poza tym prototypem”) i wskazaniem „Poddaj partię”; przycisk nieaktywny z powodem. Po „Poddaj partię (w innej karcie)” strona dalej blokuje, aż „Odśwież stronę konta” | konto A3 (Marek_Z) |
 | s05.13 | Hasło + zaznaczone pole: przycisk aktywny | wpisz hasło, zaznacz pole |
 | s05.14 | Dialog „Usunąć konto Ala_7?”, przyciski „Zostaw konto” (fokus startuje tu) i „Usuń konto na zawsze”; Esc zamyka, fokus wraca na przycisk | kliknij przycisk |
-| s05.15 | Przycisk w dialogu zajęty, drugie kliknięcie nic nie wysyła; Esc i „Zostaw konto” zablokowane | otwórz bez `?fast`, potwierdź |
+| s05.15 | Przycisk w dialogu zajęty, drugie kliknięcie nic nie wysyła; Esc blokowany, „Zostaw konto” wygląda na aktywny, ale klik nic nie robi (`ConfirmDialog` nie ma `cancelDisabled`, luka DU1) | otwórz bez `?fast`, potwierdź |
 | s05.16 | Błędne hasło: dialog zamyka się, „Nieprawidłowe hasło.” przy polu, pole wyczyszczone, fokus na polu; od 7. błędu „Zostało prób: 3, potem blokada na 15 minut.” | wpisz złe hasło |
 | s05.16b | Puste hasło: „Wpisz hasło.” przy polu, dialog się nie otwiera | zaznacz pole i kliknij bez hasła |
 | s05.17 | Alert „Zbyt wiele prób — Spróbuj ponownie za {n} min.”, dialog zamknięty; po 10 błędach także dobre hasło daje limit, okno 15 min liczy zegar demo (+1 h zdejmuje limit) | 10 złych haseł albo przełącznik „Limit prób” |
@@ -160,6 +160,11 @@ Stany są numerowane tak, by dopisać je do mapy (sekcja 7 w `lekcja-07/mapa-ekr
 - `[ASSUMPTION A-D9]` Wygaśnięcie okna limitu i leniwe zamykanie starych slotów (Q7) nie mają osobnych stanów; prototyp pokazuje tylko wynik (usunięcie przechodzi albo blokada).
 - `[ASSUMPTION A-D10]` Partia `active`, do której przeciwnik jeszcze nie wszedł (spec: do sprawdzenia przy 5.3, czy poddanie jest wtedy możliwe): prototyp nie rozróżnia jej; komunikat s05.12 zakłada, że poddanie jest możliwe.
 
+- `[ASSUMPTION A-D11]` Teksty spoza specyfikacji: powód przy partii w toku „Usunięcie jest możliwe dopiero po zakończeniu partii.”, tytuł ostrzeżenia „Tego nie da się cofnąć” (z wzorca DS), podpowiedź „Podaj hasło, aby potwierdzić, że to Ty.”.
+- `[ASSUMPTION A-D12]` Spec nazywa komponenty `ErrorMessage` (429) i `DismissibleNotice` (s04.14), które są w aplikacji, a nie w `@gomoku/ui/game/*`; prototyp używa `Alert` (+ `Button` „Zamknij”). Do potwierdzenia, czy ma tak zostać.
+- `[ASSUMPTION A-D13]` s08: automatycznie włącza się po usunięciu dowolnego konta demo (także Ali bez zakończonych partii), a treść „Wygrałeś / Przeciwnik poddał się” jest stała. „Usunięty gracz” dotyczy tylko konta; flaga „Oglądający jest gościem” pokazuje gościa jako oglądającego („Ty (Piotr (gość))” to artefakt demo), a nie jako przeciwnika.
+- `data-testid` ze specyfikacji: `-confirm`, `-submit`, `-active-game` są; `delete-account-password` jest tylko jako `id` pola (`PasswordField` nie przyjmuje `data-testid`; luka DS DU3).
+
 ### Luki w design systemie
 
 - **DU1** (`LUKA` w `delete-account.tsx`): `ConfirmDialog` ma tylko `description`, więc błąd serwera jest zdaniem w opisie z `role="alert"`; pole hasła nie mieści się w dialogu (O5). Prototyp nie zmienia komponentu.
@@ -169,6 +174,8 @@ Stany są numerowane tak, by dopisać je do mapy (sekcja 7 w `lekcja-07/mapa-ekr
 ### Czego prototyp nie robi
 
 - Nie sprawdza współbieżności, blokad bazy ani kaskad (to testy PostgreSQL w specyfikacji).
+- Usunięcie oczekującej partii nie zmienia ekranu zaproszenia s07 (spec: link staje się „zaproszenie nieważne”; w prototypie s07 wybierasz ręcznie „Nieważne”).
+- Licznik błędnych haseł jest liczony per konto demo (jak `account-delete:user:{id}`).
 - Nie pokazuje listy historii przeciwnika (#27) ani panelu zmiany hasła (#36).
 - „Przejdź do partii” otwiera dialog „Poza tym prototypem”; prawdziwy ekran partii z poddaniem jest w prototypie `partia-z-zaproszenia` (p05).
 - Zegar 15-minutowego okna limitu liczy zegar demo (nie czas rzeczywisty).

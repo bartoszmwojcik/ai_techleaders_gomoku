@@ -100,7 +100,7 @@ export type Sim = {
   /** What /account shows about the games of the player: a snapshot read when the page opens, so it can be stale (s05.12, s05.20). */
   accountView: { active: boolean; waiting: boolean };
   /** Failed password attempts in the 15-minute window of the account deletion (limit 10, spec #37 Q2); the window starts at the first failure. */
-  deleteFails: { count: number; since: number };
+  deleteFails: { email: string; count: number; since: number };
   /** The opponent's account (the one in the finished game on s08) was deleted. */
   opponentDeleted: boolean;
   /** Width of the preview frame in px, 0 = full. */
@@ -154,7 +154,7 @@ const fresh = (): Sim => ({
   notice: null,
   deletedNotice: false,
   accountView: { active: false, waiting: false },
-  deleteFails: { count: 0, since: 0 },
+  deleteFails: { email: "", count: 0, since: 0 },
   opponentDeleted: false,
   width: 0,
 });
@@ -462,6 +462,8 @@ export function opponentJoinsWaitingGame() {
 
 /** Failed attempts still counted in the window; the window moves with the demo clock. */
 export function deleteFailures(sim: Sim): number {
+  // The counter is per account (spec: `account-delete:user:{id}`), so it does not follow a switch of the demo account.
+  if (sim.deleteFails.email !== viewer(sim)?.email) return 0;
   return nowMs(sim) - sim.deleteFails.since >= DELETE_WINDOW ? 0 : sim.deleteFails.count;
 }
 
@@ -494,7 +496,7 @@ export async function deleteAccount(password: string): Promise<DeleteResult> {
   }
   if (password !== account.password) {
     const count = fails + 1;
-    set({ deleteFails: { count, since: fails === 0 ? nowMs(sim) : sim.deleteFails.since } });
+    set({ deleteFails: { email: account.email, count, since: fails === 0 ? nowMs(sim) : sim.deleteFails.since } });
     return { kind: "wrong-password", attemptsLeft: DELETE_LIMIT - count };
   }
   if (sim.scenario.deleteServerError) return { kind: "server" };
@@ -510,7 +512,7 @@ export async function deleteAccount(password: string): Promise<DeleteResult> {
     deletedNotice: true,
     notice: null,
     opponentDeleted: true,
-    deleteFails: { count: 0, since: 0 },
+    deleteFails: { email: "", count: 0, since: 0 },
     banner: { state: "idle", outcome: "none" },
   });
   return { kind: "ok" };
