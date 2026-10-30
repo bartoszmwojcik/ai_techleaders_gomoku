@@ -3,7 +3,7 @@ import type { EntityManager } from "@mikro-orm/postgresql";
 import { CLEANUP_RULES, type CleanupRule } from "./rules";
 
 export const DEFAULT_BATCH_SIZE = 1000;
-/** Time budget of a single rule (the old 60 s overall: 4 rules x 15 s = the old 60 s overall); a slow rule cannot starve the later ones. */
+/** Time budget of a single rule; a slow rule cannot starve the later ones. With the 7 rules of `rules.ts` the worst case is 7 x 15 s = 105 s per run (the first 4 rules alone were 4 x 15 s = 60 s). */
 export const DEFAULT_RULE_TIME_LIMIT_MS = 15_000;
 
 const UNDEFINED_TABLE = "42P01";
