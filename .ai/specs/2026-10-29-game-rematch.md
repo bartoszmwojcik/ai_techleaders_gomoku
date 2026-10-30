@@ -84,3 +84,11 @@ Jedna faza, jeden PR (`Closes` nowe zgłoszenie E02-S06) po #21–#23 (i poddani
 - **Stan `accepted` jest końcowy** (jeden rewanż na zakończoną partię). Po skasowaniu partii rewanżowej przez sprzątanie (#39, `rematch_game_id` → `NULL`) stan zostaje `accepted`, a kolejne `offer` zwracają `409 REMATCH_ALREADY_OFFERED`. Czy to zamierzone? **Pytanie do właściciela:** jeśli nie, `cleanup` powinien zerować stan rewanżu (`cleanup` nie zmieniony).
 - **`409 ACTIVE_GAME_EXISTS` bez `gameId`** ujawnia przyjmującemu tylko, że przeciwnik ma inną partię — zaakceptowane (zgodne z Q4).
 - **Wymóg wobec UI (zadanie 5.6):** token nowej partii gościa-proponującego jest odbierany wyłącznie przez `GET /api/games/{id}` STAREJ partii, gdy `rematch.state === "accepted"` (`claimGuestSeat` + `Set-Cookie`). Ścieżka SSR (`loadGameView`) nie może ustawić ciasteczka, więc klient MUSI wykonać `fetch` `GET` starej partii (claim) PRZED nawigacją na `/games/{rematch.gameId}` — także po przeładowaniu strony, gdy stan `accepted` przychodzi już z serwera (jednorazowy `GET` przy montowaniu). Inaczej proponujący gość dostaje 404 w nowej partii, a jego miejsce zostaje „duchem” zamykanym po 15 min.
+
+## Adnotacja z implementacji UI (2026-10-30, zadanie 5.6)
+
+- **`GET /api/games/{id}` ma `fromRematch: true`** tylko dla partii powstałej z rewanżu (`origin = 'rematch'`) — nowa partia mówi „Rewanż: kolory zostały zamienione. Grasz …” zamiast „Wylosowano” i pokazuje gościowi „Nowa partia ma nowy dostęp w tej przeglądarce” (p06.15). Zmiana addytywna.
+- **Wycofanie a odrzucenie:** serwer zapisuje oba jako `declined` z `offeredBySeat` proponującego, więc nie odróżnia ich po przeładowaniu; strona pamięta własne wycofanie tylko do przeładowania. Po odrzuceniu proponujący może od razu zaproponować ponownie.
+- **Odpytywanie:** zakończona partia jest odczytywana co 3 s (także gdy nikt nie proponował), dopóki rewanż nie jest `accepted`; to jedyny sposób, w jaki przeciwnik widzi propozycję bez przeładowania.
+- **Claim tokenu gościa-proponującego** (wymóg z review): odczyt starej partii podczas odpytywania jest claimem; po przeładowaniu w stanie `accepted` panel robi jeden `GET` przed nawigacją. Po claimie ciasteczko wskazuje już nową partię, więc kolejny `GET` starej partii kończy się `404` — dlatego claim jest wykonywany raz, a nie przy każdym renderze.
+
