@@ -143,5 +143,17 @@ Ręczny test po fazie: powrót do trwającej i zakończonej partii z drugiego ur
 - [ ] 5.6 UI: ekran wyniku z rewanżem, oczekiwanie, przyjęcie, odrzucenie, wygaśnięcie (p06.10–p06.15) (#88 krok 5)
 - [ ] 5.7 Dokumentacja (README), komentarz w #38 o dostawcy poczty jeśli nadal otwarty, lekcje; odblokowanie Fazy 10 z `track.md` (usunięcie konta, #37) po 5.3–5.4
 
+### Faza 6 — Gra bez konta: nick (E02-S07) i gość tworzy partię (E02-S08)
+Specyfikacje: `.ai/specs/2026-10-30-participant-nickname.md`, `.ai/specs/2026-10-30-guest-creates-game.md` (decyzje właściciela 2026-10-30; BR-29, D-27). Kolejność: najpierw nick (E02-S07), potem gość-twórca (E02-S08). Ekrany po zatwierdzeniu zaktualizowanego prototypu.
+- [ ] 6.1 Aktualizacja mapy ekranów (`lekcja-07/mapa-ekranow-partia.md`): akcja gościa na p01, ekran „nick + ostrzeżenie”, p03 gościa-twórcy, s07 z polem nicku; zatwierdzenie
+- [ ] 6.2 Rewizja klikalnego prototypu (`prototypes/partia-z-zaproszenia`): stany gościa-twórcy i nicku; przegląd właściciela
+- [ ] 6.3 E02-S07 backend: `nicknameSchema`/`defaultNickname` w `core`, kolumna `nickname` + `CHECK`-i (expand-only), `accept` i widok z nickiem, testy
+- [ ] 6.4 E02-S07 UI: pole nicku w s07, „{nick} (gość)”
+- [ ] 6.5 E02-S08 slot gościa (refaktor): `GUEST_TOKEN_VALID_SQL` dla `waiting`, `EXPIRE_WAITING_OF_GUEST`, `settleForGuest`, ciasteczko ze zmiennym czasem życia, `cancel` przez uczestnika
+- [ ] 6.6 Sprzątanie `games` (#39, część): wygasłe `waiting`, stare `cancelled`, tokeny gości
+- [ ] 6.7 E02-S08 backend: `create` dla gościa (limit adresu, BR-13 przez token + blokada doradcza), `POST /api/games` bez sesji
+- [ ] 6.8 E02-S08 UI: „Zagraj ze znajomym bez konta”, gość-twórca w p03, „Masz partię” gościa
+- [ ] 6.9 Dokumentacja, zgłoszenia E02-S07/E02-S08, adnotacje w #87/#88 i `account-deletion`
+
 ## Poza zakresem tego przebiegu
 - Lobby (E03), historia (E04), spike #30 (transport czasu rzeczywistego — na MVP odpytywanie co 2–3 s), produkcyjny dostawca poczty (#38).
