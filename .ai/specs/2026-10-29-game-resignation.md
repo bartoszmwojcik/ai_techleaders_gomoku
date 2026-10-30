@@ -62,3 +62,5 @@ Jedna faza, jeden PR (`Closes` nowe zgłoszenie E02-S05) po #22 i #23.
 4. Route `POST /api/games/[id]/resign` + testy (jednostkowe, integracyjne: 200/404/409/403, gość, konto).
 5. UI po zatwierdzeniu prototypu: przycisk, dialog, stany wyniku, testy komponentów i przeglądarki (obie strony, oba motywy, 360 px).
 6. Dokumentacja, link do partii w komunikacie blokady usunięcia konta (#37), lekcja jeśli przegląd wykaże korektę.
+
+> **Adnotacja 2026-10-30 (BR-29 / D-27, E02-S08):** gość (twórca lub dołączający) może się poddać tak samo jak konto, przez `resolveParticipant` (token przeglądarki); gość-twórca oczekującej partii (`waiting`) jej nie „poddaje”, tylko anuluje (`POST /api/games/{id}/cancel`, E02-S08). Etykieta przeciwnika w komunikacie wyniku to „{nick} (gość)”.

@@ -158,7 +158,7 @@ Specyfikacje: `.ai/specs/2026-10-30-participant-nickname.md`, `.ai/specs/2026-10
   - Zrobione: `GameService.create(GameCreator)`, `createGuestGameSchema`, `POST /api/games` bez sesji, `creatorKind` w podglądzie zaproszenia, `GameParticipation.currentGameOfGuest`. Odstępstwo od specyfikacji: nowa partia gościa przejmuje token niesiony przez przeglądarkę (inaczej blokada doradcza nie widziałaby partii z równoległego żądania). Testy: `guest-create.test.ts`, `game-guest-create-api.test.ts`. UI (6.8) zostaje.
 - [x] 6.8 E02-S08 UI: „Zagraj ze znajomym bez konta”, gość-twórca w p03, „Masz partię” gościa
   - Zrobione: `/play` (p08.1–p08.8), przycisk na `/` (p01.8), „Masz partię” gościa (p01.9, `loadGuestCurrentGame`), ostrzeżenie p03.12 i „Zaproszenie wygasło” p03.13 dla gościa-twórcy, s07.11, s07.7 dla gościa-twórcy (backend: `accept` z `as: guest` przyjmuje `cancelOwnWaitingGame`, L35). Odstępstwa od prototypu: brak nagłówka z prototypu (aplikacja go nie ma), strona główna wyśrodkowana na wąskim ekranie jak dotąd. README: „Gość tworzy partię”.
-- [ ] 6.9 Dokumentacja, zgłoszenia E02-S07/E02-S08, adnotacje w #87/#88 i `account-deletion`
+- [x] 6.9 Dokumentacja, zgłoszenia E02-S07/E02-S08 (#94, #95), adnotacje w #87/#88 i `account-deletion` (2026-10-30)
 
 ## Poza zakresem tego przebiegu
 - Lobby (E03), historia (E04), spike #30 (transport czasu rzeczywistego — na MVP odpytywanie co 2–3 s), produkcyjny dostawca poczty (#38).

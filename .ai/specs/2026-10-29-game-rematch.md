@@ -65,3 +65,5 @@ Jedna faza, jeden PR (`Closes` nowe zgłoszenie E02-S06) po #21–#23 (i poddani
 4. Route'y i rozszerzenie `GET` + testy integracyjne (konto–konto, konto–gość, wygaśnięcie, odrzucenie, limit).
 5. UI po zatwierdzeniu prototypu: ekran wyniku z rewanżem, oczekiwanie, przyjęcie, odrzucenie, wygaśnięcie; testy komponentów i przeglądarki (dwie sesje, oba motywy, 360 px).
 6. Dokumentacja, lekcja jeśli przegląd wykaże korektę.
+
+> **Adnotacja 2026-10-30 (BR-29 / D-27, E02-S07 i E02-S08):** gość-twórca oraz gość-dołączający zachowują nick w rewanżu (kopiowany do nowego wiersza uczestnika; nowy token jak w Q5). Gdy rewanż zamienia miejsca, jawny nick zostaje, a nazwa domyślna „Gracz {miejsce}” podąża za nowym miejscem (wyliczana przy odczycie). Przy gościu-twórcy partia ma `origin = rematch`, bez zaproszenia; BR-13 dla gościa przez token przeglądarki (jak w E02-S08).
