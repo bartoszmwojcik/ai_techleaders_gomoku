@@ -17,7 +17,9 @@ type Mode =
   /** Signed in and free: join. */
   | "member"
   /** Signed in with an own waiting game (Q18): give it up and join. */
-  | "swap";
+  | "swap"
+  /** A guest creator with an own waiting game (L35): give it up and join, still as a guest. */
+  | "swap-guest";
 
 type Props = {
   /** The invitation code in its display form, `ABCD-EFGH`. */
@@ -211,6 +213,18 @@ export function JoinActions({ code, mode }: Props) {
         <div>
           <Button loading={joining === "user"} disabled={busy} onClick={() => void join("user", { cancelOwnWaitingGame: true })}>
             {joining === "user" ? "Dołączanie…" : "Anuluj moją partię i dołącz"}
+          </Button>
+        </div>
+      )}
+
+      {mode === "swap-guest" && (
+        <div>
+          <Button
+            loading={joining === "guest"}
+            disabled={busy}
+            onClick={() => void join("guest", { acknowledgedGuestWarning: true, cancelOwnWaitingGame: true })}
+          >
+            {joining === "guest" ? "Dołączanie…" : "Anuluj moją partię i dołącz"}
           </Button>
         </div>
       )}
