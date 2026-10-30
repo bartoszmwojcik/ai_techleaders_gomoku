@@ -567,7 +567,7 @@ describe("InvitationService.preview", () => {
 
   it("names a guest creator by nickname, or by the default for seat 1", async () => {
     const named = setup({ invitation: [invitationRow({ creator_kind: "guest", creator_nickname: "Kasia" })] });
-    expect(await named.service.preview(CODE, {}, GUARD)).toMatchObject({ creatorName: "Kasia" });
+    expect(await named.service.preview(CODE, {}, GUARD)).toMatchObject({ creatorName: "Kasia", creatorKind: "guest" });
     const unnamed = setup({ invitation: [invitationRow({ creator_kind: "guest", creator_name: null })] });
     expect(await unnamed.service.preview(CODE, {}, GUARD)).toMatchObject({ creatorName: "Gracz 1" });
   });
@@ -575,7 +575,7 @@ describe("InvitationService.preview", () => {
   it("shows a free invitation to an anonymous visitor without touching state", async () => {
     const { service, calls, rateLimiter, em, timeoutSettler } = setup();
     const preview = await service.preview(CODE, {}, GUARD);
-    expect(preview).toEqual({ creatorName: "Ala", state: "joinable" });
+    expect(preview).toEqual({ creatorName: "Ala", creatorKind: "account", state: "joinable" });
     expect(rateLimiter.hit).toHaveBeenCalledWith(GUARD.key, GUARD.limit, INVITATION_LOOKUP_WINDOW_MS);
     expect(rateLimiter.release).toHaveBeenCalledWith(GUARD.key, INVITATION_LOOKUP_WINDOW_MS);
     expect(em.transactional).not.toHaveBeenCalled();
@@ -587,6 +587,7 @@ describe("InvitationService.preview", () => {
     const { service, timeoutSettler } = setup();
     expect(await service.preview(CODE, { userId: USER }, GUARD)).toEqual({
       creatorName: "Ala",
+      creatorKind: "account",
       state: "joinable",
     });
     expect(timeoutSettler.settleFor).toHaveBeenCalledWith(USER);
@@ -596,6 +597,7 @@ describe("InvitationService.preview", () => {
     const { service } = setup({ member: [{ seat: 1 }] });
     expect(await service.preview(CODE, { userId: CREATOR }, GUARD)).toEqual({
       creatorName: "Ala",
+      creatorKind: "account",
       state: "own-invitation",
       gameId: "game-1",
     });
@@ -662,6 +664,7 @@ describe("InvitationService.preview", () => {
     const { service } = setup({ slot: [[{ game_id: "other", status: "active", seat: 1 }]] });
     expect(await service.preview(CODE, { userId: USER }, GUARD)).toEqual({
       creatorName: "Ala",
+      creatorKind: "account",
       state: "has-active-game",
       gameId: "other",
     });
@@ -671,6 +674,7 @@ describe("InvitationService.preview", () => {
     const { service } = setup({ slot: [[{ game_id: "own", status: "waiting", seat: 1 }]] });
     expect(await service.preview(CODE, { userId: USER }, GUARD)).toEqual({
       creatorName: "Ala",
+      creatorKind: "account",
       state: "has-own-waiting-game",
       gameId: "own",
     });

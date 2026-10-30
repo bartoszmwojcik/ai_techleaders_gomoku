@@ -2,7 +2,12 @@ import { READY_DEADLINE_MS } from "@gomoku/core";
 import { GamePlayer, type EntityManager } from "@gomoku/db";
 import { describe, expect, it, vi } from "vitest";
 
-import { CANCEL_NOT_STARTED_OF_USER, EXPIRE_WAITING_OF_USER } from "../games/lazy-closing";
+import {
+  CANCEL_NOT_STARTED_OF_GUEST,
+  CANCEL_NOT_STARTED_OF_USER,
+  EXPIRE_WAITING_OF_GUEST,
+  EXPIRE_WAITING_OF_USER,
+} from "../games/lazy-closing";
 import { GameParticipation } from "./game-participation";
 
 const NOW = new Date("2026-10-29T12:00:00Z");
@@ -88,5 +93,29 @@ describe("GameParticipation.currentGame", () => {
       "run",
     );
     expect(em.execute.mock.invocationCallOrder[1]).toBeLessThan(em.findOne.mock.invocationCallOrder[0]!);
+  });
+});
+
+describe("GameParticipation.currentGameOfGuest", () => {
+  it("closes the browser's stale games, then returns its game by token hash", async () => {
+    const { em, participation } = setup(0, { seat: 1, game: { id: "game-1", status: "waiting" } });
+    expect(await participation.currentGameOfGuest("hash")).toEqual({ gameId: "game-1", status: "waiting", seat: 1 });
+    expect(em.execute).toHaveBeenNthCalledWith(1, EXPIRE_WAITING_OF_GUEST, [NOW, "hash"], "run");
+    expect(em.execute).toHaveBeenNthCalledWith(
+      2,
+      CANCEL_NOT_STARTED_OF_GUEST,
+      [new Date(NOW.getTime() - READY_DEADLINE_MS), "hash"],
+      "run",
+    );
+    expect(em.findOne).toHaveBeenCalledWith(
+      GamePlayer,
+      { guestTokenHash: "hash", isActive: true, game: { status: { $in: ["waiting", "active"] } } },
+      { populate: ["game"] },
+    );
+    expect(em.execute.mock.invocationCallOrder[1]).toBeLessThan(em.findOne.mock.invocationCallOrder[0]!);
+  });
+
+  it("is null for a browser without a game", async () => {
+    expect(await setup(0).participation.currentGameOfGuest("hash")).toBeNull();
   });
 });

@@ -67,10 +67,17 @@ export async function refreshGuestCookie(
   if (token) await setGuestCookie(config, token, maxAgeSeconds);
 }
 
+/** The guest token the browser carries, or `undefined` without the cookie. */
+export async function readGuestToken(
+  config: CookieConfig,
+): Promise<string | undefined> {
+  return (await cookies()).get(guestCookieName(config))?.value || undefined;
+}
+
 /** SHA-256 of the guest token the browser carries, or `undefined` without the cookie. */
 export async function readGuestTokenHash(
   config: CookieConfig,
 ): Promise<string | undefined> {
-  const token = (await cookies()).get(guestCookieName(config))?.value;
+  const token = await readGuestToken(config);
   return token ? hashOpaqueToken(token) : undefined;
 }

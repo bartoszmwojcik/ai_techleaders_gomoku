@@ -9,6 +9,7 @@ import {
   defaultNickname,
   normalizeInvitationCode,
   type AcceptInvitationInput,
+  type ParticipantKind,
 } from "@gomoku/core";
 import type { EntityManager } from "@gomoku/db";
 
@@ -79,8 +80,13 @@ export type AcceptResult = {
 
 /** What the invite page shows (#21 UI/UX), without changing any state. */
 export type InvitationPreview = {
-  /** `null` when the creator account is gone. */
+  /**
+   * A guest creator's nickname or `Gracz 1`; an account's name, `null` when the account is
+   * gone. A `null` never means a guest: that is what `creatorKind` is for.
+   */
   creatorName: string | null;
+  /** Whether the creator plays with an account or as a guest (E02-S08). */
+  creatorKind: ParticipantKind;
   state:
     /** Free to join (a guest option may still apply to the anonymous visitor). */
     | "joinable"
@@ -231,6 +237,7 @@ export class InvitationService {
     if (invitation && member) {
       const known = (state: InvitationPreview["state"]): InvitationPreview => ({
         creatorName: creatorNameOf(invitation),
+        creatorKind: invitation.creator_kind as ParticipantKind,
         state,
         gameId: invitation.game_id,
       });
@@ -251,9 +258,13 @@ export class InvitationService {
 
     await this.#closeStaleSlots(viewer);
     const slot = await this.#slotOf(this.#em, viewer);
-    if (!slot) return { creatorName: creatorNameOf(invitation), state: "joinable" };
-    return {
+    const creator = {
       creatorName: creatorNameOf(invitation),
+      creatorKind: invitation.creator_kind as ParticipantKind,
+    };
+    if (!slot) return { ...creator, state: "joinable" };
+    return {
+      ...creator,
       state:
         slot.status === "waiting" && slot.seat === 1
           ? "has-own-waiting-game"

@@ -1,8 +1,12 @@
-import type { Seat } from "@gomoku/core";
+import { READY_DEADLINE_MS, type Seat } from "@gomoku/core";
 import { GamePlayer, type EntityManager } from "@gomoku/db";
 
 import type { Clock } from "../email/email-sender";
-import { closeStaleSlotsOfUser } from "../games/lazy-closing";
+import {
+  CANCEL_NOT_STARTED_OF_GUEST,
+  EXPIRE_WAITING_OF_GUEST,
+  closeStaleSlotsOfUser,
+} from "../games/lazy-closing";
 
 type Deps = { em: EntityManager; clock: Clock };
 
@@ -66,6 +70,31 @@ export class GameParticipation {
     const player = await this.#em.findOne(
       GamePlayer,
       { user: userId, isActive: true, game: { status: { $in: ["waiting", "active"] } } },
+      { populate: ["game"] },
+    );
+    if (!player) return null;
+    return {
+      gameId: player.game.id,
+      status: player.game.status as "waiting" | "active",
+      seat: player.seat as Seat,
+    };
+  }
+
+  /**
+   * The same for a guest browser, found by the hash of its token (E02-S08): the "you have a
+   * game" of the home page for a guest creator. Stale slots are closed first, as for an account.
+   */
+  async currentGameOfGuest(tokenHash: string): Promise<CurrentGame | null> {
+    const now = this.#clock.now();
+    await this.#em.execute(EXPIRE_WAITING_OF_GUEST, [now, tokenHash], "run");
+    await this.#em.execute(
+      CANCEL_NOT_STARTED_OF_GUEST,
+      [new Date(now.getTime() - READY_DEADLINE_MS), tokenHash],
+      "run",
+    );
+    const player = await this.#em.findOne(
+      GamePlayer,
+      { guestTokenHash: tokenHash, isActive: true, game: { status: { $in: ["waiting", "active"] } } },
       { populate: ["game"] },
     );
     if (!player) return null;

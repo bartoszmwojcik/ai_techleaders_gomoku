@@ -72,7 +72,7 @@ function scope() {
 /** A creator with a waiting game; returns the dashed code as the user would type it. */
 async function newGame() {
   const creator = await insertUser();
-  const { gameId, invitation } = await scope().games.create(creator);
+  const { gameId, invitation } = await scope().games.create({ kind: "account", userId: creator });
   return { creator, gameId, code: invitation.code };
 }
 

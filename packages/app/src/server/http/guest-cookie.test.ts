@@ -8,6 +8,7 @@ import {
   GUEST_COOKIE_MAX_AGE_SECONDS,
   guestCookieMaxAge,
   guestCookieName,
+  readGuestToken,
   readGuestTokenHash,
   refreshGuestCookie,
   setGuestCookie,
@@ -87,6 +88,13 @@ describe("guest cookie", () => {
     store.get.mockReturnValue(undefined);
     await refreshGuestCookie(plain);
     expect(store.set).not.toHaveBeenCalled();
+  });
+
+  it("reads the raw token for a create that keeps it", async () => {
+    store.get.mockReturnValue({ value: "tok" });
+    expect(await readGuestToken(plain)).toBe("tok");
+    store.get.mockReturnValue({ value: "" });
+    expect(await readGuestToken(plain)).toBeUndefined();
   });
 
   it("reads only the hash of the token", async () => {
