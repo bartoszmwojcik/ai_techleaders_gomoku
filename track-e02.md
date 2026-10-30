@@ -139,7 +139,7 @@ Ręczny test po fazie: powrót do trwającej i zakończonej partii z drugiego ur
 - [x] 5.4 UI: przycisk „Poddaj partię”, dialog (fokus na „Wróć do gry”), stany p05.13–14 i wynik p06.8–9; link do partii w komunikacie blokady usunięcia konta (#37) (#87 kroki 5–6). Link do partii w komunikacie blokady usunięcia konta idzie z #37 (usuwanie konta, Faza 10 z `track.md`, jeszcze nie istnieje).
 
 #### 5C — Rewanż (#88, jeden PR)
-- [ ] 5.5 Backend: `rematchBlackSeat`, `isRematchOpen` w `core`; `RematchService.offer/accept/decline` (wyścigi, BR-13 przy przyjęciu, gość z nowym tokenem, rollback przez `tx`); route'y i rozszerzenie `GET`; migracja tylko jeśli potrzebna (kolumny rewanżu są od fazy 1) (#88 kroki 1–4)
+- [x] 5.5 Backend: `rematchBlackSeat`, `isRematchOpen` w `core`; `RematchService.offer/accept/decline` (wyścigi, BR-13 przy przyjęciu, gość z nowym tokenem, rollback przez `tx`); route'y i rozszerzenie `GET`; migracja tylko jeśli potrzebna (kolumny rewanżu są od fazy 1) (#88 kroki 1–4)
 - [ ] 5.6 UI: ekran wyniku z rewanżem, oczekiwanie, przyjęcie, odrzucenie, wygaśnięcie (p06.10–p06.15) (#88 krok 5)
 - [ ] 5.7 Dokumentacja (README), komentarz w #38 o dostawcy poczty jeśli nadal otwarty, lekcje; odblokowanie Fazy 10 z `track.md` (usunięcie konta, #37) po 5.3–5.4
 

@@ -67,3 +67,12 @@ Jedna faza, jeden PR (`Closes` nowe zgłoszenie E02-S06) po #21–#23 (i poddani
 6. Dokumentacja, lekcja jeśli przegląd wykaże korektę.
 
 > **Adnotacja 2026-10-30 (BR-29 / D-27, E02-S07 i E02-S08):** gość-twórca oraz gość-dołączający zachowują nick w rewanżu (kopiowany do nowego wiersza uczestnika; nowy token jak w Q5). Gdy rewanż zamienia miejsca, jawny nick zostaje, a nazwa domyślna „Gracz {miejsce}” podąża za nowym miejscem (wyliczana przy odczycie). Przy gościu-twórcy partia ma `origin = rematch`, bez zaproszenia; BR-13 dla gościa przez token przeglądarki (jak w E02-S08).
+
+## Adnotacja z implementacji backendu (2026-10-30, zadanie 5.5)
+
+- **Bez migracji:** kolumny, `CHECK`-i i `origin = 'rematch'` istnieją od fazy 1; brak `CHECK` „accepted wymaga `rematch_game_id`” jest świadomy (cleanup #39).
+- **`GET /api/games/{id}`:** pole `rematch` jest **pominięte**, gdy nikt nie proponował (zamiast `null` — zmiana addytywna, bez zmian w istniejących fikstach); `state` ∈ `pending | accepted | declined | expired` (`expired` = `pending` po `expiresAt`, liczone przy odczycie).
+- **Miejsca bez zmian:** nowa partia zachowuje `seat` graczy, zmienia się tylko `black_seat` (`rematchBlackSeat`); nazwa domyślna gościa („Gracz {miejsce}”) i jawny nick zostają bez dodatkowej logiki.
+- **Token gościa:** `deriveRematchToken(staryToken, idNowejPartii)` (SHA-256, deterministyczny) zamiast losowego — dzięki temu ponowienie `accept` po utraconej odpowiedzi oddaje ten sam token, a gość **proponujący** (który w momencie przyjęcia nie jest w żądaniu) odbiera swój token przy `GET` starej partii (`claimGuestSeat`; wiersz miejsca jest tworzony z `guest_token_hash = NULL` i uzupełniany warunkowym `UPDATE`). Ciasteczko starej partii zostaje nadpisane (Q5).
+- **BR-13 gościa:** tokeny są jednorazowe dla partii (unikalny hash), więc gość nie może trzymać slotu w innej partii niż stara (zakończona); sprawdzane są konta obu graczy. Dostępność: konto usunięte, token gościa wyczyszczony lub starszy niż godzina po końcu → `409 REMATCH_UNAVAILABLE`.
+- **Kontrakty:** `decline` jest idempotentne (powtórzenie = `200`), służy także do wycofania własnej propozycji; ponowna propozycja jest możliwa po `declined` i po wygaśnięciu; `accept` powtórzony przez przyjmującego zwraca tę samą partię; `ACTIVE_GAME_EXISTS` niesie `data.gameId` tylko dla partii wywołującego.
