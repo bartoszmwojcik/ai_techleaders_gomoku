@@ -1,0 +1,103 @@
+## A. p01.8 → p08 → p03.11: gość tworzy partię (Q13)
+PASS A.1 | p01.8 strona główna niezalogowanego
+PASS A.2 | przycisk akcji drugorzędnej
+PASS A.3 | Załóż konto zostaje
+PASS A.4 | przycisk drugorzędny ma znacznik L34 i pełną szerokość
+PASS A.5 | przycisk prowadzi na p08
+PASS A.6 | p08.1
+PASS A.7 | tytuł
+PASS A.8 | etykieta pola
+PASS A.9 | podpowiedź
+PASS A.10 | ostrzeżenie
+PASS A.11 | dalsza treść ostrzeżenia
+PASS A.12 | linia o ważności (L25)
+PASS A.13 | przycisk
+PASS A.14 | pole nicku ma opis (aria-describedby)
+PASS A.15 | po utworzeniu p03
+PASS A.16 | p03.11 + p03.12
+PASS A.17 | kod zaproszenia
+PASS A.18 | ostrzeżenie pod Kartą kodu (L28)
+PASS A.19 | anulowanie jest dostępne
+PASS A.20 | pasek: sesja gościa Ola (gość)
+PASS A.21 | p01.8 + p01.9: Masz partię
+PASS A.22 | Czekasz na przeciwnika (L27)
+PASS A.23 | gość nie jest blokowany: Załóż konto
+## B. nick: błędy i domyślna nazwa (Q14)
+PASS B.1 | p08.2
+PASS B.2 | komunikat o znakach
+PASS B.3 | wartość zostaje
+PASS B.4 | pole oznaczone aria-invalid
+PASS B.5 | za długi (25)
+PASS B.6 | same spacje → domyślna nazwa, partia powstaje
+PASS B.7 | nazwy: Gracz 2 (gość) | Ty: Ola (gość)
+PASS B.8 | p03 gościa bez nicku
+PASS B.9 | p03.11 + p03.6 + p03.12
+PASS B.10 | domyślna nazwa twórcy w zaproszeniu: Gracz 1 (gość)
+PASS B.11 | s07
+PASS B.12 | s07.11: Gracz 1 (gość) zaprasza
+PASS B.13 | s07.1 + s07.11
+## C. błędy tworzenia (Q15) i slot przeglądarki (Q16)
+PASS C.1 | p08.4
+PASS C.2 | treść z czasem
+PASS C.3 | p08.5
+PASS C.4 | treść (L26)
+PASS C.5 | ponowienie
+PASS C.6 | p08.8
+PASS C.7 | treść
+PASS C.8 | ponowienie bez błędu tworzy partię
+PASS C.9 | p08.7: masz oczekującą partię
+PASS C.10 | przycisk Anuluj i utwórz nową
+PASS C.11 | dialog potwierdzenia (L32)
+PASS C.12 | treść dialogu
+PASS C.13 | nowa partia powstaje
+PASS C.14 | kod nowej partii
+PASS C.15 | p08.6: masz już partię (aktywna)
+PASS C.16 | treść
+PASS C.17 | link do partii
+PASS C.18 | gość-dołączający z trwającą partią: p08.6
+## D. s07: nick gościa dołączającego (s07.2, s07.10), zaproszenie od gościa (s07.11)
+PASS D.1 | s07
+PASS D.2 | s07.1
+PASS D.3 | s07.2
+PASS D.4 | pole nicku
+PASS D.5 | podpowiedź Gracz 2
+PASS D.6 | zdanie o braku nazwy usunięte (D11)
+PASS D.7 | s07.10
+PASS D.8 | błąd w linii
+PASS D.9 | wartość zostaje
+PASS D.10 | dołączył → p04
+FAIL D.11 | etykiety: Ty: Piotr (gość) | jest: Ty: Piotr (gość), oczekiwano: Ala_7|Ty: Piotr (gość)
+PASS D.12 | p04.1 + p04.4
+FAIL D.13 | widok Ali: Piotr (gość) | jest: , oczekiwano: Piotr (gość)
+FAIL D.14 | Ty (Ala_7) | oczekiwano: Ty (Ala_7) | jest: Gomoku Lobby Historia Zalogowano jako Ala_7 Konto Przeciwnik dołączył Piotr (gość) dołączył do partii Za chwilę przejdziesz do partii. Przejdź do partii
+FAIL D.15 | puste pole: Ty: Gracz 2 (gość) | jest: Ty: Gracz 2 (gość), oczekiwano: Ala_7|Ty: Gracz 2 (gość)
+PASS D.16 | s07.1 + s07.11
+PASS D.17 | nagłówek
+PASS D.18 | zalogowany: s07.3 + s07.11
+PASS D.19 | konto dołącza do gościa → p04
+PASS D.20 | Kuba_P widzi Ola (gość)
+FAIL D.21 | własny link gościa-twórcy przekierowuje (s07.5) | ekran: p03, oczekiwano p04
+## E. wygaśnięcie, anulowanie, inna przeglądarka (Q17–Q19)
+PASS E.1 | p03.13 + p03.9: Zaproszenie wygasło (L29)
+PASS E.2 | treść
+PASS E.3 | po godzinie p07.2
+PASS E.4 | inna przeglądarka: p07.3
+PASS E.5 | 404
+PASS E.6 | token działa w tej przeglądarce
+PASS E.7 | po anulowaniu na stronę główną
+PASS E.8 | p01.8
+PASS E.9 | komunikat
+PASS E.10 | link anulowanego: s07.9
+PASS E.11 | Masz partię po zamknięciu karty
+## F. gość–gość do końca (Q20)
+PASS F.1 | p05.1 + p05.5 + p05.11
+PASS F.2 | nazwy
+PASS F.3 | ostrzeżenie p05.11
+FAIL F.4 | po czterech kamieniach partia trwa | stan: p05.2 + p05.11, oczekiwano p05.2
+PASS F.5 | piątka kończy partię
+PASS F.6 | p06.1 + p06.6 + p06.10
+PASS F.7 | Wygrałeś
+PASS F.8 | token gościa do 1 h
+PASS F.9 | Gracz 2 widzi przegraną
+PASS F.10 | po godzinie token nie działa: p06.7
+PASS F.11 | to samo u twórcy
