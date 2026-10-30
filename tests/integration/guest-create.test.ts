@@ -229,7 +229,8 @@ describe("GameService.create for a guest", () => {
   it("rolls everything back when the insert fails: the old game stays waiting and keeps its token", async () => {
     const token = newToken();
     const first = await scope().games.create(guest(token));
-    const [{ code }] = (await run(`select code from invitations where game_id = ?`, [first.gameId])) as { code: string }[];
+    const [stored] = await run(`select code from invitations where game_id = ?`, [first.gameId]);
+    const code = stored!.code as string;
 
     // The new invitation collides with the existing code: the flush fails after the cancel.
     await expect(
