@@ -3,6 +3,7 @@ export * from "./games/rules";
 export * from "./games/board";
 export * from "./games/bitboard-codec";
 export * from "./games/apply-move";
+export * from "./games/resign";
 export * from "./http/api-result";
 export * from "./http/errors";
 export * from "./http/safe-next-path";
