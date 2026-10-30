@@ -30,6 +30,8 @@ const invitationRow = (over: Row = {}): Row => ({
   status: "waiting",
   creator_id: CREATOR,
   creator_name: "Ala",
+  creator_kind: "account",
+  creator_nickname: null,
   ...over,
 });
 
@@ -397,7 +399,7 @@ describe("InvitationService.accept as a guest", () => {
     const insert = calls.find(({ sql }) => sql.includes("insert into game_players"))!;
     expect(insert.sql).toContain("'guest'");
     expect(insert.sql).not.toContain("user_id");
-    expect(insert.params).toEqual(["game-1", hashOpaqueToken(result.guestToken!), NOW, NOW]);
+    expect(insert.params).toEqual(["game-1", hashOpaqueToken(result.guestToken!), null, NOW, NOW]);
     expect(JSON.stringify(calls)).not.toContain(result.guestToken);
     // Only the creator is locked as a user; there is no account to settle or sweep.
     expect(calls.find(({ sql }) => sql.includes("from users"))!.params).toEqual([CREATOR]);
@@ -435,6 +437,27 @@ describe("InvitationService.accept as a guest", () => {
       expect(error.fieldErrors).toHaveProperty("acknowledgedGuestWarning");
     }
     expect(em.transactional).not.toHaveBeenCalled();
+  });
+
+  it("writes the explicit nickname in the very statement that creates the guest's row", async () => {
+    const { service, calls } = setup();
+
+    const result = await service.accept(CODE, {}, { ...GUEST_INPUT, nickname: "Kasia" }, GUARD);
+
+    const inserts = calls.filter(({ sql }) => sql.includes("insert into game_players"));
+    expect(inserts).toHaveLength(1);
+    expect(inserts[0]!.sql).toContain("nickname");
+    expect(inserts[0]!.params).toEqual(["game-1", hashOpaqueToken(result.guestToken!), "Kasia", NOW, NOW]);
+    expect(calls.some(({ sql }) => sql.startsWith("update game_players set nickname"))).toBe(false);
+  });
+
+  it("refuses a nickname from a signed-in user on that field, before any lookup", async () => {
+    const { service, rateLimiter, calls } = setup();
+    const error = await errorOf(service.accept(CODE, { userId: USER }, { as: "user", nickname: "Ala" }, GUARD));
+    expect(error).toMatchObject({ status: 400, code: "VALIDATION" });
+    expect(error.fieldErrors?.nickname).toEqual(["Nick podaje tylko gość."]);
+    expect(rateLimiter.hit).not.toHaveBeenCalled();
+    expect(calls).toEqual([]);
   });
 
   it("lets a returning guest back in without a second token", async () => {
@@ -519,6 +542,13 @@ describe("InvitationService.preview", () => {
     expect(writes).toHaveLength(1);
     expect(writes[0]!.params).toEqual([CUTOFF, TOKEN_HASH]);
     expect(writes[0]!.sql).toContain("guest_token_hash = ?");
+  });
+
+  it("names a guest creator by nickname, or by the default for seat 1", async () => {
+    const named = setup({ invitation: [invitationRow({ creator_kind: "guest", creator_nickname: "Kasia" })] });
+    expect(await named.service.preview(CODE, {}, GUARD)).toMatchObject({ creatorName: "Kasia" });
+    const unnamed = setup({ invitation: [invitationRow({ creator_kind: "guest", creator_name: null })] });
+    expect(await unnamed.service.preview(CODE, {}, GUARD)).toMatchObject({ creatorName: "Gracz 1" });
   });
 
   it("shows a free invitation to an anonymous visitor without touching state", async () => {

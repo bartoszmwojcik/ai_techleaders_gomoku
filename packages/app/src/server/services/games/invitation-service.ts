@@ -6,6 +6,7 @@ import {
   READY_DEADLINE_MS,
   UnauthorizedError,
   ValidationError,
+  defaultNickname,
   normalizeInvitationCode,
   type AcceptInvitationInput,
 } from "@gomoku/core";
@@ -45,6 +46,7 @@ export const OWN_WAITING_GAME_MESSAGE =
 export const SIGN_IN_MESSAGE = "Zaloguj się, aby dołączyć do partii.";
 export const GUEST_NOT_ALLOWED_MESSAGE =
   "Jesteś zalogowany — dołącz jako on sam. Gra bez konta jest dla niezalogowanych.";
+export const NICKNAME_GUEST_ONLY_MESSAGE = "Nick podaje tylko gość.";
 export const GUEST_WARNING_MESSAGE =
   "Potwierdź, że rozumiesz ograniczenia gry bez konta.";
 
@@ -103,13 +105,16 @@ type InvitationRow = {
   status: string;
   creator_id: string | null;
   creator_name: string | null;
+  creator_kind: string;
+  creator_nickname: string | null;
 };
 type MemberRow = { seat: number };
 type SlotRow = { game_id: string; status: string; seat: number };
 
 const READ_INVITATION_SQL = `
   select i.id, i.game_id, i.consumed_at, i.expires_at <= ? as expired, g.status,
-    c.user_id as creator_id, u.display_name as creator_name
+    c.user_id as creator_id, u.display_name as creator_name,
+    c.kind as creator_kind, c.nickname as creator_nickname
   from invitations i
   join games g on g.id = i.game_id
   join game_players c on c.game_id = g.id and c.seat = 1
@@ -146,8 +151,8 @@ const INSERT_PLAYER_SQL = `
   returning id`;
 
 const INSERT_GUEST_SQL = `
-  insert into game_players (game_id, seat, kind, guest_token_hash, is_active, joined_at, seen_at)
-  values (?, 2, 'guest', ?, true, ?, ?)
+  insert into game_players (game_id, seat, kind, guest_token_hash, nickname, is_active, joined_at, seen_at)
+  values (?, 2, 'guest', ?, ?, true, ?, ?)
   returning id`;
 
 const SET_CONSUMED_BY_SQL = `update invitations set consumed_by_id = ? where id = ?`;
@@ -168,6 +173,13 @@ const lockUsersSql = (count: number) =>
   `select id from users where id in (${placeholders(count)}) order by id for no key update`;
 const lockGamesSql = (count: number) =>
   `select id from games where id in (${placeholders(count)}) order by id for update`;
+
+/** Name of the creator for the invite page: an account's name, a guest's nickname or default. */
+function creatorNameOf(invitation: InvitationRow): string | null {
+  return invitation.creator_kind === "guest"
+    ? (invitation.creator_nickname ?? defaultNickname(1))
+    : invitation.creator_name;
+}
 
 function invalidInvitation(): GoneError {
   return new GoneError(INVALID_INVITATION_MESSAGE, { code: "INVALID_INVITATION" });
@@ -218,7 +230,7 @@ export class InvitationService {
       : undefined;
     if (invitation && member) {
       const known = (state: InvitationPreview["state"]): InvitationPreview => ({
-        creatorName: invitation.creator_name,
+        creatorName: creatorNameOf(invitation),
         state,
         gameId: invitation.game_id,
       });
@@ -239,9 +251,9 @@ export class InvitationService {
 
     await this.#closeStaleSlots(viewer);
     const slot = await this.#slotOf(this.#em, viewer);
-    if (!slot) return { creatorName: invitation.creator_name, state: "joinable" };
+    if (!slot) return { creatorName: creatorNameOf(invitation), state: "joinable" };
     return {
-      creatorName: invitation.creator_name,
+      creatorName: creatorNameOf(invitation),
       state:
         slot.status === "waiting" && slot.seat === 1
           ? "has-own-waiting-game"
@@ -271,6 +283,11 @@ export class InvitationService {
     const { userId } = viewer;
     if (input.as === "user" && !userId) {
       throw new UnauthorizedError(SIGN_IN_MESSAGE);
+    }
+    if (input.as === "user" && input.nickname !== undefined) {
+      throw new ValidationError(NICKNAME_GUEST_ONLY_MESSAGE, {
+        fieldErrors: { nickname: [NICKNAME_GUEST_ONLY_MESSAGE] },
+      });
     }
     if (input.as === "guest") {
       if (userId) {
@@ -405,11 +422,12 @@ export class InvitationService {
       now,
     ]);
     if (consumed.length === 0) throw invalidInvitation();
+    // The nickname goes in with the very statement that creates the guest's row.
     const [player] = await tx.execute<{ id: string }[]>(
+      guestToken ? INSERT_GUEST_SQL : INSERT_PLAYER_SQL,
       guestToken
-        ? INSERT_GUEST_SQL
-        : INSERT_PLAYER_SQL,
-      [gameId, guestToken ? hashOpaqueToken(guestToken) : userId, now, now],
+        ? [gameId, hashOpaqueToken(guestToken), input.nickname ?? null, now, now]
+        : [gameId, userId, now, now],
     );
     await tx.execute(SET_CONSUMED_BY_SQL, [player!.id, invitation.id], "run");
     const started = await tx.execute<{ id: string }[]>(START_GAME_SQL, [

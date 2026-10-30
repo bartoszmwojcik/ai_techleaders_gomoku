@@ -8,6 +8,7 @@ import {
   READY_DEADLINE_MS,
   ValidationError,
   boardView,
+  defaultNickname,
   clockView,
   type BoardView,
   type ClockView,
@@ -104,7 +105,10 @@ export type GameState = BoardView & {
   players: {
     seat: Seat;
     kind: ParticipantKind;
-    /** `null` for a guest and for a deleted account. */
+    /**
+     * A guest's nickname or `Gracz {seat}` (E02-S07); `null` only for a deleted account.
+     * The UI tells guests apart by `kind`, never by `null`.
+     */
     displayName: string | null;
     /** Whether the player already opened the game page (#21 Q20). */
     seen: boolean;
@@ -350,7 +354,10 @@ export class GameService {
       players: players.map((player) => ({
         seat: player.seat as Seat,
         kind: player.kind as ParticipantKind,
-        displayName: player.user?.displayName ?? null,
+        displayName:
+          player.kind === "guest"
+            ? (player.nickname ?? defaultNickname(player.seat as Seat))
+            : (player.user?.displayName ?? null),
         seen: player.seenAt !== null,
       })),
       ...board,

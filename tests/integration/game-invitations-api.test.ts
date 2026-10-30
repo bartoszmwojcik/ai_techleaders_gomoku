@@ -326,12 +326,12 @@ describe("guest flow over HTTP", () => {
     expect(JSON.parse(body)).toEqual({ ok: true, data: { gameId } });
     expect(body).not.toContain(guest.split("=")[1]);
 
-    // The guest sees the game; the creator sees an unnamed guest who has already been seen.
+    // The guest sees the game; the creator sees the default name of a guest who has already been seen.
     const forGuest = await stateOf(gameId, guest);
     expect(forGuest.body.data).toMatchObject({ status: "active", you: { seat: 2, kind: "guest" } });
-    expect(forGuest.body.data.players[1]).toEqual({ seat: 2, kind: "guest", displayName: null, seen: true });
+    expect(forGuest.body.data.players[1]).toEqual({ seat: 2, kind: "guest", displayName: "Gracz 2", seen: true });
     const forAlice = await stateOf(gameId, alice);
-    expect(forAlice.body.data.players[1]).toMatchObject({ kind: "guest", displayName: null, seen: true });
+    expect(forAlice.body.data.players[1]).toMatchObject({ kind: "guest", displayName: "Gracz 2", seen: true });
 
     // Another browser (no cookie) and a stranger's token get nothing.
     expect((await stateOf(gameId)).status).toBe(404);
@@ -346,6 +346,33 @@ describe("guest flow over HTTP", () => {
     // A guest has no account: no game creation, no cancelling.
     expect((await post("/api/games", undefined, { cookie: guest })).status).toBe(401);
     expect((await post(`/api/games/${gameId}/cancel`, undefined, { cookie: guest })).status).toBe(401);
+  });
+
+  it("takes a guest's nickname from the body and shows it to the opponent", async () => {
+    const alice = await signedUp();
+    const { gameId, code } = await createGame(alice);
+
+    // Normalized on the way in (NBSP, tabs, edge spaces); an invalid one is a 400 on the field.
+    const bad = await accept(code, { ...GUEST, nickname: "<b>x</b>" });
+    expect(bad.status).toBe(400);
+    expect(((await bad.json()) as { error: Json }).error.fieldErrors).toHaveProperty("nickname");
+    expect((await stateOf(gameId, alice)).body.data.status).toBe("waiting");
+
+    const joined = await accept(code, { ...GUEST, nickname: "  Kasia\u00a0Z\t" });
+    expect(joined.status).toBe(200);
+    const forAlice = await stateOf(gameId, alice);
+    expect(forAlice.body.data.players[1]).toEqual({ seat: 2, kind: "guest", displayName: "Kasia Z", seen: true });
+    const forGuest = await stateOf(gameId, guestCookieOf(joined)!);
+    expect(forGuest.body.data.players[1].displayName).toBe("Kasia Z");
+  });
+
+  it("refuses a nickname from a signed-in user", async () => {
+    const alice = await signedUp();
+    const bob = await signedUp();
+    const { code } = await createGame(alice);
+    const response = await accept(code, { as: "user", nickname: "Bob" }, bob);
+    expect(response.status).toBe(400);
+    expect(((await response.json()) as { error: Json }).error.fieldErrors).toHaveProperty("nickname");
   });
 
   it("slides the guest cookie on reads of the game, never for an account", async () => {
