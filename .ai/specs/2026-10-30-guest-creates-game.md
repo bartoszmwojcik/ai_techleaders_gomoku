@@ -1,6 +1,6 @@
 # Gość tworzy partię: gra bez konta przez zaproszenie kodem (E02-S08)
 
-> Status: **po przeglądzie architektonicznym, do zatwierdzenia** (`om-spec-writing`, tryb interaktywny, 2026-10-30; przegląd fresh-context: werdykt „revise”, poprawki naniesione, trzy decyzje kierunkowe w sekcji „Decyzje do potwierdzenia”). Źródło: żądanie właściciela z 2026-10-30; decyzje Q1–Q8 („1 c; 2 ok; 3 ok; 4 tak; 5 ok; 6 ok; 7 ok; 8 b”). **Zależy od** `2026-10-30-participant-nickname.md` (nick uczestnika, E02-S07 — wdrażany pierwszy; zależność jest kontraktowa: gość-twórca przekazuje `nickname`, a odczyt używa `defaultNickname(seat)`). Zmienia: BR-22, D-23 z `.ai/specs/product-brief.md` (zastępowane przez BR-29 / D-27) i adnotację L14 w #21; #21 (`POST /api/games`, `GUEST_TOKEN_VALID_SQL`, Q7/Q10/Q19), #87 i #88 (gość w poddaniu i rewanżu — bez zmian kontraktu).
+> Status: **zatwierdzona do implementacji** po prototypie (`om-spec-writing`, tryb interaktywny, 2026-10-30; przegląd fresh-context: werdykt „revise”, poprawki naniesione; trzy decyzje kierunkowe rozstrzygnięte przez właściciela 2026-10-30). Źródło: żądanie właściciela z 2026-10-30; decyzje Q1–Q8 („1 c; 2 ok; 3 ok; 4 tak; 5 ok; 6 ok; 7 ok; 8 b”). **Zależy od** `2026-10-30-participant-nickname.md` (nick uczestnika, E02-S07 — wdrażany pierwszy; zależność jest kontraktowa: gość-twórca przekazuje `nickname`, a odczyt używa `defaultNickname(seat)`). Zmienia: BR-22, D-23 z `.ai/specs/product-brief.md` (zastępowane przez BR-29 / D-27) i adnotację L14 w #21; #21 (`POST /api/games`, `GUEST_TOKEN_VALID_SQL`, Q7/Q10/Q19), #87 i #88 (gość w poddaniu i rewanżu — bez zmian kontraktu).
 
 ## Resolved decisions
 
@@ -89,11 +89,11 @@ Bez nowych tabel; kolumna `nickname` pochodzi z `participant-nickname` (E02-S07)
 - **Zastępuje:** BR-22 i D-23 z `.ai/specs/product-brief.md` nową regułą **BR-29** i decyzją **D-27** (gość tworzy i przyjmuje zaproszenie, ma nick, bez lobby i historii); dodane do briefu razem ze specyfikacją; zatwierdził właściciel 2026-10-30. L14 jest adnotacją w #21 (nie wpisem briefu).
 - **Opiera się na:** BR-11, BR-13, BR-21, #21 Q10 (token i ciasteczko), #22/#23 bez zmian.
 
-## ⚠️ Decyzje do potwierdzenia (rekomendacje w nawiasach)
+## ✅ Decyzje kierunkowe (właściciel, 2026-10-30: „1 ok, 2 ok, 3 ok na domyślnie bez blokady”)
 
-1. **Zdolność pomocnicza (zarządzanie slotem gościa)** w tym samym PR jako pierwsze commity, czy osobny PR przed tym (rekomendacja: ten sam PR, osobne commity bez zmiany zachowania).
-2. **Brief:** zmiana reguł (BR-22 → BR-29, BR-24, D-23 → D-27) w osobnym PR dokumentacyjnym **przed** implementacją (rekomendacja: tak, razem z tymi specyfikacjami).
-3. **Gość po zalogowaniu/rejestracji w tej samej przeglądarce:** bez blokady, z opisanymi konsekwencjami (rekomendacja: bez blokady) albo blokada/ostrzeżenie (dodatkowy zakres w E01).
+1. **Zdolność pomocnicza (zarządzanie slotem gościa)** w tym samym PR jako osobne pierwsze commity, bez zmiany zachowania widocznego dla użytkownika.
+2. **Brief** (BR-22 → BR-29, BR-24, D-23 → D-27) zmieniony w osobnym PR dokumentacyjnym przed implementacją (ten PR).
+3. **Gość po zalogowaniu lub rejestracji w tej samej przeglądarce:** **bez blokady** i bez ostrzeżenia; konsekwencje (partia gościa i partia konta naraz, brak wykrycia własnego zaproszenia przyjętego z konta) przyjęte świadomie. Rozbieżność z prototypem E01 (blokada gościa z partią) i z opisem w briefie jest rozstrzygnięta na korzyść kodu; prototyp E01 i jego notatki do poprawienia przy aktualizacji prototypu (Faza 6.2).
 
 ## 📋 Phasing
 
