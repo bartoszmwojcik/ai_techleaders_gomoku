@@ -5,6 +5,7 @@ import { Button } from "@gomoku/ui/game/button";
 import { ConfirmDialog } from "@gomoku/ui/game/confirm-dialog";
 import { InviteCodeCard } from "@gomoku/ui/game/invite-code-card";
 import { PlayerClock } from "@gomoku/ui/game/player-clock";
+import { formatClock } from "@gomoku/ui/game/format-clock";
 import { TextLink } from "@gomoku/ui/game/text-link";
 import { TurnStatus } from "@gomoku/ui/game/turn-status";
 import Link from "next/link";
@@ -15,6 +16,7 @@ import { CreateGameButton } from "@/components/games/create-game-button";
 import { DismissibleNotice } from "@/components/games/dismissible-notice";
 import { GameGate } from "@/components/games/game-gate";
 import { PlayField } from "@/components/games/play-field";
+import { usePageVisibility } from "@/components/games/use-page-visibility";
 import { apiCall } from "@/lib/api-client";
 import { mergeState, playerName } from "@/lib/games/play";
 import type { GameView } from "@/server/http/game-view";
@@ -27,6 +29,9 @@ export const PLAY_POLL_INTERVAL_MS = 2000;
 export const JOIN_STEP_MS = 2500;
 /** Failed polls in a row before the banner appears (L02). */
 export const POLL_FAILURES_BEFORE_BANNER = 3;
+
+/** "Wróciłeś do partii" disappears by itself after this long (A-20 of the prototype), or with the next move. */
+export const RETURN_NOTICE_MS = 8000;
 
 const TEN_MINUTES_MS = 10 * 60 * 1000;
 
@@ -67,13 +72,6 @@ export function formatValidUntil(iso: string): string {
 
 // `navigator.share` exists only in some browsers; the server cannot know, so the first render says no.
 const subscribeNothing = () => () => {};
-// A hidden tab does not poll (#22 UI); coming back reads the state at once.
-const subscribeVisibility = (notify: () => void) => {
-  document.addEventListener("visibilitychange", notify);
-  return () => document.removeEventListener("visibilitychange", notify);
-};
-const tabHidden = () => document.visibilityState === "hidden";
-const tabVisibleOnServer = () => false;
 const canShareNow = () => typeof navigator.share === "function";
 const cannotShareOnServer = () => false;
 
@@ -107,8 +105,9 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
   // The newest state, so a poll asks only for the moves it does not know yet (`?after=`).
   const latest = useRef(initial);
   const polling = useRef(false);
-  const hidden = useSyncExternalStore(subscribeVisibility, tabHidden, tabVisibleOnServer);
-  const wasHidden = useRef(false);
+  // After a long absence the next successful read says "Wróciłeś do partii" (#24 Q2), with the time the server reports.
+  const [notice, setNotice] = useState<{ text: string; moveCount: number } | null>(null);
+  const noticeDue = useRef(false);
   // State alone lags a double click by one render; the ref closes that gap.
   const cancelInFlight = useRef(false);
 
@@ -116,9 +115,6 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
   // `waiting` waits for the opponent; `active` waits for the player who has not opened the page yet (Q20).
   const waitingForOpponent = game.status === "waiting" || (game.status === "active" && !everyoneSeen);
   const playing = game.status === "active" && everyoneSeen;
-  // A game in progress is read on the player's own turn too: the clock runs for them, and the game can end
-  // without a move (their time runs out, the opponent's time runs out, #23).
-  const needsPolling = !gone && !hidden && (waitingForOpponent || playing);
 
   // The move just played answers with the new state (`after` = moves known before it).
   const applyState = useCallback((next: GameView, after: number) => {
@@ -139,6 +135,15 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
       // The creator sees "Przeciwnik dołączył" for a moment before the ready state (p03.5).
       if (status.current === "waiting" && result.data.status === "active") setJoinStep(true);
       applyState(result.data, after);
+      if (noticeDue.current) {
+        noticeDue.current = false;
+        const merged = latest.current;
+        // A game that ended while the player was away shows its result instead (p06.3).
+        if (merged.status === "active" && merged.players.every((player) => player.seen)) {
+          const left = merged.clock.remainingMs[merged.you.seat - 1]!;
+          setNotice({ text: `Wróciłeś do partii. Twój zegar: ${formatClock(left)}.`, moveCount: merged.moveCount });
+        }
+      }
     } else if (result.error.code === "NOT_FOUND") {
       setGone(true);
     } else {
@@ -146,21 +151,27 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
     }
   }, [gameId, applyState]);
 
+  // A hidden tab does not poll (#22 UI); coming back reads the state at once (#24 Q5).
+  const hidden = usePageVisibility({
+    onReturn: ({ longAbsence }) => {
+      if (gone || (status.current !== "waiting" && status.current !== "active")) return;
+      if (longAbsence) noticeDue.current = true;
+      void poll();
+    },
+  });
+  const needsPolling = !gone && !hidden && (waitingForOpponent || playing);
+
   useEffect(() => {
     if (!needsPolling) return;
     const timer = setInterval(() => void poll(), playing ? PLAY_POLL_INTERVAL_MS : POLL_INTERVAL_MS);
     return () => clearInterval(timer);
   }, [needsPolling, playing, poll]);
 
-  // Back in the tab: read the state at once instead of waiting for the next tick.
   useEffect(() => {
-    if (hidden) {
-      wasHidden.current = true;
-    } else if (wasHidden.current) {
-      wasHidden.current = false;
-      if (!gone && (game.status === "waiting" || game.status === "active")) void poll();
-    }
-  }, [hidden, gone, game.status, poll]);
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), RETURN_NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   useEffect(() => {
     if (!joinStep) return;
@@ -367,6 +378,7 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
           gameId={gameId}
           game={game}
           pollFails={fails}
+          returnNotice={notice?.moveCount === game.moveCount ? notice.text : null}
           onState={applyState}
           onRefresh={() => void poll()}
           onGone={() => setGone(true)}

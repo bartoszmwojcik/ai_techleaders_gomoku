@@ -7,6 +7,7 @@
     "./globals.css": "./src/styles/globals.css",
     "./game-tokens.css": "./src/styles/game-tokens.css",
     "./components/*": "./src/components/*.tsx",
+    "./game/format-clock": "./src/game/format-clock.ts",
     "./game/*": "./src/game/*.tsx",
     "./hooks/*": "./src/hooks/*.ts",
     "./lib/*": "./src/lib/*.ts"

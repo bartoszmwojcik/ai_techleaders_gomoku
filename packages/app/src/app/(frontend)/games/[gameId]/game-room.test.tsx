@@ -10,7 +10,7 @@ vi.mock("@/lib/api-client", () => ({ apiCall }));
 
 import type { GameView } from "@/server/http/game-view";
 
-import { formatValidUntil, GameRoom, JOIN_STEP_MS, PLAY_POLL_INTERVAL_MS, POLL_INTERVAL_MS } from "./game-room";
+import { formatValidUntil, GameRoom, JOIN_STEP_MS, PLAY_POLL_INTERVAL_MS, POLL_INTERVAL_MS, RETURN_NOTICE_MS } from "./game-room";
 
 vi.setConfig({ testTimeout: 20_000 });
 
@@ -514,6 +514,89 @@ describe("GameRoom, play (p05, p06)", () => {
     expect(apiCall).toHaveBeenCalledTimes(1);
     await tick(PLAY_POLL_INTERVAL_MS);
     expect(apiCall).toHaveBeenCalledTimes(2);
+  });
+
+  describe("return notice (p05.10, #24 Q2)", () => {
+    const withClock = (mine = 555_000): GameView => ({
+      ...theirTurn([112]),
+      clock: { remainingMs: [mine, 600_000], running: 2, now: 9_000_000 },
+    });
+    const away = async (ms: number) => {
+      hide(true);
+      await tick(ms);
+      apiCall.mockClear();
+    };
+    const back = async () => {
+      hide(false);
+      await tick(0);
+    };
+    const NOTICE = "Wróciłeś do partii. Twój zegar: 9:15.";
+
+    it("shows the notice with the server's time after more than 30 s, and removes it after 8 s", async () => {
+      room(theirTurn([112]));
+      await away(45_000);
+      apiCall.mockResolvedValue({ ok: true, data: withClock() });
+      await back();
+      expect(apiCall).toHaveBeenCalledTimes(1);
+      expect(screen.getByText(NOTICE)).toBeTruthy();
+      expect(screen.getAllByRole("status").some((el) => el.textContent?.includes(NOTICE))).toBe(true);
+      await tick(RETURN_NOTICE_MS - 3000);
+      expect(screen.getByText(NOTICE)).toBeTruthy();
+      await tick(3500);
+      expect(screen.queryByText(NOTICE)).toBeNull();
+    });
+
+    it("says nothing after a short absence, but still reads the state at once", async () => {
+      room(theirTurn([112]));
+      await away(20_000);
+      apiCall.mockResolvedValue({ ok: true, data: withClock() });
+      await back();
+      expect(apiCall).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText(/Wróciłeś/)).toBeNull();
+    });
+
+    it("disappears with the next move", async () => {
+      room(theirTurn([112]));
+      await away(45_000);
+      apiCall.mockResolvedValue({ ok: true, data: withClock() });
+      await back();
+      expect(screen.getByText(NOTICE)).toBeTruthy();
+      apiCall.mockResolvedValue({ ok: true, data: { ...withClock(), turnSeat: 1, moveCount: 2, moves: [113] } });
+      await tick(PLAY_POLL_INTERVAL_MS);
+      expect(screen.queryByText(/Wróciłeś/)).toBeNull();
+    });
+
+    it("is not shown when the game ended during the absence (p06.3)", async () => {
+      room(theirTurn([112]));
+      await away(45_000);
+      apiCall.mockResolvedValue({
+        ok: true,
+        data: { ...theirTurn([112]), status: "finished", turnSeat: null, result: { winnerSeat: 1, reason: "timeout", winLine: null } },
+      });
+      await back();
+      expect(screen.getByText("Wygrałeś — przeciwnikowi skończył się czas")).toBeTruthy();
+      expect(screen.queryByText(/Wróciłeś/)).toBeNull();
+    });
+
+    it("waits for the first successful read; a failed one leaves the notice due", async () => {
+      room(theirTurn([112]));
+      await away(45_000);
+      apiCall.mockResolvedValue(failure("network"));
+      await back();
+      expect(screen.queryByText(/Wróciłeś/)).toBeNull();
+      apiCall.mockResolvedValue({ ok: true, data: withClock() });
+      await tick(PLAY_POLL_INTERVAL_MS);
+      expect(screen.getByText(NOTICE)).toBeTruthy();
+    });
+
+    it("is not shown while still waiting for the opponent to open the page", async () => {
+      room(active({}, [true, false]));
+      await away(45_000);
+      apiCall.mockResolvedValue({ ok: true, data: active({}, [true, false]) });
+      await back();
+      expect(screen.queryByText(/Wróciłeś/)).toBeNull();
+      expect(apiCall).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("does not read the state on coming back to a game that is over", async () => {

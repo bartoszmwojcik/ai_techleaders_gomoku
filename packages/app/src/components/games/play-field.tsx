@@ -46,6 +46,8 @@ type Props = {
   game: GameView;
   /** Consecutive failed reads of the state (owned by the room, which polls). */
   pollFails: number;
+  /** "Wróciłeś do partii. Twój zegar: …" after a long absence (p05.10); the room decides when it shows and hides. */
+  returnNotice?: string | null;
   /** A fresh state read with `?after=<after>`; the room merges it. */
   onState: (next: GameView, after: number) => void;
   /** Reads the state now (after a refused move, or on "Sprawdź teraz"). */
@@ -74,7 +76,7 @@ const LOW_TIME_ANNOUNCEMENT = "Zostało mniej niż minuta";
  * the room reads the state at once, because only the server decides that the time is up. Resigning
  * and the rematch (phase 5) go under the board / the result.
  */
-export function PlayField({ gameId, game, pollFails, onState, onRefresh, onGone }: Props) {
+export function PlayField({ gameId, game, pollFails, returnNotice, onState, onRefresh, onGone }: Props) {
   const touch = useSyncExternalStore(subscribePointer, isTouch, notTouchOnServer);
   // A selection belongs to the move it was made for: it lapses with the next move or the end of the turn.
   const [pick, setPick] = useState<{ cell: number; moveCount: number } | null>(null);
@@ -156,6 +158,7 @@ export function PlayField({ gameId, game, pollFails, onState, onRefresh, onGone 
           // L15: the draw is announced at the start only; the line under the board stays.
           <Alert status="info" title={`Wylosowano: Ty grasz ${COLOR_PLAYS[myColor]}.`} role="status" />
         )}
+        {returnNotice && !finished && <Alert status="info" title={returnNotice} role="status" />}
         {pollFails > 0 && pollFails < PLAY_POLL_FAILURES_BEFORE_BANNER && (
           <p role="status" className="m-0 text-meta text-text-secondary">
             Ponawiamy sprawdzanie stanu partii (próba {pollFails} z {PLAY_POLL_FAILURES_BEFORE_BANNER}).
