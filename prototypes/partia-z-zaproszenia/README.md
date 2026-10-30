@@ -1,8 +1,10 @@
-# Klikalny prototyp: Epik 02, partia z zaproszenia (etapy A i B: od zaproszenia do rewanżu)
+# Klikalny prototyp: Epik 02, partia z zaproszenia (etapy A, B i C: od zaproszenia do rewanżu, także dla gracza bez konta)
 
 Prototyp pokazuje, jak będą wyglądać i działać ekrany z zatwierdzonej mapy (`lekcja-07/mapa-ekranow-partia.md`), zanim powstanie kod produkcyjny. Korzysta z niego gracz, który klika i komentuje, oraz developer, który buduje z niego prawdziwe ekrany. Nic tu nie jest prawdziwą usługą: konta, partie, zaproszenia i limity istnieją tylko w pamięci strony, a dane są fikcyjne.
 
 **Zakres etapu A:** utworzenie zaproszenia (p01), kod na `/join` (p02), wejście z linku (s07, wspólne z Epikiem 01), oczekiwanie twórcy (p03) i „Partia gotowa” (p04). **Etap B (D3.2):** plansza z zegarami (p05), koniec partii z wynikiem, poddaniem i rewanżem (p06), błędy dostępu i ładowania (p07), powrót po rozłączeniu. „Przejdź do planszy” i „Partia w toku” prowadzą teraz na prawdziwą planszę (w etapie A otwierały dialog „Poza tym prototypem”); poza tym zachowanie etapu A jest bez zmian.
+
+**Etap C (rewizja 2026-10-30, zadanie 6.2): gra bez konta** (BR-29, D-27; E02-S07 nick #94, E02-S08 gość tworzy partię #95). Nowy ekran p08 (gość tworzy partię: nick, ostrzeżenie, błędy `400`/`409`/`429`/`500`), nowe stany p01.8–p01.9, p03.11–p03.13, s07.10–s07.11, pole „Twój nick (opcjonalnie)” w s07.2 oraz etykiety „{nick} (gość)” / „Gracz 1/2 (gość)” w p03–p07 (adnotacja w mapie „zmienione 2026-10-30”). Zachowanie etapów A i B zostało bez zmian poza tymi etykietami i poprawionymi zdaniami (patrz „Założenia i decyzje etapu C”).
 
 Postęp i decyzje: `POSTEP.md`. Mapa ekranów, stany i luki: `lekcja-07/mapa-ekranow-partia.md`. Szary prototyp, z którego wzięto przepływ i założenia A-01…A-26: `.ai/prototypes/discovery/game-from-invitation/revision-002/`.
 
@@ -21,21 +23,23 @@ Podgląd musi iść przez HTTP (moduły nie ładują się z `file://`):
 
 Dopisek `?fast` w adresie wyłącza symulowane opóźnienia serwera (testy).
 
-Testy nawigacji i reguł: `npx vitest run --config prototypes/partia-z-zaproszenia/vitest.config.ts` (`tests/navigation.test.tsx` etap A, `tests/stage-b.test.tsx` etap B). Sprawdzenia w przeglądarce (agent-browser, serwer HTTP na porcie z `PORT`, domyślnie 8767 dla etapu B i 8766 dla etapu A):
+Testy nawigacji i reguł: `npx vitest run --config prototypes/partia-z-zaproszenia/vitest.config.ts` (`tests/navigation.test.tsx` etap A, `tests/stage-b.test.tsx` etap B, `tests/stage-c.test.tsx` etap C). Sprawdzenia w przeglądarce (agent-browser, serwer HTTP na porcie z `PORT`, domyślnie 8767 dla etapu B i 8766 dla etapu A):
 
 - etap A: `checks/etap-a-walk.sh` (port 8766), wynik `checks/etap-a-log.txt`, zrzuty `checks/etap-a-evidence/`,
-- etap B: `PORT=8767 checks/etap-b-walk.sh`, wynik `checks/etap-b-log.txt`, zrzuty `checks/etap-b-evidence/`.
+- etap B: `PORT=8767 checks/etap-b-walk.sh`, wynik `checks/etap-b-log.txt`, zrzuty `checks/etap-b-evidence/`,
+- etap C: `PORT=8768 checks/etap-c-walk.sh`, wynik `checks/etap-c-log.txt`, zrzuty `checks/etap-c-evidence/` (p08, s07.2 z nickiem, p03.11, p05/p06 z „(gość)”; 320/360/1440 px, oba motywy).
 
-Skrypty etapu A czytają port z adresu na stałe (8766); skrypt etapu B przyjmuje `PORT`.
+Skrypty etapów A, B i C przyjmują `PORT` (domyślnie 8766, 8767, 8768); `LOG` i `EV` pozwalają skierować wynik i zrzuty gdzie indziej.
 
 ## Co zawiera
 
 | ID | Ekran | Stany z mapy |
 |---|---|---|
-| p01 | Utworzenie partii (strona główna `/`, akcja „Utwórz zaproszenie”) | p01.1–p01.7 (p01.4 widać jako „p03.1 + p01.4”: przejście do własnej oczekującej partii z komunikatem) |
+| p01 | Utworzenie partii (strona główna `/`, akcja „Utwórz zaproszenie”; dla niezalogowanego i gościa „Zagraj ze znajomym bez konta”) | p01.1–p01.9 (p01.4 widać jako „p03.1 + p01.4”; p01.8 niezalogowany/gość, p01.9 „Masz partię” gościa, razem „p01.8 + p01.9”) |
 | p02 | Kod zaproszenia `/join` | p02.1–p02.5 (p02.4 to s07.9) |
-| s07 | Wejście z zaproszenia `/invite/[code]` (wspólne z E01) | s07.1–s07.9 |
-| p03 | Partia czeka na przeciwnika `/games/{id}` | p03.1–p03.10 |
+| s07 | Wejście z zaproszenia `/invite/[code]` (wspólne z E01) | s07.1–s07.9 oraz proponowane s07.10 (błąd nicku), s07.11 (zaproszenie od gościa); pole nicku w s07.2 |
+| p03 | Partia czeka na przeciwnika `/games/{id}` (konto albo gość-twórca) | p03.1–p03.13 (gość-twórca: „p03.11 + p03.12”, wygaśnięcie „p03.13 + p03.9”) |
+| p08 | Gość tworzy partię (nick, ostrzeżenie, błędy) | p08.1–p08.8 (p08.7 także jako dialog „Anuluj i utwórz nową”) |
 | p04 | Partia gotowa `/games/{id}` | p04.1–p04.4 (p04.4 jako „p04.1 + p04.4” i „p04.2 + p04.4”) |
 | p05 | Partia w toku `/games/{id}` | p05.1–p05.14 (nakładają się: pasek pokazuje je razem, np. `p05.1 + p05.5`, `p05.2 + p05.8`) |
 | p06 | Koniec partii `/games/{id}` | p06.1–p06.15 (wynik + stan rewanżu, np. `p06.2 + p06.11`; p06.7 jako 404 na tym samym ekranie) |
@@ -55,9 +59,9 @@ Identyfikatory ekranów i stanów są stałe, bo przypięte są do nich komentar
 
 ## Pasek przeglądu
 
-Na górze: oznaczenie „Prototyp”, stały „teraz” (poniedziałek 2026-10-26 10:00), bieżąca sesja, stan ekranu, wybór ekranu (p01, p02, s07, p03, p04, p05, p06, p07), przełącznik motywu (ciemny, jasny) i przyciski silnika przeglądu: Clickable i Comment, Show hotspots, Presentation, Threads, Hide pins, ← Back. Komentarze eksportujesz przyciskami „Export for repository” (nowy `src/review/comments.js` do commita) albo „Export Markdown”. Pod nimi rozwijany panel „Scenariusze”; to kontrolki prototypu, nie funkcje produktu.
+Na górze: oznaczenie „Prototyp”, stały „teraz” (poniedziałek 2026-10-26 10:00), bieżąca sesja, stan ekranu, wybór ekranu (p01, p02, s07, p03, p04, p05, p06, p07, p08), przełącznik motywu (ciemny, jasny) i przyciski silnika przeglądu: Clickable i Comment, Show hotspots, Presentation, Threads, Hide pins, ← Back. Komentarze eksportujesz przyciskami „Export for repository” (nowy `src/review/comments.js` do commita) albo „Export Markdown”. Pod nimi rozwijany panel „Scenariusze”; to kontrolki prototypu, nie funkcje produktu.
 
-## Konta demo (T1–T7 z mapy)
+## Konta demo (T1–T10 z mapy)
 
 Hasło wszystkich kont: `drewniana-plansza-2026` (konto wybierasz w panelu, formularza logowania tu nie ma).
 
@@ -67,15 +71,19 @@ Hasło wszystkich kont: `drewniana-plansza-2026` (konto wybierasz w panelu, form
 | T2 | zaproszony zalogowany, e-mail niepotwierdzony (gra normalnie, BR-26) | Kuba_P | bez partii |
 | T3 | zalogowany z partią w toku (BR-13) | Marek_Z | gra z Olek_R |
 | T4 | zalogowany z własną oczekującą partią (Q18) | Ewa_B | kod `KMNP-QRST` |
-| T5 | gość partii (przeglądarka z tokenem) | brak nazwy | token powstaje po „Rozumiem, graj jako gość”; przed dołączeniem zachowuje się jak T6 |
+| T5 | gość-dołączający bez nicku („Gracz 2 (gość)”; zmienione 2026-10-30) | brak nicku | token miejsca 2 po „Rozumiem, graj jako gość” z pustym nickiem; przed dołączeniem zachowuje się jak T6 |
 | T6 | niezalogowany | | brak sesji i tokenu |
 | T7 | osoba spoza partii | Zofia_K | 404 na cudzej partii |
+| T9 | gość-twórca (nowe 2026-10-30; „Ola (gość)” w skrótach) | nick z p08 | token miejsca 1 po „Rozumiem, utwórz zaproszenie” (gdy oglądasz T6, przeglądarka staje się T9) |
+| T10 | gość-dołączający z nickiem (nowe 2026-10-30; „Piotr (gość)”) | nick z s07.2 | token miejsca 2 po dołączeniu z niepustym nickiem |
+
+Gość to przeglądarka z tokenem (BR-29). Prototyp ma jednego widza, który gra wszystkich uczestników, więc **każda tożsamość gościa (T5, T9, T10) trzyma własny token** (prawdziwa przeglądarka ma jeden). T6 to przeglądarka bez tokenów: dla partii gościa-twórcy daje p07.3. Gość nie jest blokowany: ma „Zaloguj się” w nagłówku i „Załóż konto” na stronie głównej (decyzja właściciela 3, L33: bez blokady i bez ostrzeżenia). Połączenia z mapy: T9 + T5 (skrót „Q20”), T9 + T10, T9 + T2 (skrót „Q22 … Kuba_P”), T9 + T1 (Ala_7 dołącza przyciskiem „Otwórz zaproszenie gościa-twórcy”), T1 + T5, T1 + T10 (skrót „Q22 … Ala_7”).
 
 T8 (operator) nie istnieje: żadna specyfikacja go nie opisuje (L10).
 
 ## Scenariusze do przełączania
 
-Numery Q01–Q12 pochodzą z mapy.
+Numery Q01–Q22 pochodzą z mapy (Q13–Q22 to etap C).
 
 | Kontrolka | Co wywołuje |
 |---|---|
@@ -98,11 +106,39 @@ Numery Q01–Q12 pochodzą z mapy.
 | Wynik: Pokaż wygraną / przegraną / remis, Prawie pełna plansza, Przeciwnik poddał się, Odśwież stronę partii | Q02; p06.1, p06.2, p06.4, p06.8, p06.5 |
 | Karta w tle 20 s / 45 s | Q07, Q11; p05.12, p05.10 |
 | Rewanż: przeciwnik proponuje / wycofuje / przyjmuje / odrzuca / wychodzi do panelu; „Ktoś z graczy ma inną partię (BR-13)”; „+5 min” w zegarze demo | p06.10–p06.15 |
+| **Etap C.** Konto „Kto ogląda”: T9, T10; „Odbuduj symulację do punktu” z grupą skrótów „Q13/Q20/Q22/L30” (Ola czeka, Ola i Gracz 2 na p04/p05/p06, Ola i Piotr, długi nick 24 znaki, Ola zaprasza Kubę_P, Ala_7 gra z Piotrem) | Q13, Q20, Q22, L30; p03.11, p04–p06 z „(gość)” |
+| „Przeciwnik dołącza jako gość z nickiem „Piotr””, „Otwórz zaproszenie gościa-twórcy”, „Wróć do przeglądarki gościa-twórcy” | Q19, Q22; s07.11, s07.5, T10 |
+| Wynik „Utwórz zaproszenie” działa także na p08 (według partii, masz już partię, oczekująca, limit, błąd serwera, brak sieci) | Q15, Q16; p08.4–p08.8 |
+| Nick wpisywany na p08 i w s07.2 (puste, zły znak, 25 znaków, same spacje) | Q14; p08.1, p08.2, s07.2, s07.10 |
+| +24 h i +1 h dla gościa-twórcy; „Gość w innej przeglądarce” (T6); anulowanie na p03 | Q17, Q18; p03.13 + p03.9, p07.2, p07.3, p03.6–p03.8 |
 | Reset symulacji | Q12, wraca na p01 |
 
-Limity z mapy liczą się naprawdę: 11. utworzenie zaproszenia w godzinę daje p01.5; 6. nieudane sprawdzenie kodu daje p02.3 / s07.8 (w produkcie 20 w 15 min). Limit, wygasanie (24 h) i anulowanie po 15 min bez otwarcia (Q21) wynikają z zegara demo.
+Limity z mapy liczą się naprawdę (dla gościa-twórcy: 11. utworzenie w godzinę z „jednego adresu” daje p08.4): 11. utworzenie zaproszenia w godzinę daje p01.5; 6. nieudane sprawdzenie kodu daje p02.3 / s07.8 (w produkcie 20 w 15 min). Limit, wygasanie (24 h) i anulowanie po 15 min bez otwarcia (Q21) wynikają z zegara demo.
 
 Kontrolki etapu B opisuje druga połowa tabeli. Czas demo płynie też dla zegara gracza na ruchu: duże skoki („+15 min”, „+1 h”, „+24 h”) kończą trwającą partię przegraną na czas (BR-06, BR-07). „+5 min” wygasza propozycję rewanżu, „+1 h” po końcu partii kończy token gościa (p06.7).
+
+## Założenia i decyzje etapu C
+
+Mapa (sekcje 0c i 0d) zatwierdzona 2026-10-30; właściciel zatwierdził luki L25–L35 („zgoda na rekomendacje”). Ekrany oznaczają te miejsca atrybutem `data-assumption` (np. `L25, L26, L32` na p08, `L28` na p03 gościa, `L30` przy nazwach graczy, `L27` przy „Masz partię”, `L34` na przycisku akcji gościa).
+
+| Luka | Status | Co robi prototyp |
+|---|---|---|
+| L25 | **rozstrzygnięte 2026-10-30** | p08: tytuł „Zagraj ze znajomym bez konta”, pole „Twój nick (opcjonalnie)”, podpowiedź „Zostaw puste, a będziesz „Gracz 1””, ostrzeżenie „Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii” + „Jeśli zmienisz przeglądarkę albo wyczyścisz dane, stracisz dostęp do tej partii.”, osobna linia „Zaproszenie jest ważne 24 godziny.”, przycisk „Rozumiem, utwórz zaproszenie”. Treści błędów nicku (długość, znaki) to wciąż wersja robocza prototypu |
+| L26 | zatwierdzone założenie | `500` (w tym nieustalony adres): „Nie udało się utworzyć zaproszenia. Spróbuj ponownie.” z przyciskiem ponowienia |
+| L27 | zatwierdzone założenie | „Masz partię” gościa (twórcy i dołączającego) tylko przy partii oczekującej („Czekasz na przeciwnika.”) i aktywnej („Partia w toku.”) |
+| L28 | zatwierdzone założenie | p03.12: stałe ostrzeżenie pod Kartą kodu „Nie zmieniaj przeglądarki, bo stracisz dostęp do partii.” |
+| L29 | **rozstrzygnięte 2026-10-30** | po wygaśnięciu (24 h) gość-twórca widzi „Zaproszenie wygasło” jak konto (p03.13 + p03.9) przez godzinę od wygaśnięcia, potem p07.2; anulowanie przez twórcę → link nieważny (s07.9) |
+| L30 | zatwierdzone założenie | długi nick obcięty wielokropkiem w jednej linii, „(gość)” zawsze widoczne, pełny nick w `title` i w tekście (komponent `PlayerLabel` w `screens/play-shared.tsx`; LUKA D09) |
+| L31 | zatwierdzone założenie | s07.10 i s07.11 tylko w mapie E02; mapa E01 do aktualizacji osobnym PR-em |
+| L32 | zatwierdzone założenie | p08.7: „Anuluj i utwórz nową” z dialogiem potwierdzenia jak p03.6 |
+| L34 | **rozstrzygnięte 2026-10-30** | „Zagraj ze znajomym bez konta” to drugorzędny przycisk (wariant drugorzędny, pełna szerokość w kolumnie akcji); „Załóż konto” zostaje główną akcją |
+| L35 | zatwierdzone założenie | gość z oczekującą partią widzi s07.7 i może anulować ją i dołączyć; przy partii aktywnej tylko wrócić (s07.6) |
+
+Luki w design systemie oznaczone w kodzie jako `LUKA`: D08 (pole nicku bez licznika, `maxLength` liczy jednostki UTF-16, nick to punkty kodowe, więc pole nie ma `maxLength`, a walidacja jest „serwerowa”), D09 (nick + „(gość)” w Zegarze gracza: obcinanie robi opakowanie strony), D10 (brak wzorca „pole nicku + ostrzeżenie + przycisk”), D12 („Masz partię” bez stories). D11 poprawione w prototypie: zdanie „Gość nie ma nazwy ani historii” zastąpiono „Gość nie ma historii partii” (gość ma nick); tekst w design systemie (`docs/screens/invite-screens.tsx`) wymaga osobnej poprawki.
+
+**Decyzja 3 (bez blokady):** gość może się logować i rejestrować w tej samej przeglądarce, także z trwającą partią; prototyp nie blokuje ani nie ostrzega (nagłówek gościa ma „Zaloguj się”, strona główna „Załóż konto”). Dawny opis blokady jest nieaktualny.
+
+**Założenia prototypu spoza L25–L35 (do przeglądu):** (1) kolejność kontroli przy tworzeniu przez gościa: nick (`400`), limit adresu (`429`), potem `409` jednej partii na przeglądarkę; (2) kolejność nazw w pasku gościa: „Ty: {nick} (gość)” w Zegarze gracza (konto zostaje „Ty (Ala_7)”); (3) gość, który anuluje własną oczekującą partię i dołącza z s07.7, zachowuje swój nick; (4) rewanż zamienia miejsca: nick jawny zostaje, nazwa domyślna idzie za miejscem („Gracz 2” staje się „Gracz 1”); (5) konto otwierające p08 widzi informację, że zaproszenie tworzy na stronie głównej; (6) tekst dialogu p08.7 („Anulować poprzednie zaproszenie?”); (7) wygasła partia gościa-twórcy nie blokuje tworzenia nowej, a przycisk na widoku wygaśnięcia prowadzi na p08.
 
 ## Ograniczenia symulacji
 
@@ -117,10 +153,11 @@ Kontrolki etapu B opisuje druga połowa tabeli. Czas demo płynie też dla zegar
 - Rewanż: zakończona partia zostaje w pamięci obok nowej (A-26); „Wróć do panelu głównego” z własną, trwającą propozycją zapisuje ją jako odrzuconą (L21).
 - Sprawdzenia ręczne, których nie wykonano: czytnik ekranu (sprawdzono role i atrybuty, nie odczyty), kontrast pomierzony narzędziem, prawdziwy ekran dotykowy, równoległe karty dwóch graczy, przeglądarki inne niż Chromium.
 - Logowanie, rejestracja i Konto należą do prototypu kont (Epik 01): przyciski otwierają dialog „Poza tym prototypem”; konto wybierasz w panelu. Lobby i Historia są poza prototypem.
-- Prototyp symuluje wszystkich uczestników jednym widzem: stan partii jest wspólny, zmiana konta w panelu zmienia tylko to, kogo oglądasz. Gość to przeglądarka T5 (jedna na prototyp).
+- Prototyp symuluje wszystkich uczestników jednym widzem: stan partii jest wspólny, zmiana konta w panelu zmienia tylko to, kogo oglądasz. Gość to przeglądarka z tokenem; tożsamości gościa T5, T9 i T10 mają osobne tokeny (patrz „Konta demo”).
 - Wejście na s07 z paska bez linku pokazuje cudze oczekujące zaproszenie (np. Ewy_B) albo przygotowuje zaproszenie Ala_7 `ABCD-EFGH`; „Otwórz zaproszenie Ala_7” otwiera ostatnie zaproszenie Ali w dowolnym stanie. To skróty prototypu.
 - Wejście na p03 lub p04 bez partii pokazuje „nie masz dostępu”, jak produkt. Skrót „Odbuduj symulację” buduje partię.
 - Teksty, których nie ma w specyfikacji, to założenia z szarego prototypu (A-02 i dalej: L01, L02, L03, L05, L06, treść dialogu anulowania, limit „za N min”); przy ekranach są uwagi.
+- Etap C: „jeden adres klienta” to cały prototyp (limit gościa 10/godz. wspólny dla wszystkich tożsamości gościa); token to wpis w pamięci symulacji, nie ciasteczko; wygaśnięcie i sprzątanie partii gościa wynikają z zegara demo; prawdziwa przeglądarka trzyma jeden token, tu każda tożsamość gościa (T5, T9, T10) ma swój. Nick przechodzi normalizację i walidację zgodną ze specyfikacją (NFC, znaki sterujące i formatujące, spacje, punkty kodowe), ale bez testu na prawdziwym serwerze.
 - Prototyp nie rozstrzyga otwartych luk z mapy (L01–L03, L05, L06, L08, L10, L15, L18, L19) ani luk w design systemie (D03, D05); ich lista jest w mapie.
 - Prototyp nie dowodzi popytu ani gotowości produkcyjnej.
 

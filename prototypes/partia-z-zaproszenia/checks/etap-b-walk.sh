@@ -160,11 +160,11 @@ reset; stage "p05.1"; sbtn sc-show-win; sk H.1 "Pokaż wygraną → p06.1" "p06.
 sbtn sc-reload; sk H.3 "odśwież stronę → p06.5" "p06.1 + p06.5 + p06.10"; ck H.4 "komunikat" "Powrót do zakończonej partii: wynik jest ten sam, ruch nie jest możliwy."
 reset; stage "p05.2"; sbtn sc-show-loss; sk H.5 "Pokaż przegraną (białe) → p06.2" "p06.2 + p06.10"; eq H.6 "linia 5 pól" "document.querySelectorAll('.screen.is-current [role=grid] span.outline-4').length" "5"
 reset; stage "p05.1"; sbtn sc-show-draw; sk H.7 "Pokaż remis → p06.4" "p06.4 + p06.10"; eq H.8 "pełna plansza" "document.querySelectorAll('.screen.is-current [role=grid] button[aria-label\$=\"puste\"]').length" "0"
-reset; stage "p05.11"; sk H.9 "gość: p05.11" "p05.1 + p05.5 + p05.11"; ck H.10 "ostrzeżenie dla gościa" "Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii"; ck H.11 "gość nie ma nazwy" "Ty (Gość)"
+reset; stage "p05.11"; sk H.9 "gość: p05.11" "p05.1 + p05.5 + p05.11"; ck H.10 "ostrzeżenie dla gościa" "Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii"; ck H.11 "gość ma domyślną nazwę „Gracz 2 (gość)”" "Ty: Gracz 2 (gość)"
 sbtn sc-show-loss; sk H.12 "p06.6 po końcu" "p06.2 + p06.6 + p06.10"; ck H.13 "wynik do 1 h" "Wynik zobaczysz w tej przeglądarce do 1 godziny po zakończeniu partii."
 sbtn sc-plus-1h; sk H.14 "po 1 h token nie działa: p06.7 (404)" p06.7; ck H.15 "ten sam 404" "Ta partia nie istnieje albo nie masz do niej dostępu"
 acct T1; sk H.16 "konto twórcy widzi wynik bez limitu" "p06.1 + p06.10"
-reset; stage "p05.11"; acct T1; ck H.17 "twórca widzi przeciwnika „Gość”" "Gość"
+reset; stage "p05.11"; acct T1; ck H.17 "twórca widzi przeciwnika „Gracz 2 (gość)”" "Gracz 2 (gość)"
 
 echo "## I. rewanż" >> $LOG
 reset; stage "p06.2"; sk I.1 "p06.2 + p06.10" "p06.2 + p06.10"; ck I.2 "zapowiedź odwróconych kolorów" "Rewanż to nowa partia z odwróconymi kolorami: zagrasz białymi."

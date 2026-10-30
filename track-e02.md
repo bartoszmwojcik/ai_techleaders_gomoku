@@ -147,7 +147,7 @@ Ręczny test po fazie: powrót do trwającej i zakończonej partii z drugiego ur
 Specyfikacje: `.ai/specs/2026-10-30-participant-nickname.md`, `.ai/specs/2026-10-30-guest-creates-game.md` (decyzje właściciela 2026-10-30; BR-29, D-27). Kolejność: najpierw nick (E02-S07), potem gość-twórca (E02-S08). Ekrany po zatwierdzeniu zaktualizowanego prototypu.
 - [x] 6.1 Aktualizacja mapy ekranów (`lekcja-07/mapa-ekranow-partia.md`): akcja gościa na p01, ekran „nick + ostrzeżenie”, p03 gościa-twórcy, s07 z polem nicku; zatwierdzenie (mapa zatwierdzona przez właściciela 2026-10-30; luki L25–L35 otwarte, do prototypu założenia robocze w sekcji 0d mapy)
   - Status (2026-10-30): mapa zaktualizowana (sekcja 0c, ekran p08, stany p01.8–p01.9, p03.11–p03.13, s07.10–s07.11 proponowane, scenariusze Q13–Q22, konta T9–T10, luki L25–L35, D08–D12), czeka na zatwierdzenie właściciela; nie odhaczone.
-- [ ] 6.2 Rewizja klikalnego prototypu (`prototypes/partia-z-zaproszenia`): stany gościa-twórcy i nicku; przegląd właściciela
+- [x] 6.2 Rewizja klikalnego prototypu (`prototypes/partia-z-zaproszenia`): stany gościa-twórcy i nicku; przegląd właściciela (etap C zbudowany i zatwierdzony przez właściciela 2026-10-30; luki L25–L35 rozstrzygnięte)
 - [x] 6.3 E02-S07 backend: `nicknameSchema`/`defaultNickname` w `core`, kolumna `nickname` + `CHECK`-i (expand-only), `accept` i widok z nickiem, testy
 - [ ] 6.4 E02-S07 UI: pole nicku w s07, „{nick} (gość)”
 - [ ] 6.5 E02-S08 slot gościa (refaktor): `GUEST_TOKEN_VALID_SQL` dla `waiting`, `EXPIRE_WAITING_OF_GUEST`, `settleForGuest`, ciasteczko ze zmiennym czasem życia, `cancel` przez uczestnika

@@ -305,13 +305,13 @@ describe("p05: błędy ruchu, dotyk, klawiatura", () => {
     await waitFor(() => expect(playOf(getSim())!.play.moves).toHaveLength(1));
   });
 
-  it("p05.11: gość widzi stałe ostrzeżenie, a twórca ma przeciwnika „Gość”", () => {
+  it("p05.11: gość widzi stałe ostrzeżenie, a twórca ma przeciwnika „Gracz 2 (gość)”", () => {
     start("play-guest");
     expect(stateId()).toContain("p05.11");
     expect(inFrame().getByText("Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii")).toBeTruthy();
-    expect(inFrame().getByText("Ty (Gość)")).toBeTruthy();
+    expect(inFrame().getByTestId("player-name").textContent).toBe("Ty: Gracz 2 (gość)");
     act(() => setRole("T1"));
-    expect(inFrame().getByText("Gość")).toBeTruthy();
+    expect(inFrame().getByTestId("player-name").textContent).toBe("Gracz 2 (gość)");
     expect(inFrame().queryByText(/Grasz bez konta/)).toBeNull();
   });
 });
@@ -650,8 +650,8 @@ describe("rewanż", () => {
     expect(stateId()).toBe("p06.2 + p06.6 + p06.12 + p06.15");
     click("Przyjmij");
     await waitFor(() => expect(current()).toBe("p05"));
-    expect(getSim().guestGame).not.toBe(oldId);
-    expect(getSim().guestGame).toBe(playOf(getSim())!.game.id);
+    expect(getSim().tokens.T5!.game).not.toBe(oldId);
+    expect(getSim().tokens.T5!.game).toBe(playOf(getSim())!.game.id);
     expect(stateId()).toContain("p06.15");
     expect(inFrame().getByText("Nowa partia ma nowy dostęp w tej przeglądarce")).toBeTruthy();
     click("Rozumiem");
@@ -660,7 +660,7 @@ describe("rewanż", () => {
     act(() => void showPosition("win"));
     click("Rewanż");
     act(() => void opponentRematch("accept"));
-    expect(getSim().guestGame).toBe(playOf(getSim())!.game.id);
+    expect(getSim().tokens.T5!.game).toBe(playOf(getSim())!.game.id);
   });
 });
 

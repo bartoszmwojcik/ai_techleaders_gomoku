@@ -15,6 +15,7 @@ import {
   formatValidUntil,
   opponentName,
   phaseOf,
+  playerName,
   setNotice,
   useSim,
 } from "../sim";
@@ -83,6 +84,10 @@ export function P03Waiting() {
   else if (copy === "ok") stateId = "p03.2";
   else if (sim.scenario.shareUnavailable) stateId = "p03.4";
   if (sim.notice?.screen === "p03" && stateId === "p03.1") stateId = "p03.1 + p01.4";
+  // A guest creator sees the same screen (p03.11) with a permanent warning under the card (p03.12, L28); p03.5 and p03.9 are the same for all.
+  const guestCreator = game !== null && game.creator === "";
+  if (guestCreator && phase === "expired") stateId = "p03.13 + p03.9"; // L29: "Zaproszenie wygasło" like an account
+  else if (guestCreator && !joinStep) stateId = ["p03.11", ...(stateId === "p03.1" ? [] : [stateId]), "p03.12"].join(" + ");
   useStateId("p03", block !== "none" ? gateStateId(sim, block) : stateId);
 
   if (block !== "none") return <GameGate kind={block} />;
@@ -159,14 +164,19 @@ export function P03Waiting() {
     return (
       <>
         <SiteHeader />
-        <Main narrow state={stateId}>
+        <Main narrow state={stateId} assumption={guestCreator ? "L29" : undefined}>
           <h1 className="m-0 text-section font-strong">Zaproszenie wygasło</h1>
           <Alert status="warning" title="Zaproszenie wygasło. Utwórz nowe." role="status">
             Zaproszenie jest ważne 24 godziny. Link i kod nie działają.
           </Alert>
           {createError && <Alert status="danger" title={createError} />}
           <div className="flex flex-wrap items-center gap-group">
-            <Button loading={recreating} onClick={onRecreate}>{recreating ? "Tworzenie zaproszenia…" : "Utwórz zaproszenie"}</Button>
+            {guestCreator ? (
+              // A guest creates from p08 (nickname and warning), not with one click.
+              <Button onClick={() => go("p08")}>Utwórz nowe zaproszenie</Button>
+            ) : (
+              <Button loading={recreating} onClick={onRecreate}>{recreating ? "Tworzenie zaproszenia…" : "Utwórz zaproszenie"}</Button>
+            )}
             <TextLink href="#p01" placement="standalone">Wróć do panelu głównego</TextLink>
           </div>
         </Main>
@@ -177,7 +187,7 @@ export function P03Waiting() {
   return (
     <>
       <SiteHeader />
-      <Main state={stateId}>
+      <Main state={stateId} assumption={guestCreator ? "L28" : undefined}>
         <h1 className="m-0 text-section font-strong">Partia czeka na przeciwnika</h1>
         {notice && (
           <Alert status="info" title={notice.text} role="status">
@@ -212,6 +222,11 @@ export function P03Waiting() {
         <p role="status" className="m-0 max-w-(--layout-width-dialog) text-meta text-text-secondary" data-testid="copy-status">
           {share ? SHARE_FEEDBACK : copy === "idle" ? "" : FEEDBACK[copy]}
         </p>
+        {guestCreator && (
+          // p03.12 (L28, approved assumption): permanent, because losing the browser means losing the game. LUKA D10: no pattern
+          // for a warning under the code card; a plain Alert.
+          <Alert status="warning" title="Nie zmieniaj przeglądarki, bo stracisz dostęp do partii." />
+        )}
         <ConfirmDialog
           open={asking}
           onOpenChange={(open) => !open && !cancelling && setAsking(false)}

@@ -7,8 +7,9 @@ cd "$(git rev-parse --show-toplevel)"
 AB="node_modules/.bin/agent-browser --session etapa"
 P=prototypes/partia-z-zaproszenia
 LOG=${LOG:-$PWD/$P/checks/etap-a-log.txt}; : > $LOG
-URL="http://localhost:8766/prototypes/partia-z-zaproszenia/index.html"
-EV=$PWD/$P/checks/etap-a-evidence; mkdir -p $EV
+PORT=${PORT:-8766}
+URL="http://localhost:$PORT/prototypes/partia-z-zaproszenia/index.html"
+EV=${EV:-$PWD/$P/checks/etap-a-evidence}; mkdir -p $EV
 ev() { $AB eval "$1" 2>/dev/null | tail -1 | sed 's/^"//;s/"$//'; }
 t() { $AB eval "(document.querySelector('.screen.is-current .frame')||document.body).innerText" 2>/dev/null | sed 's/\\n/ /g;s/^"//;s/"$//' | tr -s ' '; }
 ck() { local g; g=$(t); if [[ "$g" == *"$3"* ]]; then echo "PASS $1 | $2" >> $LOG; else echo "FAIL $1 | $2 | oczekiwano: $3 | jest: ${g:0:200}" >> $LOG; fi; }
@@ -76,8 +77,8 @@ cb "Wróć"; sk C.7 "Wróć → s07.1" s07.1
 cb "Zaloguj się"; D=$(dialog); [[ "$D" == *"prototypu kont"* ]] && echo "PASS C.8 | Zaloguj się → dialog" >> $LOG || echo "FAIL C.8 | $D" >> $LOG; db "Wróć do prototypu"
 cb "Graj jako gość"; cb "Rozumiem, graj jako gość"; at C.9 "gość dołączył → p04" p04; sk C.10 "p04.1 + p04.4" "p04.1 + p04.4"
 ck C.11 "czekamy, aż Ala_7 otworzy" "Czekamy, aż Ala_7 otworzy partię"; ck C.12 "ostrzeżenie gościa stałe" "Grasz bez konta"
-B=$(ev "document.querySelector('.doc-toolbar').innerText"); [[ "$B" == *"Sesja: gość w partii"* ]] && echo "PASS C.13 | pasek: sesja gościa" >> $LOG || echo "FAIL C.13 | $B" >> $LOG
-acct T1; ck C.14 "twórca widzi Przeciwnik dołączył (p03.5)" "Gość dołączył do partii"; sk C.15 "p03.5" p03.5
+B=$(ev "document.querySelector('.doc-toolbar').innerText"); [[ "$B" == *"Sesja: gość „Gracz 2 (gość)”"* ]] && echo "PASS C.13 | pasek: sesja gościa" >> $LOG || echo "FAIL C.13 | $B" >> $LOG
+acct T1; ck C.14 "twórca widzi Przeciwnik dołączył (p03.5)" "Gracz 2 (gość) dołączył do partii"; sk C.15 "p03.5" p03.5
 cb "Przejdź do partii"; at C.16 "→ p04" p04; sk C.17 "p04.2" p04.2
 reset; stage "p03: Ala"; acct T2; sbtn sc-open-invite; sk C.18 "T2 zalogowany: s07.3" s07.3; nk C.19 "zalogowany bez opcji gościa" "Graj jako gość" "Graj jako gość"
 cb "Dołącz do partii"; at C.20 "T2 dołączył → p04" p04; sk C.21 "p04.1" p04.1

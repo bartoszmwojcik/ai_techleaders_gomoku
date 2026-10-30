@@ -23,7 +23,7 @@ import {
 } from "../sim";
 import { useStateId } from "../stateId";
 import { GameGate, gateStateId, useGameBlock } from "./game-gate";
-import { COLOR_NAME, COLOR_PLAYS, GameClock, playerNames } from "./play-shared";
+import { COLOR_NAME, COLOR_PLAYS, GameClock, PlayerLabel, playerNames } from "./play-shared";
 
 // p05 Partia w toku `/games/{id}` (active, both players opened the page; map p05.1–p05.14, game-moves #22 UI, Q4, Q7,
 // game-clock #23, reconnection #24, resignation). The server rules live in `sim.ts`; this screen only shows them.
@@ -122,7 +122,7 @@ export function P05Board() {
   if (sim.returned) ids.push("p05.10");
   if (mineLow) ids.push("p05.3");
   if (touch ? selected !== null : myTurn && pending === null && failedCell === null) ids.push(touch ? "p05.4" : "p05.5");
-  if (side === "opponent" && game?.opponent?.kind === "guest") ids.push("p05.11");
+  if (game && guestToken(sim) === game.id) ids.push("p05.11");
   if (asking) ids.push("p05.13");
   if (resigning) ids.push("p05.14");
   if (play?.tokenNotice) ids.push("p06.15");
@@ -175,11 +175,11 @@ export function P05Board() {
   return (
     <>
       <SiteHeader />
-      <Main state={ids.join(" + ")}>
+      <Main state={ids.join(" + ")} assumption={guest || names.theirs.guest ? "L30" : undefined}>
         <h1 className="m-0 text-section font-strong">Partia w toku</h1>
         <div className="flex max-w-(--layout-width-board) flex-col gap-stack">
           {guest && (
-            // p05.11: permanent for a guest (BR-22).
+            // p05.11: permanent for a guest, creator or joiner (BR-29).
             <Alert status="warning" title="Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii">
               Stracisz dostęp do partii, a Twój zegar będzie biegł dalej.
             </Alert>
@@ -210,7 +210,7 @@ export function P05Board() {
           )}
           <span role="status" className="sr-only" data-testid="low-live">{announced ? LOW_ANNOUNCEMENT : ""}</span>
           <TurnStatus color={play.turn}>{status}</TurnStatus>
-          <GameClock sim={sim} play={play} side={side === "creator" ? "opponent" : "creator"} name={names.theirs} activeLabel="Ruch przeciwnika" />
+          <GameClock sim={sim} play={play} side={side === "creator" ? "opponent" : "creator"} name={<PlayerLabel name={names.theirs} />} activeLabel="Ruch przeciwnika" />
           <Board
             label="Plansza 15 na 15"
             cellLabel={cellLabel}
@@ -220,7 +220,7 @@ export function P05Board() {
             readOnly={!myTurn || busy}
             onCellSelect={onCellSelect}
           />
-          <GameClock sim={sim} play={play} side={side} name={`Ty (${names.mine})`} activeLabel="Twój ruch" />
+          <GameClock sim={sim} play={play} side={side} name={<PlayerLabel name={names.mine} you />} activeLabel="Twój ruch" />
           <p className="m-0 text-body text-text-secondary" data-testid="my-color">Grasz {COLOR_PLAYS[myColor]}.</p>
           {message && <Alert status="warning" title={message.text} role="status" />}
           {failedCell !== null && (
