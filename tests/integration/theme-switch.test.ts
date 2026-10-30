@@ -5,9 +5,10 @@ import { Browser, DEFAULT_SYSTEM_SCHEME } from "./browser";
 const baseUrl = inject("baseUrl");
 const browser = new Browser(inject("browserSession"));
 
-const SWITCH = "body > div button[aria-pressed]";
+const SWITCH = "[data-testid=theme-switch]";
 const theme = () => browser.evaluate<string | null>("document.documentElement.dataset.theme ?? null");
-const pressed = () => browser.evaluate<string | null>(`document.querySelector("${SWITCH}").getAttribute("aria-pressed")`);
+// The switch names the theme that is on ("Jasny motyw" / "Ciemny motyw"), with the sun or the moon.
+const label = () => browser.evaluate<string | null>(`document.querySelector("${SWITCH}").innerText`);
 // Perceived brightness (0..255) of the page background: light themes are bright, dark ones are not.
 const brightness = () =>
   browser.evaluate<number>(
@@ -37,7 +38,7 @@ describe("theme switch: first visit without a cookie", () => {
 
     expect(await theme()).toBe("light");
     expect(await brightness()).toBeGreaterThan(200);
-    expect(await pressed()).toBe("true");
+    expect(await label()).toBe("Jasny motyw");
     // The choice is not stored until the player clicks.
     expect(await themeCookie()).toBeUndefined();
   });
@@ -48,7 +49,7 @@ describe("theme switch: first visit without a cookie", () => {
 
     expect(await theme()).toBeNull();
     expect(await brightness()).toBeLessThan(80);
-    expect(await pressed()).toBe("false");
+    expect(await label()).toBe("Ciemny motyw");
   });
 
   // No-flash guarantee: a synchronous inline script in <head>, before <body>, sets the theme
@@ -78,11 +79,11 @@ describe("theme switch: choosing a theme", () => {
   it("toggles on click, stores a correct cookie, keeps focus and survives a reload", async () => {
     await browser.setMedia("dark");
     await browser.open(`${baseUrl}/`);
-    expect(await pressed()).toBe("false");
+    expect(await label()).toBe("Ciemny motyw");
 
     await browser.click(SWITCH);
     expect(await theme()).toBe("light");
-    expect(await pressed()).toBe("true");
+    expect(await label()).toBe("Jasny motyw");
     expect(await brightness()).toBeGreaterThan(200);
     expect(
       await browser.evaluate<boolean>(`document.activeElement === document.querySelector("${SWITCH}")`),
@@ -97,12 +98,12 @@ describe("theme switch: choosing a theme", () => {
 
     await browser.open(`${baseUrl}/`);
     expect(await theme()).toBe("light");
-    expect(await pressed()).toBe("true");
+    expect(await label()).toBe("Jasny motyw");
 
     await browser.click(SWITCH);
     expect(await theme()).toBe("dark");
     expect((await themeCookie())?.value).toBe("dark");
-    expect(await pressed()).toBe("false");
+    expect(await label()).toBe("Ciemny motyw");
     expect(await brightness()).toBeLessThan(80);
   });
 
@@ -129,7 +130,7 @@ describe("theme switch: choosing a theme", () => {
     await browser.setMedia("dark");
     await browser.open(`${baseUrl}/`);
     expect(await theme()).toBeNull();
-    expect(await pressed()).toBe("false");
+    expect(await label()).toBe("Ciemny motyw");
   });
 
   it("keeps the choice across player pages", async () => {
@@ -140,7 +141,7 @@ describe("theme switch: choosing a theme", () => {
     for (const path of ["/login", "/register", "/forgot-password"]) {
       await browser.open(`${baseUrl}${path}`);
       expect(await theme(), path).toBe("light");
-      expect(await pressed(), path).toBe("true");
+      expect(await label(), path).toBe("Jasny motyw");
       expect(await brightness(), path).toBeGreaterThan(200);
     }
   });

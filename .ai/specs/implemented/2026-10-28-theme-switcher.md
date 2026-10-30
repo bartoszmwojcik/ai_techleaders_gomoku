@@ -64,3 +64,9 @@ Gracz nie może zmienić motywu, mimo że DS i prototypy go przewidują, a czę�
 - Przegląd wszystkich ekranów E01 w obu motywach (360/1280 px, 320 px dla wybranych; stany domyślne, bez hover/pressed): brak problemów z kontrastem, układem i fokusem, żadnych zmian tokenów (Q5 potwierdzone). Najniższy kontrast tekstu w jasnym motywie: 4,58:1 (`text-muted`). Szczegóły: `.ai/analysis/2026-10-29-theme-review-e01.md`.
 - Scenariusze integracyjne: `tests/integration/theme-switch.test.ts` (preferencja systemu, ciasteczko, niepoprawna wartość, wiele stron, klawiatura, 360 px).
 - Odstępstwo od propsów `lightLabel`/`darkLabel`: `ThemeSwitch` ma jedną stałą nazwę przycisku („Jasny motyw”), a stan niesie `aria-pressed` (włączony = jasny), zgodnie ze wzorcem przycisku przełączanego; zob. `packages/ui/docs/components/theme-switch.mdx`.
+
+## Korekta 2026-10-30: etykieta nazywa aktualny motyw
+
+- Odstępstwo z wdrożenia (jedna stała nazwa „Jasny motyw” plus `aria-pressed`) okazało się błędem widocznym dla gracza: w motywie ciemnym przycisk pokazywał księżyc i napis „Jasny motyw”. Zgodnie z założeniami (propsy `lightLabel`/`darkLabel`, prototyp „Motyw: ciemny” / „Motyw: jasny”) tekst ma nazywać motyw, który jest włączony: „☀ Jasny motyw” w jasnym i „🌙 Ciemny motyw” w ciemnym.
+- `ThemeSwitch` ma propsy `lightLabel` i `darkLabel` zamiast `label`, a `aria-pressed` zniknął (nazwa niesie stan; zmienna nazwa razem z `aria-pressed` byłaby czytana podwójnie). Wrapper w aplikacji ma `data-testid="theme-switch"`; testy integracyjne czytają napis zamiast `aria-pressed`.
+- Decyzja właściciela: wariant „aktualny motyw” (a nie „akcja”, czyli napis motywu, na który przełączy kliknięcie).

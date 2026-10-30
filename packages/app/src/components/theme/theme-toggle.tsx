@@ -35,5 +35,12 @@ export function ThemeToggle({ initialTheme, className }: ThemeToggleProps) {
     }
   }
 
-  return <ThemeSwitch theme={theme} onToggle={toggle} label="Jasny motyw" className={className} />;
+  return <ThemeSwitch
+      theme={theme}
+      onToggle={toggle}
+      lightLabel="Jasny motyw"
+      darkLabel="Ciemny motyw"
+      data-testid="theme-switch"
+      className={className}
+    />;
 }
