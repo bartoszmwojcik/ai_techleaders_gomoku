@@ -18,7 +18,7 @@ vi.setConfig({ testTimeout: 20_000 });
 
 import type { GameView } from "@/server/http/game-view";
 
-import { RematchPanel } from "./rematch-panel";
+import { LEAVE_DECLINE_TIMEOUT_MS, RematchPanel } from "./rematch-panel";
 
 const NOW = Date.parse("2026-10-30T12:00:00.000Z");
 const IN_5_MIN = "2026-10-30T12:05:00.000Z";
@@ -514,13 +514,50 @@ describe("RematchPanel, leaving for the panel (L21)", () => {
   it("declines an open offer, the proposer's own as well, and then goes to the main page", async () => {
     panel(finished({ rematch: offer() }));
     await press(link("Wróć do panelu głównego"));
-    expect(apiCall).toHaveBeenCalledWith("/api/games/g1/rematch/decline");
+    expect(apiCall).toHaveBeenCalledWith("/api/games/g1/rematch/decline", { signal: expect.any(AbortSignal) });
     expect(push).toHaveBeenCalledWith("/");
     cleanup();
     apiCall.mockClear();
     panel(finished({ rematch: offer({ offeredBySeat: 2 }) }));
     await press(link("Wróć do panelu głównego"));
-    expect(apiCall).toHaveBeenCalledWith("/api/games/g1/rematch/decline");
+    expect(apiCall).toHaveBeenCalledWith("/api/games/g1/rematch/decline", { signal: expect.any(AbortSignal) });
+  });
+
+  it.each([["ctrlKey"], ["metaKey"], ["shiftKey"], ["altKey"]])("leaves the browser's own link behaviour alone with %s held (new tab, window)", async (key) => {
+    panel(finished({ rematch: offer() }));
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true, [key]: true });
+    await act(async () => void link("Wróć do panelu głównego").dispatchEvent(click));
+    expect(click.defaultPrevented).toBe(false);
+    expect(apiCall).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("leaves the browser's own link behaviour alone for the middle button", async () => {
+    panel(finished({ rematch: offer() }));
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true, button: 1 });
+    await act(async () => void link("Wróć do panelu głównego").dispatchEvent(click));
+    expect(click.defaultPrevented).toBe(false);
+    expect(apiCall).not.toHaveBeenCalled();
+  });
+
+  it("gives the decline a time limit and goes on without the answer", async () => {
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    panel(finished({ rematch: offer() }));
+    await press(link("Wróć do panelu głównego"));
+    expect(timeout).toHaveBeenCalledWith(LEAVE_DECLINE_TIMEOUT_MS);
+    expect(push).toHaveBeenCalledWith("/");
+    timeout.mockRestore();
+  });
+
+  it("shows the way back as unavailable while another call is on its way, and as available again after it", async () => {
+    let answer!: (value: unknown) => void;
+    apiCall.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    panel(finished({ rematch: offer({ offeredBySeat: 2 }) }));
+    expect(link("Wróć do panelu głównego").getAttribute("aria-disabled")).toBeNull();
+    await press(button("Odrzuć"));
+    expect(link("Wróć do panelu głównego").getAttribute("aria-disabled")).toBe("true");
+    await act(async () => answer(failure("network")));
+    expect(link("Wróć do panelu głównego").getAttribute("aria-disabled")).toBeNull();
   });
 
   it("goes on even when the decline fails, and sends it once on a double click", async () => {
@@ -551,5 +588,71 @@ describe("RematchPanel, leaving for the panel (L21)", () => {
     await press(link("Wróć do panelu głównego"));
     expect(push).not.toHaveBeenCalled();
     await act(async () => answer({ ok: true, data: {} }));
+  });
+});
+
+describe("RematchPanel, rate limit of the answers (L7)", () => {
+  it.each([
+    ["Przyjmij", { offeredBySeat: 2 as const }],
+    ["Odrzuć", { offeredBySeat: 2 as const }],
+    ["Wycofaj propozycję", {}],
+  ])("says how long to wait when %s hits the limit, without a retry", async (name, over) => {
+    apiCall.mockResolvedValue(failure("RATE_LIMITED", { retryAfterSeconds: 150 }));
+    panel(finished({ rematch: offer(over) }));
+    await press(button(name));
+    expect(screen.getByText("Zbyt wiele propozycji rewanżu. Spróbuj ponownie za 3 min.")).toBeTruthy();
+    expect(screen.queryByTestId("rematch-retry")).toBeNull();
+    expect(screen.queryByText("Coś poszło nie tak. Spróbuj ponownie.")).toBeNull();
+  });
+});
+
+describe("RematchPanel, focus and announcements (L6)", () => {
+  it("has the status element before its words appear, and the same element after", async () => {
+    panel(finished());
+    const before = screen.getByRole("status");
+    expect(before.textContent).toBe("");
+    apiCall.mockResolvedValue({ ok: true, data: offer() });
+    await press(button("Rewanż"));
+    expect(screen.getByRole("status")).toBe(before);
+    expect(before.textContent).toContain("Zaproponowano rewanż");
+  });
+
+  it("moves the focus to the status after the player's own offer, because the button is gone", async () => {
+    apiCall.mockResolvedValue({ ok: true, data: offer() });
+    panel(finished());
+    button("Rewanż").focus();
+    await press(button("Rewanż"));
+    expect(document.activeElement).toBe(screen.getByTestId("rematch-status"));
+  });
+
+  it("moves the focus to the status after accepting and after declining", async () => {
+    apiCall.mockResolvedValue({ ok: true, data: {} });
+    panel({ ...finished(), rematch: offer({ offeredBySeat: 2 }) });
+    await press(button("Odrzuć"));
+    expect(document.activeElement).toBe(screen.getByTestId("rematch-status"));
+  });
+
+  it("moves the focus to the heading when the answer leaves the status empty (a failed offer)", async () => {
+    apiCall.mockResolvedValue(failure("network"));
+    panel(finished());
+    await press(button("Rewanż"));
+    expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Rewanż" }));
+  });
+
+  it("tells the room about the acceptance on its way and about its end", async () => {
+    let answer!: (value: unknown) => void;
+    apiCall.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    panel({ ...finished(), rematch: offer({ offeredBySeat: 2 }) });
+    await press(button("Przyjmij"));
+    expect(onAccepting).toHaveBeenCalledTimes(1);
+    expect(onAccepting).toHaveBeenLastCalledWith(true);
+    await act(async () => answer(failure("network")));
+    expect(onAccepting).toHaveBeenLastCalledWith(false);
+  });
+
+  it("announces the refusal the proposer reads, without announcing the box twice", () => {
+    panel(finished({ rematch: offer({ state: "declined" }) }));
+    expect(screen.getByRole("status").textContent).toContain("Zaproszenie do rewanżu odrzucone");
+    expect(screen.getAllByRole("status")).toHaveLength(1);
   });
 });

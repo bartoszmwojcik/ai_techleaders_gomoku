@@ -44,6 +44,11 @@ const NETWORK_ERROR = "Nie udało się połączyć z serwerem. Spróbuj ponownie
 /** How often a result screen asks whether the opponent offered a rematch (nothing else changes there). */
 export const REMATCH_POLL_INTERVAL_MS = 3000;
 
+/** Leaving for the main page waits this long for the decline; then it goes on without the answer (L5). */
+export const LEAVE_DECLINE_TIMEOUT_MS = 3000;
+
+const FOCUS_TARGET = "outline-none";
+
 /**
  * The rematch block under the result (p06.10-p06.15): the offer, the wait with its countdown, the
  * opponent's offer, a refusal, an expiry and the move to the new game. The room polls and owns
@@ -73,6 +78,10 @@ export function RematchPanel({ gameId, game, reopened, onState, onRefresh, onAcc
   const [attempt, setAttempt] = useState(0);
   // State alone lags a double click by one render; the ref closes that gap.
   const inFlight = useRef(false);
+  // Where the focus goes after an answer, because the button that was pressed is gone (L6).
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const statusRef = useRef<HTMLParagraphElement>(null);
+  const focusAfterAnswer = useRef(false);
   // A guest on a page opened on an accepted rematch still has to fetch the token (see above).
   const claimFirst = useRef(reopened && guest && game.rematch?.state === "accepted");
 
@@ -124,11 +133,24 @@ export function RematchPanel({ gameId, game, reopened, onState, onRefresh, onAcc
       onAccepting(false);
     } else await decline();
     inFlight.current = false;
+    focusAfterAnswer.current = true;
     setBusy(null);
   }
 
-  function fail(code: string, retry: Action) {
+  // After the player's own action the pressed button is gone or disabled and the focus would fall to
+  // the page: it goes to the status (the new state in words), or to the heading when there is none (L6).
+  useEffect(() => {
+    if (!focusAfterAnswer.current) return;
+    focusAfterAnswer.current = false;
+    (statusRef.current?.textContent ? statusRef.current : headingRef.current)?.focus();
+  });
+
+  function fail(code: string, retry: Action, retryAfterSeconds?: number) {
     if (code === "NOT_FOUND") onGone();
+    else if (code === "RATE_LIMITED") {
+      const minutes = Math.max(1, Math.ceil((retryAfterSeconds ?? 60) / 60));
+      setProblem({ status: "warning", title: `Zbyt wiele propozycji rewanżu. Spróbuj ponownie za ${minutes} min.` });
+    }
     else setProblem({ status: "danger", title: code === "network" ? NETWORK_ERROR : "Coś poszło nie tak. Spróbuj ponownie.", retry });
   }
 
@@ -145,10 +167,7 @@ export function RematchPanel({ gameId, game, reopened, onState, onRefresh, onAcc
       // The opponent was first: their offer is read and shown for acceptance.
       setProblem({ status: "info", title: "Przeciwnik zdążył zaproponować rewanż. Odświeżamy stan." });
       onRefresh();
-    } else if (code === "RATE_LIMITED") {
-      const minutes = Math.max(1, Math.ceil((retryAfterSeconds ?? 60) / 60));
-      setProblem({ status: "warning", title: `Zbyt wiele propozycji rewanżu. Spróbuj ponownie za ${minutes} min.` });
-    } else fail(code, "offer");
+    } else fail(code, "offer", retryAfterSeconds);
   }
 
   async function accept() {
@@ -158,7 +177,7 @@ export function RematchPanel({ gameId, game, reopened, onState, onRefresh, onAcc
       patch({ ...game.rematch!, state: "accepted", gameId: result.data.gameId });
       return;
     }
-    const { code, data } = result.error;
+    const { code, data, retryAfterSeconds } = result.error;
     if (code === "ACTIVE_GAME_EXISTS") {
       // The link is for the caller's own game only; for the opponent's the server says nothing (Q4).
       const own = typeof data?.gameId === "string" ? data.gameId : undefined;
@@ -176,7 +195,7 @@ export function RematchPanel({ gameId, game, reopened, onState, onRefresh, onAcc
     } else if (code === "REMATCH_NOT_OFFERED") {
       setProblem({ status: "info", title: "Przeciwnik wycofał propozycję rewanżu." });
       onRefresh();
-    } else fail(code, "accept");
+    } else fail(code, "accept", retryAfterSeconds);
   }
 
   async function decline() {
@@ -187,25 +206,35 @@ export function RematchPanel({ gameId, game, reopened, onState, onRefresh, onAcc
       patch({ ...game.rematch!, state: "declined" });
       return;
     }
-    const { code } = result.error;
+    const { code, retryAfterSeconds } = result.error;
     if (code === "REMATCH_NOT_OFFERED" || code === "REMATCH_EXPIRED") onRefresh();
-    else fail(code, "decline");
+    else fail(code, "decline", retryAfterSeconds);
   }
 
   // L21: leaving for the panel declines an open offer, the proposer's own as well. Best effort: the page moves on either way.
-  async function onLeave(event: MouseEvent) {
+  async function onLeave(event: MouseEvent<HTMLAnchorElement>) {
+    // Open in a new tab or window, download: the browser's own link behaviour, nothing is declined (L5).
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
     if (mode.kind !== "mine" && mode.kind !== "theirs") return;
     event.preventDefault();
+    // The link looks disabled while another call is on its way (`aria-disabled`); a keyboard press is not swallowed silently.
     if (inFlight.current) return;
     inFlight.current = true;
     setLeaving(true);
-    await apiCall(`/api/games/${gameId}/rematch/decline`);
+    await apiCall(`/api/games/${gameId}/rematch/decline`, { signal: AbortSignal.timeout(LEAVE_DECLINE_TIMEOUT_MS) });
     router.push("/");
   }
 
+  const leaveBlocked = (mode.kind === "mine" || mode.kind === "theirs") && (busy !== null || leaving);
   const back = (
     <Button asChild variant="secondary">
-      <Link href="/" onClick={(event) => void onLeave(event)} data-testid="rematch-leave">
+      <Link
+        href="/"
+        onClick={(event) => void onLeave(event)}
+        aria-disabled={leaveBlocked || undefined}
+        className="aria-disabled:pointer-events-none aria-disabled:text-text-muted"
+        data-testid="rematch-leave"
+      >
         Wróć do panelu głównego
       </Link>
     </Button>
@@ -245,43 +274,65 @@ export function RematchPanel({ gameId, game, reopened, onState, onRefresh, onAcc
       </span>
     );
 
+  // One status element for every state, present before its words change, so a screen reader announces the change (L6).
+  let statusText: ReactNode = null;
+  let statusTone = "text-text-primary";
+  if (target) statusText = claimFailed ? null : "Rewanż przyjęty. Przechodzimy do nowej partii…";
+  else if (mode.kind === "none" && refused) {
+    statusText = "Odrzuciłeś propozycję rewanżu.";
+    statusTone = "text-text-secondary";
+  } else if (mode.kind === "mine") {
+    statusText = (
+      <>
+        Zaproponowano rewanż. Czekamy na odpowiedź przeciwnika (do 5 min).
+        {countdown(mode.expiresAt)}
+      </>
+    );
+  } else if (mode.kind === "theirs") {
+    statusText = (
+      <>
+        {playerNameOf(other).label} proponuje rewanż. Kolory zostaną zamienione.
+        {countdown(mode.expiresAt)}
+      </>
+    );
+  } else if (mode.kind === "declined") {
+    statusText = "Zaproszenie do rewanżu odrzucone. Przeciwnik odrzucił rewanż lub wyszedł do panelu głównego.";
+    statusTone = "sr-only";
+  } else if (mode.kind === "expired") statusText = "Zaproszenie do rewanżu wygasło (po 5 minutach).";
+
   return (
     <section aria-labelledby="rematch-h" className="flex flex-col gap-stack" data-testid="rematch-box">
-      <h2 id="rematch-h" className="m-0 text-subsection font-strong">
+      <h2 ref={headingRef} id="rematch-h" tabIndex={-1} className={`m-0 text-subsection font-strong ${FOCUS_TARGET}`}>
         Rewanż
       </h2>
-      {target && (
-        <>
-          {claimFailed ? (
-            <Alert status="danger" title="Nie udało się przejść do nowej partii.">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setClaimFailed(false);
-                  setAttempt((count) => count + 1);
-                }}
-                data-testid="rematch-claim-retry"
-              >
-                Spróbuj ponownie
-              </Button>
-            </Alert>
-          ) : (
-            <p role="status" className="m-0 text-body text-text-primary" data-testid="rematch-status">
-              Rewanż przyjęty. Przechodzimy do nowej partii…
-            </p>
-          )}
-        </>
+      <p
+        ref={statusRef}
+        role="status"
+        tabIndex={-1}
+        className={`m-0 text-body empty:sr-only ${FOCUS_TARGET} ${statusTone}`}
+        data-testid="rematch-status"
+      >
+        {statusText}
+      </p>
+      {target && claimFailed && (
+        <Alert status="danger" title="Nie udało się przejść do nowej partii.">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setClaimFailed(false);
+              setAttempt((count) => count + 1);
+            }}
+            data-testid="rematch-claim-retry"
+          >
+            Spróbuj ponownie
+          </Button>
+        </Alert>
       )}
       {!target && mode.kind === "none" && (
         <>
           <p className="m-0 text-body text-text-secondary" data-testid="rematch-info">
             Rewanż to nowa partia z odwróconymi kolorami: zagrasz {COLOR_PLAYS[nextColor]}.
           </p>
-          {refused && (
-            <p role="status" className="m-0 text-body text-text-secondary" data-testid="rematch-status">
-              Odrzuciłeś propozycję rewanżu.
-            </p>
-          )}
           {guestNote}
           {alert}
           <div className="flex flex-wrap items-center gap-group">
@@ -292,10 +343,6 @@ export function RematchPanel({ gameId, game, reopened, onState, onRefresh, onAcc
       )}
       {!target && mode.kind === "mine" && (
         <>
-          <p role="status" className="m-0 text-body text-text-primary" data-testid="rematch-status">
-            Zaproponowano rewanż. Czekamy na odpowiedź przeciwnika (do 5 min).
-            {countdown(mode.expiresAt)}
-          </p>
           {guestNote}
           {alert}
           <div className="flex flex-wrap items-center gap-group">
@@ -308,10 +355,6 @@ export function RematchPanel({ gameId, game, reopened, onState, onRefresh, onAcc
       )}
       {!target && mode.kind === "theirs" && (
         <>
-          <p role="status" className="m-0 text-body text-text-primary" data-testid="rematch-status">
-            {playerNameOf(other).label} proponuje rewanż. Kolory zostaną zamienione.
-            {countdown(mode.expiresAt)}
-          </p>
           {guestNote}
           {alert}
           <div className="flex flex-wrap items-center gap-group">
@@ -329,9 +372,12 @@ export function RematchPanel({ gameId, game, reopened, onState, onRefresh, onAcc
       )}
       {!target && mode.kind === "declined" && (
         <>
-          <Alert status="warning" title="Zaproszenie do rewanżu odrzucone" role="status">
-            Przeciwnik odrzucił rewanż lub wyszedł do panelu głównego.
-          </Alert>
+          {/* The words are in the status above (announced when they appear); the box repeats them for the eye only. */}
+          <div aria-hidden="true">
+            <Alert status="warning" title="Zaproszenie do rewanżu odrzucone" role="none">
+              Przeciwnik odrzucił rewanż lub wyszedł do panelu głównego.
+            </Alert>
+          </div>
           {alert}
           <div className="flex flex-wrap items-center gap-group">
             {offerButton("Zaproponuj ponownie")}
@@ -341,9 +387,6 @@ export function RematchPanel({ gameId, game, reopened, onState, onRefresh, onAcc
       )}
       {!target && mode.kind === "expired" && (
         <>
-          <p role="status" className="m-0 text-body text-text-primary" data-testid="rematch-status">
-            Zaproszenie do rewanżu wygasło (po 5 minutach).
-          </p>
           {alert}
           <div className="flex flex-wrap items-center gap-group">
             {offerButton("Zaproponuj ponownie")}
