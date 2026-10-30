@@ -244,6 +244,21 @@ describe("JoinActions as a member", () => {
   });
 });
 
+describe("JoinActions, double press of the member button", () => {
+  it("sends one request when the button is pressed twice before it is disabled", async () => {
+    let finish!: (value: unknown) => void;
+    apiCall.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    render(<JoinActions code="ABCD-EFGH" mode="member" />);
+    const button = screen.getByRole("button", { name: "Dołącz do partii" });
+    await act(async () => {
+      button.click();
+      button.click();
+    });
+    expect(apiCall).toHaveBeenCalledTimes(1);
+    await act(async () => finish(ok));
+  });
+});
+
 describe("JoinActions with an own waiting game", () => {
   it("joins and gives the own game up in one request (Q18)", async () => {
     apiCall.mockResolvedValue(ok);
