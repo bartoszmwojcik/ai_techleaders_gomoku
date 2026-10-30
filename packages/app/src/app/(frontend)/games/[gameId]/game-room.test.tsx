@@ -15,7 +15,14 @@ import { formatValidUntil, GameRoom, JOIN_STEP_MS, PLAY_POLL_INTERVAL_MS, POLL_I
 vi.setConfig({ testTimeout: 20_000 });
 
 const EXPIRES = "2026-10-30T09:00:00.000Z";
-const NO_BOARD = { moveCount: 0, blackSeat: null, turnSeat: null, moves: [], result: null } as const;
+const NO_BOARD = {
+  moveCount: 0,
+  blackSeat: null,
+  turnSeat: null,
+  moves: [],
+  result: null,
+  clock: { remainingMs: [600_000, 600_000] as [number, number], running: null },
+} as const;
 const waiting = (): GameView => ({
   ...NO_BOARD,
   moves: [],

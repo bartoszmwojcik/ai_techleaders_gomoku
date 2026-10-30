@@ -13,6 +13,7 @@ const view = (over: Partial<GameView> = {}): GameView => ({
   turnSeat: 1,
   moves: [],
   result: null,
+  clock: { remainingMs: [600_000, 600_000] as [number, number], running: null },
   ...over,
 });
 
