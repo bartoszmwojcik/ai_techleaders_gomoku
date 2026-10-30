@@ -99,6 +99,23 @@ Z zatwierdzonych specyfikacji (`2026-10-26-game-clock.md`, `2026-10-29-game-reco
 | L14 (stare rozstrzygnięcie „Gość”) | zastąpione: „{nick} (gość)”; wcześniejsze „Zaproszony przez link” w historii kont też znika (BR-24) |
 
 
+## 0d. Założenia robocze do prototypu (gra bez konta, 2026-10-30)
+
+Właściciel zatwierdził mapę 2026-10-30 **z otwartymi lukami L25–L35**. Do zbudowania prototypu przyjmuję poniższe założenia robocze (jak w sekcji 0b); **nie są decyzjami**, każde jest oznaczone w prototypie i podlega przeglądowi: właściciel może je zmienić komentarzem, a wtedy zmienia się rewizja prototypu i luka pozostaje otwarta lub zostaje rozstrzygnięta.
+
+| Luka | Założenie robocze do prototypu |
+|---|---|
+| L25 | p08: tytuł „Zagraj ze znajomym bez konta”; pole „Twój nick (opcjonalnie)” z podpowiedzią „Zostaw puste, a będziesz „Gracz 1””; ostrzeżenie „Grasz bez konta. Jeśli zmienisz przeglądarkę albo wyczyścisz dane, stracisz dostęp do tej partii.”; przycisk „Rozumiem, utwórz zaproszenie”; błąd nicku jak w s07.10 |
+| L26 | Błąd serwera/500: „Nie udało się utworzyć zaproszenia. Spróbuj ponownie.” z przyciskiem ponowienia (jak założenie L02) |
+| L27 | „Masz partię” na `/` dla gościa (twórcy i dołączającego) tylko przy partii oczekującej („Czekasz na przeciwnika”) i aktywnej („Partia w toku”); zakończona nie |
+| L28 | p03.12: gość-twórca widzi stałe, krótkie ostrzeżenie pod Kartą kodu („Nie zmieniaj przeglądarki, bo stracisz dostęp do partii.”) |
+| L29 | Po wygaśnięciu zaproszenia gość-twórca widzi p07.2 (partia nie istnieje), bo token przestaje działać; konto nadal widzi p03.9 |
+| L30 | Długi nick jest obcinany wielokropkiem w jednej linii, a sufiks „(gość)” jest zawsze widoczny i nie kurczy się; pełny nick w `title` i w nazwie dostępnej |
+| L31 | s07.10 i s07.11 zostają tylko w mapie E02; mapa E01 do aktualizacji osobnym PR-em dokumentacyjnym po zatwierdzeniu prototypu |
+| L32 | p08.7: „Anuluj i utwórz nową” z dialogiem potwierdzenia jak p03.6 (jak dla konta) |
+| L34 | „Zagraj ze znajomym bez konta” to akcja drugorzędna (link-przycisk pod „Załóż konto” i „Zaloguj się”) |
+| L35 | Gość-twórca oczekującej partii może ją anulować i dołączyć z s07.7 (jak konto); przy partii aktywnej tylko wrócić do niej (s07.6) |
+
 ## 0. Historie i kryteria w zakresie
 
 Oznaczenia: `#21/K1` = kryterium 1 zgłoszenia #21 (kolejność jak w zgłoszeniu). Reguły: BR-01, BR-04…BR-07, BR-09…BR-11, BR-13, BR-20, BR-24, BR-26 (konto aktywne bez potwierdzenia e-maila), **BR-29** (gra bez konta: gość tworzy i przyjmuje zaproszenie, ma nick; od 2026-10-30), D-07, D-10, D-21, **D-27**. ~~BR-22~~ zastąpione przez BR-29 (od 2026-10-30), ~~wyjątek w D-23~~ zastąpiony przez D-27. Skróty `#94/K1`, `#95/K1` liczą kryteria zgłoszeń w kolejności z tracker'a.

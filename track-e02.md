@@ -145,7 +145,7 @@ Ręczny test po fazie: powrót do trwającej i zakończonej partii z drugiego ur
 
 ### Faza 6 — Gra bez konta: nick (E02-S07) i gość tworzy partię (E02-S08)
 Specyfikacje: `.ai/specs/2026-10-30-participant-nickname.md`, `.ai/specs/2026-10-30-guest-creates-game.md` (decyzje właściciela 2026-10-30; BR-29, D-27). Kolejność: najpierw nick (E02-S07), potem gość-twórca (E02-S08). Ekrany po zatwierdzeniu zaktualizowanego prototypu.
-- [ ] 6.1 Aktualizacja mapy ekranów (`lekcja-07/mapa-ekranow-partia.md`): akcja gościa na p01, ekran „nick + ostrzeżenie”, p03 gościa-twórcy, s07 z polem nicku; zatwierdzenie
+- [x] 6.1 Aktualizacja mapy ekranów (`lekcja-07/mapa-ekranow-partia.md`): akcja gościa na p01, ekran „nick + ostrzeżenie”, p03 gościa-twórcy, s07 z polem nicku; zatwierdzenie (mapa zatwierdzona przez właściciela 2026-10-30; luki L25–L35 otwarte, do prototypu założenia robocze w sekcji 0d mapy)
   - Status (2026-10-30): mapa zaktualizowana (sekcja 0c, ekran p08, stany p01.8–p01.9, p03.11–p03.13, s07.10–s07.11 proponowane, scenariusze Q13–Q22, konta T9–T10, luki L25–L35, D08–D12), czeka na zatwierdzenie właściciela; nie odhaczone.
 - [ ] 6.2 Rewizja klikalnego prototypu (`prototypes/partia-z-zaproszenia`): stany gościa-twórcy i nicku; przegląd właściciela
 - [ ] 6.3 E02-S07 backend: `nicknameSchema`/`defaultNickname` w `core`, kolumna `nickname` + `CHECK`-i (expand-only), `accept` i widok z nickiem, testy
