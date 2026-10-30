@@ -296,7 +296,14 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
             {ending.details}
           </Alert>
           <div className="flex flex-wrap items-center gap-group">
-            <CreateGameButton heldGame={null} />
+            {isGuest ? (
+              // A guest creates from p08 (nickname and warning), not with one click (p03.13).
+              <Button asChild>
+                <Link href="/play">Utwórz nowe zaproszenie</Link>
+              </Button>
+            ) : (
+              <CreateGameButton heldGame={null} />
+            )}
             <TextLink href="/" placement="standalone">
               Wróć na stronę główną
             </TextLink>
@@ -372,6 +379,11 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
         <p role="status" className="m-0 max-w-(--layout-width-dialog) text-meta text-text-secondary" data-testid="copy-status">
           {copy === "idle" ? "" : COPY_FEEDBACK[copy]}
         </p>
+        {isGuest && (
+          // p03.12 (L28): permanent, because losing the browser means losing the game. LUKA D10: no pattern
+          // for a warning under the code card; a plain Alert.
+          <Alert status="warning" title="Nie zmieniaj przeglądarki, bo stracisz dostęp do partii." />
+        )}
         <ConfirmDialog
           open={asking}
           onOpenChange={(open) => !open && !cancelling && setAsking(false)}

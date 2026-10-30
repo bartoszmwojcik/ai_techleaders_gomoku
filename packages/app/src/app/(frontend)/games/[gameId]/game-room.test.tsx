@@ -89,6 +89,12 @@ describe("formatValidUntil", () => {
   });
 });
 
+const guestWaiting = (): GameView => ({
+  ...waiting(),
+  you: { seat: 1, kind: "guest" },
+  players: [{ seat: 1, kind: "guest", displayName: "Ala", seen: true }],
+});
+
 describe("GameRoom, waiting (p03)", () => {
   it("shows the wait, the link, the code and when it expires (p03.1)", () => {
     room(waiting());
@@ -98,6 +104,18 @@ describe("GameRoom, waiting (p03)", () => {
     expect(screen.getByText("ABCD-EFGH")).toBeTruthy();
     expect(screen.getByText("Ważne do piątek, 30 października 10:00 CET")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Udostępnij" })).toBeNull();
+  });
+
+  it("shows a guest creator the same card and a permanent warning under it (p03.11, p03.12)", () => {
+    room(guestWaiting());
+    expect(screen.getByText("ABCD-EFGH")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Anuluj zaproszenie" })).toBeTruthy();
+    expect(screen.getByText("Nie zmieniaj przeglądarki, bo stracisz dostęp do partii.")).toBeTruthy();
+  });
+
+  it("shows no browser warning to an account creator", () => {
+    room(waiting());
+    expect(screen.queryByText(/Nie zmieniaj przeglądarki/)).toBeNull();
   });
 
   it("says so when the player pressed create while already waiting here (L01) and lets them close it", async () => {
@@ -389,6 +407,13 @@ describe("GameRoom, ended", () => {
     expect(screen.getByText("Zaproszenie jest ważne 24 godziny. Link i kod nie działają.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Utwórz zaproszenie" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Wróć na stronę główną" }).getAttribute("href")).toBe("/");
+  });
+
+  it("sends a guest creator whose invitation ran out to the guest form, not to the one-click button (p03.13)", () => {
+    room({ ...guestWaiting(), status: "cancelled", closedReason: "expired", invitation: undefined });
+    expect(screen.getByRole("heading", { name: "Zaproszenie wygasło" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Utwórz nowe zaproszenie" }).getAttribute("href")).toBe("/play");
+    expect(screen.queryByRole("button", { name: "Utwórz zaproszenie" })).toBeNull();
   });
 
   it("tells the creator who cancelled in another tab that the invitation was cancelled, not expired (p03.8)", () => {

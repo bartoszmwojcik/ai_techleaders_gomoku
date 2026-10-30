@@ -24,6 +24,14 @@ describe("InviteScreen", () => {
     expect(render({ kind: "joinable", creatorName: "Ala_7", creatorKind: "account", signedIn: true })).toContain('data-mode="member"');
   });
 
+  it("names a guest creator with the suffix (s07.11), by the default name when there is no nickname", () => {
+    const html = render({ kind: "joinable", creatorName: "Ala", creatorKind: "guest", signedIn: false });
+    expect(html).toContain("Ala (gość) zaprasza Cię do partii Gomoku</h1>");
+    expect(render({ kind: "joinable", creatorName: null, creatorKind: "guest", signedIn: false })).toContain(
+      "Gracz 1 (gość) zaprasza Cię",
+    );
+  });
+
   it("names the creator neutrally when the account is gone", () => {
     expect(render({ kind: "joinable", creatorName: null, creatorKind: "account", signedIn: false })).toContain("Gracz zaprasza Cię");
   });
@@ -42,6 +50,12 @@ describe("InviteScreen", () => {
     expect(html).toContain("musisz najpierw anulować swoją");
     expect(html).toContain('data-mode="swap"');
     expect(html).toContain('href="/games/g9"');
+  });
+
+  it("lets a guest creator swap the own waiting game, still as a guest (s07.7, L35)", () => {
+    const html = render({ kind: "has-own-waiting-game", creatorName: "Ala", creatorKind: "guest", gameId: "g9", signedIn: false });
+    expect(html).toContain('data-mode="swap-guest"');
+    expect(html).not.toContain('data-mode="swap"');
   });
 
   it("explains the spent lookup pool without naming the code (s07.8)", () => {

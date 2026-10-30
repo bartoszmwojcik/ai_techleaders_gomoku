@@ -9,6 +9,7 @@ import { VerifyEmailNotice } from "@/components/auth/verify-email-banner";
 import { CreateGameButton } from "@/components/games/create-game-button";
 import { DismissibleNotice } from "@/components/games/dismissible-notice";
 import { getCurrentUserWith } from "@/server/http/auth";
+import { loadGuestCurrentGame } from "@/server/http/guest-game";
 
 // Static preview position: a few stones near the centre of the board.
 const PREVIEW_STONES = new Map<string, "black" | "white">([
@@ -25,6 +26,8 @@ type HomePageProps = {
 };
 
 const GAME_PHASE_TEXT = { waiting: "Czeka na przeciwnika.", active: "W toku." } as const;
+/** L27: a guest (creator or joiner) sees "Masz partię" for a waiting and an active game only. */
+const GUEST_PHASE_TEXT = { waiting: "Czekasz na przeciwnika.", active: "Partia w toku." } as const;
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   // Reads the session cookie, so the page is rendered per request.
@@ -35,6 +38,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   );
   const user = session?.user ?? null;
   const currentGame = session?.data ?? null;
+  // A visitor may hold a game as a guest (E02-S08): found by the token in the cookie.
+  const guestGame = user ? null : await loadGuestCurrentGame();
   const hasActiveGame = currentGame?.status === "active";
   // Only the first `notice` counts; the only known one is the message after cancelling a game.
   const { notice } = await searchParams;
@@ -48,7 +53,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   return (
     <main className="mx-auto flex w-full flex-1 max-w-5xl flex-col items-center justify-center gap-section px-panel py-section">
-      {cancelled && user && (
+      {cancelled && (
         <DismissibleNotice title="Zaproszenie anulowane" closeLabel="Zamknij">
           Zaproszenie zostało anulowane. Link jest już nieważny.
         </DismissibleNotice>
@@ -105,16 +110,28 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               </div>
             </div>
           ) : (
-            <div className="flex flex-wrap justify-center gap-group md:justify-start">
-              <Button asChild>
-                <a href="/register">Załóż konto</a>
+            <div className="flex flex-col items-center gap-stack md:items-start">
+              {guestGame && (
+                <Alert status="info" title="Masz partię">
+                  {GUEST_PHASE_TEXT[guestGame.status]}{" "}
+                  <TextLink href={`/games/${guestGame.gameId}`}>Wróć do partii</TextLink>
+                </Alert>
+              )}
+              <div className="flex flex-wrap justify-center gap-group md:justify-start">
+                <Button asChild>
+                  <a href="/register">Załóż konto</a>
+                </Button>
+                <Button asChild variant="secondary">
+                  <a href="/login">Zaloguj się</a>
+                </Button>
+                <TextLink href="/join" placement="standalone">
+                  Masz kod?
+                </TextLink>
+              </div>
+              {/* L34: a secondary button (not a small link) in the action column; "Załóż konto" stays the main action. */}
+              <Button asChild variant="secondary" className="w-full">
+                <a href="/play">Zagraj ze znajomym bez konta</a>
               </Button>
-              <Button asChild variant="secondary">
-                <a href="/login">Zaloguj się</a>
-              </Button>
-              <TextLink href="/join" placement="standalone">
-                Masz kod?
-              </TextLink>
             </div>
           )}
         </section>
