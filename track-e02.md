@@ -120,6 +120,9 @@ Ręczny test po fazie: powrót do trwającej i zakończonej partii z drugiego ur
 - [x] 5.2 Wejście do zakończonej partii: wynik i tryb tylko do odczytu (p06.5, p06.6); testy integracyjne: koniec przez czas w nieobecności, drugie urządzenie konta, gość z innej przeglądarki `404`, gość po 1 h `404` (#24 krok 4)
   - Zrobione 5.1–5.2: `shouldShowReturnNotice` + `RETURN_NOTICE_THRESHOLD_MS` (30 s) w `core`; `usePageVisibility`; odczyt przy każdym powrocie i komunikat p05.10 (tekst z serwera, 8 s lub następny ruch, bez komunikatu gdy partia się skończyła); p06.5 (zdanie „Powrót do zakończonej partii…” tylko po wejściu na zakończoną partię) i p06.6 (zdanie o 1 h zamiast ostrzeżenia gościa); scenariusze `tests/integration/game-reconnection-pages.test.ts`. Do `@gomoku/ui` doszedł eksport `./game/format-clock`. Odstępstwa od prototypu: komunikat p05.10 wchodzi w układ jak w prototypie (przesuwa treść poniżej), zegar w nim nie tyka.
 
+  - Decyzja właściciela (2026-10-30): komunikat p05.10 wsuwa się nad planszę i przesuwa ją w dół w chwili powrotu — zostaje tak jak w zatwierdzonym prototypie (bez rezerwowania miejsca), świadomie.
+  - Po przeglądzie: powrót karty zawsze czeka na odczyt rozpoczęty PO powrocie (jeden dodatkowy odczyt, odczyt ma timeout 8 s); komunikat pokazuje się tylko, gdy odczyt zakończył się w ciągu 10 s od powrotu.
+
 #### Ręczny test po fazie 5A (krok po kroku)
 
 Świeża baza jednorazowa i `npm run dev` (nie baza `gomoku`). Dwie przeglądarki / okna prywatne: konta `a`, `b`; trzecia przeglądarka jako „drugie urządzenie” konta `a`. Czas przesuwasz `psql` na bazie jednorazowej.
