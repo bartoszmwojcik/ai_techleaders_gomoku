@@ -64,6 +64,8 @@ export class BrevoEmailSender implements EmailSender {
           htmlContent: message.html,
           textContent: message.text,
         }),
+        // fetch keeps custom headers on a cross-origin redirect, so a redirect would leak the api-key.
+        redirect: "error",
         signal,
       });
     } catch {

@@ -75,6 +75,8 @@ describe("BrevoEmailSender", () => {
       textContent: message.text,
     });
     expect(init.signal).toBeInstanceOf(AbortSignal);
+    // A redirect must fail instead of sending the api-key header to another host.
+    expect(init.redirect).toBe("error");
   });
 
   it("succeeds on 201 even without a response body", async () => {
