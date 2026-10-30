@@ -53,6 +53,93 @@ describe("JoinActions as a visitor", () => {
     expect((screen.getByRole("button", { name: "Wróć" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
+  async function openGuestForm() {
+    const user = userEvent.setup();
+    render(<JoinActions code="ABCD-EFGH" mode="visitor" />);
+    await user.click(screen.getByRole("button", { name: "Graj jako gość" }));
+    return user;
+  }
+
+  it("offers an optional nickname with the default name as a hint, before the confirm button", async () => {
+    await openGuestForm();
+    const field = screen.getByLabelText(/Twój nick/);
+    expect(screen.getByText("(opcjonalnie)")).toBeTruthy();
+    expect(screen.getByText("Zostaw puste, a będziesz „Gracz 2”")).toBeTruthy();
+    expect(field.getAttribute("aria-describedby")).toBe("invite-nickname-hint");
+    const confirm = screen.getByRole("button", { name: "Rozumiem, graj jako gość" });
+    expect(field.compareDocumentPosition(confirm) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByText(/nie ma nazwy/)).toBeNull();
+    expect(screen.getByText(/Gość nie ma historii partii/)).toBeTruthy();
+  });
+
+  it("sends the normalized nickname", async () => {
+    apiCall.mockResolvedValue(ok);
+    const user = await openGuestForm();
+    await user.type(screen.getByLabelText(/Twój nick/), "  Piotr   K  ");
+    await user.click(screen.getByRole("button", { name: "Rozumiem, graj jako gość" }));
+    expect(apiCall).toHaveBeenCalledWith("/api/invitations/ABCD-EFGH/accept", {
+      body: { as: "guest", acknowledgedGuestWarning: true, nickname: "Piotr K" },
+    });
+  });
+
+  it("shows a refused nickname in the field's line, keeps the value, focuses the field and sends nothing (s07.10)", async () => {
+    const user = await openGuestForm();
+    const field = screen.getByLabelText(/Twój nick/) as HTMLInputElement;
+    await user.type(field, "Ala<b>");
+    await user.click(screen.getByRole("button", { name: "Rozumiem, graj jako gość" }));
+    expect(apiCall).not.toHaveBeenCalled();
+    expect(screen.getByText("Nick może zawierać litery, cyfry, spacje oraz znaki _ i -.")).toBeTruthy();
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    expect(field.getAttribute("aria-describedby")).toBe("invite-nickname-hint invite-nickname-error");
+    expect(field.value).toBe("Ala<b>");
+    expect(document.activeElement).toBe(field);
+  });
+
+  it("counts the length in code points, not UTF-16 units", async () => {
+    apiCall.mockResolvedValue(ok);
+    const user = await openGuestForm();
+    // 24 astral letters are 48 UTF-16 units and still allowed.
+    await user.type(screen.getByLabelText(/Twój nick/), "𝐀".repeat(24));
+    await user.click(screen.getByRole("button", { name: "Rozumiem, graj jako gość" }));
+    expect(apiCall).toHaveBeenCalledOnce();
+  });
+
+  it("refuses a nickname longer than 24 characters", async () => {
+    const user = await openGuestForm();
+    await user.type(screen.getByLabelText(/Twój nick/), "a".repeat(25));
+    await user.click(screen.getByRole("button", { name: "Rozumiem, graj jako gość" }));
+    expect(screen.getByText("Nick może mieć najwyżej 24 znaków.")).toBeTruthy();
+  });
+
+  it("shows the server's refusal of the nickname in the same line and focuses the field", async () => {
+    apiCall.mockResolvedValue({
+      ok: false,
+      error: { code: "VALIDATION_ERROR", message: "x", fieldErrors: { nickname: ["Nick może mieć najwyżej 24 znaków."] } },
+    });
+    const user = await openGuestForm();
+    const field = screen.getByLabelText(/Twój nick/) as HTMLInputElement;
+    await user.type(field, "Piotr");
+    await user.click(screen.getByRole("button", { name: "Rozumiem, graj jako gość" }));
+    await waitFor(() => expect(document.activeElement).toBe(field));
+    expect(screen.getByText("Nick może mieć najwyżej 24 znaków.")).toBeTruthy();
+    expect(field.value).toBe("Piotr");
+    expect(screen.queryByText("Nie udało się dołączyć do partii")).toBeNull();
+  });
+
+  it("clears the nickname error when the next attempt starts", async () => {
+    apiCall.mockResolvedValue(ok);
+    const user = await openGuestForm();
+    const field = screen.getByLabelText(/Twój nick/);
+    await user.type(field, "!");
+    await user.click(screen.getByRole("button", { name: "Rozumiem, graj jako gość" }));
+    await user.clear(field);
+    await user.click(screen.getByRole("button", { name: "Rozumiem, graj jako gość" }));
+    expect(screen.queryByText(/Nick może/)).toBeNull();
+    expect(apiCall).toHaveBeenCalledWith("/api/invitations/ABCD-EFGH/accept", {
+      body: { as: "guest", acknowledgedGuestWarning: true },
+    });
+  });
+
   it("sends exactly one request however often the button is pressed (the second one would cost the pool)", async () => {
     let finish!: (value: unknown) => void;
     apiCall.mockReturnValue(new Promise((resolve) => (finish = resolve)));
