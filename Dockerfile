@@ -18,7 +18,14 @@ RUN npm ci
 
 COPY . .
 # `next build` does not need a database: the ORM connects lazily (AGENTS.md).
-RUN npm run build
+# LOW_MEMORY=1 is for a 2 GB VPS: one Next worker and the types checked by a separate `tsc` run before the build
+# (next.config.ts reads the two variables; see "Wdrożenie na mikr.us" in README.md).
+ARG LOW_MEMORY=0
+RUN if [ "$LOW_MEMORY" = "1" ]; then \
+      npm run typecheck -w @gomoku/app && NEXT_BUILD_CPUS=1 NEXT_SKIP_TYPECHECK=1 npm run build; \
+    else \
+      npm run build; \
+    fi
 
 ENV NODE_ENV=production
 USER node

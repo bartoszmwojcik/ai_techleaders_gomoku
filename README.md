@@ -265,6 +265,7 @@ domena gomoku.byst.re 3000                       # subdomena na porcie aplikacji
 curl https://gomoku.byst.re/api/health           # {"status":"ok",...}
 ```
 
+- **Mały RAM (`LOW_MEMORY=1`):** `docker compose ... up -d --build` na VPS z 2 GB RAM i jednym rdzeniem może paść w `next build` z komunikatem „Failed to type check.” (bez treści) albo `Next.js build worker exited ... SIGTERM`: Next uruchamia tylu workerów, ile procesorów widzi host, i kończy się pamięć. Ustaw w `.env.production` `LOW_MEMORY=1`: obraz buduje się wtedy z jednym workerem, a typy sprawdza osobny `tsc` przed buildem (nie są pomijane). Build trwa ok. minuty, a eksport obrazu (~2,5 GB) kolejne kilka minut; w tym czasie stara wersja działa. Nowa wersja zastępuje starą dopiero po udanym buildzie. Wycofanie: przed wdrożeniem `docker tag gomoku-app:latest gomoku-app:prev`, po awarii `docker tag gomoku-app:prev gomoku-app:latest && docker compose --env-file .env.production -f compose.prod.yaml up -d --no-build`.
 - **Stos:** PostgreSQL 17 (nieopublikowany na zewnątrz, dane w woluminie `postgres-data`), jednorazowa migracja (`npm run db:migration:up`) i aplikacja. Aplikacja startuje dopiero po migracji i gotowej bazie; healthcheck wywołuje `/api/health`, który zwraca `503`, gdy baza nie odpowiada.
 - **Sekrety:** `.env.production` leży tylko na serwerze (jest ignorowany przez git). Hasło bazy generuj poleceniem `openssl rand -hex 24` (heks jest bezpieczny w adresie `DATABASE_URL`).
 - **IPv6:** subdomeny mikr.us wymagają, żeby usługa odpowiadała na IPv6. Aplikacja słucha w kontenerze na IPv4, a Docker publikuje port także na adresie IPv6 hosta; komenda `domena` sprawdza, czy port odpowiada, zanim utworzy subdomenę.
@@ -279,7 +280,7 @@ curl https://gomoku.byst.re/api/health           # {"status":"ok",...}
 
 Strony gracza (`(frontend)`) mają przełącznik motywu w prawym górnym rogu (wiersz nad treścią strony, na każdej stronie). Wybór zapisuje ciasteczko `gomoku_theme` (`dark` lub `light`, `Path=/`, `SameSite=Lax`, rok); serwer czyta je przy renderowaniu i ustawia `data-theme` na `<html>`. Bez poprawnego ciasteczka obowiązuje ustawienie systemu (`prefers-color-scheme`), a gdy system nie ma preferencji — motyw ciemny; mały skrypt w `<head>` ustawia motyw przed pierwszym malowaniem, więc strona nie migocze. Niepoprawna wartość ciasteczka jest ignorowana. Panel `/backend` ma własny motyw shadcn.
 
-Ręczne sprawdzenie w dev: `npm run dev`, otwórz `/`, kliknij „Jasny motyw”, odśwież stronę (wybór zostaje), usuń ciasteczko w narzędziach przeglądarki i zmień motyw systemu (lub emulację `prefers-color-scheme` w DevTools), odśwież — motyw podąża za systemem. Logika: `packages/core/src/theme/theme.ts`; scenariusze integracyjne: `tests/integration/theme-switch.test.ts`; przegląd ekranów: `.ai/analysis/2026-10-29-theme-review-e01.md`.
+Ręczne sprawdzenie w dev: `npm run dev`, otwórz `/`, kliknij przełącznik („Ciemny motyw” przełącza na jasny i odwrotnie), odśwież stronę (wybór zostaje), usuń ciasteczko w narzędziach przeglądarki i zmień motyw systemu (lub emulację `prefers-color-scheme` w DevTools), odśwież — motyw podąża za systemem. Logika: `packages/core/src/theme/theme.ts`; scenariusze integracyjne: `tests/integration/theme-switch.test.ts`; przegląd ekranów: `.ai/analysis/2026-10-29-theme-review-e01.md`.
 
 ## Sprzątanie wygasłych rekordów
 

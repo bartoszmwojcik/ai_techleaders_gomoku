@@ -38,6 +38,29 @@ describe("next.config", () => {
     ]);
   });
 
+  it("builds with Next's defaults unless a low-memory build asks for less", async () => {
+    const { default: config } = await import("./next.config");
+
+    expect(config.experimental).toBeUndefined();
+    expect(config.typescript).toEqual({ ignoreBuildErrors: false });
+  });
+
+  it("limits the build workers and leaves type checking to a separate step in a low-memory build", async () => {
+    vi.stubEnv("NEXT_BUILD_CPUS", "1");
+    vi.stubEnv("NEXT_SKIP_TYPECHECK", "1");
+    const { default: config } = await import("./next.config");
+
+    expect(config.experimental).toEqual({ cpus: 1 });
+    expect(config.typescript).toEqual({ ignoreBuildErrors: true });
+  });
+
+  it("ignores a NEXT_BUILD_CPUS that is not a positive integer", async () => {
+    vi.stubEnv("NEXT_BUILD_CPUS", "many");
+    const { default: config } = await import("./next.config");
+
+    expect(config.experimental).toBeUndefined();
+  });
+
   it("sends Referrer-Policy: no-referrer on /verify-email and /reset-password, where the token is in the URL", async () => {
     const { default: config } = await import("./next.config");
 
