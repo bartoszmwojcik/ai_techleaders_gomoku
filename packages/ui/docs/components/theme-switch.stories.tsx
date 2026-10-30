@@ -8,7 +8,7 @@ import { Narrow, StateMatrix } from "../../.storybook/blocks";
 const meta = {
   title: "Prymitywy/Przełącznik motywu",
   component: ThemeSwitch,
-  args: { theme: "dark", label: "Jasny motyw", onToggle: fn() },
+  args: { theme: "dark", lightLabel: "Jasny motyw", darkLabel: "Ciemny motyw", onToggle: fn() },
   argTypes: { theme: { control: "inline-radio", options: ["dark", "light"] } },
 } satisfies Meta<typeof ThemeSwitch>;
 
@@ -26,8 +26,8 @@ export const Stany: Story = {
   render: (args) => (
     <StateMatrix
       rows={[
-        { state: "default", label: "Ciemny (niewciśnięty)", render: () => <ThemeSwitch {...args} theme="dark" /> },
-        { state: "pressed", label: "Jasny (wciśnięty)", render: () => <ThemeSwitch {...args} theme="light" /> },
+        { state: "default", label: "Ciemny", render: () => <ThemeSwitch {...args} theme="dark" /> },
+        { state: "selected", label: "Jasny", render: () => <ThemeSwitch {...args} theme="light" /> },
         { state: "hover", label: "Najechanie", render: (s) => <ThemeSwitch {...args} data-preview-state={s} /> },
         { state: "focus", label: "Fokus", render: (s) => <ThemeSwitch {...args} data-preview-state={s} /> },
       ]}
@@ -47,20 +47,20 @@ export const NaWaskimEkranie: Story = {
 
 function Stateful() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
-  return <ThemeSwitch theme={theme} label="Jasny motyw" onToggle={() => setTheme(theme === "dark" ? "light" : "dark")} />;
+  return <ThemeSwitch theme={theme} lightLabel="Jasny motyw" darkLabel="Ciemny motyw" onToggle={() => setTheme(theme === "dark" ? "light" : "dark")} />;
 }
 
 export const KlikniecieIKlawiatura: Story = {
   render: () => <Stateful />,
   play: async ({ canvasElement }) => {
-    const button = within(canvasElement).getByRole("button", { name: "Jasny motyw" });
-    await expect(button).toHaveAttribute("aria-pressed", "false");
+    const button = within(canvasElement).getByRole("button", { name: "Ciemny motyw" });
+    await expect(button).toHaveAccessibleName("Ciemny motyw");
     await userEvent.tab();
     await expect(button).toHaveFocus();
     await userEvent.keyboard("{Enter}");
-    await expect(button).toHaveAttribute("aria-pressed", "true");
+    await expect(button).toHaveAccessibleName("Jasny motyw");
     await userEvent.click(button);
-    await expect(button).toHaveAttribute("aria-pressed", "false");
+    await expect(button).toHaveAccessibleName("Ciemny motyw");
     await expect(button).toHaveFocus();
   },
 };

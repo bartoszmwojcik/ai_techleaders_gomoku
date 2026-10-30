@@ -58,8 +58,8 @@ describe("FrontendLayout", () => {
     const light = await render("light");
     const unset = await render(undefined);
 
-    expect(light).toMatch(/<div class="flex justify-end[^"]*"><button[^>]*aria-pressed="true"/);
-    expect(unset).toMatch(/<div class="flex justify-end[^"]*"><button[^>]*aria-pressed="false"/);
+    expect(light).toMatch(/<div class="flex justify-end[^"]*"><button[^>]*><svg[^>]*lucide-sun/);
+    expect(unset).toMatch(/<div class="flex justify-end[^"]*"><button[^>]*><svg[^>]*lucide-moon/);
   });
 
   it("describes the game for search engines", () => {

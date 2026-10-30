@@ -8,34 +8,57 @@ import { ThemeSwitch } from "./theme-switch";
 
 afterEach(cleanup);
 
-describe("ThemeSwitch", () => {
-  it("is not pressed in the dark theme and shows the moon", () => {
-    const html = renderToStaticMarkup(<ThemeSwitch theme="dark" onToggle={() => undefined} label="Jasny motyw" />);
+const labels = { lightLabel: "Jasny motyw", darkLabel: "Ciemny motyw" };
 
-    expect(html).toContain('aria-pressed="false"');
-    expect(html).toContain('type="button"');
+describe("ThemeSwitch", () => {
+  it("names the dark theme with the moon while it is on", () => {
+    const html = renderToStaticMarkup(<ThemeSwitch theme="dark" onToggle={() => undefined} {...labels} />);
+
     expect(html).toContain("lucide-moon");
-    expect(html).toContain("Jasny motyw");
+    expect(html).toContain("Ciemny motyw");
+    expect(html).toContain('type="button"');
     expect(html).toContain("min-h-target");
     expect(html).toContain("focus-visible:focus-ring");
   });
 
-  it("is pressed in the light theme and shows the sun", () => {
-    const html = renderToStaticMarkup(<ThemeSwitch theme="light" onToggle={() => undefined} label="Jasny motyw" />);
+  it("names the light theme with the sun while it is on", () => {
+    const html = renderToStaticMarkup(<ThemeSwitch theme="light" onToggle={() => undefined} {...labels} />);
 
-    expect(html).toContain('aria-pressed="true"');
     expect(html).toContain("lucide-sun");
+    expect(html).toContain("Jasny motyw");
   });
 
-  it("hides the icon from assistive technology and keeps the name constant", () => {
-    render(<ThemeSwitch theme="light" onToggle={() => undefined} label="Jasny motyw" />);
+  it("keeps the width of the longer text: both texts are rendered and only the current one is visible", () => {
+    const dark = renderToStaticMarkup(<ThemeSwitch theme="dark" onToggle={() => undefined} {...labels} />);
+    const light = renderToStaticMarkup(<ThemeSwitch theme="light" onToggle={() => undefined} {...labels} />);
+
+    expect(dark).toMatch(/<span aria-hidden="true" class="[^"]*invisible[^"]*">Jasny motyw<\/span>/);
+    expect(dark).toMatch(/<span class="[^"]*">Ciemny motyw<\/span>/);
+    expect(light).toMatch(/<span aria-hidden="true" class="[^"]*invisible[^"]*">Ciemny motyw<\/span>/);
+    expect(light).toMatch(/<span class="[^"]*">Jasny motyw<\/span>/);
+  });
+
+  it("exposes only the current theme as the accessible name", () => {
+    render(<ThemeSwitch theme="dark" onToggle={() => undefined} {...labels} />);
+
+    expect(screen.getByRole("button", { name: "Ciemny motyw" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Jasny motyw" })).toBeNull();
+  });
+
+  it("is a plain button: the name carries the state, so there is no aria-pressed", () => {
+    expect(renderToStaticMarkup(<ThemeSwitch theme="dark" onToggle={() => undefined} {...labels} />)).not.toContain("aria-pressed");
+    expect(renderToStaticMarkup(<ThemeSwitch theme="light" onToggle={() => undefined} {...labels} />)).not.toContain("aria-pressed");
+  });
+
+  it("hides the icon from assistive technology", () => {
+    render(<ThemeSwitch theme="light" onToggle={() => undefined} {...labels} />);
 
     expect(screen.getByRole("button", { name: "Jasny motyw" }).querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
   });
 
   it("calls onToggle on click and merges extra props", async () => {
     const onToggle = vi.fn();
-    render(<ThemeSwitch theme="dark" onToggle={onToggle} label="Jasny motyw" className="ml-auto" data-testid="sw" />);
+    render(<ThemeSwitch theme="dark" onToggle={onToggle} {...labels} className="ml-auto" data-testid="sw" />);
     const button = screen.getByTestId("sw");
 
     await userEvent.click(button);

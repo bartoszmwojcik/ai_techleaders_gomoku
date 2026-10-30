@@ -7,7 +7,11 @@
 name: gomoku_prod
 
 x-app: &app
-  build: .
+  build:
+    context: .
+    args:
+      # 1 on a 2 GB VPS (mikr.us): see .env.production.example.
+      LOW_MEMORY: ${LOW_MEMORY:-0}
   image: gomoku-app:latest
   environment:
     DATABASE_URL: postgresql://gomoku:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}@postgres:5432/gomoku
