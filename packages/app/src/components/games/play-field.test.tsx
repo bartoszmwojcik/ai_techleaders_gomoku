@@ -412,3 +412,106 @@ describe("PlayField, clocks (#23, p05.1, p05.3, p06.3)", () => {
     expect(digits()).toEqual(["10:00", "10:00"]);
   });
 });
+
+describe("PlayField, resigning (p05.13, p05.14)", () => {
+  const open = async () => {
+    await press(byText("Poddaj partię"));
+  };
+  const dialog = () => document.querySelector<HTMLElement>("[role=alertdialog]");
+
+  it("offers the button in a game in progress, also out of turn and before the first move, never in a finished one", () => {
+    field({ turnSeat: 2 });
+    expect(byText("Poddaj partię")).toBeTruthy();
+    cleanup();
+    field({ status: "finished", turnSeat: null, result: { winnerSeat: 1, reason: "five_in_row", winLine: null } });
+    expect(screen.queryByText("Poddaj partię")).toBeNull();
+  });
+
+  it("asks first, with the focus on the way out, and Esc closes without sending", async () => {
+    field();
+    await open();
+    expect(dialog()!.textContent).toContain("Czy na pewno chcesz się poddać?");
+    expect(dialog()!.textContent).toContain("Przeciwnik wygra partię.");
+    expect(document.activeElement?.textContent).toBe("Wróć do gry");
+    await act(async () => {
+      await user().keyboard("{Escape}");
+    });
+    expect(dialog()).toBeNull();
+    expect(apiCall).not.toHaveBeenCalled();
+  });
+
+  it("closes on \"Wróć do gry\" without sending", async () => {
+    field();
+    await open();
+    await press(byText("Wróć do gry"));
+    expect(dialog()).toBeNull();
+    expect(apiCall).not.toHaveBeenCalled();
+  });
+
+  it("sends once for a double click, shows the progress and hands the state to the room", async () => {
+    const finished = game({ status: "finished", turnSeat: null, result: { winnerSeat: 2, reason: "resignation", winLine: null } });
+    let release!: (value: unknown) => void;
+    apiCall.mockReset().mockReturnValue(new Promise((resolve) => (release = resolve)));
+    field();
+    await open();
+    const confirm = document.querySelector<HTMLElement>("[role=alertdialog] button:last-child")!;
+    await act(async () => {
+      confirm.click();
+      confirm.click();
+    });
+    expect(apiCall).toHaveBeenCalledTimes(1);
+    expect(apiCall).toHaveBeenCalledWith("/api/games/g1/resign");
+    expect(dialog()!.textContent).toContain("Poddawanie…");
+    // Esc does not close the dialog while the server answers.
+    await act(async () => {
+      await user().keyboard("{Escape}");
+    });
+    expect(dialog()).not.toBeNull();
+    await act(async () => release({ ok: true, data: finished }));
+    expect(dialog()).toBeNull();
+    expect(onState).toHaveBeenCalledWith(finished, 0);
+  });
+
+  it("keeps the dialog on a network error and sends again on \"Spróbuj ponownie\" (p05.14)", async () => {
+    apiCall.mockReset().mockResolvedValueOnce(failure("network")).mockResolvedValueOnce({ ok: true, data: game({ status: "finished" }) });
+    field();
+    await open();
+    await press(document.querySelector<HTMLElement>("[role=alertdialog] button:last-child")!);
+    expect(dialog()!.querySelector("[role=alert]")!.textContent).toBe("Nie udało się połączyć z serwerem. Spróbuj ponownie.");
+    await press(byText("Spróbuj ponownie"));
+    expect(apiCall).toHaveBeenCalledTimes(2);
+    expect(dialog()).toBeNull();
+    expect(onState).toHaveBeenCalledTimes(1);
+  });
+
+  it("says so for an unknown failure and forgets the error when the dialog is closed and opened again", async () => {
+    apiCall.mockReset().mockResolvedValue(failure("INTERNAL"));
+    field();
+    await open();
+    await press(document.querySelector<HTMLElement>("[role=alertdialog] button:last-child")!);
+    expect(dialog()!.textContent).toContain("Nie udało się poddać partii. Spróbuj ponownie.");
+    await press(byText("Wróć do gry"));
+    await open();
+    expect(dialog()!.querySelector("[role=alert]")).toBeNull();
+  });
+
+  it.each(["GAME_FINISHED", "GAME_NOT_ACTIVE"])("closes the dialog and reads the state when the server answers %s", async (code) => {
+    apiCall.mockReset().mockResolvedValue(failure(code));
+    field();
+    await open();
+    await press(document.querySelector<HTMLElement>("[role=alertdialog] button:last-child")!);
+    expect(dialog()).toBeNull();
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Partia jest już zakończona. Plansza została odświeżona.")).toBeTruthy();
+    expect(onState).not.toHaveBeenCalled();
+  });
+
+  it("tells the room the game is gone on 404", async () => {
+    apiCall.mockReset().mockResolvedValue(failure("NOT_FOUND"));
+    field();
+    await open();
+    await press(document.querySelector<HTMLElement>("[role=alertdialog] button:last-child")!);
+    expect(onGone).toHaveBeenCalledTimes(1);
+    expect(dialog()).toBeNull();
+  });
+});

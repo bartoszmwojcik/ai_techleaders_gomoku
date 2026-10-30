@@ -25,6 +25,8 @@ type Row = {
   clocks?: [number, number];
   /** Epoch ms the turn started at; `null` = the clock has not started. */
   started?: number | null;
+  winner_seat?: number | null;
+  end_reason?: string | null;
 };
 
 function lockedRow(row: Row) {
@@ -37,6 +39,8 @@ function lockedRow(row: Row) {
     stones_white: bits(row.white ?? []),
     moves: Buffer.from(encodeMoves(moves)),
     seat: row.seat ?? 1,
+    winner_seat: row.winner_seat ?? null,
+    end_reason: row.end_reason ?? null,
     clock_ms_1: row.clocks?.[0] ?? 600_000,
     clock_ms_2: row.clocks?.[1] ?? 600_000,
     turn_started_ms: row.started === undefined ? NOW.getTime() - 5_000 : row.started,
@@ -271,6 +275,83 @@ describe("GameMoveService.play", () => {
   it("answers 409 instead of 500 when the conditional update loses a race", async () => {
     const { service, gameService } = setup({}, { written: [] });
     expect(await code(service.play(P, "game-1", move(7, 7, 1)))).toMatchObject({ status: 409, code: "STALE_MOVE" });
+    expect(gameService.stateOf).not.toHaveBeenCalled();
+  });
+});
+
+describe("GameMoveService.resign", () => {
+  it("locks the game, finishes it for the opponent, frees both slots, returns the state", async () => {
+    const { service, calls, gameService, timeoutSettler, state, em } = setup({ seat: 1 });
+
+    expect(await service.resign(P, "game-1")).toBe(state);
+
+    expect(em.transactional).toHaveBeenCalledOnce();
+    expect(calls[0]!.sql).toContain("for no key update of g");
+    expect(calls[0]!.params).toEqual(["game-1", "player-1"]);
+    expect(timeoutSettler.settleGame).toHaveBeenCalledWith("game-1", em, NOW);
+    expect(calls[1]!.sql).toContain("status = 'finished'");
+    expect(calls[1]!.sql).toContain("status = 'active'");
+    expect(calls[1]!.params).toEqual([2, "resignation", NOW, "game-1"]);
+    expect(calls[2]!.sql).toContain("update game_players set is_active = false");
+    expect(calls[2]!.mode).toBe("run");
+    expect(calls).toHaveLength(3);
+    expect(gameService.stateOf).toHaveBeenCalledWith(em, P, "game-1", 0, NOW);
+  });
+
+  it("gives the win to seat 1 when seat 2 resigns, also out of turn and before any move", async () => {
+    const { service, calls } = setup({ seat: 2, moves: [], started: null });
+    await service.resign(P, "game-1");
+    expect(calls[1]!.params).toEqual([1, "resignation", NOW, "game-1"]);
+  });
+
+  it("answers 404 for a stranger or a missing game", async () => {
+    const { service, gameService } = setup(null);
+    expect(await code(service.resign(P, "game-1"))).toMatchObject({ status: 404 });
+    expect(gameService.stateOf).not.toHaveBeenCalled();
+  });
+
+  it("answers a repeat by the player who resigned with the state and writes nothing", async () => {
+    const { service, calls, gameService, state, timeoutSettler } = setup({
+      status: "finished",
+      seat: 1,
+      winner_seat: 2,
+      end_reason: "resignation",
+    });
+    expect(await service.resign(P, "game-1")).toBe(state);
+    expect(calls).toHaveLength(1);
+    expect(timeoutSettler.settleGame).not.toHaveBeenCalled();
+    expect(gameService.stateOf).toHaveBeenCalledOnce();
+  });
+
+  it("refuses the loser of a resignation by the opponent with GAME_FINISHED", async () => {
+    const { service } = setup({ status: "finished", seat: 1, winner_seat: 1, end_reason: "resignation" });
+    expect(await code(service.resign(P, "game-1"))).toMatchObject({ status: 409, code: "GAME_FINISHED" });
+  });
+
+  it("refuses a game finished another way", async () => {
+    const { service, calls } = setup({ status: "finished", winner_seat: 1, end_reason: "five_in_row" });
+    expect(await code(service.resign(P, "game-1"))).toMatchObject({ status: 409, code: "GAME_FINISHED" });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("lets the loss on time win over the resignation, thrown after the transaction", async () => {
+    const { service, calls, gameService } = setup({}, { settled: true });
+    expect(await code(service.resign(P, "game-1"))).toMatchObject({ status: 409, code: "GAME_FINISHED" });
+    expect(calls).toHaveLength(1);
+    expect(gameService.stateOf).not.toHaveBeenCalled();
+  });
+
+  it("refuses a waiting or cancelled game", async () => {
+    for (const status of ["waiting", "cancelled"]) {
+      const { service, calls } = setup({ status, black_seat: null });
+      expect(await code(service.resign(P, "game-1"))).toMatchObject({ status: 409, code: "GAME_NOT_ACTIVE" });
+      expect(calls).toHaveLength(1);
+    }
+  });
+
+  it("answers 409 instead of 500 when the conditional update loses a race", async () => {
+    const { service, gameService } = setup({}, { written: [] });
+    expect(await code(service.resign(P, "game-1"))).toMatchObject({ status: 409, code: "GAME_FINISHED" });
     expect(gameService.stateOf).not.toHaveBeenCalled();
   });
 });

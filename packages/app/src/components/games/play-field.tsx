@@ -4,6 +4,7 @@ import { isLow } from "@gomoku/core/games/clock";
 import { Alert } from "@gomoku/ui/game/alert";
 import { Board } from "@gomoku/ui/game/board";
 import { Button } from "@gomoku/ui/game/button";
+import { ConfirmDialog } from "@gomoku/ui/game/confirm-dialog";
 import { GameResultBanner } from "@gomoku/ui/game/game-result-banner";
 import { TurnStatus } from "@gomoku/ui/game/turn-status";
 import Link from "next/link";
@@ -31,6 +32,7 @@ import { useGameClock } from "./use-game-clock";
 export const PLAY_POLL_FAILURES_BEFORE_BANNER = 3;
 
 const NETWORK_ERROR = "Nie udało się połączyć z serwerem. Spróbuj ponownie.";
+const RESIGN_UNKNOWN_ERROR = "Nie udało się poddać partii. Spróbuj ponownie.";
 const UNKNOWN_ERROR = "Nie udało się zagrać ruchu. Spróbuj ponownie.";
 
 /** Messages of the moves the server turned down; the board is refreshed next to them (p05.8, p05.9). */
@@ -88,6 +90,11 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
   const [refusal, setRefusal] = useState<string | null>(null);
   // State alone lags a double click by one render; the ref closes that gap.
   const inFlight = useRef(false);
+  // The same for "Poddaj partię" (p05.14): the dialog stays open until the server answers.
+  const resignInFlight = useRef(false);
+  const [asking, setAsking] = useState(false);
+  const [resigning, setResigning] = useState(false);
+  const [resignError, setResignError] = useState<string | null>(null);
 
   const finished = game.status === "finished";
   const mine = game.players.find((player) => player.seat === game.you.seat);
@@ -132,6 +139,34 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
     } else {
       // The same move is sent again with the same number: the server answers a repeat with 200 (Q4).
       setFailed({ attempt, message: code === "network" ? NETWORK_ERROR : UNKNOWN_ERROR });
+    }
+  }
+
+  async function resign() {
+    if (resignInFlight.current) return;
+    resignInFlight.current = true;
+    setResigning(true);
+    setResignError(null);
+    // Resigning is idempotent on the server, so "Spróbuj ponownie" may send it again (Q5).
+    const result = await apiCall<GameView>(`/api/games/${gameId}/resign`);
+    resignInFlight.current = false;
+    setResigning(false);
+    if (result.ok) {
+      setAsking(false);
+      onState(result.data, 0);
+      return;
+    }
+    const { code } = result.error;
+    if (code === "NOT_FOUND") {
+      setAsking(false);
+      onGone();
+    } else if (code === "GAME_FINISHED" || code === "GAME_NOT_ACTIVE") {
+      // The game ended in the meantime (a five, the clock): the result is read and shown instead.
+      setAsking(false);
+      setRefusal(REFUSALS[code]!);
+      onRefresh();
+    } else {
+      setResignError(code === "network" ? NETWORK_ERROR : RESIGN_UNKNOWN_ERROR);
     }
   }
 
@@ -251,6 +286,40 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
                   ? "Dotknij przecięcia, żeby je zaznaczyć."
                   : "Poczekaj na ruch przeciwnika."}
             </p>
+          </div>
+        )}
+        {!finished && (
+          // p05.13, p05.14: any time in a game in progress, also out of turn (resignation Q1).
+          <div>
+            {/* LUKA: the confirm dialog has no slot for an error; the description carries it as an alert. */}
+            <ConfirmDialog
+              open={asking}
+              onOpenChange={(open) => {
+                if (resigning) return;
+                setResignError(null);
+                setAsking(open);
+              }}
+              trigger={
+                <Button variant="secondary" data-testid="resign">
+                  Poddaj partię
+                </Button>
+              }
+              title="Czy na pewno chcesz się poddać?"
+              description={
+                <>
+                  {resignError && (
+                    <span role="alert" className="mb-group block font-strong text-status-danger">
+                      {resignError}
+                    </span>
+                  )}
+                  Przeciwnik wygra partię.
+                </>
+              }
+              confirmLabel={resigning ? "Poddawanie…" : resignError ? "Spróbuj ponownie" : "Poddaj partię"}
+              cancelLabel="Wróć do gry"
+              confirming={resigning}
+              onConfirm={() => void resign()}
+            />
           </div>
         )}
         {finished && (

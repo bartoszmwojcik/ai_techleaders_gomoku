@@ -135,8 +135,8 @@ Ręczny test po fazie: powrót do trwającej i zakończonej partii z drugiego ur
 7. Oba motywy, 360 i 1280 px: komunikaty czytelne, bez poziomego przewijania.
 
 #### 5B — Poddanie (#87, jeden PR)
-- [ ] 5.3 Backend: `resolve` w `core`; `end_reason = resignation` już jest w `CHECK` z fazy 3 (zweryfikować, migracja tylko jeśli brakuje); `GameMoveService.resign` (wyścig z ruchem i z czasem, idempotencja, rollback przez `tx`) + route `POST /api/games/[id]/resign` (200/404/409/403, konto i gość) (#87 kroki 1–4)
-- [ ] 5.4 UI: przycisk „Poddaj partię”, dialog (fokus na „Wróć do gry”), stany p05.13–14 i wynik p06.8–9; link do partii w komunikacie blokady usunięcia konta (#37) (#87 kroki 5–6)
+- [x] 5.3 Backend: `resolve` w `core`; `end_reason = resignation` już jest w `CHECK` z fazy 3 (zweryfikować, migracja tylko jeśli brakuje); `GameMoveService.resign` (wyścig z ruchem i z czasem, idempotencja, rollback przez `tx`) + route `POST /api/games/[id]/resign` (200/404/409/403, konto i gość) (#87 kroki 1–4)
+- [x] 5.4 UI: przycisk „Poddaj partię”, dialog (fokus na „Wróć do gry”), stany p05.13–14 i wynik p06.8–9; link do partii w komunikacie blokady usunięcia konta (#37) (#87 kroki 5–6). Link do partii w komunikacie blokady usunięcia konta idzie z #37 (usuwanie konta, Faza 10 z `track.md`, jeszcze nie istnieje).
 
 #### 5C — Rewanż (#88, jeden PR)
 - [ ] 5.5 Backend: `rematchBlackSeat`, `isRematchOpen` w `core`; `RematchService.offer/accept/decline` (wyścigi, BR-13 przy przyjęciu, gość z nowym tokenem, rollback przez `tx`); route'y i rozszerzenie `GET`; migracja tylko jeśli potrzebna (kolumny rewanżu są od fazy 1) (#88 kroki 1–4)

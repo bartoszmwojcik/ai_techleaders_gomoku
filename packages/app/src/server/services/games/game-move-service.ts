@@ -7,8 +7,10 @@ import {
   decodeBitboard,
   decodeMoves,
   encodeBitboard,
+  resolveResignation,
   seatOnTurn,
   spend,
+  type GameStatus,
   type MoveCreateInput,
   type Seat,
 } from "@gomoku/core";
@@ -36,6 +38,13 @@ export const NOT_YOUR_TURN_MESSAGE = "Teraz ruch przeciwnika.";
 export const STALE_MOVE_MESSAGE = "Plansza zmieniła się — odśwież widok.";
 export const CELL_OCCUPIED_MESSAGE = "To pole jest już zajęte.";
 export const GAME_NOT_STARTED_MESSAGE = "Czekamy, aż przeciwnik otworzy partię.";
+
+type ResignRow = {
+  status: string;
+  winner_seat: number | null;
+  end_reason: string | null;
+  seat: number;
+};
 
 type GameRow = {
   status: string;
@@ -79,6 +88,18 @@ const FINISHING_MOVE_SQL = `
   returning id`;
 
 const RELEASE_SLOTS_SQL = `update game_players set is_active = false where game_id = ? and is_active`;
+
+// Resignation (resignation spec): the same locked read, narrowed to what a resignation needs.
+const LOCK_FOR_RESIGN_SQL = `
+  select g.status, g.winner_seat, g.end_reason, p.seat
+  from games g join game_players p on p.game_id = g.id
+  where g.id = ? and p.id = ?
+  for no key update of g`;
+
+const RESIGN_SQL = `
+  update games set status = 'finished', winner_seat = ?, end_reason = ?, finished_at = ?
+  where id = ? and status = 'active'
+  returning id`;
 
 const SETTLED_BY_TIME = Symbol("settled-by-time");
 
@@ -199,6 +220,54 @@ export class GameMoveService {
     });
     if (played === SETTLED_BY_TIME) throw gameFinished();
     return played;
+  }
+
+  /**
+   * Resigns the game for a participant: the opponent wins with `resignation`, both slots are
+   * freed (BR-13) in the same transaction. Allowed in any `active` game, also before the first
+   * move and out of turn. Under the row lock: an expired clock is settled first (the loss on
+   * time wins, the resignation gets `GAME_FINISHED`, thrown after the commit), a repeat of the
+   * resignation by the same player answers `200` with the state, any other finished game is
+   * `GAME_FINISHED`, `waiting` / `cancelled` is `GAME_NOT_ACTIVE`.
+   * @throws AppError 404 for a stranger; 409 `GAME_NOT_ACTIVE`, `GAME_FINISHED`
+   */
+  async resign(participant: GameParticipant, gameId: string): Promise<GameState> {
+    const resigned = await this.#em.transactional(async (tx) => {
+      const [row] = await tx.execute<ResignRow[]>(LOCK_FOR_RESIGN_SQL, [
+        gameId,
+        participant.playerId,
+      ]);
+      if (!row) throw new NotFoundError(GAME_NOT_FOUND_MESSAGE);
+
+      const now = this.#clock.now();
+      const seat = row.seat as Seat;
+
+      // Retry: this player already resigned (the winner is the other seat).
+      if (row.end_reason === "resignation" && row.winner_seat !== seat) {
+        return this.#gameService.stateOf(tx, participant, gameId, 0, now);
+      }
+
+      // Not thrown inside the transaction: the error would roll the settlement back.
+      if (await this.#timeoutSettler.settleGame(gameId, tx, now)) return SETTLED_BY_TIME;
+      const outcome = resolveResignation(row.status as GameStatus, seat);
+      if (!outcome.ok) {
+        if (outcome.reason === "finished") throw gameFinished();
+        throw new ConflictError(GAME_NOT_ACTIVE_MESSAGE, { code: "GAME_NOT_ACTIVE" });
+      }
+
+      const written = await tx.execute<{ id: string }[]>(RESIGN_SQL, [
+        outcome.result.winnerSeat,
+        outcome.result.reason,
+        now,
+        gameId,
+      ]);
+      if (written.length === 0) throw gameFinished();
+      await tx.execute(RELEASE_SLOTS_SQL, [gameId], "run");
+
+      return this.#gameService.stateOf(tx, participant, gameId, 0, now);
+    });
+    if (resigned === SETTLED_BY_TIME) throw gameFinished();
+    return resigned;
   }
 }
 
