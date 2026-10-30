@@ -6,6 +6,7 @@ import {
   INVITATION_TTL_MS,
   NotFoundError,
   READY_DEADLINE_MS,
+  UnauthorizedError,
   ValidationError,
   boardView,
   defaultNickname,
@@ -64,6 +65,7 @@ export const GAME_NOT_CANCELLABLE_MESSAGE =
   "Tej partii nie można już anulować.";
 export const OWN_WAITING_GAME_MESSAGE =
   "Masz oczekującą partię. Anuluj ją, aby utworzyć nową.";
+const SESSION_REQUIRED_MESSAGE = "Zaloguj się, aby kontynuować.";
 export const GAME_NOT_FOUND_MESSAGE = "Nie znaleziono partii.";
 
 function activeGameExists(gameId: string): ConflictError {
@@ -100,6 +102,12 @@ const START_CLOCK_SQL = `
   where id = ? and status = 'active' and turn_started_at is null
     and not exists (
       select 1 from game_players p where p.game_id = games.id and p.seen_at is null and p.id <> ?)`;
+
+// Blocks a concurrent deletion of the account (#37): inserting `game_players` takes only
+// `FOR KEY SHARE` on the user row, which does not conflict with the deletion's own lock, so
+// without this a game could appear for an account that is being deleted. First in the
+// transaction: the lock order is users, then games, then game_players.
+const LOCK_USER_SQL = `select id from users where id = ? for no key update`;
 
 // Serializes the creates of one browser (same token hash); released at the commit.
 const ADVISORY_LOCK_SQL = `select pg_advisory_xact_lock(hashtext(?))`;
@@ -232,6 +240,9 @@ export class GameService {
     const draft = this.#draft(now);
     try {
       const gameId = await this.#em.transactional(async (tx) => {
+        const locked = await tx.execute<{ id: string }[]>(LOCK_USER_SQL, [userId]);
+        // The account was deleted between the session check and now (#37).
+        if (locked.length === 0) throw new UnauthorizedError(SESSION_REQUIRED_MESSAGE);
         await closeStaleSlotsOfUser(tx, userId, now);
         return this.#insertGame(tx, draft, now, { kind: "account", userId });
       });
