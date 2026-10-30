@@ -27,14 +27,23 @@ describe("cleanupExpired", () => {
       rateLimitBuckets: 0,
       emailVerificationTokens: 0,
       passwordResetTokens: 0,
+      waitingGames: 0,
+      cancelledGames: 0,
+      guestTokens: 0,
       unverifiedUsers: null,
       errors: [],
       truncated: false,
     });
     const cutoffs = Object.fromEntries(
-      execute.mock.calls.map(([sql, params]) => [sql.match(/delete from (\w+)/)?.[1], (params[0] as Date).getTime()]),
+      execute.mock.calls.map(([sql, params]) => [
+        sql.match(/(?:delete from|update) (\w+)/)?.[1] + (sql.startsWith("update") ? ":clear" : sql.includes("status = 'waiting'") ? ":waiting" : sql.includes("status = 'cancelled'") ? ":cancelled" : ""),
+        (params[0] as Date).getTime(),
+      ]),
     );
     expect(cutoffs).toEqual({
+      "games:waiting": NOW.getTime() - HOUR,
+      "games:cancelled": NOW.getTime() - 25 * HOUR,
+      "game_players:clear": NOW.getTime() - HOUR,
       sessions: NOW.getTime() - HOUR,
       rate_limit_buckets: NOW.getTime() - 48 * HOUR,
       email_verification_tokens: NOW.getTime() - 24 * HOUR,
@@ -53,6 +62,19 @@ describe("cleanupExpired", () => {
     const tokenCall = execute.mock.calls.find(([sql]) => sql.includes("from password_reset_tokens"));
     expect(tokenCall?.[1]).toEqual([expect.any(Date), expect.any(Date), 1000]);
     expect(tokenCall?.[1]?.[0]).toEqual(tokenCall?.[1]?.[1]);
+  });
+
+  it("deletes games by their own conditions and only clears the guest token hash", async () => {
+    const { em, execute } = fakeEm(() => 0);
+    await cleanupExpired({ em, now: NOW });
+    const sqlOf = (text: string) => execute.mock.calls.map(([sql]) => sql).find((sql) => sql.includes(text))!;
+    expect(sqlOf("status = 'waiting'")).toMatch(/^delete from games where id in/);
+    expect(sqlOf("status = 'waiting'")).toContain("i.expires_at < ?");
+    expect(sqlOf("status = 'cancelled'")).toMatch(/^delete from games where id in/);
+    const clear = sqlOf("set guest_token_hash = null");
+    expect(clear).toMatch(/^update game_players set guest_token_hash = null where id in/);
+    expect(clear).not.toContain("delete");
+    expect(clear).toContain("guest_token_hash is not null");
   });
 
   it("repeats full batches until a short one", async () => {
@@ -75,7 +97,7 @@ describe("cleanupExpired", () => {
     const result = await cleanupExpired({ em, now: NOW, batchSize: 10, ruleTimeLimitMs: 3, clock });
 
     // Every rule ran (none was starved by an earlier one) and each stopped on its own budget.
-    expect(execute.mock.calls.map(([sql]) => sql.match(/delete from (\w+)/)?.[1])).toEqual(
+    expect(execute.mock.calls.map(([sql]) => sql.match(/(?:delete from|update) (\w+)/)?.[1])).toEqual(
       CLEANUP_RULES.flatMap((rule) => [rule.table, rule.table]),
     );
     expect(result).toMatchObject({ sessions: 20, rateLimitBuckets: 20, passwordResetTokens: 20, truncated: true });
@@ -95,7 +117,7 @@ describe("cleanupExpired", () => {
     expect(execute).not.toHaveBeenCalled();
     t = 0;
     await cleanupExpired({ em, now: NOW, clock: () => (t++ % 2 === 0 ? 0 : 14_999) });
-    expect(execute).toHaveBeenCalledTimes(4);
+    expect(execute).toHaveBeenCalledTimes(CLEANUP_RULES.length);
   });
 
   it("treats a missing table as an error for a required rule and keeps going", async () => {
@@ -113,7 +135,7 @@ describe("cleanupExpired", () => {
     const rules: CleanupRule[] = CLEANUP_RULES.map((rule) => ({ ...rule, optional: rule.key === "sessions" }));
     const result = await cleanupExpired({ em, now: NOW, rules });
     expect(result.sessions).toBeNull();
-    expect(result.errors.map((e) => e.rule)).toEqual(["rateLimitBuckets", "emailVerificationTokens", "passwordResetTokens"]);
+    expect(result.errors.map((e) => e.rule)).toEqual(["rateLimitBuckets", "emailVerificationTokens", "passwordResetTokens", "waitingGames", "cancelledGames", "guestTokens"]);
   });
 
   it("keeps the counts of finished rules and of rows deleted before an error", async () => {
@@ -135,7 +157,7 @@ describe("cleanupExpired", () => {
   ])("records only a code or class name for errors (%s)", async (error, code) => {
     const em = { execute: vi.fn().mockRejectedValue(error) } as never;
     const result = await cleanupExpired({ em, now: NOW });
-    expect(result.errors).toHaveLength(4);
+    expect(result.errors).toHaveLength(CLEANUP_RULES.length);
     expect(result.errors[0]).toEqual({ rule: "sessions", code });
     expect(JSON.stringify(result)).not.toContain("secret");
   });

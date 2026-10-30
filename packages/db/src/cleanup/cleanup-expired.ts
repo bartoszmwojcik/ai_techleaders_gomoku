@@ -3,7 +3,7 @@ import type { EntityManager } from "@mikro-orm/postgresql";
 import { CLEANUP_RULES, type CleanupRule } from "./rules";
 
 export const DEFAULT_BATCH_SIZE = 1000;
-/** Time budget of a single rule (4 rules x 15 s = the old 60 s overall); a slow rule cannot starve the later ones. */
+/** Time budget of a single rule (the old 60 s overall: 4 rules x 15 s = the old 60 s overall); a slow rule cannot starve the later ones. */
 export const DEFAULT_RULE_TIME_LIMIT_MS = 15_000;
 
 const UNDEFINED_TABLE = "42P01";
@@ -17,6 +17,12 @@ export type CleanupResult = {
   rateLimitBuckets: number | null;
   emailVerificationTokens: number | null;
   passwordResetTokens: number | null;
+  /** Unjoined games whose invitation expired more than 1 h ago (E02-S08). */
+  waitingGames: number | null;
+  /** Cancelled games older than 24 h (+ the 1 h window of an unjoined one). */
+  cancelledGames: number | null;
+  /** Guest token hashes cleared 1 h after the game finished (rows are kept, only the hash goes). */
+  guestTokens: number | null;
   /** Always `null` until the game participants table (#29) exists (BR-28). */
   unverifiedUsers: number | null;
   /** Rules that raised an error; the remaining rules still ran. Empty on success. */
@@ -39,7 +45,9 @@ export type CleanupOptions = {
 
 // Identifiers come from the static rules, never from callers; values are bound parameters.
 // MikroORM's `em.execute` binds `?` placeholders (not `$n`): one cutoff per `?` of the condition, then the limit.
-function batchSql({ table, primaryKey, condition }: CleanupRule): string {
+function batchSql({ table, primaryKey, condition, clearColumn }: CleanupRule): string {
+  const select = `${primaryKey} in (select ${primaryKey} from ${table} where ${condition} limit ? for update skip locked)`;
+  if (clearColumn) return `update ${table} set ${clearColumn} = null where ${select}`;
   return `delete from ${table} where ${primaryKey} in (select ${primaryKey} from ${table} where ${condition} limit ? for update skip locked)`;
 }
 
@@ -67,6 +75,9 @@ export async function cleanupExpired({
     rateLimitBuckets: 0,
     emailVerificationTokens: 0,
     passwordResetTokens: 0,
+    waitingGames: 0,
+    cancelledGames: 0,
+    guestTokens: 0,
     unverifiedUsers: null,
     errors: [],
     truncated: false,
