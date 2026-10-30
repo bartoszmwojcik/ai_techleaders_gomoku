@@ -149,6 +149,21 @@ describe("HomePage", () => {
     );
   });
 
+  it("confirms the deletion of the account to a visitor without a session (E01-S06)", async () => {
+    const html = renderToStaticMarkup(
+      await HomePage({ searchParams: Promise.resolve({ notice: "account-deleted" }) }),
+    );
+    expect(html).toContain('data-testid="notice">Konto zostało usunięte');
+  });
+
+  it("does not show the deletion notice to a signed-in player", async () => {
+    signedIn();
+    const html = renderToStaticMarkup(
+      await HomePage({ searchParams: Promise.resolve({ notice: "account-deleted" }) }),
+    );
+    expect(html).not.toContain('data-testid="notice"');
+  });
+
   it("confirms a cancelled invitation to a guest creator too (E02-S08)", async () => {
     const html = renderToStaticMarkup(await HomePage({ searchParams: Promise.resolve({ notice: "cancelled" }) }));
     expect(html).toContain('data-testid="notice">Zaproszenie anulowane');

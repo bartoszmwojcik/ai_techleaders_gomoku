@@ -9,14 +9,17 @@ import { withRequestScope } from "@/server/container";
 import { requirePageSession } from "@/server/http/auth";
 
 import { ChangePasswordForm } from "./change-password-form";
+import { DeleteAccountForm } from "./delete-account-form";
 
 export default async function AccountPage() {
   // Reads the session cookie and the database, so the page is rendered per request.
   await connection();
   const user = await requirePageSession("/account");
-  const hasActiveGame = await withRequestScope(({ cradle }) =>
-    cradle.gameParticipation.hasActiveGame(user.id),
+  // The slot the account holds: it decides the logout confirmation and what the deletion says.
+  const currentGame = await withRequestScope(({ cradle }) =>
+    cradle.gameParticipation.currentGame(user.id),
   );
+  const hasActiveGame = currentGame?.status === "active";
 
   const verified = user.emailVerifiedAt !== null;
 
@@ -39,6 +42,10 @@ export default async function AccountPage() {
       <Panel title="Zmień hasło">
         <ChangePasswordForm />
       </Panel>
+      <DeleteAccountForm
+        displayName={user.displayName}
+        currentGame={currentGame && { gameId: currentGame.gameId, status: currentGame.status }}
+      />
       <TextLink href="/" placement="standalone">
         Wróć na stronę główną
       </TextLink>

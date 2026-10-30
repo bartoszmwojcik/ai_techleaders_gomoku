@@ -41,9 +41,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   // A visitor may hold a game as a guest (E02-S08): found by the token in the cookie.
   const guestGame = user ? null : await loadGuestCurrentGame();
   const hasActiveGame = currentGame?.status === "active";
-  // Only the first `notice` counts; the only known one is the message after cancelling a game.
-  const { notice } = await searchParams;
-  const cancelled = (Array.isArray(notice) ? notice[0] : notice) === "cancelled";
+  // Only the first `notice` counts: the message after cancelling a game, or after deleting the
+  // account (E01-S06; shown only without a session, which the deletion just ended).
+  const { notice: noticeParam } = await searchParams;
+  const notice = Array.isArray(noticeParam) ? noticeParam[0] : noticeParam;
+  const cancelled = notice === "cancelled";
+  const accountDeleted = notice === "account-deleted" && !user;
 
   const cells = Array.from({ length: BOARD_SIZE * BOARD_SIZE }, (_, i) => {
     const row = Math.floor(i / BOARD_SIZE);
@@ -57,6 +60,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         <DismissibleNotice title="Zaproszenie anulowane" closeLabel="Zamknij">
           Zaproszenie zostało anulowane. Link jest już nieważny.
         </DismissibleNotice>
+      )}
+      {accountDeleted && (
+        <DismissibleNotice title="Konto zostało usunięte" closeLabel="Zamknij" />
       )}
       {user && !user.emailVerifiedAt && (
         <VerifyEmailNotice userId={user.id} email={user.email} />
