@@ -113,6 +113,8 @@ describe("the invitation pages", () => {
     await click(guest, "Graj jako gość");
     await bodyHas(guest, "Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii");
     expect(await guest.count("a[href^='/login']")).toBe(0);
+    // The nickname field pushes the button below the default viewport.
+    await guest.setViewport(1280, 900);
     await click(guest, "Rozumiem, graj jako gość");
     await guest.waitForFn("location.pathname.startsWith('/games/')");
     await bodyHas(guest, "Partia w toku");
@@ -121,7 +123,7 @@ describe("the invitation pages", () => {
 
     // The creator's page polls and moves on by itself: "Przeciwnik dołączył", then the board ("Partia w toku").
     await bodyHas(creator, "Partia w toku");
-    expect(await creator.text("main")).toContain("Gość");
+    expect(await creator.evaluate<string[]>("[...document.querySelectorAll('[data-testid=player-name]')].map((node) => node.textContent)")).toEqual(["Gracz 2 (gość)"]);
 
     // A third person: the link is spent, and the game is not theirs (404 with the same text).
     await visitor(stranger);

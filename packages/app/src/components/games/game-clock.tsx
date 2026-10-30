@@ -1,8 +1,9 @@
 import { isLow } from "@gomoku/core/games/clock";
 import { PlayerClock } from "@gomoku/ui/game/player-clock";
+import type { ReactNode } from "react";
 
 type Props = {
-  name: string;
+  name: ReactNode;
   remainingMs: number;
   /** This player's clock is running. */
   active: boolean;

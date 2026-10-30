@@ -80,6 +80,8 @@ describe("the board", () => {
     await guest.open(`${baseUrl}/invite/${code}`);
     await guest.waitFor("[data-testid=invite-page]");
     await click(guest, "Graj jako gość");
+    // The nickname field pushes the button below the default viewport.
+    await guest.setViewport(1280, 900);
     await click(guest, "Rozumiem, graj jako gość");
     await guest.waitForFn("location.pathname.startsWith('/games/')");
 

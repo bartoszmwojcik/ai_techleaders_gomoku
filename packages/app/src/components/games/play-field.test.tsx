@@ -250,9 +250,10 @@ describe("PlayField, a touch screen (p05.4)", () => {
 
 describe("PlayField, the guest and the problems of polling", () => {
   it("keeps the guest warning on the board (p05.11)", () => {
-    field({ you: { seat: 2, kind: "guest" }, players: [player(1, "Ala_7"), player(2, null, "guest")], turnSeat: 2, blackSeat: 2 });
+    field({ you: { seat: 2, kind: "guest" }, players: [player(1, "Ala_7"), player(2, "Piotr", "guest")], turnSeat: 2, blackSeat: 2 });
     expect(screen.getByText("Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii")).toBeTruthy();
-    expect(screen.getByText("Ty (Gość)")).toBeTruthy();
+    expect(screen.getByTitle("Piotr (gość)").textContent).toBe("Ty: Piotr (gość)");
+    expect(screen.getByText("Ala_7")).toBeTruthy();
   });
 
   it("counts failed reads of the state, then shows the banner with 'Sprawdź teraz' (L02)", async () => {

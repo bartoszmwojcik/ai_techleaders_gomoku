@@ -48,7 +48,7 @@ const guestOpponent = (): GameView => ({
     ...active(),
     players: [
       { seat: 1, kind: "account", displayName: "Ala_7", seen: true },
-      { seat: 2, kind: "guest", displayName: null, seen: true },
+      { seat: 2, kind: "guest", displayName: "Gracz 2", seen: true },
     ],
   });
 const failure = (code: string) => ({ ok: false, error: { code, message: "x" } });
@@ -196,11 +196,11 @@ describe("GameRoom, waiting (p03)", () => {
     expect(screen.getByRole("heading", { name: "Partia w toku" })).toBeTruthy();
   });
 
-  it("names a guest opponent 'Gość' (L14)", async () => {
+  it("names a guest opponent '{nick} (gość)' (E02-S07)", async () => {
     room(waiting());
     apiCall.mockResolvedValue({ ok: true, data: guestOpponent() });
     await tick();
-    expect(screen.getByText("Gość dołączył do partii")).toBeTruthy();
+    expect(screen.getByText("Gracz 2 (gość) dołączył do partii")).toBeTruthy();
   });
 
   it("counts failed polls, shows the banner after three and lets the player retry now (p03.10)", async () => {
@@ -349,7 +349,7 @@ describe("GameRoom, active (p04)", () => {
   it("keeps the guest warning while the guest waits for the other player to open the page (p04.4)", () => {
     room({ ...active({ you: { seat: 2, kind: "guest" } }, [false, true]), players: [
       { seat: 1, kind: "account", displayName: "Ala_7", seen: false },
-      { seat: 2, kind: "guest", displayName: null, seen: true },
+      { seat: 2, kind: "guest", displayName: "Gracz 2", seen: true },
     ] });
     expect(screen.getByRole("heading", { name: "Czekamy na otwarcie partii" })).toBeTruthy();
     expect(screen.getByText("Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii")).toBeTruthy();
@@ -358,7 +358,8 @@ describe("GameRoom, active (p04)", () => {
   it("keeps the guest warning on the page for a guest (p04.4)", () => {
     room({ ...guestOpponent(), you: { seat: 2, kind: "guest" } });
     expect(screen.getByText("Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii")).toBeTruthy();
-    expect(screen.getByText("Ty (Gość)")).toBeTruthy();
+    expect(screen.getByTitle("Gracz 2 (gość)").textContent).toBe("Ty: Gracz 2 (gość)");
+    expect(screen.getByText("Gracz 2").getAttribute("class")).toContain("truncate");
   });
 
   it("calls a deleted account 'Usunięty gracz'", () => {

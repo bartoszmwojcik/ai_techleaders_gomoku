@@ -37,7 +37,7 @@ export function InviteLanding({ state, viewer }: { state: InviteState; viewer: V
             {state === "guest-warning" && (
               <>
                 <Alert status="warning" title="Grasz bez konta">
-                  Nie zmieniaj przeglądarki w trakcie partii: stracisz do niej dostęp, a Twój zegar będzie biegł dalej. Gość nie ma nazwy ani historii.
+                  Nie zmieniaj przeglądarki w trakcie partii: stracisz do niej dostęp, a Twój zegar będzie biegł dalej. Gość nie ma historii partii.
                 </Alert>
                 <div><Button>Rozumiem, graj jako gość</Button></div>
               </>
