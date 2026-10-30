@@ -169,11 +169,12 @@ export class RematchService {
     const game = await this.#game(this.#em, gameId, now);
     if (game.status !== "finished") throw gameNotFinished();
 
-    await this.#rateLimiter.hit(
-      `rematch-offer:${hashOpaqueToken(me.user_id ?? me.id)}`,
-      REMATCH_OFFER_LIMIT,
-      REMATCH_OFFER_WINDOW_MS,
-    );
+    // The attempt is reserved BEFORE the write (so the limit cannot be raced) and given back when
+    // the conditional update refuses: a double click or `REMATCH_ALREADY_OFFERED` is no offer.
+    // The key is `hash(user id)` for an account, but `hash(participant row id)` for a guest, so a
+    // guest's limit is per game row, not per person (known limitation, see the spec).
+    const limitKey = `rematch-offer:${hashOpaqueToken(me.user_id ?? me.id)}`;
+    await this.#rateLimiter.hit(limitKey, REMATCH_OFFER_LIMIT, REMATCH_OFFER_WINDOW_MS);
     const expiresAt = new Date(now.getTime() + REMATCH_TTL_MS);
     const written = await this.#em.execute<{ id: string }[]>(OFFER_SQL, [
       me.seat,
@@ -182,6 +183,9 @@ export class RematchService {
       now,
     ]);
     if (written.length === 0) {
+      await this.#rateLimiter
+        .release(limitKey, REMATCH_OFFER_WINDOW_MS)
+        .catch(() => undefined);
       throw new ConflictError(REMATCH_ALREADY_OFFERED_MESSAGE, {
         code: "REMATCH_ALREADY_OFFERED",
       });

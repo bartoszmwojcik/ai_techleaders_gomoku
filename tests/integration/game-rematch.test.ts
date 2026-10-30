@@ -154,6 +154,24 @@ describe("RematchService.offer", () => {
   });
 });
 
+describe("RematchService.offer limit", () => {
+  it("is not spent by refused offers: ten successful ones pass, the eleventh gets 429", async () => {
+    const { gameId, p1, p2 } = await accountsGame();
+    const { rematch } = scope();
+    await rematch.offer(p1, gameId);
+    // Double clicks and offers over an open one are refused and cost nothing.
+    for (let i = 0; i < REMATCH_OFFER_LIMIT + 2; i++) {
+      await expect(rematch.offer(p1, gameId)).rejects.toMatchObject({ code: "REMATCH_ALREADY_OFFERED" });
+    }
+    await rematch.decline(p2, gameId);
+    for (let i = 1; i < REMATCH_OFFER_LIMIT; i++) {
+      await rematch.offer(p1, gameId);
+      await rematch.decline(p1, gameId);
+    }
+    await expect(rematch.offer(p1, gameId)).rejects.toBeInstanceOf(TooManyRequestsError);
+  });
+});
+
 describe("RematchService.accept", () => {
   it("creates an active rematch with swapped colours, the same seats and no invitation", async () => {
     const { gameId, u1, u2, p1, p2 } = await accountsGame({ blackSeat: 1 });

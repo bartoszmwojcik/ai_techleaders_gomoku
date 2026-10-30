@@ -52,7 +52,10 @@ function setup(options: {
       return marker ? answers[marker]! : [];
     }),
   };
-  const rateLimiter = { hit: vi.fn(async () => ({ count: 1, retryAfterSeconds: 1 })) };
+  const rateLimiter = {
+    hit: vi.fn(async () => ({ count: 1, retryAfterSeconds: 1 })),
+    release: vi.fn(async () => undefined),
+  };
   const timeoutSettler = { settleFor: vi.fn(async () => undefined), settleGame: vi.fn(), settleExpired: vi.fn() };
   const service = new RematchService({
     em: em as unknown as EntityManager,
@@ -101,6 +104,21 @@ describe("RematchService.offer", () => {
   it("refuses a second offer while one is open or accepted", async () => {
     const { service } = setup({ rows: { "set rematch_state = 'pending'": [] } });
     await expect(service.offer(me("p1"), "game-1")).rejects.toMatchObject({ status: 409, code: "REMATCH_ALREADY_OFFERED" });
+  });
+
+  it("gives the attempt back when the offer is refused, and survives a failing release", async () => {
+    const { service, rateLimiter } = setup({ rows: { "set rematch_state = 'pending'": [] } });
+    await expect(service.offer(me("p1"), "game-1")).rejects.toMatchObject({ code: "REMATCH_ALREADY_OFFERED" });
+    expect(rateLimiter.release).toHaveBeenCalledWith(`rematch-offer:${hashOpaqueToken("user-1")}`, REMATCH_OFFER_WINDOW_MS);
+
+    rateLimiter.release.mockRejectedValue(new Error("db down"));
+    await expect(service.offer(me("p1"), "game-1")).rejects.toMatchObject({ code: "REMATCH_ALREADY_OFFERED" });
+  });
+
+  it("keeps the attempt after a successful offer", async () => {
+    const { service, rateLimiter } = setup();
+    await service.offer(me("p1"), "game-1");
+    expect(rateLimiter.release).not.toHaveBeenCalled();
   });
 
   it("does not offer when the rate limit is spent", async () => {
