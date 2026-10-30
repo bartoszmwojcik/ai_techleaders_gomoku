@@ -58,9 +58,20 @@ type GameRow = {
   rematch_game_id: string | null;
   /** Computed in SQL: raw `em.execute` returns timestamps as strings, not `Date`s. */
   expired: boolean;
-  /** Whether a guest token of this game still works (BR-22). */
+  /**
+   * Whether the guest tokens of this game will still work for a whole offer window from now
+   * (BR-22), see `TOKEN_MARGIN_MS`.
+   */
   token_fresh: boolean;
 };
+
+// A guest token dies `GUEST_TOKEN_GRACE_MS` after the end. The guest who proposed claims their
+// seat in the new game with the OLD token (`claimGuestSeat`), so an acceptance must leave them
+// at least one offer window to do it: accept only while `finished_at > now - (grace - TTL)`.
+// Simpler than capping `rematch_expires_at` at offer time (no change to the offer, the view and
+// `isRematchOpen`), and it holds for every offer, whenever it was made. Account-only games
+// ignore it. An offer in that last window simply reads as unavailable at accept time.
+const TOKEN_MARGIN_MS = GUEST_TOKEN_GRACE_MS - REMATCH_TTL_MS;
 
 const READ_GAME_SQL = `
   select status, black_seat, rematch_state, rematch_offered_by_seat, rematch_game_id,
@@ -325,7 +336,8 @@ export class RematchService {
       : { gameId };
   }
 
-  // An account that was deleted, or a guest whose token is gone or expired (BR-22).
+  // An account that was deleted, or a guest whose token is gone or about to expire (BR-22), so
+  // that no seat of the new game is left without a way to be claimed.
   #unavailable(player: PlayerRow, game: GameRow): boolean {
     return player.kind === "account"
       ? player.user_id === null
@@ -371,7 +383,7 @@ export class RematchService {
   async #game(em: EntityManager, gameId: string, now: Date): Promise<GameRow> {
     const [game] = await em.execute<GameRow[]>(READ_GAME_SQL, [
       now,
-      new Date(now.getTime() - GUEST_TOKEN_GRACE_MS),
+      new Date(now.getTime() - TOKEN_MARGIN_MS),
       gameId,
     ]);
     return game!;

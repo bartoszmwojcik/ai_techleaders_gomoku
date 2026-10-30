@@ -351,6 +351,26 @@ describe("rematch with a guest", () => {
     await expect(scope().rematch.accept({ playerId: players[0]! }, gameId)).rejects.toMatchObject({ status: 409, code: "REMATCH_UNAVAILABLE" });
   });
 
+  it("accepts only while the proposing guest still has a whole offer window to claim (last minutes of the token)", async () => {
+    const minutesAgo = (m: number) => `update games set finished_at = now() - interval '${m} minutes' where id = ?`;
+    // 54 minutes after the end: the old token still has 6 minutes, longer than the 5-minute offer.
+    const early = `old-${Date.now()}-${++counter}`;
+    const a = await finishedGame([{ guestToken: early }, { userId: await insertUser() }]);
+    await scope().rematch.offer({ playerId: a.players[0]! }, a.gameId);
+    await run(minutesAgo(54), [a.gameId]);
+    const { gameId: newId } = await scope().rematch.accept({ playerId: a.players[1]! }, a.gameId);
+    // The proposer can still claim their seat in that window.
+    expect(await scope().rematch.claimGuestSeat({ playerId: a.players[0]! }, a.gameId, early)).toBe(deriveRematchToken(early, newId));
+
+    // 56 minutes after the end: an acceptance would leave a seat nobody can claim.
+    const late = `old-${Date.now()}-${++counter}`;
+    const b = await finishedGame([{ guestToken: late }, { userId: await insertUser() }]);
+    await scope().rematch.offer({ playerId: b.players[0]! }, b.gameId);
+    await run(minutesAgo(56), [b.gameId]);
+    await expect(scope().rematch.accept({ playerId: b.players[1]! }, b.gameId)).rejects.toMatchObject({ status: 409, code: "REMATCH_UNAVAILABLE" });
+    expect(await run(`select id from games where origin = 'rematch' and id in (select rematch_game_id from games where id = ?)`, [b.gameId])).toHaveLength(0);
+  });
+
   it("works between two guests: each gets a token of their own", async () => {
     const [a, b] = [`ga-${Date.now()}-${++counter}`, `gb-${Date.now()}-${++counter}`];
     const { gameId, players } = await finishedGame([{ guestToken: a, nickname: "Ala" }, { guestToken: b }]);

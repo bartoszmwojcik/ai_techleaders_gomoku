@@ -1,6 +1,7 @@
 import {
   REMATCH_OFFER_LIMIT,
   REMATCH_OFFER_WINDOW_MS,
+  GUEST_TOKEN_GRACE_MS,
   REMATCH_TTL_MS,
 } from "@gomoku/core";
 import type { EntityManager } from "@gomoku/db";
@@ -227,6 +228,13 @@ describe("RematchService.accept", () => {
     const { service, ran } = setup({ players, game });
     await expect(service.accept(me("p2"), "game-1", token)).rejects.toMatchObject({ status: 409, code: "REMATCH_UNAVAILABLE" });
     expect(ran("insert into games")).toHaveLength(0);
+  });
+
+  it("judges the guest token with a margin of one offer window before it dies", async () => {
+    const { service, ran } = setup({ players: [guest(1), account(2)], game: pending() });
+    await service.accept(me("p2"), "game-1");
+    const [, cutoff] = ran("coalesce(rematch_expires_at")[0]!.params as [Date, Date];
+    expect(cutoff).toEqual(new Date(NOW.getTime() - (GUEST_TOKEN_GRACE_MS - REMATCH_TTL_MS)));
   });
 
   it("refuses with the link when the caller has another game (BR-13)", async () => {
