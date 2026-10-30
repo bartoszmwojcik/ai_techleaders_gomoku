@@ -7,7 +7,7 @@ export const BREVO_TIMEOUT_MS = 10_000;
 
 /**
  * Delivery failure. The message is a fixed string and `code` a short identifier (`BREVO_HTTP_429`,
- * `BREVO_NETWORK`, `BREVO_TIMEOUT`), so `describeError` can log it without the API key, the
+ * `BREVO_NETWORK`, `BREVO_TIMEOUT`, `BREVO_ABORTED`), so `describeError` can log it without the API key, the
  * address, the response body or the message content (tokens, links). No `cause` is attached.
  */
 export class BrevoSendError extends Error {
@@ -69,8 +69,13 @@ export class BrevoEmailSender implements EmailSender {
         signal,
       });
     } catch {
+      // The caller's own cancellation is told apart from our 10 s limit; both only set a fixed code.
       throw new BrevoSendError(
-        signal.aborted ? "BREVO_TIMEOUT" : "BREVO_NETWORK",
+        options.signal?.aborted
+          ? "BREVO_ABORTED"
+          : timeout.aborted
+            ? "BREVO_TIMEOUT"
+            : "BREVO_NETWORK",
       );
     }
 
