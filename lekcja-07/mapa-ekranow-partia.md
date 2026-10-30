@@ -122,15 +122,16 @@ Znak ⚠ przy stanie oznacza stan bez kryterium ani decyzji (luka z sekcji 4).
 
 | ID | Ekran | Rola | Stany | Historia lub kryterium | Komponenty DS |
 |---|---|---|---|---|---|
-| p01 | Utworzenie partii (akcja „Utwórz zaproszenie” na `/`) | Zalogowany (z potwierdzonym e-mailem lub bez) | p01.1 przycisk, p01.2 tworzenie (przycisk zajęty), p01.3 masz już partię, p01.4 masz oczekującą partię ⚠, p01.5 limit utworzeń, p01.6 błąd serwera ⚠, p01.7 brak sieci ⚠ | #21/K1, K4, Q13, BR-13 | Przycisk (`loading`), Alert, Link tekstowy |
+| p01 | Utworzenie partii (akcja „Utwórz zaproszenie” na `/`; od 2026-10-30 także akcja gościa) | Zalogowany (z potwierdzonym e-mailem lub bez); niezalogowany i gość z tokenem (akcja „Zagraj ze znajomym bez konta”) | p01.1 przycisk, p01.2 tworzenie (przycisk zajęty), p01.3 masz już partię, p01.4 masz oczekującą partię ⚠, p01.5 limit utworzeń, p01.6 błąd serwera ⚠, p01.7 brak sieci ⚠, **p01.8 niezalogowany: „Zagraj ze znajomym bez konta”**, **p01.9 gość-twórca: „Masz partię”** | #21/K1, K4, Q13, BR-13; #95/K1, K2, BR-29 | Przycisk (`loading`), Alert, Link tekstowy |
 | p02 | Kod zaproszenia `/join` | Każdy (niezalogowany też) | p02.1 pole kodu, p02.2 kod za krótki, p02.3 limit prób, p02.4 kod nieważny, p02.5 sprawdzanie ⚠ | #21 UI, Q12, Q13 | Nagłówek strony, Pole formularza, Pole tekstowe, Przycisk, Alert |
-| p03 | Partia czeka na przeciwnika `/games/{id}` (status waiting) | Twórca | p03.1 domyślny (link, kod, „Ważne do”), p03.2 skopiowano, p03.3 kopiowanie niemożliwe (zaznaczenie), p03.4 „Udostępnij” niedostępne (ukryty), p03.5 przeciwnik dołączył, p03.6 potwierdzenie anulowania, p03.7 anulowanie w toku ⚠, p03.8 anulowano ⚠, p03.9 zaproszenie wygasło (24 h) ⚠, p03.10 błąd odpytywania ⚠ | #21/K1, Q3, Q5, Q6, Q22 | Nagłówek strony, Karta kodu zaproszenia, Przycisk, Dialog potwierdzenia, Alert, Szkielet |
+| p03 | Partia czeka na przeciwnika `/games/{id}` (status waiting) | Twórca (konto lub gość-twórca) | p03.1 domyślny (link, kod, „Ważne do”), p03.2 skopiowano, p03.3 kopiowanie niemożliwe (zaznaczenie), p03.4 „Udostępnij” niedostępne (ukryty), p03.5 przeciwnik dołączył, p03.6 potwierdzenie anulowania, p03.7 anulowanie w toku ⚠, p03.8 anulowano ⚠, p03.9 zaproszenie wygasło (24 h) ⚠, p03.10 błąd odpytywania ⚠, **p03.11 widok gościa-twórcy**, **p03.12 stałe ostrzeżenie gościa-twórcy ⚠**, **p03.13 zaproszenie gościa wygasło (24 h) ⚠** | #21/K1, Q3, Q5, Q6, Q22; #95/K1, K2, K5, gość Q6 | Nagłówek strony, Karta kodu zaproszenia, Przycisk, Dialog potwierdzenia, Alert, Szkielet |
 | p04 | Partia gotowa, czeka na otwarcie strony `/games/{id}` (active bez `seen_at` obu) | Twórca, zaproszony zalogowany, gość | p04.1 czekamy, aż {nazwa} otworzy partię (do 15 min), p04.2 „Partia gotowa”, p04.3 przeciwnik nie otworzył w 15 min: partia anulowana ⚠, p04.4 stałe ostrzeżenie gościa | #21/K2, K6, Q20, Q21, BR-22 | Nagłówek strony, Alert, Status tury, Zegar gracza |
 | p05 | Partia w toku `/games/{id}` | Twórca, zaproszony zalogowany, gość | p05.1 Twój ruch (czarne), p05.2 ruch przeciwnika, p05.3 mało czasu ⚠, p05.4 dotyk: kamień zaznaczony, „Postaw kamień”, p05.5 mysz: jedno kliknięcie, p05.6 wysyłanie ruchu, p05.7 błąd sieci: „Spróbuj ponownie” (ten sam ruch), p05.8 nieaktualny widok (`STALE_MOVE`) lub nie Twoja kolej: cichy powrót z komunikatem, p05.9 pole zajęte ⚠, p05.10 powrót po rozłączeniu, p05.11 gość w partii: stałe ostrzeżenie, p05.12 karta w tle: odpytywanie wstrzymane ⚠ | #22/K1, K2, K5, #23/K1, K2, K4, #24/K1, Q4, Q7, BR-05, BR-06 | Nagłówek strony, Plansza, Zegar gracza, Status tury, Przycisk, Alert |
 | p06 | Koniec partii `/games/{id}` (finished) | Twórca, zaproszony zalogowany, gość | p06.1 wygrana (linia wygrywająca), p06.2 przegrana, p06.3 przegrana na czas, p06.4 remis, p06.5 powrót po końcu (odświeżenie: wynik, bez ruchu), p06.6 gość po końcu (token ważny 1 h), p06.7 po 1 h token gościa nie działa | #22/K3, K4, #23/K3, #24/K2, K3, #21/K8 | Baner wyniku, Plansza (tylko do odczytu), Zegar gracza, Przycisk, Link tekstowy |
-| p07 | Partia: brak dostępu i błędy `/games/{id}` | Niezalogowany, osoba spoza partii, gość w innej przeglądarce | p07.1 ładowanie, p07.2 partia nie istnieje albo brak dostępu (`404`), p07.3 gość w innej przeglądarce (brak dostępu, zegar biegnie), p07.4 baza niedostępna ⚠ | #21/K7, Edge Cases, BR-06, N-05 | Szkielet, Stan błędu, Link tekstowy |
+| p07 | Partia: brak dostępu i błędy `/games/{id}` | Niezalogowany, osoba spoza partii, gość (twórca lub dołączający) w innej przeglądarce | p07.1 ładowanie, p07.2 partia nie istnieje albo brak dostępu (`404`), p07.3 gość w innej przeglądarce (brak dostępu, zegar biegnie), p07.4 baza niedostępna ⚠ | #21/K7, Edge Cases, BR-06, N-05; #95 Edge Cases | Szkielet, Stan błędu, Link tekstowy |
+| **p08** | **Gość tworzy partię: nick i ostrzeżenie** (nowy ekran 2026-10-30; adres ekranu do ustalenia przy implementacji) | Niezalogowany, gość z tokenem (twórca lub dołączający) | p08.1 pole nicku z podpowiedzią „Gracz 1” i ostrzeżeniem, p08.2 błąd nicku, p08.3 tworzenie w toku ⚠, p08.4 limit adresu (`429`), p08.5 błąd serwera (`500`, w tym adres nieustalony), p08.6 masz już partię (`409`), p08.7 masz oczekującą partię (`409`) z „Anuluj i utwórz nową”, p08.8 brak sieci ⚠ | #95/K1, K2, K4, #94/K2, K3, nick Q1, Q2, gość Q5, Q6, Q7, BR-13, BR-29 | Nagłówek strony, Pole formularza, Pole tekstowe, Alert, Przycisk (`loading`), Link tekstowy |
 
-Ekran `/invite/[code]` (s07) jest krokiem wejścia dla zaproszonego (stany z E01: niezalogowany, ostrzeżenie dla gościa, zalogowany, już uczestnik, własne zaproszenie, inna partia, oczekująca partia, limit, nieważne).
+Ekran `/invite/[code]` (s07) jest krokiem wejścia dla zaproszonego (stany z E01: niezalogowany, ostrzeżenie dla gościa, zalogowany, już uczestnik, własne zaproszenie, inna partia, oczekująca partia, limit, nieważne). Od 2026-10-30 ma w ścieżce gościa pole nicku (zmiany: sekcja 1a, „s07: zmiany z 2026-10-30”).
 
 ### 1a. Stany ekranów i ich źródła
 
@@ -144,6 +145,8 @@ Ekran `/invite/[code]` (s07) jest krokiem wejścia dla zaproszonego (stany z E01
 | p01.4 ⚠ | Własna oczekująca partia: `409 OWN_WAITING_GAME` (Q18) przy tworzeniu drugiej; spec opisuje tylko akceptację cudzego linku | #21 Q18; L01 |
 | p01.5 | Limit 10 utworzeń na godzinę: komunikat z czasem | #21 Q13 |
 | p01.6 ⚠, p01.7 ⚠ | Błąd serwera i brak sieci: treść nie jest opisana | #21 Edge Cases; L02 |
+| p01.8 | **Nowe (2026-10-30).** Na `/` dla niezalogowanego, obok „Załóż konto”, dodatkowa akcja „Zagraj ze znajomym bez konta” prowadząca na p08. Gość-dołączający (przeglądarka z tokenem innej partii) widzi `/` tak samo; próba utworzenia kończy się p08.6 (BR-13). Dla zalogowanego bez zmian (p01.1). Miejsce i ranga akcji obok „Załóż konto”: L34 | #95/K1, gość UI/UX, BR-29 |
+| p01.9 | **Nowe (2026-10-30).** Gość-twórca z trwającą partią widzi na `/` „Masz partię” z przejściem do niej (po zamknięciu karty inaczej jedyną drogą powrotu byłby zapisany link). Zakres (oczekująca, aktywna, zakończona; gość-dołączający) i treść: L27 | gość Architecture („Strona główna”), UI/UX |
 
 **p02 Kod zaproszenia `/join`**
 
@@ -166,25 +169,29 @@ Ekran `/invite/[code]` (s07) jest krokiem wejścia dla zaproszonego (stany z E01
 | p03.5 | „Przeciwnik dołączył” i przejście na p04 | #21 UI |
 | p03.6 | Dialog potwierdzenia anulowania (decyzja L04) | #21 Q5; DS; L04 |
 | p03.7 ⚠ | Anulowanie w toku (przycisk zajęty) | #21 Q5 |
-| p03.8 | Po anulowaniu twórca trafia na stronę główną; link zaproszenia pokazuje s07.9 „nieważne” | L04 |
+| p03.8 | Po anulowaniu twórca trafia na stronę główną; link zaproszenia pokazuje s07.9 „nieważne”. **Zmienione 2026-10-30:** to samo dla gościa-twórcy (anuluje przez token; na `/` widzi p01.8) | L04; #95/K2 |
 | p03.9 ⚠ | Zaproszenie wygasło po 24 h: widok pokazuje wygaśnięcie (spec Edge Cases), treści brak | #21 Q3, Edge Cases; L05 |
 | p03.10 ⚠ | Błąd odpytywania | L02 |
+| p03.11 | **Nowe (2026-10-30).** Widok gościa-twórcy: ta sama Karta kodu, „Kopiuj”, „Udostępnij”, „Anuluj zaproszenie” (z potwierdzeniem p03.6), „Czekamy na przeciwnika…”; dostęp przez token w ciasteczku tej przeglądarki; stany p03.2–p03.7 i p03.10 bez zmian | #95/K1, K2, gość UI/UX, Q6 |
+| p03.12 ⚠ | **Nowe (2026-10-30).** Stałe ostrzeżenie o utracie dostępu przy zmianie przeglądarki na ekranie oczekiwania: spec wymaga ostrzeżenia przed utworzeniem (p08.1), a stałe ostrzeżenie opisuje tylko dla partii z przeciwnikiem (p04.4, p05.11) | gość Q6, Edge Cases; L28 |
+| p03.13 ⚠ | **Nowe (2026-10-30).** Zaproszenie gościa-twórcy wygasło po 24 h: po wygaśnięciu token przestaje być rozpoznawany (`404`, p07.2), a partia jest leniwie zamykana; nie wiadomo, czy gość widzi komunikat „Zaproszenie wygasło” (jak konto, p03.9) czy `404` | #95/K5, gość Architecture; L29 |
+| p03.5, p04–p06 | **Zmienione 2026-10-30:** przeciwnik gościa jest nazwany „{nick} (gość)”, bez nicku „Gracz 2 (gość)” (miejsce 2) | nick Q1, Q3 |
 
 **p04 Partia gotowa**
 
 | Stan | Co widać | Źródło |
 |---|---|---|
-| p04.1 | „Czekamy, aż {nazwa} otworzy partię — zegar ruszy, gdy obaj będziecie na stronie (do 15 min)” | #21 UI, Q20, Q21 |
+| p04.1 | „Czekamy, aż {nazwa} otworzy partię — zegar ruszy, gdy obaj będziecie na stronie (do 15 min)”. **Zmienione 2026-10-30:** {nazwa} gościa to „{nick} (gość)” lub „Gracz 1/2 (gość)” | #21 UI, Q20, Q21; nick Q3 |
 | p04.2 | „Partia gotowa”; plansza dopiero w #22 (w prototypie przechodzi na p05) | #21 UI |
 | p04.3 ⚠ | Po 15 min bez otwarcia przez któregoś: partia anulowana, brak wpisu w historii; co widzi gracz, który otworzył | #21 Q21; L06 |
-| p04.4 | Gość widzi stałe ostrzeżenie „Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii” | #21 UI, BR-22 |
+| p04.4 | Gość (twórca lub dołączający) widzi stałe ostrzeżenie „Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii”. **Zmienione 2026-10-30:** źródło BR-29 (nie BR-22); zdanie „Gość nie ma nazwy ani historii” z prototypu i DS jest nieaktualne (gość ma nick), do poprawienia: D11 | #21 UI, BR-29 |
 
 **p05 Partia w toku**
 
 | Stan | Co widać | Źródło |
 |---|---|---|
-| p05.1 | Plansza 15×15, „Twój ruch (czarne)” (tekst, nie tylko kolor), zegary obu graczy, ostatni ruch z obramowaniem | #22 UI, #23/K1 |
-| p05.2 | „Ruch przeciwnika”, plansza tylko do odczytu, odpytywanie co 2 s | #22 UI, Q5 |
+| p05.1 | Plansza 15×15, „Twój ruch (czarne)” (tekst, nie tylko kolor), zegary obu graczy, ostatni ruch z obramowaniem. **Zmienione 2026-10-30:** nazwy przy zegarach: „{nick} (gość)” / „Gracz N (gość)” dla gościa, nazwa konta dla konta (wygląd i długi nick: L30) | #22 UI, #23/K1; nick Q3 |
+| p05.2 | „Ruch przeciwnika”, plansza tylko do odczytu, odpytywanie co 2 s. **Zmienione 2026-10-30:** etykieta przeciwnika jak w p05.1 | #22 UI, Q5; nick Q3 |
 | p05.3 ⚠ | „Mało czasu”: DS ma stan, spec nie podaje progu | DS; L07 |
 | p05.4 | Ekran dotykowy: dotknięcie zaznacza przecięcie (podgląd kamienia), „Postaw kamień” wysyła ruch | #22 Q7 |
 | p05.5 | Mysz: jedno kliknięcie wysyła ruch; klawiatura: strzałki, Enter | #22 Q7, UI |
@@ -193,7 +200,7 @@ Ekran `/invite/[code]` (s07) jest krokiem wejścia dla zaproszonego (stany z E01
 | p05.8 | `STALE_MOVE` i `NOT_YOUR_TURN`: cichy powrót do aktualnego stanu z krótkim komunikatem | #22 UI |
 | p05.9 ⚠ | `CELL_OCCUPIED` (pole zajęte): treść komunikatu | #22 API; L08 |
 | p05.10 | Powrót po rozłączeniu: „Wróciłeś do partii”, aktualny czas | #24/K1, BR-06 |
-| p05.11 | Gość: stałe ostrzeżenie nad partią | #21 UI |
+| p05.11 | Gość: stałe ostrzeżenie nad partią (twórca i dołączający). **Zmienione 2026-10-30:** BR-29 | #21 UI, BR-29 |
 | p05.13 | „Poddaj partię” pod planszą i dialog potwierdzenia | L12, BR-21 |
 | p05.14 ⚠ | Poddanie w toku; błąd | L12 |
 | p05.12 ⚠ | Karta w tle: odpytywanie wstrzymane, po powrocie wznowione; co widać po wznowieniu | #22 UI; L09 |
@@ -207,16 +214,16 @@ Ekran `/invite/[code]` (s07) jest krokiem wejścia dla zaproszonego (stany z E01
 | p06.3 | „Przegrałeś”, skończył się czas | #23/K3, BR-07 |
 | p06.4 | „Remis”, plansza pełna (wygrana ostatnim kamieniem ma pierwszeństwo) | #22/K4 |
 | p06.5 | Odświeżenie lub ponowne wejście po końcu: wynik, bez możliwości ruchu | #24/K3 |
-| p06.6 | Gość po końcu: widzi wynik do 1 h po zakończeniu | #21/K8, BR-22 |
+| p06.6 | Gość po końcu: widzi wynik do 1 h po zakończeniu. **Zmienione 2026-10-30:** BR-29; przeciwnik z kontem widzi go jako „{nick} (gość)”, partia nie trafia do historii | #21/K8, BR-29, BR-24 |
 | p06.7 | Po 1 h token gościa nie działa: `404`, patrz p07.2 | #21/K8 |
 | p06.8 | Koniec przez poddanie: „Wygrałeś, przeciwnik poddał partię” | L12 |
 | p06.9 | Koniec przez poddanie: „Przegrałeś, poddałeś partię” | L12 |
 | p06.10 | Pod wynikiem „Rewanż” (kolory odwrócone) i „Wróć do panelu głównego” | L13 |
-| p06.11 | Rewanż zaproponowany, czekamy na odpowiedź (do 5 min), możliwość wycofania | L13 |
-| p06.12 | Przeciwnik proponuje rewanż: „Przyjmij” / „Odrzuć” | L13 |
-| p06.13 | Przeciwnik aktywnie wyszedł albo odrzucił: od razu „Zaproszenie do rewanżu odrzucone”, po kliknięciu panel główny | L13 |
+| p06.11 | Rewanż zaproponowany, czekamy na odpowiedź (do 5 min), możliwość wycofania. **Zmienione 2026-10-30:** gdy przeciwnik jest gościem, jego etykieta „{nick} (gość)” | L13; nick Q3 |
+| p06.12 | Przeciwnik proponuje rewanż: „Przyjmij” / „Odrzuć”. **Zmienione 2026-10-30:** etykieta przeciwnika jak w p06.11 | L13; nick Q3 |
+| p06.13 | Przeciwnik aktywnie wyszedł albo odrzucił: od razu „Zaproszenie do rewanżu odrzucone”, po kliknięciu panel główny. **Zmienione 2026-10-30:** gość-twórca i gość-dołączający trafiają na `/` jako niezalogowani (p01.8), nie na panel konta | L13; BR-29 |
 | p06.14 ⚠ | Rewanż wygasł po 5 minutach | L13 |
-| p06.15 ⚠ | Rewanż gościa: nowy token w tej samej przeglądarce; gość nie ma historii | L13, BR-22 |
+| p06.15 ⚠ | Rewanż gościa: nowy token w tej samej przeglądarce; gość nie ma historii. **Zmienione 2026-10-30:** nick gościa zachowany w nowej partii; nazwa domyślna podąża za nowym miejscem (rewanż zamienia miejsca: „Gracz 1” nie zostaje na miejscu 2); dotyczy też gościa-twórcy | L13, BR-29; nick Architecture (#88) |
 
 **p07 Brak dostępu i błędy**
 
@@ -224,21 +231,53 @@ Ekran `/invite/[code]` (s07) jest krokiem wejścia dla zaproszonego (stany z E01
 |---|---|---|
 | p07.1 | Szkielet ładowania partii | DS |
 | p07.2 | „Ta partia nie istnieje albo nie masz do niej dostępu” z linkiem na stronę główną | #21 Edge Cases, N-05 |
-| p07.3 | Gość w innej przeglądarce lub po wyczyszczeniu ciasteczek: to samo `404`; zegar biegnie (BR-06) | #21 Edge Cases |
+| p07.3 | Gość w innej przeglądarce lub po wyczyszczeniu ciasteczek: to samo `404`; zegar biegnie (BR-06). **Rozszerzone 2026-10-30:** dotyczy też gościa-twórcy oczekującej partii (traci dostęp, zaproszenie wygasa po 24 h) | #21 Edge Cases; gość Edge Cases, Q6 |
 | p07.4 ⚠ | Baza niedostępna (`500`): treść | L02 |
+
+**p08 Gość tworzy partię: nick i ostrzeżenie** (nowy ekran 2026-10-30; wejście z p01.8)
+
+| Stan | Co widać | Źródło |
+|---|---|---|
+| p08.1 | Pole nicku z podpowiedzią „Zostaw puste, a będziesz „Gracz 1””, ostrzeżenie „Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii”, przycisk „Rozumiem, utwórz zaproszenie” (kliknięcie = `acknowledgedGuestWarning: true`, jeden ekran, jedno kliknięcie); po sukcesie przejście na p03 (p03.11). Etykieta pola, tytuł i dalsza treść ostrzeżenia: L25 | #95/K1, gość UI/UX, Q6; nick Q1, UI |
+| p08.2 | Nick niepoprawny (znaki, długość 1–24 punktów kodowych po normalizacji): `400 VALIDATION`, błąd w linii pola (`aria-describedby`), wpisana wartość zostaje. Treść komunikatu spec nie podaje (L25) | #94/K3, nick Q2, UI |
+| p08.3 ⚠ | Tworzenie w toku (przycisk zajęty) | wzór z p01.2 |
+| p08.4 | Przekroczony limit tworzenia z adresu klienta (10/godz.): `429` + `Retry-After`, komunikat z czasem jak p01.5 | #95/K4, gość Q5 |
+| p08.5 | Błąd serwera: w tym `500` przy nieustalonym adresie klienta w produkcji (fail closed). Treść jak p01.6 (L02); czy „Spróbuj ponownie” ma sens przy stałym błędzie: L26 | #95/K4, gość Q5; L02, L26 |
+| p08.6 | Przeglądarka ma już partię `waiting` lub `active`: `409 ACTIVE_GAME_EXISTS` (`data.gameId`) → „Masz już partię” z linkiem do niej (jak p01.3) | #95/K2, gość Q7, BR-13 |
+| p08.7 | Przeglądarka ma oczekującą partię: `409 OWN_WAITING_GAME` (`data.gameId`); przycisk „Anuluj i utwórz nową” (`cancelOwnWaitingGame: true`: anulowanie i utworzenie w jednej transakcji) działa tylko dla oczekującej, nie aktywnej. Czy jest potwierdzenie, czy zamiast tego przejście do istniejącej partii (jak założenie L01): L32 | #95/K2, gość Q7, Architecture |
+| p08.8 ⚠ | Brak sieci: treść jak p01.7 | L02 |
+
+Walidacja `400` dla braku `acknowledgedGuestWarning` nie jest stanem UI (przycisk wysyła pole zawsze); to kontrakt API (#95 API Contracts).
+
+**s07: zmiany z 2026-10-30** (ekran wspólny z E01; **nie edytuję `mapa-ekranow.md`**; mapa E01 wymaga aktualizacji, stany s07.10 i s07.11 są proponowane tutaj, numeracja kolejna po s07.9, ID istniejących stanów bez zmian; L31)
+
+| Stan | Zmiana | Źródło |
+|---|---|---|
+| s07.1 | Nagłówek „{nazwa twórcy} zaprasza Cię do partii Gomoku” — gdy twórcą jest gość: patrz s07.11 | nick UI/UX |
+| s07.2 | **Zmienione:** w bloku gościa nad przyciskiem „Rozumiem, graj jako gość” pole „Twój nick (opcjonalnie)” z podpowiedzią „Zostaw puste, a będziesz „Gracz 2””, pod ostrzeżeniem o zmianie przeglądarki (Q11 z #21); jedno kliknięcie. Zdanie „Gość nie ma nazwy ani historii” (prototyp, DS) nieaktualne (D11) | #94/K1, K2, nick UI/UX |
+| s07.10 | **Nowe (propozycja).** Błąd nicku w s07.2: `400 VALIDATION`, błąd w linii pola, wpisana wartość zostaje; nick przy `as = user` jest błędem API, nie stanem UI (opcji nicku zalogowany nie ma, s07.3) | #94/K3 |
+| s07.11 | **Nowe (propozycja).** Zaproszenie od gościa-twórcy: nagłówek „{nick} (gość) zaprasza Cię do partii” (bez nicku „Gracz 1 (gość)”); `creator_id NULL` nie oznacza „konta usuniętego”, rozróżnia `kind`; dostępny dla niezalogowanego (s07.1) i zalogowanego (s07.3) | nick UI/UX, gość Architecture („Strona zaproszenia i preview”) |
+| s07.5 | Własne zaproszenie gościa-twórcy (ten sam token): `409 OWN_INVITATION` → przekierowanie do partii jak dla konta | gość Edge Cases |
+| s07.6, s07.7 | Gość z tokenem innej partii (twórca oczekującej lub aktywnej) otwiera cudzy link: `409`. Czy gość widzi „Masz oczekującą partię” i „Anuluj moją partię i dołącz” jak konto: L35 | #95/K2; L35 |
+| s07.3 | Zalogowany bez zmian (bez opcji gościa i bez pola nicku, `409 GUEST_NOT_ALLOWED`) | #21 Q19 |
+
+Notatka dla E01 (`mapa-ekranow.md`): do zaktualizowania s07 (powyżej), s04.3 (akcja p01.8 obok „Załóż konto”), s01 i s02 (komórki „z aktywną partią: niedostępne” i L14, L23, L26 — blokada gościa z partią; decyzja kierunkowa 3 z 2026-10-30: **bez blokady**, patrz L33) oraz odwołania do BR-22 (zastąpione przez BR-29).
 
 Stan „pusty” nie dotyczy tych ekranów (nie ma list).
 
 ### 1b. Role i dostęp
 
-| Ekran | Twórca | Zaproszony zalogowany | Gość (token) | Niezalogowany | Spoza partii |
-|---|---|---|---|---|---|
-| p01 `/` „Utwórz zaproszenie” | tak | tak | brak dostępu (BR-22) | brak (przycisku nie ma, `/` ma „Załóż konto”) | n/d |
-| p02 `/join` | tak | tak | tak | tak | tak |
-| s07 `/invite/[code]` | przekierowanie do partii | „Dołącz do partii” | po ostrzeżeniu dołącza | trzy wybory | zob. stany s07 |
-| p03 `/games/{id}` waiting | tak | brak (jeszcze nie uczestnik) | brak | brak | `404` |
-| p04, p05, p06 `/games/{id}` | tak | tak | tak (w tej przeglądarce) | `404` | `404` |
-| p07 | | | gość w innej przeglądarce: `404` | `404` | `404` |
+Role gościa od 2026-10-30 (BR-29): **gość-twórca** = przeglądarka z tokenem miejsca 1 (widzi swoją oczekującą lub trwającą partię, może ją anulować, dopóki oczekuje; nie widzi lobby ani historii, bo ich nie ma); **gość-dołączający** = token miejsca 2. Oba tokeny to ciasteczko jednej przeglądarki, ważne dla oczekującej partii do wygaśnięcia zaproszenia (24 h), potem do końca partii + 1 h. Cudza przeglądarka (inna przeglądarka tej samej osoby, wyczyszczone ciasteczka, osoba spoza partii) dostaje `404` (p07.2, p07.3). Gość z kontem w tej samej przeglądarce nie jest blokowany (kierunkowa 3).
+
+| Ekran | Twórca (konto) | Zaproszony zalogowany | Gość-twórca (token) | Gość-dołączający (token) | Niezalogowany | Spoza partii |
+|---|---|---|---|---|---|---|
+| p01 `/` „Utwórz zaproszenie” | tak | tak | jak niezalogowany; p01.9 „Masz partię”; nowa partia: p08.6 lub p08.7 (`409`) | jak niezalogowany; nowa partia przy trwającej: p08.6 | brak przycisku; p01.8 „Zagraj ze znajomym bez konta” | n/d |
+| p08 ekran gościa-twórcy | brak (konto używa p01.1) | brak | tak; `409` przy własnej partii (p08.6, p08.7) | tak; `409` przy trwającej partii (p08.6) | tak | n/d |
+| p02 `/join` | tak | tak | tak | tak | tak | tak |
+| s07 `/invite/[code]` | przekierowanie do partii | „Dołącz do partii” | własny link: przekierowanie (s07.5); cudzy: `409` (L35) | po ostrzeżeniu i nicku dołącza (s07.2) | trzy wybory | zob. stany s07 |
+| p03 `/games/{id}` waiting | tak | brak (jeszcze nie uczestnik) | tak, w tej przeglądarce (p03.11–p03.13); anuluje | brak | brak | `404` |
+| p04, p05, p06 `/games/{id}` | tak | tak | tak (w tej przeglądarce) | tak (w tej przeglądarce) | `404` | `404` |
+| p07 | | | inna przeglądarka lub wygasłe zaproszenie: `404` | inna przeglądarka: `404` | `404` | `404` |
 
 ## 2. Scenariusze do przełączania w prototypie
 
