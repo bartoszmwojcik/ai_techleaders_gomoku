@@ -22,7 +22,6 @@ afterAll(async () => {
   await orm.close();
   for (const browser of [first, second]) {
     await browser.setHeaders({});
-    await browser.setMedia("light");
     await browser.clearCookies();
     await browser.close();
   }
@@ -63,6 +62,12 @@ async function signedUp(browser: Browser) {
 
 const bodyHas = (browser: Browser, text: string) =>
   browser.waitForFn(`document.body.innerText.includes(${JSON.stringify(text)})`);
+/** The theme comes from the cookie on the server: set it and load the game again. */
+async function inTheme(browser: Browser, scheme: "dark" | "light", gameId: string) {
+  await browser.setCookie("gomoku_theme", scheme, baseUrl);
+  await browser.open(`${baseUrl}/games/${gameId}`);
+  await browser.waitFor("[data-slot=clock]");
+}
 const shot = async (browser: Browser, name: string) => {
   if (shotsDir) await browser.run("screenshot", `${shotsDir}/${name}.png`);
 };
@@ -139,11 +144,11 @@ describe("the clock on the board", () => {
     await black.setViewport(360, 800);
     expect(await horizontalOverflow(black)).toBe(false);
     await shot(black, "p05-3-malo-czasu-360-light");
-    await black.setMedia("dark");
+    await inTheme(black, "dark", gameId);
     await shot(black, "p05-3-malo-czasu-360-dark");
     await black.setViewport(1280, 900);
     await shot(black, "p05-3-malo-czasu-1280-dark");
-    await black.setMedia("light");
+    await inTheme(black, "light", gameId);
     // A reload keeps the low state (the server value, not a local leftover).
     await black.open(`${baseUrl}/games/${gameId}`);
     await black.waitForFn("document.querySelectorAll('[data-slot=clock][data-low]').length === 1");
@@ -164,9 +169,10 @@ describe("the clock on the board", () => {
     await black.setViewport(360, 800);
     expect(await horizontalOverflow(black)).toBe(false);
     await shot(black, "p06-3-przegrana-na-czas-360-light");
-    await black.setMedia("dark");
+    await inTheme(black, "dark", gameId);
+    expect(await horizontalOverflow(black)).toBe(false);
     await shot(black, "p06-3-przegrana-na-czas-360-dark");
-    await black.setMedia("light");
+    await inTheme(black, "light", gameId);
     await black.setViewport(1280, 900);
     const [ended] = await run(`select status, end_reason, winner_seat from games where id = ?`, [gameId]);
     expect(ended).toMatchObject({ status: "finished", end_reason: "timeout", winner_seat: blackSeat === 1 ? 2 : 1 });
