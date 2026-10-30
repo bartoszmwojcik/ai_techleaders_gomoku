@@ -64,3 +64,9 @@ Jedna faza, jeden PR (`Closes` nowe zgłoszenie E02-S05) po #22 i #23.
 6. Dokumentacja, link do partii w komunikacie blokady usunięcia konta (#37), lekcja jeśli przegląd wykaże korektę.
 
 > **Adnotacja 2026-10-30 (BR-29 / D-27, E02-S08):** gość (twórca lub dołączający) może się poddać tak samo jak konto, przez `resolveParticipant` (token przeglądarki); gość-twórca oczekującej partii (`waiting`) jej nie „poddaje”, tylko anuluje (`POST /api/games/{id}/cancel`, E02-S08). Etykieta przeciwnika w komunikacie wyniku to „{nick} (gość)”.
+
+## Adnotacja z implementacji (zadanie 5.3, backend)
+
+- Migracji nie było: `resignation` jest w `games_end_reason_check` od fazy 3 (krok 2 planu pominięty).
+- Funkcja czysta nazywa się `resolveResignation(status, seat)` (plik `core/src/games/resign.ts`), nie `resolve`.
+- Ponowne poddanie po `resignation`: `200` dla gracza, który się poddał (zwycięzca ≠ jego miejsce); dla zwycięzcy `409 GAME_FINISHED`. Odpowiedź ma `after = 0` (pełna lista ruchów jak `GET` bez parametru).
