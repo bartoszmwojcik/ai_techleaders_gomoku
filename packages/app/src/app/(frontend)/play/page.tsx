@@ -1,6 +1,7 @@
 import { Alert } from "@gomoku/ui/game/alert";
 import { Button } from "@gomoku/ui/game/button";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { connection } from "next/server";
 
 import { getCurrentUser } from "@/server/http/auth";
@@ -27,7 +28,7 @@ export default async function PlayPage() {
           </Alert>
           <div>
             <Button asChild>
-              <a href="/">Wróć na stronę główną</a>
+              <Link href="/">Wróć na stronę główną</Link>
             </Button>
           </div>
         </>
