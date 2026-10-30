@@ -150,9 +150,12 @@ Specyfikacje: `.ai/specs/2026-10-30-participant-nickname.md`, `.ai/specs/2026-10
 - [x] 6.2 Rewizja klikalnego prototypu (`prototypes/partia-z-zaproszenia`): stany gościa-twórcy i nicku; przegląd właściciela (etap C zbudowany i zatwierdzony przez właściciela 2026-10-30; luki L25–L35 rozstrzygnięte)
 - [x] 6.3 E02-S07 backend: `nicknameSchema`/`defaultNickname` w `core`, kolumna `nickname` + `CHECK`-i (expand-only), `accept` i widok z nickiem, testy
 - [x] 6.4 E02-S07 UI: pole nicku w s07, „{nick} (gość)”
-- [ ] 6.5 E02-S08 slot gościa (refaktor): `GUEST_TOKEN_VALID_SQL` dla `waiting`, `EXPIRE_WAITING_OF_GUEST`, `settleForGuest`, ciasteczko ze zmiennym czasem życia, `cancel` przez uczestnika
-- [ ] 6.6 Sprzątanie `games` (#39, część): wygasłe `waiting`, stare `cancelled`, tokeny gości
-- [ ] 6.7 E02-S08 backend: `create` dla gościa (limit adresu, BR-13 przez token + blokada doradcza), `POST /api/games` bez sesji
+- [x] 6.5 E02-S08 slot gościa (refaktor): `GUEST_TOKEN_VALID_SQL` dla `waiting`, `EXPIRE_WAITING_OF_GUEST`, `settleForGuest`, ciasteczko ze zmiennym czasem życia, `cancel` przez uczestnika
+  - Zrobione: token twórcy ważny dla `waiting` i dla wygasłej niedołączonej partii przez 1 h od `expires_at` (L29); `settleForGuest`; `guestCookieMaxAge`; `cancel(participant, gameId)` przez `resolveParticipant`. Przy okazji poprawka: dołączenie gościa do partii gościa nie blokuje użytkowników (puste `in ()`). Testy: `tests/integration/guest-slot.test.ts`.
+- [x] 6.6 Sprzątanie `games` (#39, część): wygasłe `waiting`, stare `cancelled`, tokeny gości
+  - Zrobione: reguły `waitingGames` (po oknie 1 h), `cancelledGames` (25 h od utworzenia), `guestTokens` (zerowanie hasha po `finished_at` + 1 h; reguła typu „update” przez `clearColumn`); wynik `db:cleanup` ma trzy nowe pola. README: „Sprzątanie”.
+- [x] 6.7 E02-S08 backend: `create` dla gościa (limit adresu, BR-13 przez token + blokada doradcza), `POST /api/games` bez sesji
+  - Zrobione: `GameService.create(GameCreator)`, `createGuestGameSchema`, `POST /api/games` bez sesji, `creatorKind` w podglądzie zaproszenia, `GameParticipation.currentGameOfGuest`. Odstępstwo od specyfikacji: nowa partia gościa przejmuje token niesiony przez przeglądarkę (inaczej blokada doradcza nie widziałaby partii z równoległego żądania). Testy: `guest-create.test.ts`, `game-guest-create-api.test.ts`. UI (6.8) zostaje.
 - [ ] 6.8 E02-S08 UI: „Zagraj ze znajomym bez konta”, gość-twórca w p03, „Masz partię” gościa
 - [ ] 6.9 Dokumentacja, zgłoszenia E02-S07/E02-S08, adnotacje w #87/#88 i `account-deletion`
 
