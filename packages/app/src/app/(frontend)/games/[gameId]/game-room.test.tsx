@@ -10,16 +10,25 @@ vi.mock("@/lib/api-client", () => ({ apiCall }));
 
 import type { GameView } from "@/server/http/game-view";
 
-import { formatValidUntil, GameRoom, JOIN_STEP_MS, POLL_INTERVAL_MS } from "./game-room";
+import { formatValidUntil, GameRoom, JOIN_STEP_MS, PLAY_POLL_INTERVAL_MS, POLL_INTERVAL_MS } from "./game-room";
+
+vi.setConfig({ testTimeout: 20_000 });
 
 const EXPIRES = "2026-10-30T09:00:00.000Z";
+const NO_BOARD = { moveCount: 0, blackSeat: null, turnSeat: null, moves: [], result: null } as const;
 const waiting = (): GameView => ({
+  ...NO_BOARD,
+  moves: [],
   status: "waiting",
   you: { seat: 1, kind: "account" },
   players: [{ seat: 1, kind: "account", displayName: "Ala_7", seen: true }],
   invitation: { code: "ABCD-EFGH", url: "http://localhost:3000/invite/ABCD-EFGH", expiresAt: EXPIRES },
 });
 const active = (over: Partial<GameView> = {}, seen = [true, true]): GameView => ({
+  ...NO_BOARD,
+  moves: [],
+  blackSeat: 1,
+  turnSeat: 1,
   status: "active",
   you: { seat: 1, kind: "account" },
   players: [
@@ -40,6 +49,13 @@ const failure = (code: string) => ({ ok: false, error: { code, message: "x" } })
 const room = (initial: GameView, ownWaitingNotice = false) =>
   render(<GameRoom gameId="g1" initial={initial} ownWaitingNotice={ownWaitingNotice} />);
 const tick = (ms = POLL_INTERVAL_MS) => act(async () => void (await vi.advanceTimersByTimeAsync(ms)));
+/** jsdom has no `matchMedia`: a mouse (`false`) or a touch screen (`true`). */
+function stubPointer(coarse: boolean) {
+  const query = { matches: coarse, addEventListener: vi.fn(), removeEventListener: vi.fn() };
+  Object.defineProperty(window, "matchMedia", { configurable: true, writable: true, value: vi.fn(() => query) });
+}
+// Clicking through user-event walks all 225 cells of the board: far too slow, a plain click is enough there.
+const press = (element: HTMLElement) => act(async () => element.click());
 const user = () => userEvent.setup({ delay: null });
 
 beforeEach(() => {
@@ -48,6 +64,7 @@ beforeEach(() => {
   apiCall.mockReset().mockResolvedValue({ ok: true, data: waiting() });
   Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } });
   Object.defineProperty(navigator, "share", { configurable: true, value: undefined });
+  stubPointer(false);
 });
 afterEach(() => {
   cleanup();
@@ -123,7 +140,7 @@ describe("GameRoom, waiting (p03)", () => {
     room(waiting());
     expect(apiCall).not.toHaveBeenCalled();
     await tick();
-    expect(apiCall).toHaveBeenCalledWith("/api/games/g1", { method: "GET" });
+    expect(apiCall).toHaveBeenCalledWith("/api/games/g1?after=0", { method: "GET" });
     await tick();
     expect(apiCall).toHaveBeenCalledTimes(2);
     apiCall.mockResolvedValue({ ok: true, data: active() });
@@ -149,7 +166,7 @@ describe("GameRoom, waiting (p03)", () => {
     expect(screen.getByRole("heading", { name: "Przeciwnik dołączył" })).toBeTruthy();
     expect(screen.getByText("Kuba_P dołączył do partii")).toBeTruthy();
     await tick(JOIN_STEP_MS);
-    expect(screen.getByRole("heading", { name: "Partia gotowa" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Partia w toku" })).toBeTruthy();
   });
 
   it("moves on at once with the button", async () => {
@@ -157,7 +174,7 @@ describe("GameRoom, waiting (p03)", () => {
     apiCall.mockResolvedValue({ ok: true, data: active() });
     await tick();
     await user().click(screen.getByRole("button", { name: "Przejdź do partii" }));
-    expect(screen.getByRole("heading", { name: "Partia gotowa" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Partia w toku" })).toBeTruthy();
   });
 
   it("names a guest opponent 'Gość' (L14)", async () => {
@@ -256,7 +273,7 @@ describe("GameRoom, cancelling (p03.6-p03.8)", () => {
     const u = await openDialog();
     await u.click(screen.getByRole("button", { name: "Tak, anuluj zaproszenie" }));
     expect(screen.getByText("Przeciwnik zdążył dołączyć, zanim anulowałeś")).toBeTruthy();
-    expect(apiCall).toHaveBeenLastCalledWith("/api/games/g1", { method: "GET" });
+    expect(apiCall).toHaveBeenLastCalledWith("/api/games/g1?after=0", { method: "GET" });
     expect(replace).not.toHaveBeenCalled();
   });
 
@@ -302,21 +319,21 @@ describe("GameRoom, active (p04)", () => {
       screen.getByText("Czekamy, aż Ala_7 otworzy partię — zegar ruszy, gdy obaj będziecie na stronie (do 15 min)"),
     ).toBeTruthy();
     expect(screen.getByText("Ty (Kuba_P)")).toBeTruthy();
-    apiCall.mockResolvedValue({ ok: true, data: active({ you: { seat: 2, kind: "account" } }, [true, true]) });
+    // Both opened the page: the board takes over (own turn, so nothing more to poll).
+    apiCall.mockResolvedValue({ ok: true, data: active({ you: { seat: 2, kind: "account" }, turnSeat: 2 }, [true, true]) });
     await tick();
-    expect(screen.getByRole("heading", { name: "Partia gotowa" })).toBeTruthy();
-    await tick(POLL_INTERVAL_MS * 3);
+    expect(screen.getByRole("heading", { name: "Partia w toku" })).toBeTruthy();
+    await tick(PLAY_POLL_INTERVAL_MS * 3);
     expect(apiCall).toHaveBeenCalledTimes(1);
   });
 
-  it("shows both clocks at 10:00 and no polling when both opened the page (p04.2)", async () => {
-    room(active());
-    expect(screen.getByRole("heading", { name: "Partia gotowa" })).toBeTruthy();
-    expect(screen.getAllByText("10:00").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText("Ty (Ala_7)")).toBeTruthy();
-    await tick(POLL_INTERVAL_MS * 2);
-    expect(apiCall).not.toHaveBeenCalled();
-    expect(screen.queryByText(/Grasz bez konta/)).toBeNull();
+  it("keeps the guest warning while the guest waits for the other player to open the page (p04.4)", () => {
+    room({ ...active({ you: { seat: 2, kind: "guest" } }, [false, true]), players: [
+      { seat: 1, kind: "account", displayName: "Ala_7", seen: false },
+      { seat: 2, kind: "guest", displayName: null, seen: true },
+    ] });
+    expect(screen.getByRole("heading", { name: "Czekamy na otwarcie partii" })).toBeTruthy();
+    expect(screen.getByText("Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii")).toBeTruthy();
   });
 
   it("keeps the guest warning on the page for a guest (p04.4)", () => {
@@ -335,6 +352,8 @@ describe("GameRoom, active (p04)", () => {
 
 describe("GameRoom, ended", () => {
   const cancelledTwo = (seenByYou: boolean): GameView => ({
+    ...NO_BOARD,
+    moves: [],
     status: "cancelled",
     you: { seat: 1, kind: "account" },
     players: [
@@ -369,8 +388,121 @@ describe("GameRoom, ended", () => {
     expect(apiCall).not.toHaveBeenCalled();
   });
 
-  it("only points home for a finished game until the result screen exists", () => {
-    room(active({ status: "finished" }));
-    expect(screen.getByRole("heading", { name: "Partia zakończona" })).toBeTruthy();
+  it("shows the result of a finished game and does not poll it (p06)", async () => {
+    room(active({ status: "finished", turnSeat: null, result: { winnerSeat: 1, reason: "five_in_row", winLine: [0, 1, 2, 3, 4] } }));
+    expect(screen.getByRole("heading", { name: "Koniec partii" })).toBeTruthy();
+    expect(screen.getByText("Wygrałeś")).toBeTruthy();
+    await tick(PLAY_POLL_INTERVAL_MS * 3);
+    expect(apiCall).not.toHaveBeenCalled();
+  });
+});
+
+describe("GameRoom, play (p05, p06)", () => {
+  const hide = (hidden: boolean) =>
+    act(() => {
+      Object.defineProperty(document, "visibilityState", { configurable: true, value: hidden ? "hidden" : "visible" });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+  afterEach(() => hide(false));
+
+  const theirTurn = (moves: number[]) => active({ turnSeat: 2, moveCount: moves.length, moves });
+  const stonesOnBoard = () => [...document.querySelectorAll("[aria-label]")].filter((b) => /(czarny|biały) kamień/.test(b.getAttribute("aria-label") ?? ""));
+
+  it("reads only the new moves every 2 s while the opponent is on turn and merges them", async () => {
+    room(theirTurn([112]));
+    apiCall.mockResolvedValue({ ok: true, data: active({ turnSeat: 1, moveCount: 2, moves: [113] }) });
+    await tick(PLAY_POLL_INTERVAL_MS);
+    expect(apiCall).toHaveBeenCalledWith("/api/games/g1?after=1", { method: "GET" });
+    expect(stonesOnBoard()).toHaveLength(2);
+    expect(screen.getByText("Twój ruch (czarne)")).toBeTruthy();
+    // Own turn: nothing to read.
+    await tick(PLAY_POLL_INTERVAL_MS * 3);
+    expect(apiCall).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops polling when the game ends and shows the result with the winning line", async () => {
+    room(theirTurn([112, 0, 113, 1, 114, 2, 115, 3]));
+    apiCall.mockResolvedValue({
+      ok: true,
+      data: active({ status: "finished", turnSeat: null, moveCount: 9, moves: [116], result: { winnerSeat: 2, reason: "five_in_row", winLine: [112, 113, 114, 115, 116] } }),
+    });
+    await tick(PLAY_POLL_INTERVAL_MS);
+    expect(screen.getByText("Przegrałeś")).toBeTruthy();
+    expect(stonesOnBoard()).toHaveLength(9);
+    await tick(PLAY_POLL_INTERVAL_MS * 3);
+    expect(apiCall).toHaveBeenCalledTimes(1);
+  });
+
+  it("counts failed reads during play and recovers (L02)", async () => {
+    room(theirTurn([112]));
+    apiCall.mockResolvedValue(failure("network"));
+    await tick(PLAY_POLL_INTERVAL_MS * 3);
+    expect(screen.getByText("Nie udało się sprawdzić stanu partii. Ponawiamy próby.")).toBeTruthy();
+    apiCall.mockResolvedValue({ ok: true, data: theirTurn([112]) });
+    await press(screen.getByText("Sprawdź teraz").closest("button")!);
+    await tick(0);
+    expect(screen.queryByText(/Nie udało się sprawdzić/)).toBeNull();
+  });
+
+  it("shows the 404 text when the game turns out not to be the visitor's", async () => {
+    room(theirTurn([112]));
+    apiCall.mockResolvedValue(failure("NOT_FOUND"));
+    await tick(PLAY_POLL_INTERVAL_MS);
+    expect(screen.getByText("Ta partia nie istnieje albo nie masz do niej dostępu")).toBeTruthy();
+  });
+
+  it("pauses in a hidden tab and reads the state at once on coming back (p05.12)", async () => {
+    room(theirTurn([112]));
+    hide(true);
+    await tick(PLAY_POLL_INTERVAL_MS * 3);
+    expect(apiCall).not.toHaveBeenCalled();
+    apiCall.mockResolvedValue({ ok: true, data: theirTurn([112]) });
+    hide(false);
+    await tick(0);
+    expect(apiCall).toHaveBeenCalledTimes(1);
+    await tick(PLAY_POLL_INTERVAL_MS);
+    expect(apiCall).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not read the state on coming back to a game that is over", async () => {
+    room(active({ status: "finished", turnSeat: null, result: { winnerSeat: 1, reason: "draw", winLine: null } }));
+    hide(true);
+    hide(false);
+    await tick(0);
+    expect(apiCall).not.toHaveBeenCalled();
+  });
+
+  it("plays a move: the answer lands on the board and the opponent is polled next", async () => {
+    room(active({ moveCount: 0 }));
+    apiCall.mockResolvedValue({ ok: true, data: active({ turnSeat: 2, moveCount: 1, moves: [112] }) });
+    await press(document.querySelector<HTMLElement>('[aria-label="Kolumna H, rząd 8, puste"]')!);
+    await tick(0);
+    expect(apiCall).toHaveBeenCalledWith("/api/games/g1/moves", { body: { x: 7, y: 7, moveNumber: 1 } });
+    expect(screen.getAllByText("Ruch przeciwnika")).toHaveLength(2);
+    expect(stonesOnBoard()).toHaveLength(1);
+    apiCall.mockResolvedValue({ ok: true, data: active({ turnSeat: 1, moveCount: 2, moves: [113] }) });
+    await tick(PLAY_POLL_INTERVAL_MS);
+    expect(apiCall).toHaveBeenLastCalledWith("/api/games/g1?after=1", { method: "GET" });
+    expect(stonesOnBoard()).toHaveLength(2);
+  });
+
+  it("shows the 404 text when a move finds the game gone", async () => {
+    room(active({ moveCount: 0 }));
+    apiCall.mockResolvedValue(failure("NOT_FOUND"));
+    await press(document.querySelector<HTMLElement>('[aria-label="Kolumna H, rząd 8, puste"]')!);
+    await tick(0);
+    expect(screen.getByText("Ta partia nie istnieje albo nie masz do niej dostępu")).toBeTruthy();
+  });
+
+  it("refreshes after a refused move (STALE_MOVE) and shows the opponent's move", async () => {
+    room(active({ moveCount: 0 }));
+    apiCall.mockImplementation(async (path: string) =>
+      path.includes("/moves") ? failure("STALE_MOVE") : { ok: true, data: active({ turnSeat: 1, moveCount: 1, moves: [113] }) },
+    );
+    await press(document.querySelector<HTMLElement>('[aria-label="Kolumna H, rząd 8, puste"]')!);
+    await tick(0);
+    expect(screen.getByText("Plansza była nieaktualna i została odświeżona. Spróbuj ponownie.")).toBeTruthy();
+    expect(apiCall).toHaveBeenLastCalledWith("/api/games/g1?after=0", { method: "GET" });
+    expect(stonesOnBoard()).toHaveLength(1);
   });
 });

@@ -1,18 +1,14 @@
-import { NotFoundError, type GameStatus, type ParticipantKind, type Seat } from "@gomoku/core";
+import { NotFoundError } from "@gomoku/core";
 
 import { withRequestScope } from "../container";
+import type { GameState } from "../services/games/game-service";
 import { resolveParticipant } from "./participant";
 
-/** The state of a game as the page and `GET /api/games/[id]` carry it (dates as ISO strings). */
-export type GameView = {
-  status: GameStatus;
-  you: { seat: Seat; kind: ParticipantKind };
-  players: {
-    seat: Seat;
-    kind: ParticipantKind;
-    displayName: string | null;
-    seen: boolean;
-  }[];
+/**
+ * The state of a game as the page and `GET /api/games/[id]` carry it (dates as ISO strings).
+ * On the client `moves` holds all moves so far: polling merges the new ones into it.
+ */
+export type GameView = Omit<GameState, "invitation"> & {
   /** Only for the creator while the game waits. */
   invitation?: { code: string; url: string; expiresAt: string };
 };

@@ -115,12 +115,12 @@ describe("the invitation pages", () => {
     expect(await guest.count("a[href^='/login']")).toBe(0);
     await click(guest, "Rozumiem, graj jako gość");
     await guest.waitForFn("location.pathname.startsWith('/games/')");
-    await bodyHas(guest, "Partia gotowa");
+    await bodyHas(guest, "Partia w toku");
     expect(await guest.text("main")).toContain("Grasz bez konta");
     expect(await pathOf(guest)).toBe(await pathOf(creator));
 
-    // The creator's page polls and moves on by itself: "Przeciwnik dołączył", then "Partia gotowa".
-    await bodyHas(creator, "Partia gotowa");
+    // The creator's page polls and moves on by itself: "Przeciwnik dołączył", then the board ("Partia w toku").
+    await bodyHas(creator, "Partia w toku");
     expect(await creator.text("main")).toContain("Gość");
 
     // A third person: the link is spent, and the game is not theirs (404 with the same text).
@@ -192,9 +192,9 @@ describe("the invitation pages", () => {
     // The creator made the game over the API and never opened its page (Q20): the joiner waits for them.
     await bodyHas(guest, `Czekamy, aż ${owner.displayName} otworzy partię`);
     expect(await guest.text("main")).not.toContain("Grasz bez konta");
-    // The creator opens the page: the joiner's polling moves on to "Partia gotowa".
+    // The creator opens the page: the joiner's polling moves on to the board ("Partia w toku").
     expect((await fetch(`${baseUrl}/games/${gameId}`, { headers: { cookie: owner.cookie } })).status).toBe(200);
-    await bodyHas(guest, "Partia gotowa");
+    await bodyHas(guest, "Partia w toku");
 
     // Both go straight to the game from the link (s07.4, s07.5).
     await guest.open(`${baseUrl}/invite/${code}`);

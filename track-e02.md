@@ -71,7 +71,23 @@ Ręczny test po fazie: partia przez `curl`/dwie karty do piątki w linii, remis 
 - [x] 3.2 Walidator `moveCreateSchema`, encje/migracja kolumn planszy (`stones_*` bit(225), `moves` bytea, `CHECK`-i), losowanie koloru (#22 kroki 6–8)
 - [x] 3.3 `GameMoveService.play`, `POST /api/games/[id]/moves`, rozszerzony `GET` z `after`, `result`, `winLine` (#22 kroki 9–10)
 - [x] 3.4 Testy integracyjne: wyścigi, idempotencja, wygrana ostatnim kamieniem (#22 krok 11)
-- [ ] 3.5 Plansza i stany końca na `/games/[gameId]` (#22 kroki 12–14) — po zatwierdzeniu prototypu etapu B (D3.2)
+- [x] 3.5 Plansza i stany końca na `/games/[gameId]` (#22 kroki 12–14) — wg zatwierdzonego prototypu etapu B (D3.2)
+  - Zrobione: `PlayField` (plansza 15×15, dwa kroki na dotyku, ruch z `moveNumber`, ponowienie tego samego ruchu po błędzie sieci, `STALE_MOVE`/`NOT_YOUR_TURN`/`CELL_OCCUPIED`, linia wygrywająca, baner wygranej/przegranej/remisu), odpytywanie `?after=` co 2 s (wstrzymane w ukrytej karcie), powrót do partii w toku i po końcu po odświeżeniu. Stany z mapy: p05.1, p05.2, p05.4–p05.9, p05.11, p06.1, p06.2, p06.4, p06.5, p06.6 (p06.7 = bramka 404 z fazy 2). README: „Rozgrywka”.
+  - Zostaje (punkty zaczepienia w `play-field.tsx`/`game-room.tsx`): zegary i „Mało czasu” p05.3, przegrana na czas p06.3, odpytywanie także na własnym ruchu (#23, 4.4: paski `data-slot="clock"` mają już układ); „Poddaj partię” p05.13–p05.14, p06.8–p06.9 i rewanż p06.10–p06.15 (faza 5); powrót po rozłączeniu p05.10 (#24); p05.12 w części „komunikat w ukrytej karcie” (odpytywanie jest wstrzymane, tekstu brak).
+  - Odstępstwa od prototypu: bez nagłówka strony; paski zegarów bez cyfr; bez „Poddaj partię”; „Wróć do panelu głównego” to link do `/`; po „Przeciwnik dołączył” od razu plansza (bez ekranu „Partia gotowa” i przycisku „Przejdź do planszy” — kolory losuje serwer przy dołączeniu).
+
+#### Ręczny test po fazie 3 (krok po kroku)
+
+Świeża baza jednorazowa i `npm run dev` jak po fazie 2 (nie baza `gomoku` z danymi). Dwie przeglądarki / okno prywatne: konto `a` (twórca) i konto `b` albo gość.
+1. `a` tworzy partię (`/`, „Utwórz zaproszenie”), `b` dołącza z linku. Obaj na `/games/{id}`: po chwili nagłówek „Partia w toku”, plansza 15×15, „Wylosowano: Ty grasz czarnymi/białymi.”; kolory różne; u gracza na ruchu „Twój ruch (czarne)”, u drugiego „Ruch przeciwnika” i plansza tylko do odczytu (klik w pole nic nie wysyła).
+2. Czarne klika pole (mysz: jedno kliknięcie; klawiatura: strzałki + Enter): kamień od razu, „Ruch przeciwnika”; u drugiego gracza kamień pojawia się w ciągu ~2 s. Klik w zajęte pole nic nie robi.
+3. Ekran dotykowy (DevTools, tryb mobilny): dotknięcie zaznacza przecięcie (przerywany kamień, „Zaznaczono: Kolumna H, rząd 8”), „Postaw kamień” albo drugie dotknięcie wysyła.
+4. Naprzemiennie do piątki w linii (poziomo, pionowo, ukośnie): zwycięzca „Wygrałeś”, przegrany „Przegrałeś”, pięć kamieni w grubym obrysie, plansza zablokowana, „Wróć do panelu głównego”. Drugi gracz dostaje wynik po ≤ 2 s.
+5. Odświeżenie w trakcie partii i po jej końcu: ta sama plansza, status i wynik. Odświeżenie przez gościa w tej samej przeglądarce działa; w innej — „Ta partia nie istnieje…”.
+6. Błędy: w DevTools „Offline” i ruch → „Nie udało się połączyć z serwerem” + „Spróbuj ponownie”; po włączeniu sieci przycisk wysyła ten sam ruch (jeden kamień). Dwie karty tego samego gracza: ruch w jednej, w drugiej próba ruchu → „Teraz ruch przeciwnika. Plansza została odświeżona.”
+7. Ukryta karta (przełącz na inną): w zakładce Network brak odpytywania; po powrocie od razu jeden odczyt.
+8. Remis: nie do odtworzenia ręcznie (225 ruchów bez piątki); pokrywa go test integracyjny `game-moves-api.test.ts` („ends in a draw…”) i test jednostkowy `PlayField` (baner „Remis”). Opcjonalnie: wpisz planszę remisową do bazy jak ten test i odśwież stronę.
+9. Oba motywy i szerokości 320, 360, 1280 px: bez poziomego przewijania, plansza skaluje się do szerokości.
 
 ### Faza 4 — Zegar (#23)
 Ręczny test po fazie: start zegara po otwarciu strony przez obu, malejący zegar gracza na ruchu, przegrana na czas przy odczycie przeciwnika.
