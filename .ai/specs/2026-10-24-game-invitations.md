@@ -9,6 +9,7 @@
 > Status: **zatwierdzona** (`om-auto-write-spec`, 2026-10-24; założenia Q4 i Q9 potwierdzone przez właściciela — Bartosz Wójcik, 2026-10-24; pozostałe odwracalne; Q3, Q6, Q13 i Q20–Q22 potwierdzone w sesji grill-me 2026-10-24). Źródło: issue #21, `.ai/specs/product-brief.md` (BR-01, BR-09, BR-11, BR-13, BR-22, BR-23, BR-24, D-07, D-10, D-21, D-23), specyfikacje #19 (G2, G5, G7, G8), #20 (`requireSession`, `RateLimiter.hit`, `gameParticipation`), #37 (usunięcie konta), #39 (sprzątanie), standardy (`.ai/docs/2026-09-01-engineering-standards.md`, §Architecture).
 
 > **Adnotacja 2026-10-29 (decyzje właściciela, mapa ekranów E02):** anulowanie zaproszenia wymaga potwierdzenia, a po anulowaniu twórca wraca na stronę główną, link jest nieważny (L04); niezalogowany gracz jest dla przeciwnika „Gość” (L14); po zakończonej partii dostępne są rewanż (`2026-10-29-game-rematch.md`) i poddanie w trakcie (`2026-10-29-game-resignation.md`); powrót po rozłączeniu: `2026-10-29-game-reconnection.md`.
+> **Adnotacja 2026-10-30 (decyzja właściciela, BR-29 / D-27):** gość może także **tworzyć** partię (`POST /api/games` bez sesji) i podaje nick; zmieniają się Q10 (czas życia ciasteczka twórcy-gościa), Q11 (ostrzeżenie także przed utworzeniem), Q19 i kontrakt `POST /api/games` (brak `401`) oraz etykieta gościa (L14: „{nick} (gość)”). Szczegóły: `.ai/specs/2026-10-30-participant-nickname.md` i `.ai/specs/2026-10-30-guest-creates-game.md`.
 
 ## 📝 TLDR
 
