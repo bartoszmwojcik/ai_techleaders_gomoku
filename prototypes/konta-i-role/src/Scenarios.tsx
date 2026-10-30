@@ -4,6 +4,11 @@ import { go } from "./chrome";
 import {
   advanceClock,
   clockSteps,
+  deleteFailures,
+  opponentJoinsWaitingGame,
+  refreshAccountView,
+  resignElsewhere,
+  setOpponentDeleted,
   expireSession,
   giveAccountAGame,
   setInvite,
@@ -50,6 +55,7 @@ const ACCOUNTS = [
   ["A4", "A4 Kuba_P niepotwierdzony + token gościa"],
   ["A5", "A5 Ewa_B, niepotwierdzona (starsza niż 7 dni po przesunięciu zegara)"],
   ["A6", "A6 gość partii bez konta"],
+  ["A8", "A8 Ola_W, potwierdzona, oczekująca partia"],
 ] as const;
 
 /** Which demo account the session currently is (the select follows logins made in the forms too). */
@@ -59,6 +65,7 @@ function currentAccount(sim: ReturnType<typeof useSim>): string {
   if (account.email === "ala@example.com") return "A1";
   if (account.email === "marek@example.com") return "A3";
   if (account.email === "ewa@example.com") return "A5";
+  if (account.email === "ola@example.com") return "A8";
   return sim.guestGame ? "A4" : "A2";
 }
 
@@ -135,6 +142,27 @@ export function Scenarios() {
             </select>
           </label>
           <button type="button" className="btn btn-outline btn-sm" onClick={giveAccountAGame}>Rozegraj partię (konto ma partię)</button>
+        </Group>
+        <Group title="Usunięcie konta (P15–P18, s05.10–s05.20, s08)">
+          <p className="t-hint">Hasło do usunięcia: drewniana-plansza-2026. Konta: Ala_7 (A1) bez partii, Marek_Z (A3) partia w toku, Ola_W (A8) oczekująca partia. Licznik złych haseł: {deleteFailures(sim)} z 10.</p>
+          <Check id="sc-del-limit" label="Limit prób (429) przy następnym wysłaniu" flag="deleteLimit" />
+          <Check id="sc-del-server" label="Błąd serwera (500) przy następnym wysłaniu" flag="deleteServerError" />
+          <Check id="sc-del-401" label="Sesja wygasła w trakcie (401) przy następnym wysłaniu" flag="deleteSessionExpired" />
+          <p className="t-hint">„Brak sieci” (Następne żądanie) działa też tutaj.</p>
+          <div className="row" style={{ flexWrap: "wrap" }}>
+            <button type="button" className="btn btn-outline btn-sm" onClick={resignElsewhere}>Poddaj partię (w innej karcie)</button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={refreshAccountView}>Odśwież stronę konta</button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={opponentJoinsWaitingGame}>Przeciwnik dołącza do mojej oczekującej partii (strona nieodświeżona)</button>
+          </div>
+        </Group>
+        <Group title="Widok przeciwnika (s08, O2)">
+          <label htmlFor="sc-opp-deleted">
+            <input id="sc-opp-deleted" type="checkbox" checked={sim.opponentDeleted} onChange={(e) => setOpponentDeleted(e.target.checked)} />
+            Przeciwnik usunął konto (po usunięciu konta w s05 włącza się samo)
+          </label>
+          <Check id="sc-rematch-pending" label="Oferta rewanżu czekała w chwili usunięcia (zamknięta jako odrzucona)" flag="rematchPending" />
+          <Check id="sc-rematch-notice" label="Pokaż komunikat „Rewanż niedostępny” (założenie)" flag="rematchNotice" />
+          <Check id="sc-opp-guest" label="Oglądający jest gościem (BR-29)" flag="opponentIsGuest" />
         </Group>
         <Group title="Podgląd (P13)">
           <label htmlFor="sc-width">
