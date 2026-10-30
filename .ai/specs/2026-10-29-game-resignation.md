@@ -70,3 +70,10 @@ Jedna faza, jeden PR (`Closes` nowe zgłoszenie E02-S05) po #22 i #23.
 - Migracji nie było: `resignation` jest w `games_end_reason_check` od fazy 3 (krok 2 planu pominięty).
 - Funkcja czysta nazywa się `resolveResignation(status, seat)` (plik `core/src/games/resign.ts`), nie `resolve`.
 - Ponowne poddanie po `resignation`: `200` dla gracza, który się poddał (zwycięzca ≠ jego miejsce); dla zwycięzcy `409 GAME_FINISHED`. Odpowiedź ma `after = 0` (pełna lista ruchów jak `GET` bez parametru).
+
+## Adnotacja z implementacji (zadanie 5.4, UI)
+
+- Etykiety wyniku z prototypu: u poddającego „Przegrałeś, poddałeś partię”, u przeciwnika „Wygrałeś, przeciwnik poddał partię” (`outcomeOf`, `reason: "resignation"`); w mapie ekranów p06.8 to wygrana, p06.9 przegrana.
+- Dialog zostaje otwarty przy błędzie sieci/serwera (komunikat w opisie, przycisk „Spróbuj ponownie”); `409 GAME_FINISHED`/`GAME_NOT_ACTIVE` zamyka go, odświeża stan i pokazuje wynik; `404` oddaje partię pokojowi (`onGone`). Esc i „Wróć do gry” nie działają w trakcie wysyłania.
+- Link do partii w komunikacie blokady usunięcia konta (krok 6) idzie z #37.
+
