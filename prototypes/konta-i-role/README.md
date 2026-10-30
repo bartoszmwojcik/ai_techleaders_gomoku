@@ -4,6 +4,8 @@ Prototyp pokazuje, jak będą wyglądać i działać ekrany z zatwierdzonej mapy
 
 **Zmiana 2026-10-26 (D-24…D-26, BR-26…BR-28):** hasło co najmniej 8 znaków, konto aktywne od razu, potwierdzenie e-maila asynchroniczne i nieblokujące (zamykalny baner z powodem), nowy ekran s07 (wejście z zaproszenia), niepotwierdzone konta bez partii znikają po 14 dniach. Osąd właściciela, nie wynik badania.
 
+**Rewizja 2026-10-30: usunięcie konta (E01-S06, zgłoszenie #37).** Panel „Usuń konto” na s05 (stany s05.10–s05.20), komunikat po usunięciu na s04 (s04.14) i nowy pomocniczy ekran s08 (partia zakończona widziana przez przeciwnika usuniętego gracza). Zobacz sekcję „Usunięcie konta” niżej. Stany są dopisane do mapy jako osobna sekcja 7 w `lekcja-07/mapa-ekranow.md` i **czekają na zatwierdzenie** (istniejące wpisy mapy bez zmian). Prototyp rozszerza ten katalog, a nie tworzy nowego, bo specyfikacja (O3) tak rekomenduje, ekran jest częścią s05, a konta demo, symulator sesji, zegar i silnik przeglądu są wspólne.
+
 Postęp prac i decyzje: `POSTEP.md`. Mapa ekranów, stany i luki: `lekcja-07/mapa-ekranow.md`. Szary prototyp, z którego wzięto przepływ i założenia: `.ai/prototypes/discovery/account-registration/revision-001/`.
 
 ## Jak uruchomić
@@ -21,7 +23,7 @@ Podgląd musi iść przez HTTP (moduły nie ładują się z `file://`):
 
 Dopisek `?fast` w adresie wyłącza symulowane opóźnienia serwera (testy).
 
-Testy nawigacji: `npx vitest run --config prototypes/konta-i-role/vitest.config.ts`. Sprawdzenia w przeglądarce (agent-browser, serwer na porcie 8765): `prototypes/konta-i-role/checks/etap2-walk.sh` i `etap3-walk.sh`, wyniki w `checks/*-log.txt`.
+Testy nawigacji i reguł: `npx vitest run --config prototypes/konta-i-role/vitest.config.ts` (`tests/navigation.test.tsx`, `tests/usuniecie-konta.test.tsx`). Sprawdzenia w przeglądarce (agent-browser, serwer na porcie 8765): `prototypes/konta-i-role/checks/etap2-walk.sh` i `etap3-walk.sh`, wyniki w `checks/*-log.txt`. Usunięcie konta: `PORT=8771 prototypes/konta-i-role/checks/usuniecie-konta-walk.sh` (serwer HTTP na porcie z `PORT` w `packages/ui/.storybook/public`), wynik `checks/usuniecie-konta-log.txt`, zrzuty `checks/usuniecie-konta-evidence/`.
 
 ## Co zawiera
 
@@ -34,6 +36,7 @@ Testy nawigacji: `npx vitest run --config prototypes/konta-i-role/vitest.config.
 | s05 | Konto | s05.1–s05.9 |
 | s06 | Skrzynka demo (symulacja poczty) | s06.1–s06.2 |
 | s07 | Wejście z zaproszenia `/invite/[code]` | s07.1–s07.9 |
+| s08 | Partia zakończona, widok przeciwnika usuniętego gracza (pomocniczy, zastępuje p06 prototypu partii) | s08.1–s08.4 (dopisek 2026-10-30) |
 
 Identyfikatory ekranów są stałe, bo przypięte są do nich komentarze. Ekrany składają się z komponentów `@gomoku/ui/game/*` i tokenów `game-tokens.css`; w kodzie nie ma kolorów ani odstępów spoza tokenów. Miejsca, w których brakuje komponentu, są oznaczone w kodzie słowem `LUKA`.
 
@@ -56,6 +59,7 @@ Hasło wszystkich kont: `drewniana-plansza-2026`. Konto wybierasz w panelu „Sc
 | A4 | niepotwierdzony i gość partii | kuba@example.com | Kuba_P | rejestracja i logowanie zablokowane przez partię gościa |
 | A5 | niepotwierdzone konto Ewy | ewa@example.com | Ewa_B | bez partii; po „+14 dni” znika (BR-28) |
 | A6 | gość partii bez konta | | | nie może się zalogować ani zarejestrować |
+| A8 | zalogowana, e-mail potwierdzony, **oczekująca partia** (nowe 2026-10-30; A7 w mapie to nieistniejący operator) | ola@example.com | Ola_W | ostrzeżenie o usunięciu oczekującej partii (s05.11); po usunięciu jej e-mail i nazwa są wolne (Q4) |
 
 Zajęte w rejestracji: marek@example.com, ala@example.com, ewa@example.com, nazwy Marek_Z, Ala_7, Ewa_B (także w odmianach, np. `marek-z`); zastrzeżona nazwa: `Admin`. Operator (A7 z mapy) nie istnieje, bo żadna specyfikacja go nie opisuje.
 
@@ -65,7 +69,7 @@ Numery P01–P14 pochodzą z mapy.
 
 | Kontrolka | Co wywołuje |
 |---|---|
-| Konto demo (A0–A6) | P07, P09, rola i sesja |
+| Konto demo (A0–A6, A8) | P07, P09, rola i sesja |
 | Dostawca poczty: działa, 502, 503, brak | P02, P12; s03.11–s03.12, s04.7–s04.8, s06.2; rejestracja i gra działają zawsze |
 | Limit prób (429), błąd serwera, brak sieci | P03, P04, P05; s01.6–s01.8, s02.6–s02.8, s03.13–s03.14 |
 | Już zalogowany w innej karcie (409) | P11; s01.9, s02.12 |
@@ -78,6 +82,9 @@ Numery P01–P14 pochodzą z mapy.
 | Zaproszenie s07: stan (według sesji, już uczestnik, własne, inna partia, oczekująca partia, limit, nieważne) i „Rozegraj partię” (konto ma partię, więc niepotwierdzone nie jest kasowane) | P09; s07.1–s07.9, reguła 14 dni |
 | Szerokość ekranu: pełna, 1440, 360, 320 px | P13 |
 | Reset symulacji | P14, wraca na s01 |
+| **Usunięcie konta (P15–P18).** Limit prób, błąd serwera, sesja wygasła przy następnym wysłaniu; „Brak sieci” z P05 działa też tu | s05.17, s05.18, s05.19 |
+| „Poddaj partię (w innej karcie)”, „Odśwież stronę konta”, „Przeciwnik dołącza do mojej oczekującej partii (strona nieodświeżona)” | s05.12, s05.20 |
+| Widok przeciwnika (s08): przeciwnik usunął konto, oferta rewanżu czekała, komunikat „Rewanż niedostępny”, oglądający jest gościem | s08.1–s08.4 |
 
 Rejestracja ma też prawdziwy limit w symulacji: 6. próba w jednej sesji daje „Zbyt wiele prób”.
 
@@ -100,3 +107,68 @@ Rejestracja ma też prawdziwy limit w symulacji: 6. próba w jednej sesji daje �
 - `src/screens/s0N-*.tsx`: jeden plik na ekran, nazwy zgodne z mapą. `src/chrome.tsx`: nagłówek, dialog „Poza prototypem”, przejścia (`go`).
 - `src/review/`: silnik przeglądu (`prototype.js` bez zmian), most do tokenów (`mostek.css`) i style hosta (`host.css`).
 - Przy budowie prawdziwych ekranów: te same komponenty `@gomoku/ui/game/*`; zmieniają się źródła danych (route handlery zamiast `sim.ts`).
+
+## Usunięcie konta (rewizja 2026-10-30, E01-S06, #37)
+
+Źródło: `.ai/specs/2026-10-24-account-deletion.md` (zaktualizowana 2026-10-30, sekcje Resolved Q1–Q9, UI/UX, Edge Cases, Open Questions O1–O6). Reguły z briefu: BR-17 (kasuje e-mail, hash, sesje; partie zostają jako „Usunięty gracz”), BR-21 („Najpierw dokończ albo poddaj partię”), BR-13, BR-24, BR-29 i D-27 („{nick} (gość)”), D-16. Brief nie został zmieniony. Droga wyjścia z blokady to poddanie partii (`.ai/specs/2026-10-29-game-resignation.md`, już na `main`: przycisk „Poddaj partię” na stronie partii).
+
+Nic nie jest wysyłane. Hasło do usunięcia to hasło demo. Usunięcie jest w symulacji nieodwracalne do „Reset symulacji”.
+
+### Stany
+
+| Stan | Co widać | Jak go wywołać |
+|---|---|---|
+| s05.10 | Sekcja „Usuń konto” pod danymi konta, obramowana kolorem `status-danger`: ostrzeżenie „Tego nie da się cofnąć” (konto, e-mail, hasło znikają od razu; zakończone partie zostają u przeciwników jako „Usunięty gracz”), pole hasła, pole wyboru, przycisk nieaktywny z powodem obok | konto A1 (Ala_7), s05 |
+| s05.11 | To samo + zdanie o oczekującej partii (też w dialogu) | konto A8 (Ola_W) |
+| s05.12 | Alert „Najpierw dokończ albo poddaj partię.” z linkiem „Przejdź do partii” (w prototypie dialog „Poza tym prototypem”) i wskazaniem „Poddaj partię”; przycisk nieaktywny z powodem. Po „Poddaj partię (w innej karcie)” strona dalej blokuje, aż „Odśwież stronę konta” | konto A3 (Marek_Z) |
+| s05.13 | Hasło + zaznaczone pole: przycisk aktywny | wpisz hasło, zaznacz pole |
+| s05.14 | Dialog „Usunąć konto Ala_7?”, przyciski „Zostaw konto” (fokus startuje tu) i „Usuń konto na zawsze”; Esc zamyka, fokus wraca na przycisk | kliknij przycisk |
+| s05.15 | Przycisk w dialogu zajęty, drugie kliknięcie nic nie wysyła; Esc i „Zostaw konto” zablokowane | otwórz bez `?fast`, potwierdź |
+| s05.16 | Błędne hasło: dialog zamyka się, „Nieprawidłowe hasło.” przy polu, pole wyczyszczone, fokus na polu; od 7. błędu „Zostało prób: 3, potem blokada na 15 minut.” | wpisz złe hasło |
+| s05.16b | Puste hasło: „Wpisz hasło.” przy polu, dialog się nie otwiera | zaznacz pole i kliknij bez hasła |
+| s05.17 | Alert „Zbyt wiele prób — Spróbuj ponownie za {n} min.”, dialog zamknięty; po 10 błędach także dobre hasło daje limit, okno 15 min liczy zegar demo (+1 h zdejmuje limit) | 10 złych haseł albo przełącznik „Limit prób” |
+| s05.18 | Dialog zostaje otwarty z komunikatem „Nie udało się usunąć konta. Nic nie zostało zmienione. Spróbuj ponownie.” (`role="alert"`); ten sam komunikat przy braku sieci; „Usuń konto na zawsze” ponawia | „Błąd serwera” albo „Brak sieci” |
+| s05.19 | Sesja wygasła: przekierowanie na s02, po zalogowaniu powrót na s05 | „Sesja wygasła w trakcie” |
+| s05.20 | Przeciwnik dołączył do oczekującej partii, gdy strona była otwarta: po potwierdzeniu `409`, dialog zamyka się, pojawia się blokada s05.12 i dostaje fokus | „Przeciwnik dołącza do mojej oczekującej partii” |
+| s04.14 | Powrót na stronę główną bez sesji z zamykalnym komunikatem „Konto zostało usunięte” (`/?notice=account-deleted`); logowanie usuniętym kontem daje ogólne „Nieprawidłowy e-mail lub hasło”, rejestracja tym samym e-mailem i nazwą działa od razu (Q4) | potwierdź usunięcie |
+| s08.1 | Partia zakończona: „Wygrałeś”, białe: **Usunięty gracz**, podpis „Ten gracz usunął konto. Wynik i przebieg partii zostają bez zmian.”, bez bloku rewanżu | po usunięciu konta albo „Przeciwnik usunął konto” |
+| s08.2 | + Alert „Rewanż niedostępny” (założenie) | przełącznik w „Widok przeciwnika” |
+| s08.3 | Oferta rewanżu czekała: Alert „Zaproszenie do rewanżu odrzucone” (O2) | przełącznik w „Widok przeciwnika” |
+| s08.4 | Oglądający jest gościem „Piotr (gość)” (BR-29) | przełącznik w „Widok przeciwnika” |
+
+Stany są numerowane tak, by dopisać je do mapy (sekcja 7 w `lekcja-07/mapa-ekranow.md`); s05.1–s05.9 i s04.1–s04.13 się nie zmieniają.
+
+### Decyzje z O1–O6 (zakładane wg rekomendacji specyfikacji)
+
+- `[ASSUMPTION O1]` endpoint `POST /api/account/delete`; prototyp go nie pokazuje (nie ma adresów), ale kolejność kontroli (sesja, limit, hasło, partia) jest z kontraktu.
+- `[ASSUMPTION O2]` oferta rewanżu `pending` z udziałem usuwanego konta jest zamykana jako `declined`; przeciwnik widzi „Zaproszenie do rewanżu odrzucone” (s08.3). Osobny tekst „usunął konto” dopiero przy UI rewanżu. Rekomendacja spec mówi też, że UI nie pokazuje „Rewanż” wobec usuniętego gracza: stąd s08.1 bez bloku rewanżu.
+- `[ASSUMPTION O3]` ten prototyp; rozszerzenie `konta-i-role`, nie osobny katalog.
+- `[ASSUMPTION O4]` reguła 9.4 (14 dni) w tym samym PR: bez ekranu, niczego tu nie dodaje.
+- `[ASSUMPTION O5]` pole hasła w panelu, nie w dialogu; dialog ma tylko opis.
+- `[ASSUMPTION O6]` brak e-maila po usunięciu; prototyp nie ma skrzynki dla tego zdarzenia.
+
+### Założenia prototypu spoza O1–O6 (do przeglądu)
+
+- `[ASSUMPTION A-D1]` Panel „Usuń konto” stoi pod „Dane konta” (spec: pod „Zmień hasło”, którego prototyp nie ma, L19).
+- `[ASSUMPTION A-D2]` Puste hasło jest łapane po stronie klienta przed dialogiem („Wpisz hasło.”, s05.16b). Spec pokazuje tylko `400 VALIDATION` z serwera.
+- `[ASSUMPTION A-D3]` Etykieta przycisku w panelu i w dialogu to „Usuń konto na zawsze” (wzorzec DS i spec), nie „Usuń konto na stałe”.
+- `[ASSUMPTION A-D4]` Błąd hasła czyści pole i przenosi fokus na nie (spec: „fokus na polu”; czyszczenie jak na s02).
+- `[ASSUMPTION A-D5]` **Licznik prób.** Kontrakt API nie zwraca liczby pozostałych prób. Prototyp pokazuje ją od 7. błędu („Zostało prób: 3, potem blokada na 15 minut.”), co wymagałoby `data.attemptsLeft` w odpowiedzi `400`. Do decyzji właściciela (mapa LU3); bez niej s05.16 pokazuje tylko „Nieprawidłowe hasło.”, a limit dopiero po fakcie.
+- `[ASSUMPTION A-D6]` Treść bloku s05.12: „Masz partię w toku. Na stronie partii wybierz „Poddaj partię”, a potem odśwież tę stronę.” plus link „Przejdź do partii”. Spec daje tylko zdanie z BR-21 i link; wskazanie drogi wyjścia jest z polecenia i ze specyfikacji poddania.
+- `[ASSUMPTION A-D7]` Limit 429: „Zbyt wiele prób — Spróbuj ponownie za {n} min.” (jak na s02), z `Retry-After` liczonym od pierwszego błędu w oknie 15 min; wymuszony przełącznikiem pokazuje 12 min.
+- `[ASSUMPTION A-D8]` Pomocniczy ekran s08 i jego podpis „Ten gracz usunął konto. Wynik i przebieg partii zostają bez zmian.” oraz komunikat „Rewanż niedostępny” (s08.2) są propozycją; spec (Edge Cases) wymaga tylko, by UI nie pokazywał „Rewanż”.
+- `[ASSUMPTION A-D9]` Wygaśnięcie okna limitu i leniwe zamykanie starych slotów (Q7) nie mają osobnych stanów; prototyp pokazuje tylko wynik (usunięcie przechodzi albo blokada).
+- `[ASSUMPTION A-D10]` Partia `active`, do której przeciwnik jeszcze nie wszedł (spec: do sprawdzenia przy 5.3, czy poddanie jest wtedy możliwe): prototyp nie rozróżnia jej; komunikat s05.12 zakłada, że poddanie jest możliwe.
+
+### Luki w design systemie
+
+- **DU1** (`LUKA` w `delete-account.tsx`): `ConfirmDialog` ma tylko `description`, więc błąd serwera jest zdaniem w opisie z `role="alert"`; pole hasła nie mieści się w dialogu (O5). Prototyp nie zmienia komponentu.
+- **DU2** (`LUKA`): brak wzorca „strefa niebezpieczna”; to Panel z obramowaniem `border-status-danger` (token), bez nowego wariantu.
+- Fokus wraca na przycisk po zamknięciu dialogu tylko wtedy, gdy przycisk jest `trigger` komponentu `ConfirmDialog` (Radix). Z przyciskiem poza dialogiem fokus ginął (wynik pierwszego przejścia); prototyp używa `trigger`. Wymaga tego samego rozwiązania w kodzie produkcyjnym.
+
+### Czego prototyp nie robi
+
+- Nie sprawdza współbieżności, blokad bazy ani kaskad (to testy PostgreSQL w specyfikacji).
+- Nie pokazuje listy historii przeciwnika (#27) ani panelu zmiany hasła (#36).
+- „Przejdź do partii” otwiera dialog „Poza tym prototypem”; prawdziwy ekran partii z poddaniem jest w prototypie `partia-z-zaproszenia` (p05).
+- Zegar 15-minutowego okna limitu liczy zegar demo (nie czas rzeczywisty).

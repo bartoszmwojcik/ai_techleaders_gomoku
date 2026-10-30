@@ -61,3 +61,17 @@ Zgodnie z `.ai/specs/2026-10-26-account-onboarding-simplification.md` (D-24…D-
 - kontrolki: stan zaproszenia, „Rozegraj partię”, zegar +14 dni;
 - testy nawigacji: 15 (Vitest), sprawdzenia w przeglądarce: `checks/etap2-log.txt` (stany, s07, baner, 14 dni) i `checks/etap3-log.txt` (szerokości, motywy, klawiatura, przyciski).
 Do zrobienia osobno: szary prototyp (`.ai/prototypes/discovery/account-registration/`) jako nowa rewizja.
+
+## Rewizja 2026-10-30: usunięcie konta (E01-S06, #37)
+
+Zlecenie: prototyp przed kodem ekranu (O3 specyfikacji `.ai/specs/2026-10-24-account-deletion.md`). Rozszerzenie tego prototypu zamiast nowego katalogu: ekran jest częścią s05, a konta demo, symulator i silnik przeglądu są wspólne.
+
+- [x] Stany s05.10–s05.20, s04.14 i pomocniczy ekran s08 (s08.1–s08.4) w `src/screens/delete-account.tsx`, `s04-home.tsx`, `s08-opponent.tsx`; symulacja `deleteAccount` w `src/sim.ts` (kolejność kontroli z kontraktu API: sesja, limit 10 błędów w 15 min, hasło, partia `active`, usunięcie).
+- [x] Konto demo A8 (Ola_W, oczekująca partia); A7 w mapie to nieistniejący operator, więc nowe konto dostało A8.
+- [x] Scenariusze P15–P18 w panelu przeglądu.
+- [x] Testy: `tests/usuniecie-konta.test.tsx` (12 testów), razem 28 z nawigacją.
+- [x] Sprawdzenie w przeglądarce: `checks/usuniecie-konta-walk.sh` (wynik `checks/usuniecie-konta-log.txt`, zrzuty `checks/usuniecie-konta-evidence/`).
+- [x] Mapa: dopisek (sekcja 7) w `lekcja-07/mapa-ekranow.md`, oznaczony „oczekuje na zatwierdzenie”; zatwierdzonych sekcji 1–6 nie zmieniano.
+- [ ] Zatwierdzenie właściciela: treści i założenia A-D1…A-D10 z README, luki LU1–LU3 i DU1–DU2.
+
+Poprawki znalezione przy przejściu: fokus nie wracał na przycisk po zamknięciu dialogu (przycisk jest teraz `trigger` komponentu `ConfirmDialog`, Radix zwraca na niego fokus); zrzuty całej strony ucinały formularz (zrzut jest teraz ramką ekranu, a przy dialogu całym widokiem).
