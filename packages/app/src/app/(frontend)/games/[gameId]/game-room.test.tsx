@@ -158,8 +158,15 @@ describe("GameRoom, waiting (p03)", () => {
     apiCall.mockResolvedValue({ ok: true, data: active() });
     await tick();
     expect(apiCall).toHaveBeenCalledTimes(3);
+    // The game is on: the cadence is the 2 s of a game in progress, not the 3 s of waiting.
+    apiCall.mockClear();
+    await tick(PLAY_POLL_INTERVAL_MS);
+    expect(apiCall).toHaveBeenCalledTimes(1);
+    apiCall.mockResolvedValue({ ok: true, data: { ...waiting(), status: "cancelled", closedReason: "cancelled" } });
+    await tick(PLAY_POLL_INTERVAL_MS);
+    apiCall.mockClear();
     await tick(POLL_INTERVAL_MS * 3);
-    expect(apiCall).toHaveBeenCalledTimes(3);
+    expect(apiCall).not.toHaveBeenCalled();
   });
 
   it("never sends a poll while the previous one is in flight", async () => {
@@ -331,12 +338,12 @@ describe("GameRoom, active (p04)", () => {
       screen.getByText("Czekamy, aż Ala_7 otworzy partię — zegar ruszy, gdy obaj będziecie na stronie (do 15 min)"),
     ).toBeTruthy();
     expect(screen.getByText("Ty (Kuba_P)")).toBeTruthy();
-    // Both opened the page: the board takes over (own turn, so nothing more to poll).
+    // Both opened the page: the board takes over (the game in progress is polled on the own turn too, #23).
     apiCall.mockResolvedValue({ ok: true, data: active({ you: { seat: 2, kind: "account" }, turnSeat: 2 }, [true, true]) });
     await tick();
     expect(screen.getByRole("heading", { name: "Partia w toku" })).toBeTruthy();
     await tick(PLAY_POLL_INTERVAL_MS * 3);
-    expect(apiCall).toHaveBeenCalledTimes(1);
+    expect(apiCall).toHaveBeenCalledTimes(4);
   });
 
   it("keeps the guest warning while the guest waits for the other player to open the page (p04.4)", () => {
@@ -436,9 +443,9 @@ describe("GameRoom, play (p05, p06)", () => {
     expect(apiCall).toHaveBeenCalledWith("/api/games/g1?after=1", { method: "GET" });
     expect(stonesOnBoard()).toHaveLength(2);
     expect(screen.getByText("Twój ruch (czarne)")).toBeTruthy();
-    // Own turn: nothing to read.
+    // Own turn: the clock runs for the player and the game can end without a move, so it is read too (#23).
     await tick(PLAY_POLL_INTERVAL_MS * 3);
-    expect(apiCall).toHaveBeenCalledTimes(1);
+    expect(apiCall).toHaveBeenCalledTimes(4);
   });
 
   it("stops polling when the game ends and shows the result with the winning line", async () => {
