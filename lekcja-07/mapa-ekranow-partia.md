@@ -54,7 +54,7 @@ Z zatwierdzonych specyfikacji (`2026-10-26-game-clock.md`, `2026-10-29-game-reco
 
 ## 0c. Zmiana z 2026-10-30 (gra bez konta)
 
-Źródła: brief (BR-29, D-27; BR-22 i wyjątek w D-23 zastąpione; BR-24 przeredagowane), `2026-10-30-participant-nickname.md` (E02-S07, #94), `2026-10-30-guest-creates-game.md` (E02-S08, #95), adnotacja w #21 (`2026-10-24-game-invitations.md`: etykieta gościa z L14), kontrakty rewanżu (#88) i poddania (#87) bez zmian. Zasada jak w całej mapie: niczego nie rozstrzygam; rozstrzygnięcia poniżej pochodzą z zatwierdzonych specyfikacji, a to, czego one nie opisują, jest w sekcji 4 jako L25–L34.
+Źródła: brief (BR-29, D-27; BR-22 i wyjątek w D-23 zastąpione; BR-24 przeredagowane), `2026-10-30-participant-nickname.md` (E02-S07, #94), `2026-10-30-guest-creates-game.md` (E02-S08, #95), adnotacja w #21 (`2026-10-24-game-invitations.md`: etykieta gościa z L14), kontrakty rewanżu (#88) i poddania (#87) bez zmian. Zasada jak w całej mapie: niczego nie rozstrzygam; rozstrzygnięcia poniżej pochodzą z zatwierdzonych specyfikacji, a to, czego one nie opisują, jest w sekcji 4 jako L25–L35.
 
 **Co się zmienia (BR-29, D-27).** Osoba niezalogowana może **tworzyć** zaproszenie (dotąd tylko je przyjmować), przed wejściem do partii podaje nick (1–24 znaki) albo zatwierdza domyślne „Gracz 1” / „Gracz 2” (numer miejsca: twórca = 1, dołączający = 2; kolory losowane osobno), a przeciwnik widzi ją jako „{nick} (gość)”. Nadal tylko przez kod lub link: bez lobby, historii i konta. Dwie osoby bez kont mogą grać ze sobą.
 
@@ -285,10 +285,10 @@ Kontrolki prototypu (pasek przeglądu), nie funkcje produktu.
 
 | ID | Scenariusz | Wywołuje stany |
 |---|---|---|
-| Q01 | Rola oglądającego: twórca, zaproszony zalogowany, gość, niezalogowany, spoza partii | p03–p07 |
+| Q01 | Rola oglądającego: twórca, zaproszony zalogowany, gość (od 2026-10-30: gość-twórca albo gość-dołączający), niezalogowany, spoza partii | p03–p07 |
 | Q02 | Stan partii: czeka, gotowa, w toku (tura moja/przeciwnika), koniec (wygrana, przegrana, przegrana na czas, remis) | p03–p06 |
 | Q03 | Zegar demo: stały „teraz”, przyspieszenie, „mało czasu”, „czas minął”, +15 min bez otwarcia, +24 h (wygaśnięcie zaproszenia) | p03.9, p04.3, p05.3, p06.3 |
-| Q04 | Utworzenie partii: ok, aktywna partia, oczekująca partia, limit, błąd serwera, brak sieci | p01 |
+| Q04 | Utworzenie partii przez konto: ok, aktywna partia, oczekująca partia, limit, błąd serwera, brak sieci (gość: Q13–Q16) | p01 |
 | Q05 | Ruch: ok, błąd sieci (ponowienie tego samego ruchu), `STALE_MOVE`, nie Twoja kolej, pole zajęte | p05.6–p05.9 |
 | Q06 | Urządzenie wejścia: dotyk (dwa kroki) albo mysz | p05.4, p05.5 |
 | Q07 | Rozłączenie i powrót (zegar pomniejszony o nieobecność) | p05.10 |
@@ -297,10 +297,20 @@ Kontrolki prototypu (pasek przeglądu), nie funkcje produktu.
 | Q10 | Kod na `/join`: poprawny, za krótki, limit, nieważny | p02 |
 | Q11 | Baza niedostępna; karta w tle | p07.4, p05.12 |
 | Q12 | Szerokość 320 / 360 / 1440 px, motyw ciemny i jasny, Reset | wszystkie |
+| Q13 | Gość tworzy partię (od 2026-10-30): akcja na `/`, nick wpisany albo pusty („Gracz 1”), ostrzeżenie, utworzenie, widok oczekiwania gościa-twórcy | p01.8, p08.1, p08.3, p03.11, p03.12 |
+| Q14 | Nick niepoprawny lub pusty: za długi (>24 punkty kodowe), niedozwolone znaki, same spacje (= domyślna nazwa); po stronie twórcy (p08) i dołączającego (s07.2); wpisana wartość zostaje | p08.1, p08.2, s07.2, s07.10 |
+| Q15 | Błędy tworzenia przez gościa: limit adresu (`429`), błąd serwera (`500`, adres nieustalony), brak sieci | p08.4, p08.5, p08.8 |
+| Q16 | Slot przeglądarki: gość z oczekującą partią tworzy kolejną (`OWN_WAITING_GAME`, „Anuluj i utwórz nową”), gość z aktywną partią (`ACTIVE_GAME_EXISTS`), gość-dołączający z trwającą partią próbuje utworzyć | p08.6, p08.7, p01.8 |
+| Q17 | Gość-twórca anuluje własną oczekującą partię (potwierdź, w toku, anulowano, link „nieważny”) | p03.6–p03.8, s07.9, p01.8 |
+| Q18 | Oczekująca partia gościa wygasa (+24 h bez dołączenia), gość traci ciasteczko lub otwiera w innej przeglądarce | p03.13, p07.2, p07.3 |
+| Q19 | „Masz partię” gościa-twórcy po zamknięciu karty (partia oczekująca i aktywna), własny link otwarty jako dołączający | p01.9, s07.5 |
+| Q20 | Gość–gość gra do końca: dwie nazwy („Ola (gość)” i „Gracz 2 (gość)”), ostrzeżenia p04.4/p05.11, wynik, token +1 h, `404` po godzinie, brak historii | p03.5, p04.1, p04.4, p05.1, p05.2, p05.11, p06.1–p06.7 |
+| Q21 | Rewanż gościa z nickiem: nick zachowany, nowy token, nazwa domyślna podąża za miejscem po zamianie kolorów, odrzucenie i wyjście gościa | p06.10–p06.15 |
+| Q22 | Gość–konto w obu kierunkach: gość-twórca zaprasza konto (s07.11, s07.3), konto zaprasza gościa z nickiem (s07.2) | s07.1–s07.3, s07.10, s07.11, p04–p06 |
 
 ## 3. Konta i dane demo
 
-Fikcyjne. Hasło demo wszystkich kont: `drewniana-plansza-2026`. **Stały „teraz”: poniedziałek 2026-10-26 10:00 (Europe/Warsaw).** Z briefu: plansza 15×15, 5 w linii, 10 minut na gracza, zaproszenie ważne 24 h, 15 minut na otwarcie strony po dołączeniu, token gościa do końca partii + 1 h, kod `ABCD-EFGH`. Cen i terminów handlowych brak (gra darmowa, D-19).
+Fikcyjne. Hasło demo wszystkich kont: `drewniana-plansza-2026`. **Stały „teraz”: poniedziałek 2026-10-26 10:00 (Europe/Warsaw).** Z briefu: plansza 15×15, 5 w linii, 10 minut na gracza, zaproszenie ważne 24 h, 15 minut na otwarcie strony po dołączeniu, token gościa przy oczekującej partii do wygaśnięcia zaproszenia (24 h), potem do końca partii + 1 h (BR-29), nick 1–24 znaków, kod `ABCD-EFGH`. Cen i terminów handlowych brak (gra darmowa, D-19).
 
 | Konto | Rola | E-mail | Nazwa | Stan |
 |---|---|---|---|---|
@@ -308,12 +318,14 @@ Fikcyjne. Hasło demo wszystkich kont: `drewniana-plansza-2026`. **Stały „ter
 | T2 | Zaproszony zalogowany, e-mail niepotwierdzony (gra normalnie, BR-26) | kuba@example.com | Kuba_P | bez partii |
 | T3 | Zalogowany z aktywną partią (odmowa utworzenia i dołączenia, BR-13) | marek@example.com | Marek_Z | partia w toku |
 | T4 | Zalogowany z własną oczekującą partią (Q18) | ewa@example.com | Ewa_B | partia waiting |
-| T5 | Gość partii | brak | brak (gość nie ma nazwy) | token jednej partii |
+| T5 | Gość-dołączający bez nicku (w prototypie E02 już istnieje: `role: "T5"`, `guestGame`; **zmienione 2026-10-30**: dotąd bez nazwy, teraz „Gracz 2” = G2) | brak | brak nicku → „Gracz 2 (gość)” | token miejsca 2 jednej partii |
 | T6 | Niezalogowany | brak | brak | brak sesji |
 | T7 | Osoba spoza partii (brak dostępu) | zalogowany dowolny | | `404` na cudzej partii |
 | T8 | Operator | brak w materiałach | | L10 |
+| T9 | Gość-twórca G1 (**nowe 2026-10-30**; w prototypie E02 jeszcze nie istnieje) | brak | „Ola” → „Ola (gość)” | token miejsca 1; bez partii albo z oczekującą partią `ABCD-EFGH` |
+| T10 | Gość-dołączający G3 z nickiem (**nowe 2026-10-30**; prototyp: do dodania obok T5) | brak | „Piotr” → „Piotr (gość)” | token miejsca 2 jednej partii; test dwóch jawnych nicków i nicka niepoprawnego |
 
-Połączenia ról: T1 + T5 (twórca zalogowany, przeciwnik gość) i T1 + T2 (oba konta); w obu wylosowany kolor (Q1) i ten sam kod `ABCD-EFGH`.
+Połączenia ról: T1 + T5 (twórca zalogowany, przeciwnik gość bez nicku: „Gracz 2 (gość)”), T1 + T10 (przeciwnik gość z nickiem) i T1 + T2 (oba konta); od 2026-10-30 także T9 + T5 (gość–gość: „Ola (gość)” i „Gracz 2 (gość)”), T9 + T10 (dwa jawne nicki), T9 + T2 (gość-twórca zaprasza konto) i T9 + T1 (konto dołącza do zaproszenia gościa); w każdym wylosowany kolor (Q1) i ten sam kod `ABCD-EFGH`. Konto T1 jako gość-twórca nie występuje (zalogowany nie ma opcji gościa, `409 GUEST_NOT_ALLOWED`).
 
 ## 4. Luki w specyfikacji
 
