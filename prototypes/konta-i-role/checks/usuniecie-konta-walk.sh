@@ -72,7 +72,7 @@ sleep 1.2
 at s05.15.b "podwójne kliknięcie: jedno usunięcie, wynik na s04" s04
 $AB open "$URL?fast" >/dev/null 2>&1; sleep 1.2; $AB eval "document.querySelector('.scenario-bar').open=false" >/dev/null 2>&1
 
-echo "## s05.16 błędne hasło i licznik" >> $LOG
+echo "## s05.16 błędne hasło (bez licznika prób, decyzja 2026-10-30)" >> $LOG
 fresh "A1"; prep "zle-haslo-1"; cl "$SUB" 0.4; cl '[role=alertdialog] button:last-of-type' 0.8
 ck s05.16.a "błąd przy polu, bez szczegółów" "Nieprawidłowe hasło."
 nk s05.16.b "pierwszy błąd bez licznika" "Zostało prób"
@@ -84,13 +84,15 @@ echo "## s05.16b puste hasło" >> $LOG
 fresh "A1"; cl "$CONF" 0.2; cl "$SUB" 0.4
 ck s05.16b.a "puste hasło: błąd przy polu bez dialogu" "Wpisz hasło."
 is s05.16b.b "dialog się nie otworzył" "!document.querySelector('[role=alertdialog]')"
-echo "## licznik prób: 7. błąd ostrzega, 10. błąd, 11. próba = limit" >> $LOG
+is s05.16b.c "pole z aria-invalid" "document.getElementById('delete-account-password').getAttribute('aria-invalid')==='true'"
+shot s05.16b-dark-1440
+echo "## 10 błędów bez licznika, 11. próba = limit" >> $LOG
 fresh "A1"; cl "$CONF" 0.2
 for i in 1 2 3 4 5 6 7; do fill "#delete-account-password" "zle-$i"; cl "$SUB" 0.3; cl '[role=alertdialog] button:last-of-type' 0.5; done
-ck s05.16.f "7. błąd: Zostało prób: 3" "Zostało prób: 3"
-shot s05.16c-dark-1440
+ck s05.16.f "7. błąd: dalej tylko Nieprawidłowe hasło." "Nieprawidłowe hasło."
+nk s05.16.f2 "7. błąd: bez licznika prób" "Zostało prób"
 for i in 8 9 10; do fill "#delete-account-password" "zle-$i"; cl "$SUB" 0.3; cl '[role=alertdialog] button:last-of-type' 0.5; done
-ck s05.16.g "10. błąd: Zostało prób: 0" "Zostało prób: 0"
+nk s05.16.g "10. błąd: bez licznika prób" "Zostało prób"
 echo "## s05.17 limit 429" >> $LOG
 fill "#delete-account-password" "$PW"; cl "$SUB" 0.3; cl '[role=alertdialog] button:last-of-type' 0.8
 ck s05.17.a "11. próba (nawet z dobrym hasłem): limit z czasem" "Zbyt wiele prób"
@@ -146,6 +148,14 @@ shot s05.11-dialog-dark-1440
 cl '[role=alertdialog] button:last-of-type' 0.8
 ck s05.20.a "409 w trakcie: pojawia się blokada z linkiem" "Najpierw dokończ albo poddaj partię."
 is s05.20.b "dialog zamknięty, fokus na bloku blokady" "!document.querySelector('[role=alertdialog]')&&document.activeElement.getAttribute('data-testid')==='delete-account-active-game'"
+is s05.20.c "mysz: blokada ma fokus programowy (obrys tylko przy klawiaturze)" "document.activeElement.getAttribute('data-testid')==='delete-account-active-game'"
+echo "## s05.20 ten sam przebieg z klawiatury: blokada ma widoczny obrys (:focus-visible)" >> $LOG
+fresh "A8"; prep "$PW"; sbtn "Przeciwnik dołącza do mojej oczekującej"
+$AB eval "document.querySelector('$SUB').focus()" >/dev/null 2>&1; $AB press Enter >/dev/null 2>&1; sleep 0.5
+$AB press Tab >/dev/null 2>&1; $AB press Enter >/dev/null 2>&1; sleep 1
+ck s05.20.d "klawiatura: 409 pokazuje blokadę" "Najpierw dokończ albo poddaj partię."
+is s05.20.e "klawiatura: blokada ma fokus i :focus-visible" "document.activeElement.getAttribute('data-testid')==='delete-account-active-game'&&document.activeElement.matches(':focus-visible')"
+is s05.20.f "klawiatura: obrys fokusu jest widoczny" "(()=>{const s=getComputedStyle(document.activeElement);return s.outlineStyle!=='none'&&parseFloat(s.outlineWidth)>0})()"
 shot s05.20-dark-1440
 
 echo "## s05.19 sesja wygasła (401)" >> $LOG
@@ -173,9 +183,14 @@ ck s08.1.a "po usunięciu nazwa przeciwnika to Usunięty gracz" "Usunięty gracz
 nk s08.1.b "bez przycisku rewanżu i komunikatu domyślnie" "Rewanż niedostępny"
 shot s08.1-dark-1440
 tog sc-rematch-notice; ck s08.2.a "komunikat Rewanż niedostępny" "Rewanż niedostępny"; shot s08.2-dark-1440
-tog sc-rematch-pending; ck s08.3.a "oferta rewanżu zamknięta jako odrzucona" "Zaproszenie do rewanżu odrzucone"; shot s08.3-dark-1440
-tog sc-opp-guest; ck s08.4.a "gość widzi Usunięty gracz" "Piotr (gość)"; shot s08.4-dark-1440
-tog sc-opp-guest; tog sc-rematch-pending; tog sc-rematch-notice
+nk s08.3.a "oferta rewanżu zamknięta po cichu (decyzja 2026-10-30): brak alertu odrzucenia" "Zaproszenie do rewanżu odrzucone"
+ck s08.2.b "nagłówek zgodny z oglądającym (Olek_R), nie z kontem sesji demo" "Zalogowano jako Olek_R"
+tog sc-rematch-notice; tog sc-opp-guest
+ck s08.4.a "gość widzi Usunięty gracz" "Piotr (gość)"
+nk s08.4.b "gość bez oferty rewanżu: brak komunikatu Rewanż niedostępny" "Rewanż niedostępny"
+nk s08.4.c "nagłówek gościa bez Zalogowano jako" "Zalogowano jako"
+shot s08.4-dark-1440
+tog sc-opp-guest
 sbtn "Reset symulacji"; go s08; ck s08.5.a "przeciwnik z kontem: nazwa Marek_Z" "Marek_Z"
 
 echo "## motywy i 360/320 px: brak poziomego przewijania" >> $LOG
@@ -188,9 +203,13 @@ for W in 1440 360 320; do
     cl "$SUB" 0.5; noscroll "N.$W.$TH.dlg" "dialog przy $W px, $TH"; shot "s05-dialog-$W-$TH"
     $AB press Escape >/dev/null 2>&1; sleep 0.3
     sel sc-account "A3"; go s05; noscroll "N.$W.$TH.s05b" "s05 blokada (Marek_Z) przy $W px, $TH"; shot "s05-blokada-$W-$TH"
-    sel sc-account "A1"; go s05; fill "#delete-account-password" "zle"; cl "$CONF" 0.2; cl "$SUB" 0.3; cl '[role=alertdialog] button:last-of-type' 0.6; noscroll "N.$W.$TH.err" "s05 błąd hasła przy $W px, $TH"; shot "s05-blad-hasla-$W-$TH"
-    tog sc-del-limit; fill "#delete-account-password" "$PW"; cl "$SUB" 0.3; cl '[role=alertdialog] button:last-of-type' 0.6; noscroll "N.$W.$TH.lim" "s05 limit przy $W px, $TH"; shot "s05-limit-$W-$TH"; tog sc-del-limit
-    sel sc-account "A1"; go s05; fill "#delete-account-password" "$PW"; cl "$SUB" 0.3; tog sc-del-server; cl '[role=alertdialog] button:last-of-type' 0.6; noscroll "N.$W.$TH.srv" "dialog błędu serwera przy $W px, $TH"; shot "s05-serwer-$W-$TH"; tog sc-del-server
+    fresh "A1"; fill "#delete-account-password" "zle"; cl "$CONF" 0.2; cl "$SUB" 0.3; cl '[role=alertdialog] button:last-of-type' 0.6
+    ck "N.$W.$TH.err.t" "stan widoczny: błąd hasła przy polu ($W px, $TH)" "Nieprawidłowe hasło."; noscroll "N.$W.$TH.err" "s05 błąd hasła przy $W px, $TH"; shot "s05-blad-hasla-$W-$TH"
+    fresh "A1"; tog sc-del-limit; prep "$PW"; cl "$SUB" 0.3; cl '[role=alertdialog] button:last-of-type' 0.6
+    ck "N.$W.$TH.lim.t" "stan widoczny: Alert limitu 429 z czasem ($W px, $TH)" "Spróbuj ponownie za 12 min."; noscroll "N.$W.$TH.lim" "s05 limit przy $W px, $TH"; shot "s05-limit-$W-$TH"; tog sc-del-limit
+    fresh "A1"; tog sc-del-server; prep "$PW"; cl "$SUB" 0.3; cl '[role=alertdialog] button:last-of-type' 0.6
+    D=$(dialog); [[ "$D" == *"Nie udało się usunąć konta. Nic nie zostało zmienione."* ]] && echo "PASS N.$W.$TH.srv.t | stan widoczny: dialog z błędem serwera ($W px, $TH)" >> $LOG || echo "FAIL N.$W.$TH.srv.t | $D" >> $LOG
+    noscroll "N.$W.$TH.srv" "dialog błędu serwera przy $W px, $TH"; shot "s05-serwer-$W-$TH"; tog sc-del-server
     cl '[role=alertdialog] button:last-of-type' 0.8
     go s04; noscroll "N.$W.$TH.s04" "s04.14 przy $W px, $TH"; shot "s04-usuniete-$W-$TH"
     go s08; noscroll "N.$W.$TH.s08" "s08 przy $W px, $TH"; shot "s08-$W-$TH"

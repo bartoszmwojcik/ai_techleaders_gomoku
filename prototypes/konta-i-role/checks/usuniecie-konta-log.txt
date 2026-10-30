@@ -13,7 +13,7 @@ PASS s05.14.d | fokus wraca na przycisk
 ## s05.15 w toku (opóźnienie serwera 600 ms, bez ?fast)
 PASS s05.15.a | przycisk w dialogu zajęty (aria-busy) i zablokowany
 PASS s05.15.b | podwójne kliknięcie: jedno usunięcie, wynik na s04
-## s05.16 błędne hasło i licznik
+## s05.16 błędne hasło (bez licznika prób, decyzja 2026-10-30)
 PASS s05.16.a | błąd przy polu, bez szczegółów
 PASS s05.16.b | pierwszy błąd bez licznika
 PASS s05.16.c | fokus na polu hasła
@@ -22,9 +22,11 @@ PASS s05.16.e | dialog zamknięty
 ## s05.16b puste hasło
 PASS s05.16b.a | puste hasło: błąd przy polu bez dialogu
 PASS s05.16b.b | dialog się nie otworzył
-## licznik prób: 7. błąd ostrzega, 10. błąd, 11. próba = limit
-PASS s05.16.f | 7. błąd: Zostało prób: 3
-PASS s05.16.g | 10. błąd: Zostało prób: 0
+PASS s05.16b.c | pole z aria-invalid
+## 10 błędów bez licznika, 11. próba = limit
+PASS s05.16.f | 7. błąd: dalej tylko Nieprawidłowe hasło.
+PASS s05.16.f2 | 7. błąd: bez licznika prób
+PASS s05.16.g | 10. błąd: bez licznika prób
 ## s05.17 limit 429
 PASS s05.17.a | 11. próba (nawet z dobrym hasłem): limit z czasem
 PASS s05.17.b | czas ponowienia w minutach
@@ -53,6 +55,11 @@ PASS s05.11.a | oczekująca partia: dodatkowe ostrzeżenie
 PASS s05.11.b | dialog też wspomina o oczekującej partii
 PASS s05.20.a | 409 w trakcie: pojawia się blokada z linkiem
 PASS s05.20.b | dialog zamknięty, fokus na bloku blokady
+PASS s05.20.c | mysz: blokada ma fokus programowy (obrys tylko przy klawiaturze)
+## s05.20 ten sam przebieg z klawiatury: blokada ma widoczny obrys (:focus-visible)
+PASS s05.20.d | klawiatura: 409 pokazuje blokadę
+PASS s05.20.e | klawiatura: blokada ma fokus i :focus-visible
+PASS s05.20.f | klawiatura: obrys fokusu jest widoczny
 ## s05.19 sesja wygasła (401)
 PASS s05.19.a | 401: przekierowanie na logowanie
 ## sukces dla konta z oczekującą partią (Ola_W) i skutki
@@ -67,55 +74,76 @@ PASS s05.21.c | ponowna rejestracja tym samym e-mailem i nazwą działa od razu
 PASS s08.1.a | po usunięciu nazwa przeciwnika to Usunięty gracz
 PASS s08.1.b | bez przycisku rewanżu i komunikatu domyślnie
 PASS s08.2.a | komunikat Rewanż niedostępny
-PASS s08.3.a | oferta rewanżu zamknięta jako odrzucona
+PASS s08.3.a | oferta rewanżu zamknięta po cichu (decyzja 2026-10-30): brak alertu odrzucenia
+PASS s08.2.b | nagłówek zgodny z oglądającym (Olek_R), nie z kontem sesji demo
 PASS s08.4.a | gość widzi Usunięty gracz
+PASS s08.4.b | gość bez oferty rewanżu: brak komunikatu Rewanż niedostępny
+PASS s08.4.c | nagłówek gościa bez Zalogowano jako
 PASS s08.5.a | przeciwnik z kontem: nazwa Marek_Z
 ## motywy i 360/320 px: brak poziomego przewijania
 PASS N.1440.dark.s05 | s05 (Ola_W) przy 1440 px, dark
 PASS N.1440.dark.dlg | dialog przy 1440 px, dark
 PASS N.1440.dark.s05b | s05 blokada (Marek_Z) przy 1440 px, dark
+PASS N.1440.dark.err.t | stan widoczny: błąd hasła przy polu (1440 px, dark)
 PASS N.1440.dark.err | s05 błąd hasła przy 1440 px, dark
+PASS N.1440.dark.lim.t | stan widoczny: Alert limitu 429 z czasem (1440 px, dark)
 PASS N.1440.dark.lim | s05 limit przy 1440 px, dark
+PASS N.1440.dark.srv.t | stan widoczny: dialog z błędem serwera (1440 px, dark)
 PASS N.1440.dark.srv | dialog błędu serwera przy 1440 px, dark
 PASS N.1440.dark.s04 | s04.14 przy 1440 px, dark
 PASS N.1440.dark.s08 | s08 przy 1440 px, dark
 PASS N.1440.light.s05 | s05 (Ola_W) przy 1440 px, light
 PASS N.1440.light.dlg | dialog przy 1440 px, light
 PASS N.1440.light.s05b | s05 blokada (Marek_Z) przy 1440 px, light
+PASS N.1440.light.err.t | stan widoczny: błąd hasła przy polu (1440 px, light)
 PASS N.1440.light.err | s05 błąd hasła przy 1440 px, light
+PASS N.1440.light.lim.t | stan widoczny: Alert limitu 429 z czasem (1440 px, light)
 PASS N.1440.light.lim | s05 limit przy 1440 px, light
+PASS N.1440.light.srv.t | stan widoczny: dialog z błędem serwera (1440 px, light)
 PASS N.1440.light.srv | dialog błędu serwera przy 1440 px, light
 PASS N.1440.light.s04 | s04.14 przy 1440 px, light
 PASS N.1440.light.s08 | s08 przy 1440 px, light
 PASS N.360.dark.s05 | s05 (Ola_W) przy 360 px, dark
 PASS N.360.dark.dlg | dialog przy 360 px, dark
 PASS N.360.dark.s05b | s05 blokada (Marek_Z) przy 360 px, dark
+PASS N.360.dark.err.t | stan widoczny: błąd hasła przy polu (360 px, dark)
 PASS N.360.dark.err | s05 błąd hasła przy 360 px, dark
+PASS N.360.dark.lim.t | stan widoczny: Alert limitu 429 z czasem (360 px, dark)
 PASS N.360.dark.lim | s05 limit przy 360 px, dark
+PASS N.360.dark.srv.t | stan widoczny: dialog z błędem serwera (360 px, dark)
 PASS N.360.dark.srv | dialog błędu serwera przy 360 px, dark
 PASS N.360.dark.s04 | s04.14 przy 360 px, dark
 PASS N.360.dark.s08 | s08 przy 360 px, dark
 PASS N.360.light.s05 | s05 (Ola_W) przy 360 px, light
 PASS N.360.light.dlg | dialog przy 360 px, light
 PASS N.360.light.s05b | s05 blokada (Marek_Z) przy 360 px, light
+PASS N.360.light.err.t | stan widoczny: błąd hasła przy polu (360 px, light)
 PASS N.360.light.err | s05 błąd hasła przy 360 px, light
+PASS N.360.light.lim.t | stan widoczny: Alert limitu 429 z czasem (360 px, light)
 PASS N.360.light.lim | s05 limit przy 360 px, light
+PASS N.360.light.srv.t | stan widoczny: dialog z błędem serwera (360 px, light)
 PASS N.360.light.srv | dialog błędu serwera przy 360 px, light
 PASS N.360.light.s04 | s04.14 przy 360 px, light
 PASS N.360.light.s08 | s08 przy 360 px, light
 PASS N.320.dark.s05 | s05 (Ola_W) przy 320 px, dark
 PASS N.320.dark.dlg | dialog przy 320 px, dark
 PASS N.320.dark.s05b | s05 blokada (Marek_Z) przy 320 px, dark
+PASS N.320.dark.err.t | stan widoczny: błąd hasła przy polu (320 px, dark)
 PASS N.320.dark.err | s05 błąd hasła przy 320 px, dark
+PASS N.320.dark.lim.t | stan widoczny: Alert limitu 429 z czasem (320 px, dark)
 PASS N.320.dark.lim | s05 limit przy 320 px, dark
+PASS N.320.dark.srv.t | stan widoczny: dialog z błędem serwera (320 px, dark)
 PASS N.320.dark.srv | dialog błędu serwera przy 320 px, dark
 PASS N.320.dark.s04 | s04.14 przy 320 px, dark
 PASS N.320.dark.s08 | s08 przy 320 px, dark
 PASS N.320.light.s05 | s05 (Ola_W) przy 320 px, light
 PASS N.320.light.dlg | dialog przy 320 px, light
 PASS N.320.light.s05b | s05 blokada (Marek_Z) przy 320 px, light
+PASS N.320.light.err.t | stan widoczny: błąd hasła przy polu (320 px, light)
 PASS N.320.light.err | s05 błąd hasła przy 320 px, light
+PASS N.320.light.lim.t | stan widoczny: Alert limitu 429 z czasem (320 px, light)
 PASS N.320.light.lim | s05 limit przy 320 px, light
+PASS N.320.light.srv.t | stan widoczny: dialog z błędem serwera (320 px, light)
 PASS N.320.light.srv | dialog błędu serwera przy 320 px, light
 PASS N.320.light.s04 | s04.14 przy 320 px, light
 PASS N.320.light.s08 | s08 przy 320 px, light
