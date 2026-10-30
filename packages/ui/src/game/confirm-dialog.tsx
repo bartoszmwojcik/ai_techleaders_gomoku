@@ -15,6 +15,11 @@ type ConfirmDialogProps = {
   title: ReactNode;
   /** The consequence in one sentence. */
   description?: ReactNode;
+  /**
+   * A message about the last attempt, e.g. "Nie udało się usunąć konta. Nic nie zostało zmienione.
+   * Spróbuj ponownie." Announced when it appears (`role="alert"`); the dialog stays open.
+   */
+  message?: ReactNode;
   /** A verb phrase, never "OK": "Usuń konto na zawsze" (required). */
   confirmLabel: string;
   /** The way out, easy to find: "Zostaw konto" (required). */
@@ -35,6 +40,7 @@ function ConfirmDialog({
   trigger,
   title,
   description,
+  message,
   confirmLabel,
   cancelLabel,
   onConfirm,
@@ -56,6 +62,11 @@ function ConfirmDialog({
               <AlertDialogPrimitive.Description className={dialogDescriptionClass}>
                 {description}
               </AlertDialogPrimitive.Description>
+            )}
+            {message && (
+              <p role="alert" className="m-0 text-body font-strong text-status-danger">
+                {message}
+              </p>
             )}
             <div className="flex flex-col gap-group md:flex-row md:justify-end">
               <AlertDialogPrimitive.Cancel asChild>
