@@ -262,7 +262,7 @@ describe("RematchService.accept", () => {
   it("refuses when the caller already has a game (BR-13) with a link, the offer stays", async () => {
     const { gameId, u2, p1, p2 } = await accountsGame();
     await scope().rematch.offer(p1, gameId);
-    const { gameId: other } = await scope().games.create(u2);
+    const { gameId: other } = await scope().games.create({ kind: "account", userId: u2 });
 
     await expect(scope().rematch.accept(p2, gameId)).rejects.toMatchObject({
       status: 409, code: "ACTIVE_GAME_EXISTS", data: { gameId: other },
@@ -270,14 +270,14 @@ describe("RematchService.accept", () => {
 
     expect((await gameRow(gameId)).rematch_state).toBe("pending");
     // Once the game is cancelled the same offer can be accepted.
-    await scope().games.cancel(u2, other);
+    await scope().games.cancel((await scope().games.findParticipant({ userId: u2 }, other))!, other);
     await expect(scope().rematch.accept(p2, gameId)).resolves.toMatchObject({ gameId: expect.any(String) });
   });
 
   it("refuses without a link when only the proposer has a game", async () => {
     const { gameId, u1, p1, p2 } = await accountsGame();
     await scope().rematch.offer(p1, gameId);
-    await scope().games.create(u1);
+    await scope().games.create({ kind: "account", userId: u1 });
 
     const error = await scope().rematch.accept(p2, gameId).catch((caught: unknown) => caught);
 

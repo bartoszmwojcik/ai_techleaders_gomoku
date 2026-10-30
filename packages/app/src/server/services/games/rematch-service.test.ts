@@ -56,7 +56,12 @@ function setup(options: {
     hit: vi.fn(async () => ({ count: 1, retryAfterSeconds: 1 })),
     release: vi.fn(async () => undefined),
   };
-  const timeoutSettler = { settleFor: vi.fn(async () => undefined), settleGame: vi.fn(), settleExpired: vi.fn() };
+  const timeoutSettler = {
+    settleFor: vi.fn(async () => undefined),
+    settleForGuest: vi.fn(async () => undefined),
+    settleGame: vi.fn(),
+    settleExpired: vi.fn(),
+  };
   const service = new RematchService({
     em: em as unknown as EntityManager,
     clock: { now: () => NOW },

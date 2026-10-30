@@ -81,8 +81,3 @@ export async function readGuestTokenHash(
   const token = await readGuestToken(config);
   return token ? hashOpaqueToken(token) : undefined;
 }
-
-/** The guest token the browser carries, or `undefined` without the cookie. */
-export async function readGuestToken(config: CookieConfig): Promise<string | undefined> {
-  return (await cookies()).get(guestCookieName(config))?.value;
-}
