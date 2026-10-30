@@ -36,7 +36,7 @@ const finished = (over: Partial<GameView> = {}): GameView => ({
   turnSeat: null,
   moves: [],
   result: { winnerSeat: 1, reason: "five_in_row", winLine: [0, 1, 2, 3, 4] },
-  clock: { remainingMs: [600_000, 600_000] as [number, number], running: null, now: 0 },
+  clock: { remainingMs: [600_000, 600_000] as [number, number], running: null, now: NOW },
   ...over,
 });
 const guestMe = (over: Partial<GameView> = {}) =>
@@ -219,6 +219,30 @@ describe("RematchPanel, own offer (p06.11)", () => {
     await press(button("Zaproponuj ponownie"));
     expect(apiCall).toHaveBeenCalledWith("/api/games/g1/rematch");
     expect(status()).toContain("Zaproponowano rewanż");
+  });
+
+  it.each([6, -6])("counts against the server's time, not the device's clock (device %i min off)", async (skewMin) => {
+    // The device clock is off; the server's `clock.now` is the reference (as for the game clock).
+    vi.setSystemTime(NOW + skewMin * 60_000);
+    panel(finished({ rematch: offer() }));
+    expect(screen.getByTestId("rematch-countdown").textContent).toContain("Pozostało 5:00.");
+    await tick(61_000);
+    expect(screen.getByTestId("rematch-countdown").textContent).toContain("Pozostało 3:59.");
+    await tick(4 * 60_000);
+    expect(status()).toBe("Zaproszenie do rewanżu wygasło (po 5 minutach).");
+  });
+
+  it("shows the opponent's offer for acceptance on a device with a fast clock", () => {
+    vi.setSystemTime(NOW + 6 * 60_000);
+    panel({ ...finished(), rematch: offer({ offeredBySeat: 2 }) });
+    expect(button("Przyjmij")).toBeTruthy();
+  });
+
+  it("keeps counting from the answer it has, however long ago the answer came", async () => {
+    panel(finished({ rematch: offer() }));
+    await tick(30_000);
+    // The offer made now is a patch of the same state: the time of the last answer plus the time since.
+    expect(screen.getByTestId("rematch-countdown").textContent).toContain("Pozostało 4:30.");
   });
 
   it("shows the expiry the server reports as well", () => {

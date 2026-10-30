@@ -5,12 +5,14 @@ import { Button } from "@gomoku/ui/game/button";
 import { formatClock } from "@gomoku/ui/game/format-clock";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 
 import { apiCall } from "@/lib/api-client";
 import { rematchModeOf } from "@/lib/games/rematch";
 import { colorOfSeat, COLOR_PLAYS, playerNameOf } from "@/lib/games/play";
 import type { GameView } from "@/server/http/game-view";
+
+import { useServerNow } from "./use-server-now";
 
 type Props = {
   gameId: string;
@@ -39,23 +41,6 @@ const NETWORK_ERROR = "Nie udało się połączyć z serwerem. Spróbuj ponownie
 
 /** How often a result screen asks whether the opponent offered a rematch (nothing else changes there). */
 export const REMATCH_POLL_INTERVAL_MS = 3000;
-
-const nowOnServer = () => null;
-// A snapshot that holds still within a second, so the store is stable between two reads of one render.
-const nowInSeconds = () => Math.floor(Date.now() / 1000) * 1000;
-
-function useNow(ticking: boolean): number | null {
-  // `null` on the server and while hydrating, so both print the same markup.
-  const subscribe = useCallback(
-    (notify: () => void) => {
-      if (!ticking) return () => {};
-      const timer = setInterval(notify, 1000);
-      return () => clearInterval(timer);
-    },
-    [ticking],
-  );
-  return useSyncExternalStore(subscribe, nowInSeconds, nowOnServer);
-}
 
 /**
  * The rematch block under the result (p06.10-p06.15): the offer, the wait with its countdown, the
@@ -89,7 +74,7 @@ export function RematchPanel({ gameId, game, reopened, onState, onRefresh, onGon
   // A guest on a page opened on an accepted rematch still has to fetch the token (see above).
   const claimFirst = useRef(reopened && guest && game.rematch?.state === "accepted");
 
-  const now = useNow(game.rematch?.state === "pending");
+  const now = useServerNow(game.clock, game.rematch?.state === "pending");
   const mode = rematchModeOf(game.rematch, mySeat, now ?? 0, withdrawn);
   const target = going ?? (mode.kind === "accepted" ? mode.gameId : null);
   // The move-on effect must run once per target and attempt, whatever the identity of these two is.
