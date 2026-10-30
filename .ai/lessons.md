@@ -30,3 +30,4 @@ Indeks lekcji. Jedna linia na wpis: `- [Tytuł](lessons/YYYY-MM-DD-slug.md) — 
 - [`next build` na VPS z 2 GB RAM](lessons/2026-10-30-next-build-on-a-small-vps-needs-one-worker.md) — „Failed to type check.” bez treści to zabity proces; `LOW_MEMORY=1` (jeden worker, osobny `tsc`)
 - [Błąd w transakcji cofa zapis](lessons/2026-10-29-throw-inside-transaction-rolls-back-settlement.md) — „zapisz i odrzuć" (np. przegrana na czas + 409) zwracaj znacznikiem z `transactional` i rzucaj po commicie; testuj stan bazy na PostgreSQL.
 - [Dwa zielone PR-y mogą razem zepsuć `main`](lessons/2026-10-30-two-green-prs-can-break-main-together.md) — po scaleniu PR-a zmieniającego wspólny typ zrób rebase pozostałych i sprawdź typecheck na main
+- [Mało, ale pełnych PR-ów](lessons/2026-10-30-fewer-bigger-prs.md) — jeden PR na funkcję (kod+testy+dokumentacja); spec do zatwierdzenia osobno; drobiazgi dołączaj do PR-a, którego dotyczą
