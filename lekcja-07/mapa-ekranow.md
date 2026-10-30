@@ -261,9 +261,9 @@ Stany s04.4–s04.10 liczone osobno (7 stanów banera). Stany banera na s05.2 od
 
 **Mapa zatwierdzona.** Przed budową prototypu potrzebuję odpowiedzi na pytania z sekcji 4 (L19 i L24 zostają bez zmian na Twoją decyzję) oraz decyzji z sekcji 5.
 
-## 7. Dopisek 2026-10-30: usunięcie konta (E01-S06, #37) — oczekuje na zatwierdzenie
+## 7. Dopisek 2026-10-30: usunięcie konta (E01-S06, #37) — założenia i pytania zatwierdzone przez właściciela 2026-10-30
 
-Sekcje 1–6 powyżej są zatwierdzone i nie zostały zmienione. Ten dopisek wynika z pytania O3 specyfikacji `.ai/specs/2026-10-24-account-deletion.md` (zaktualizowanej 2026-10-30): panel „Usuń konto” był świadomie poza zakresem (L19); teraz historia #37 wymaga prototypu przed kodem ekranu. Prototyp: `prototypes/konta-i-role` (rozszerzony; szczegóły, założenia i luki w jego README). Po zatwierdzeniu właściciel decyduje, czy włączyć to do tabeli w sekcji 1 i do liczb w sekcji 6. L19 nadal obejmuje zmianę hasła (#36) i reset hasła (#35); usunięcie konta przestaje być jej częścią.
+Sekcje 1–6 powyżej są zatwierdzone i nie zostały zmienione. Ten dopisek wynika z pytania O3 specyfikacji `.ai/specs/2026-10-24-account-deletion.md` (zaktualizowanej 2026-10-30): panel „Usuń konto” był świadomie poza zakresem (L19); teraz historia #37 wymaga prototypu przed kodem ekranu. Prototyp: `prototypes/konta-i-role` (rozszerzony; szczegóły, założenia i luki w jego README). Właściciel zatwierdził 2026-10-30 („zgoda na rekomendacje”) O1–O6 i pięć pytań z przeglądu (LU1–LU3, DU1, DU2 rozstrzygnięte niżej); włączenie do tabeli w sekcji 1 i do liczb w sekcji 6 zostaje do osobnego potwierdzenia. L19 nadal obejmuje zmianę hasła (#36) i reset hasła (#35); usunięcie konta przestaje być jej częścią.
 
 ### 7a. Nowe stany (ID stałe od zatwierdzenia dopisku)
 
@@ -275,7 +275,7 @@ Sekcje 1–6 powyżej są zatwierdzone i nie zostały zmienione. Ten dopisek wyn
 | s05.13 | Hasło wpisane i pole zaznaczone: przycisk aktywny | spec #37 UI |
 | s05.14 | Dialog „Usunąć konto {nazwa}?” z fokusem na „Zostaw konto”; Esc zamyka, fokus wraca na przycisk | DS: Potwierdzenie usunięcia |
 | s05.15 | Usuwanie trwa: przycisk w dialogu zajęty, drugie kliknięcie nic nie wysyła, Esc zablokowany | lekcja 2026-10-29 |
-| s05.16 | Błędne hasło (400): dialog się zamyka, błąd „Nieprawidłowe hasło.” przy polu, pole czyszczone, fokus na polu; od 7. błędu z licznikiem (założenie A-D5) | API Contracts; Q2 |
+| s05.16 | Błędne hasło (400): dialog się zamyka, błąd „Nieprawidłowe hasło.” przy polu, pole czyszczone, fokus na polu; bez licznika prób (decyzja 2026-10-30; stan s05.16c wycofany) | API Contracts; Q2 |
 | s05.16b | Puste hasło ⚠: błąd „Wpisz hasło.” przy polu, dialog się nie otwiera (założenie A-D2) | `VALIDATION` |
 | s05.17 | Limit 10 błędnych prób w 15 min (429): Alert „Zbyt wiele prób — Spróbuj ponownie za {n} min.”, dialog zamknięty, także dla dobrego hasła | Q2 |
 | s05.18 | Błąd serwera (500) lub brak sieci: dialog zostaje otwarty z komunikatem „Nie udało się usunąć konta. Nic nie zostało zmienione. Spróbuj ponownie.” | #37 UI |
@@ -283,11 +283,11 @@ Sekcje 1–6 powyżej są zatwierdzone i nie zostały zmienione. Ten dopisek wyn
 | s05.20 | Partia zaczęła się w międzyczasie (409 po wysłaniu): dialog zamyka się, pojawia się blokada z s05.12, fokus na niej | Edge Cases |
 | s04.14 | Sukces: `/?notice=account-deleted`, zamykalny komunikat „Konto zostało usunięte”, widok bez sesji | #37 UI |
 | s08.1 | Partia zakończona u przeciwnika: nazwa „Usunięty gracz”, wynik bez zmian, bez bloku rewanżu | Q1, BR-17, BR-24 |
-| s08.2 | ⚠ To samo z komunikatem „Rewanż niedostępny” (założenie A-D8, O2) | Edge Cases |
-| s08.3 | ⚠ Oferta rewanżu czekała w chwili usunięcia: „Zaproszenie do rewanżu odrzucone” (O2) | Edge Cases |
-| s08.4 | Przeciwnik jest gościem („Piotr (gość)”) i też widzi „Usunięty gracz” (okno 1 h, BR-29) | Edge Cases |
+| s08.2 | To samo z komunikatem „Rewanż niedostępny”; nagłówek pokazuje oglądającego (decyzja 2026-10-30, O2) | Edge Cases |
+| ~~s08.3~~ | Wycofany (decyzja 2026-10-30): oferta rewanżu `pending` jest zamykana po cichu, bez alertu „Zaproszenie do rewanżu odrzucone”. ID nie jest ponownie używane | O2 |
+| s08.4 | Przeciwnik jest gościem („Piotr (gość)”), bez „Zalogowano jako” w nagłówku, też widzi „Usunięty gracz” (okno 1 h, BR-29) | Edge Cases |
 
-s08 to pomocniczy ekran w tym prototypie, zastępujący p06 prototypu partii (`mapa-ekranow-partia.md`), który nie ma jeszcze gracza usuniętego; po zatwierdzeniu właściciel decyduje, czy te stany mają wejść do mapy partii jako p06.x.
+s08 to pomocniczy ekran w tym prototypie, zastępujący p06 prototypu partii (`mapa-ekranow-partia.md`), który nie ma jeszcze gracza usuniętego. Decyzja właściciela 2026-10-30: s08 zostaje w tej mapie (sekcja 7), nie przenosimy go do `mapa-ekranow-partia.md`.
 
 ### 7b. Scenariusze
 
@@ -296,14 +296,14 @@ s08 to pomocniczy ekran w tym prototypie, zastępujący p06 prototypu partii (`m
 | P15 | Konta demo: Ala_7 (A1, bez partii), Marek_Z (A3, partia w toku), Ola_W (A8, oczekująca partia) | s05.10–s05.12 |
 | P16 | Limit, błąd serwera, sesja wygasła przy następnym wysłaniu; „brak sieci” z P05 | s05.17–s05.19 |
 | P17 | „Poddaj partię (w innej karcie)”, „Odśwież stronę konta”, „Przeciwnik dołącza do mojej oczekującej partii” | s05.12, s05.20 |
-| P18 | Widok przeciwnika: usunął konto, komunikat o rewanżu, oferta rewanżu, oglądający jest gościem | s08.1–s08.4 |
+| P18 | Widok przeciwnika: usunął konto, komunikat „Rewanż niedostępny”, oglądający jest gościem | s08.1, s08.2, s08.4 |
 
 ### 7c. Luki (osobna numeracja LU/DU, żeby nie kolidować z L25–L35 mapy partii)
 
 | ID | Luka | Pytanie |
 |---|---|---|
-| LU1 | Ekran s08 nie istnieje w żadnej mapie; stany przeciwnika są symulowane tu, a nie w prototypie partii | Czy dopisać p06.x do `mapa-ekranow-partia.md`? |
-| LU2 | Treść dla przeciwnika przy rewanżu (s08.2, s08.3) nie jest rozstrzygnięta (O2: osobny tekst dopiero przy UI rewanżu) | Jaki tekst i czy w ogóle komunikat? |
-| LU3 | Licznik prób przy błędnym haśle wymaga zmiany kontraktu API (`data.attemptsLeft`); spec go nie ma | Pokazywać licznik czy tylko 429 po fakcie? |
-| DU1 | `ConfirmDialog` nie ma miejsca na błąd ani pole; błąd serwera jest zdaniem w opisie (`role="alert"`) | Dodać slot na komunikat do komponentu? |
-| DU2 | Brak wzorca „strefa niebezpieczna” (Panel z obramowaniem w kolorze `status-danger`) | Zatwierdzić wariant Panelu? |
+| LU1 | Ekran s08 nie istnieje w żadnej mapie; stany przeciwnika są symulowane tu, a nie w prototypie partii | **Rozstrzygnięta 2026-10-30:** s08 zostaje w mapie kont (sekcja 7), nie wchodzi do `mapa-ekranow-partia.md` |
+| LU2 | Treść dla przeciwnika przy rewanżu (s08.2) nie jest rozstrzygnięta (O2) | **Rozstrzygnięta 2026-10-30:** „Rewanż niedostępny” TAK; „Zaproszenie do rewanżu odrzucone” NIE (oferta zamykana po cichu; s08.3 wycofany) |
+| LU3 | Licznik prób przy błędnym haśle wymagałby zmiany kontraktu API (`data.attemptsLeft`) | **Rozstrzygnięta 2026-10-30:** bez licznika, tylko 429 z czasem odczekania; `data.attemptsLeft` nie wchodzi do API (s05.16c wycofany) |
+| DU1 | `ConfirmDialog` nie ma miejsca na błąd ani pole; błąd serwera jest zdaniem w opisie (`role="alert"`) | **Zatwierdzone do wdrożenia 2026-10-30:** slot na komunikat w `ConfirmDialog` (mała zmiana DS w PR implementacji #37) |
+| DU2 | Brak wzorca „strefa niebezpieczna” (Panel z obramowaniem w kolorze `status-danger`) | **Zatwierdzone do wdrożenia 2026-10-30:** wariant Panelu z obramowaniem `status-danger` |

@@ -66,12 +66,14 @@ Do zrobienia osobno: szary prototyp (`.ai/prototypes/discovery/account-registrat
 
 Zlecenie: prototyp przed kodem ekranu (O3 specyfikacji `.ai/specs/2026-10-24-account-deletion.md`). Rozszerzenie tego prototypu zamiast nowego katalogu: ekran jest częścią s05, a konta demo, symulator i silnik przeglądu są wspólne.
 
-- [x] Stany s05.10–s05.20, s04.14 i pomocniczy ekran s08 (s08.1–s08.4) w `src/screens/delete-account.tsx`, `s04-home.tsx`, `s08-opponent.tsx`; symulacja `deleteAccount` w `src/sim.ts` (kolejność kontroli z kontraktu API: sesja, limit 10 błędów w 15 min, hasło, partia `active`, usunięcie).
+- [x] Stany s05.10–s05.20, s04.14 i pomocniczy ekran s08 (s08.1, s08.2, s08.4; s08.3 wycofany) w `src/screens/delete-account.tsx`, `s04-home.tsx`, `s08-opponent.tsx`; symulacja `deleteAccount` w `src/sim.ts` (kolejność kontroli z kontraktu API: sesja, limit 10 błędów w 15 min, hasło, partia `active`, usunięcie).
 - [x] Konto demo A8 (Ola_W, oczekująca partia); A7 w mapie to nieistniejący operator, więc nowe konto dostało A8.
 - [x] Scenariusze P15–P18 w panelu przeglądu.
-- [x] Testy: `tests/usuniecie-konta.test.tsx` (13 testów), razem 29 z nawigacją.
-- [x] Sprawdzenie w przeglądarce: `checks/usuniecie-konta-walk.sh` (wynik `checks/usuniecie-konta-log.txt`, zrzuty `checks/usuniecie-konta-evidence/`).
-- [x] Mapa: dopisek (sekcja 7) w `lekcja-07/mapa-ekranow.md`, oznaczony „oczekuje na zatwierdzenie”; zatwierdzonych sekcji 1–6 nie zmieniano.
-- [ ] Zatwierdzenie właściciela: treści i założenia A-D1…A-D13 z README, luki LU1–LU3 i DU1–DU2.
+- [x] Testy: `tests/usuniecie-konta.test.tsx` (13 testów), razem 29 z nawigacją (liczba bez zmian po decyzjach: testy licznika i alertu rewanżu zastąpione asercjami „bez licznika” i „bez alertu”).
+- [x] Sprawdzenie w przeglądarce: `checks/usuniecie-konta-walk.sh` (wynik `checks/usuniecie-konta-log.txt`, zrzuty `checks/usuniecie-konta-evidence/`). Stan po decyzjach 2026-10-30 i poprawkach z przeglądu: 137 PASS, 0 FAIL (wcześniej 110). Macierz motywów i 360/320 px odtwarza teraz stany limitu 429, błędu serwera i błędu hasła i sprawdza ich tekst przed zrzutem; dodane s05.16b (zrzut), s05.20 z klawiatury (`:focus-visible`), s08.4 bez oferty rewanżu i bez „Zalogowano jako”.
+- [x] Mapa: dopisek (sekcja 7) w `lekcja-07/mapa-ekranow.md`; zatwierdzonych sekcji 1–6 nie zmieniano.
+- [x] Zatwierdzenie właściciela 2026-10-30 („zgoda na rekomendacje”): O1–O6 oraz pięć pytań (bez licznika prób, bez alertu „Zaproszenie do rewanżu odrzucone”, tekst blokady s05.12, komponenty DS `Alert`/strefa niebezpieczna/slot w `ConfirmDialog`, s08 w mapie kont). Skutki: wariant licznika (s05.16c) i stan s08.3 usunięte, nagłówek s08 zgodny z oglądającym. Pozostałe założenia A-D1…A-D4, A-D7…A-D9, A-D11, A-D13 zostają założeniami do przeglądu.
+
+Poprawki z przeglądu PR #105: blokada s05.12 nie miała obrysu fokusu, bo reguła hosta `.frame [tabindex="-1"] { outline: none }` (dla nagłówków silnika) dotyczyła też jej; teraz dotyczy tylko `h1`–`h3`. Nagłówek s08 pokazuje oglądającego (gość: bez „Zalogowano jako”).
 
 Poprawki znalezione przy przejściu: fokus nie wracał na przycisk po zamknięciu dialogu (przycisk jest teraz `trigger` komponentu `ConfirmDialog`, Radix zwraca na niego fokus); zrzuty całej strony ucinały formularz (zrzut jest teraz ramką ekranu, a przy dialogu całym widokiem).
