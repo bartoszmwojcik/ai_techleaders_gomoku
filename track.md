@@ -105,7 +105,17 @@ Ręczny test po fazie: `npm run db:cleanup` na bazie ze starymi rekordami.
 
 ## Faza 10 — Usunięcie konta (#37)
 
-- [ ] Odblokowana (tabele partii z #29 i prawdziwe `gameParticipation` są od E02; rewanż i poddanie zamknęły E02). Czeka na zatwierdzenie zaktualizowanej specyfikacji #37: `.ai/specs/2026-10-24-account-deletion.md` (kroki 1–5, w tym 9.4); implementacja dopiero po zatwierdzeniu.
+Odblokowana (tabele partii, `gameParticipation`, poddanie #87). Jeden PR (`Closes #37`), kroki 1–8 ze specyfikacji [`account-deletion`](.ai/specs/2026-10-24-account-deletion.md):
+
+- [x] 10.1 `accountDeleteSchema` w `core`
+- [x] 10.2 Migracja: indeks `game_players(user_id)` (w górę i w dół sprawdzone na jednorazowym PostgreSQL)
+- [x] 10.3 `AccountService.delete`, blokada użytkownika w `GameService.create`, rejestracja w `container.ts`
+- [x] 10.4 Testy PostgreSQL (`account-delete-db.test.ts`): test-strażnik FK, kaskady, rollback przez `tx`, wyścigi na dwóch połączeniach
+- [x] 10.5 `POST /api/account/delete` z limitem 10 prób na konto, testy HTTP (`account-delete-api.test.ts`)
+- [x] 10.6 UI: sekcja „Usuń konto” na `/account`, komunikat na `/` (`notice=account-deleted`), slot `message` w `ConfirmDialog`
+- [x] 10.7 Testy przeglądarkowe (`account-delete-pages.test.ts`), README
+- [x] 10.8 Reguła sprzątania 9.4 (BR-28), osobny commit
+- [ ] 10.9 Punkt integracji z rewanżem (E02-S06, #88, osobny PR): UI rewanżu wobec uczestnika `kind = 'account'` z `user_id NULL` pokazuje tylko „Rewanż niedostępny”, serwer zwraca `409 REMATCH_UNAVAILABLE` (zob. adnotację w specyfikacji)
 
 ## Faza 11 — Przełącznik motywu jasny/ciemny (dodane 2026-10-28, decyzja właściciela; poza specyfikacjami E01)
 
