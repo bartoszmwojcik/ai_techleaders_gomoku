@@ -448,6 +448,30 @@ describe("GameRoom, play (p05, p06)", () => {
     expect(apiCall).toHaveBeenCalledTimes(4);
   });
 
+  it("reads the state the moment the local clock reaches zero and shows the loss on time (p06.3)", async () => {
+    const running = { remainingMs: [3_000, 600_000] as [number, number], running: 1 as const, now: 5_000_000 };
+    room(active({ clock: running }));
+    expect(screen.getByText("Twój ruch (czarne)")).toBeTruthy();
+    apiCall.mockResolvedValue({ ok: true, data: active({ clock: running }) });
+    await tick(PLAY_POLL_INTERVAL_MS);
+    expect(apiCall).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Twój ruch (czarne)")).toBeTruthy();
+    // The server settles the game when it is asked; the next regular read is at 4 s, the zero is at 3 s.
+    apiCall.mockResolvedValue({
+      ok: true,
+      data: active({
+        status: "finished",
+        turnSeat: null,
+        result: { winnerSeat: 2, reason: "timeout", winLine: null },
+        clock: { remainingMs: [0, 600_000], running: null, now: 5_003_100 },
+      }),
+    });
+    await tick(1_100);
+    expect(apiCall).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("Przegrałeś — skończył się Twój czas")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Koniec partii" })).toBeTruthy();
+  });
+
   it("stops polling when the game ends and shows the result with the winning line", async () => {
     room(theirTurn([112, 0, 113, 1, 114, 2, 115, 3]));
     apiCall.mockResolvedValue({

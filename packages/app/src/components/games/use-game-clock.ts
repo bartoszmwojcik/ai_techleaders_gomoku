@@ -19,7 +19,8 @@ type Options = {
  * answer's `now` (server time) is matched with the browser's clock.
  */
 class ClockSource {
-  #now = 0;
+  // A new object per reading: even two readings of the same value are a change for React.
+  #reading = { at: 0 };
   readonly #listeners = new Set<() => void>();
   readonly #arrivals = new WeakMap<ClockView, number>();
 
@@ -30,11 +31,11 @@ class ClockSource {
     };
   };
 
-  /** Latest reading; `0` until the first one (also the server render's snapshot). */
-  now = () => this.#now;
+  /** Latest reading; `at` is `0` until the first one (also the server render's snapshot). */
+  reading = () => this.#reading;
 
   sample() {
-    this.#now = performance.now();
+    this.#reading = { at: performance.now() };
     this.#listeners.forEach((listener) => listener());
   }
 
@@ -61,7 +62,7 @@ class ClockSource {
  */
 export function useGameClock(clock: ClockView, { finished = false, onExpire }: Options = {}) {
   const [source] = useState(() => new ClockSource());
-  const localNow = useSyncExternalStore(source.subscribe, source.now, source.now);
+  const localNow = useSyncExternalStore(source.subscribe, source.reading, source.reading).at;
   const expiredFor = useRef<ClockView | null>(null);
   const expire = useRef(onExpire);
 
