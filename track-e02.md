@@ -96,8 +96,22 @@ Ręczny test po fazie: start zegara po otwarciu strony przez obu, malejący zega
 - [x] 4.3 Testy integracyjne (wyścigi, rollback, BR-13) (#23 krok 7)
 - [ ] 4.4 UI: `useGameClock`, `PlayerClock`, wariant „mało czasu”, baner końca przez czas (#23 kroki 8–9) — po D3.2
 
-### Faza 5 — Powrót po rozłączeniu, poddanie, rewanż (po D0)
-- [!] 5.x zadania z nowych specyfikacji D0.1–D0.3 (rozpisać po ich zatwierdzeniu)
+### Faza 5 — Powrót po rozłączeniu (#24), poddanie (#87), rewanż (#88)
+Specyfikacje (zatwierdzone): `.ai/specs/2026-10-29-game-reconnection.md`, `…-game-resignation.md`, `…-game-rematch.md`. Prototyp: p05.10, p05.13–14, p06.5–p06.15. Każda podfaza = backend przed UI; UI po porównaniu z prototypem w obu motywach (360 i 1280 px). Kolejność: 5A → 5B → 5C (5B i 5C dotykają `GameView` i `game-room.tsx`: PR-y po kolei, każdy po rebase na `main`).
+Ręczny test po fazie: powrót do trwającej i zakończonej partii z drugiego urządzenia, poddanie (obie strony), rewanż z odwróconymi kolorami (konto–konto, konto–gość), wygaśnięcie i odrzucenie propozycji.
+
+#### 5A — Powrót po rozłączeniu (#24, jeden krótki PR)
+- [ ] 5.1 `core`: `shouldShowReturnNotice` i stała progu (granice, odwrócony czas) + hook `usePageVisibility` z odczytem natychmiastowym przy powrocie + komunikat „Wróciłeś do partii” (p05.10), znika po ruchu i po czasie (#24 kroki 1–3)
+- [ ] 5.2 Wejście do zakończonej partii: wynik i tryb tylko do odczytu (p06.5, p06.6); testy integracyjne: koniec przez czas w nieobecności, drugie urządzenie konta, gość z innej przeglądarki `404`, gość po 1 h `404` (#24 krok 4)
+
+#### 5B — Poddanie (#87, jeden PR)
+- [ ] 5.3 Backend: `resolve` w `core`; `end_reason = resignation` już jest w `CHECK` z fazy 3 (zweryfikować, migracja tylko jeśli brakuje); `GameMoveService.resign` (wyścig z ruchem i z czasem, idempotencja, rollback przez `tx`) + route `POST /api/games/[id]/resign` (200/404/409/403, konto i gość) (#87 kroki 1–4)
+- [ ] 5.4 UI: przycisk „Poddaj partię”, dialog (fokus na „Wróć do gry”), stany p05.13–14 i wynik p06.8–9; link do partii w komunikacie blokady usunięcia konta (#37) (#87 kroki 5–6)
+
+#### 5C — Rewanż (#88, jeden PR)
+- [ ] 5.5 Backend: `rematchBlackSeat`, `isRematchOpen` w `core`; `RematchService.offer/accept/decline` (wyścigi, BR-13 przy przyjęciu, gość z nowym tokenem, rollback przez `tx`); route'y i rozszerzenie `GET`; migracja tylko jeśli potrzebna (kolumny rewanżu są od fazy 1) (#88 kroki 1–4)
+- [ ] 5.6 UI: ekran wyniku z rewanżem, oczekiwanie, przyjęcie, odrzucenie, wygaśnięcie (p06.10–p06.15) (#88 krok 5)
+- [ ] 5.7 Dokumentacja (README), komentarz w #38 o dostawcy poczty jeśli nadal otwarty, lekcje; odblokowanie Fazy 10 z `track.md` (usunięcie konta, #37) po 5.3–5.4
 
 ## Poza zakresem tego przebiegu
 - Lobby (E03), historia (E04), spike #30 (transport czasu rzeczywistego — na MVP odpytywanie co 2–3 s), produkcyjny dostawca poczty (#38).
