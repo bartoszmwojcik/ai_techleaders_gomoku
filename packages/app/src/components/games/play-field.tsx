@@ -1,5 +1,6 @@
 "use client";
 
+import { isLow } from "@gomoku/core/games/clock";
 import { Alert } from "@gomoku/ui/game/alert";
 import { Board } from "@gomoku/ui/game/board";
 import { Button } from "@gomoku/ui/game/button";
@@ -21,6 +22,9 @@ import {
   stonesOf,
 } from "@/lib/games/play";
 import type { GameView } from "@/server/http/game-view";
+
+import { GameClock } from "./game-clock";
+import { useGameClock } from "./use-game-clock";
 
 /** Failed polls in a row before the banner appears (L02); the counter lives in the room. */
 export const PLAY_POLL_FAILURES_BEFORE_BANNER = 3;
@@ -61,26 +65,13 @@ const subscribePointer = (notify: () => void) => {
 const isTouch = () => window.matchMedia("(pointer: coarse)").matches;
 const notTouchOnServer = () => false;
 
-// Reserve for the clocks (#23): the bar has the size and the outline of the Zegar gracza, the digits
-// come with the clock. The player on turn is marked by the outline and a word, not by colour alone.
-function ClockSlot({ name, active, activeLabel }: { name: string; active: boolean; activeLabel: string }) {
-  return (
-    <div
-      data-slot="clock"
-      className={`flex min-h-target flex-col rounded-base border bg-surface-raised p-4 wrap-anywhere ${
-        active ? "border-text-primary" : "border-border-default"
-      }`}
-    >
-      <span className="text-meta font-strong text-text-secondary">{name}</span>
-      {active && <span className="text-meta text-text-primary">{activeLabel}</span>}
-    </div>
-  );
-}
+const LOW_TIME_ANNOUNCEMENT = "Zostało mniej niż minuta";
 
 /**
  * The board of a game in progress or finished (p05, p06). It owns what the player is doing (the
  * selected intersection, the move in flight, the refusal); the room owns the game state and polls.
- * Hooks for the next phases: the clock bars (#23) are the two `data-slot="clock"` rows, resigning
+ * The clocks count down locally between two reads (`useGameClock`); when the running one reaches zero
+ * the room reads the state at once, because only the server decides that the time is up. Resigning
  * and the rematch (phase 5) go under the board / the result.
  */
 export function PlayField({ gameId, game, pollFails, onState, onRefresh, onGone }: Props) {
@@ -99,6 +90,13 @@ export function PlayField({ gameId, game, pollFails, onState, onRefresh, onGone 
   const myColor = colorOfSeat(game.blackSeat, game.you.seat)!;
   const myTurn = !finished && game.turnSeat === game.you.seat;
   const busy = pending !== null;
+  const clocks = useGameClock(game.clock, { finished, onExpire: onRefresh });
+  // p05.3: a visually hidden live region says it once, when the player's own clock first drops below a minute.
+  // It starts after mount (`live`), so the text is inserted into a page the reader already has, and it stays:
+  // a read that corrects the time around the threshold does not say it again.
+  const myLow = clocks.live && !finished && isLow(clocks.remainingMs[game.you.seat - 1]!);
+  const [announced, setAnnounced] = useState(false);
+  if (myLow && !announced) setAnnounced(true);
   const outcome = outcomeOf(game);
   const lastMove = game.moves.at(-1);
 
@@ -177,7 +175,15 @@ export function PlayField({ gameId, game, pollFails, onState, onRefresh, onGone 
         ) : (
           <TurnStatus color={colorOfSeat(game.blackSeat, game.turnSeat!)!}>{status}</TurnStatus>
         )}
-        <ClockSlot name={playerName(other)} active={!myTurn && !finished} activeLabel="Ruch przeciwnika" />
+        <span role="status" className="sr-only" data-testid="low-live">
+          {announced ? LOW_TIME_ANNOUNCEMENT : ""}
+        </span>
+        <GameClock
+          name={playerName(other)}
+          remainingMs={clocks.remainingMs[2 - game.you.seat]!}
+          active={!myTurn && !finished}
+          activeLabel="Ruch przeciwnika"
+        />
         <Board
           label="Plansza 15 na 15"
           cellLabel={cellLabel}
@@ -194,7 +200,12 @@ export function PlayField({ gameId, game, pollFails, onState, onRefresh, onGone 
             Przeciwnik: {cellName(lastMove).replace(/^K/, "k")}
           </p>
         )}
-        <ClockSlot name={`Ty (${playerName(mine)})`} active={myTurn} activeLabel="Twój ruch" />
+        <GameClock
+          name={`Ty (${playerName(mine)})`}
+          remainingMs={clocks.remainingMs[game.you.seat - 1]!}
+          active={myTurn}
+          activeLabel="Twój ruch"
+        />
         <p className="m-0 text-body text-text-secondary" data-testid="my-color">
           {finished ? "Grałeś" : "Grasz"} {COLOR_PLAYS[myColor]}.
         </p>

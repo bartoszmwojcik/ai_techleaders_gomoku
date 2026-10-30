@@ -116,9 +116,9 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
   // `waiting` waits for the opponent; `active` waits for the player who has not opened the page yet (Q20).
   const waitingForOpponent = game.status === "waiting" || (game.status === "active" && !everyoneSeen);
   const playing = game.status === "active" && everyoneSeen;
-  // Own turn: nothing to read (the opponent cannot move); the clock phase (#23) adds reads for a timeout.
-  const waitingForMove = playing && game.turnSeat !== game.you.seat;
-  const needsPolling = !gone && !hidden && (waitingForOpponent || waitingForMove);
+  // A game in progress is read on the player's own turn too: the clock runs for them, and the game can end
+  // without a move (their time runs out, the opponent's time runs out, #23).
+  const needsPolling = !gone && !hidden && (waitingForOpponent || playing);
 
   // The move just played answers with the new state (`after` = moves known before it).
   const applyState = useCallback((next: GameView, after: number) => {

@@ -3,3 +3,13 @@
 @import "@gomoku/ui/game-tokens.css";
 /* Tailwind skips node_modules, where the workspace package resolves: scan the design-system sources explicitly. */
 @source "../../../../ui/src/game";
+
+/* LUKA D04: Zegar gracza (@gomoku/ui) has a text label for low time but no variant without text. #23 Q1 asks for a
+   bright colour and a thicker outline below one minute, with no visible text, so the page wraps the clock (tokens only). */
+.low-clock[data-low] > div {
+  border-width: var(--space-1);
+  border-color: var(--status-danger);
+}
+.low-clock[data-low] time {
+  color: var(--status-danger);
+}
