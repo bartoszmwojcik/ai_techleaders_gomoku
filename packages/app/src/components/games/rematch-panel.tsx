@@ -87,6 +87,11 @@ export function RematchPanel({ gameId, game, reopened, onState, onRefresh, onGon
   const now = useNow(game.rematch?.state === "pending");
   const mode = rematchModeOf(game.rematch, mySeat, now ?? 0, withdrawn);
   const target = going ?? (mode.kind === "accepted" ? mode.gameId : null);
+  // The move-on effect must run once per target and attempt, whatever the identity of these two is.
+  const handlers = useRef({ router, onGone });
+  useEffect(() => {
+    handlers.current = { router, onGone };
+  });
 
   useEffect(() => {
     if (!target) return;
@@ -96,18 +101,18 @@ export function RematchPanel({ gameId, game, reopened, onState, onRefresh, onGon
         const claim = await apiCall(`/api/games/${gameId}`, { method: "GET" });
         if (cancelled) return;
         if (!claim.ok) {
-          if (claim.error.code === "NOT_FOUND") onGone();
+          if (claim.error.code === "NOT_FOUND") handlers.current.onGone();
           else setClaimFailed(true);
           return;
         }
         claimFirst.current = false;
       }
-      router.push(`/games/${target}`);
+      handlers.current.router.push(`/games/${target}`);
     })();
     return () => {
       cancelled = true;
     };
-  }, [target, attempt, gameId, router, onGone]);
+  }, [target, attempt, gameId]);
 
   function patch(next: Rematch) {
     // A full copy of the state: `after = 0` replaces the moves with the same moves.

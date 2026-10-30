@@ -523,3 +523,53 @@ describe("PlayField, resigning (p05.13, p05.14)", () => {
     expect(dialog()).toBeNull();
   });
 });
+
+
+describe("PlayField, a game that began as a rematch (p05, p06.15)", () => {
+  it("says the colours were swapped instead of 'drawn'", () => {
+    field({ fromRematch: true, blackSeat: 2 });
+    expect(screen.getByText("Rewanż: kolory zostały zamienione. Grasz białymi.")).toBeTruthy();
+    expect(screen.queryByText(/Wylosowano/)).toBeNull();
+    expect(screen.queryByText("Nowa partia ma nowy dostęp w tej przeglądarce")).toBeNull();
+  });
+
+  it("tells a guest about the new access until they confirm it", async () => {
+    field({ fromRematch: true, you: { seat: 1, kind: "guest" } });
+    expect(screen.getByText("Nowa partia ma nowy dostęp w tej przeglądarce")).toBeTruthy();
+    await press(screen.getByTestId("token-notice-dismiss"));
+    expect(screen.queryByText("Nowa partia ma nowy dostęp w tej przeglądarce")).toBeNull();
+  });
+
+  it("says nothing about a new access to a guest of an ordinary game", () => {
+    field({ you: { seat: 1, kind: "guest" } });
+    expect(screen.queryByText("Nowa partia ma nowy dostęp w tej przeglądarce")).toBeNull();
+  });
+});
+
+describe("PlayField, the rematch under the result", () => {
+  it("shows the rematch block of a finished game, and none in a game in progress", () => {
+    field({ status: "finished", turnSeat: null, result: { winnerSeat: 1, reason: "resignation", winLine: null } });
+    expect(screen.getByTestId("rematch-box")).toBeTruthy();
+    cleanup();
+    field();
+    expect(screen.queryByTestId("rematch-box")).toBeNull();
+  });
+
+  it("hands the page-open flag to the block: a reload on an accepted rematch of a guest reads the game first", async () => {
+    apiCall.mockResolvedValue({ ok: true, data: {} });
+    render(
+      <PlayField
+        gameId="g1"
+        game={game({ status: "finished", turnSeat: null, you: { seat: 1, kind: "guest" }, result: { winnerSeat: 1, reason: "draw", winLine: null }, rematch: { state: "accepted", offeredBySeat: 1, expiresAt: "2999-01-01T00:00:00.000Z", gameId: "g2" } })}
+        pollFails={0}
+        reopened
+        onState={onState}
+        onRefresh={onRefresh}
+        onGone={onGone}
+      />,
+    );
+    await act(async () => void (await vi.advanceTimersByTimeAsync(0)));
+    expect(apiCall).toHaveBeenCalledWith("/api/games/g1", { method: "GET" });
+    expect(push).toHaveBeenCalledWith("/games/g2");
+  });
+});
