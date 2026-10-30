@@ -182,14 +182,17 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
   // A hidden tab does not poll (#22 UI); coming back reads the state at once (#24 Q5).
   const hidden = usePageVisibility({
     onReturn: ({ longAbsence }) => {
-      if (gone || (status.current !== "waiting" && status.current !== "active")) return;
+      if (gone || (status.current === "finished" && latest.current.rematch?.state === "accepted")) return;
+      if (status.current !== "waiting" && status.current !== "active" && status.current !== "finished") return;
       returnedAt.current = longAbsence ? Date.now() : null;
       // A read in flight may predate the return: the one after it is the one that counts.
       if (polling.current) readAgain.current = true;
       else void poll();
     },
   });
-  const needsPolling = !gone && !hidden && (waitingForOpponent || playing);
+  // A finished game is read until the rematch is accepted: the opponent may offer one at any time.
+  const watchingRematch = game.status === "finished" && game.rematch?.state !== "accepted";
+  const needsPolling = !gone && !hidden && (waitingForOpponent || playing || watchingRematch);
 
   useEffect(() => {
     if (!needsPolling) return;

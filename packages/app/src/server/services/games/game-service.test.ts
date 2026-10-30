@@ -533,6 +533,13 @@ describe("GameService.getState", () => {
     expect("rematch" in (await service.getState({ playerId: "p1" }, "game-1"))).toBe(false);
   });
 
+  it("marks a game created by a rematch, and only that one", async () => {
+    const made = setup({ game: { status: "active", origin: "rematch" }, players: [creator, guest] });
+    expect((await made.service.getState({ playerId: "p1" }, "game-1")).fromRematch).toBe(true);
+    const plain = setup({ game: { status: "active", origin: "invite" }, players: [creator, guest] });
+    expect("fromRematch" in (await plain.service.getState({ playerId: "p1" }, "game-1"))).toBe(false);
+  });
+
   it("shows a rematch offer: pending, expired by the time of the read, and the accepted game", async () => {
     const finished = { status: "finished", endReason: "draw", rematchOfferedBySeat: 2 };
     const expiresAt = new Date(NOW.getTime() + 1000);

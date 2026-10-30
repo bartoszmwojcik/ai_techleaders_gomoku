@@ -51,6 +51,8 @@ const guestOpponent = (): GameView => ({
       { seat: 2, kind: "guest", displayName: "Gracz 2", seen: true },
     ],
   });
+const finished = (): GameView =>
+  active({ status: "finished", turnSeat: null, result: { winnerSeat: 1, reason: "five_in_row", winLine: [0, 1, 2, 3, 4] } });
 const failure = (code: string) => ({ ok: false, error: { code, message: "x" } });
 
 const room = (initial: GameView, ownWaitingNotice = false) =>
@@ -442,11 +444,20 @@ describe("GameRoom, ended", () => {
     expect(apiCall).not.toHaveBeenCalled();
   });
 
-  it("shows the result of a finished game and does not poll it (p06)", async () => {
+  it("shows the result of a finished game and reads it every 3 s for an offer of a rematch (p06, p06.12)", async () => {
     room(active({ status: "finished", turnSeat: null, result: { winnerSeat: 1, reason: "five_in_row", winLine: [0, 1, 2, 3, 4] } }));
     expect(screen.getByRole("heading", { name: "Koniec partii" })).toBeTruthy();
     expect(screen.getByText("Wygrałeś")).toBeTruthy();
-    await tick(PLAY_POLL_INTERVAL_MS * 3);
+    expect(screen.getByText("Rewanż", { selector: "h2" })).toBeTruthy();
+    apiCall.mockResolvedValue({ ok: true, data: { ...finished(), rematch: { state: "pending", offeredBySeat: 2, expiresAt: "2999-01-01T00:00:00.000Z", gameId: null } } });
+    await tick(POLL_INTERVAL_MS);
+    expect(apiCall).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Przyjmij" })).toBeTruthy();
+  });
+
+  it("stops reading a finished game once the rematch is accepted", async () => {
+    room({ ...finished(), rematch: { state: "accepted", offeredBySeat: 2, expiresAt: "2999-01-01T00:00:00.000Z", gameId: "g2" } });
+    await tick(POLL_INTERVAL_MS * 3);
     expect(apiCall).not.toHaveBeenCalled();
   });
 });
@@ -507,8 +518,9 @@ describe("GameRoom, play (p05, p06)", () => {
     await tick(PLAY_POLL_INTERVAL_MS);
     expect(screen.getByText("Przegrałeś")).toBeTruthy();
     expect(stonesOnBoard()).toHaveLength(9);
-    await tick(PLAY_POLL_INTERVAL_MS * 3);
-    expect(apiCall).toHaveBeenCalledTimes(1);
+    // From here on only for an offer of a rematch, at the pace of a waiting game.
+    await tick(POLL_INTERVAL_MS * 2);
+    expect(apiCall).toHaveBeenCalledTimes(3);
   });
 
   it("counts failed reads during play and recovers (L02)", async () => {
@@ -715,8 +727,24 @@ describe("GameRoom, play (p05, p06)", () => {
     expect(screen.queryByTestId("reload-note")).toBeNull();
   });
 
-  it("does not read the state on coming back to a game that is over", async () => {
-    room(active({ status: "finished", turnSeat: null, result: { winnerSeat: 1, reason: "draw", winLine: null } }));
+  it("reads the state on coming back to a finished game (an offer may have come), but not to an accepted rematch", async () => {
+    room(finished());
+    apiCall.mockResolvedValue({ ok: true, data: finished() });
+    hide(true);
+    hide(false);
+    await tick(0);
+    expect(apiCall).toHaveBeenCalledTimes(1);
+    cleanup();
+    apiCall.mockReset();
+    room({ ...finished(), rematch: { state: "accepted", offeredBySeat: 1, expiresAt: "2999-01-01T00:00:00.000Z", gameId: "g2" } });
+    hide(true);
+    hide(false);
+    await tick(0);
+    expect(apiCall).not.toHaveBeenCalled();
+  });
+
+  it("does not read the state on coming back to a game that was cancelled or gone", async () => {
+    room(active({ status: "cancelled", turnSeat: null, closedReason: "not_opened" }));
     hide(true);
     hide(false);
     await tick(0);

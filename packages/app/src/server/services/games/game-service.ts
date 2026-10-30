@@ -170,6 +170,11 @@ export type GameState = BoardView & {
    * as `expired` (lazy, no cron).
    */
   rematch?: RematchView;
+  /**
+   * Only for a game created by an accepted rematch (`origin = 'rematch'`): the page says the
+   * colours were swapped instead of "drawn" (p05, p06.15).
+   */
+  fromRematch?: true;
 };
 
 export type ClosedReason = "cancelled" | "expired" | "not_opened";
@@ -530,6 +535,7 @@ export class GameService {
       now,
     );
     if (rematch) state.rematch = rematch;
+    if (game.origin === "rematch") state.fromRematch = true;
     if (game.status === "cancelled") {
       if (players.length > 1) {
         state.closedReason = "not_opened";

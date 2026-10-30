@@ -7,7 +7,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { apiCall } = vi.hoisted(() => ({ apiCall: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiCall }));
 vi.setConfig({ testTimeout: 20_000 });
-vi.mock("next/link", () => ({ default: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a> }));
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+vi.mock("next/link", () => ({
+  default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  ),
+}));
 
 import type { GameView } from "@/server/http/game-view";
 
