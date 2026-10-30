@@ -94,13 +94,13 @@ echo "## D. s07: nick gościa dołączającego (s07.2, s07.10), zaproszenie od g
 reset; stage "p03: Ala_7"; acct T6; sbtn sc-open-invite; at D.1 "s07" s07; sk D.2 "s07.1" s07.1; cb "Graj jako gość"; sk D.3 "s07.2" s07.2
 ck D.4 "pole nicku" "Twój nick (opcjonalnie)"; ck D.5 "podpowiedź Gracz 2" "Zostaw puste, a będziesz „Gracz 2”"; nk D.6 "zdanie o braku nazwy usunięte (D11)" "nie ma nazwy" "nie ma nazwy"
 nick "#s07-nick" "Piotr#"; cb "Rozumiem, graj jako gość"; sleep 0.3; sk D.7 "s07.10" "s07.2 + s07.10"; ck D.8 "błąd w linii" "Nick może zawierać tylko litery"; eq D.9 "wartość zostaje" "document.getElementById('s07-nick').value" "Piotr#"
-nick "#s07-nick" "Piotr"; cb "Rozumiem, graj jako gość"; sleep 0.4; at D.10 "dołączył → p04" p04; eq D.11 "etykiety: Ty: Piotr (gość)" "'$(names)'" "Ala_7|Ty: Piotr (gość)" 
+nick "#s07-nick" "Piotr"; cb "Rozumiem, graj jako gość"; sleep 0.4; at D.10 "dołączył → p04" p04; eq D.11 "etykiety: Ty: Piotr (gość)" "'$(names)'" "Ty: Piotr (gość)"
 sk D.12 "p04.1 + p04.4" "p04.1 + p04.4"
-acct T1; go p04; eq D.13 "widok Ali: Piotr (gość)" "'$(names)'" "Piotr (gość)"; ck D.14 "Ty (Ala_7)" "Ty (Ala_7)"
-reset; stage "p03: Ala_7"; acct T6; sbtn sc-open-invite; cb "Graj jako gość"; cb "Rozumiem, graj jako gość"; sleep 0.4; eq D.15 "puste pole: Ty: Gracz 2 (gość)" "'$(names)'" "Ala_7|Ty: Gracz 2 (gość)"
+acct T1; go p03; at D.13 "widok Ali: krok p03.5" p03; ck D.14 "Ala_7 widzi „Piotr (gość) dołączył do partii”" "Piotr (gość) dołączył do partii"
+reset; stage "p03: Ala_7"; acct T6; sbtn sc-open-invite; cb "Graj jako gość"; cb "Rozumiem, graj jako gość"; sleep 0.4; eq D.15 "puste pole: Ty: Gracz 2 (gość)" "'$(names)'" "Ty: Gracz 2 (gość)"
 reset; stage "Q13 p03.11 + p03.12"; acct T6; sbtn sc-open-guest-invite; sk D.16 "s07.1 + s07.11" "s07.1 + s07.11"; ck D.17 "nagłówek" "Ola (gość) zaprasza Cię do partii Gomoku"
 acct T2; sk D.18 "zalogowany: s07.3 + s07.11" "s07.3 + s07.11"; cb "Dołącz do partii"; sleep 0.4; at D.19 "konto dołącza do gościa → p04" p04; eq D.20 "Kuba_P widzi Ola (gość)" "'$(names)'" "Ola (gość)"
-acct T9; sbtn sc-open-guest-invite; at D.21 "własny link gościa-twórcy przekierowuje (s07.5)" p04
+acct T9; sbtn sc-open-guest-invite; at D.21 "własny link gościa-twórcy przekierowuje do partii (s07.5)" p03
 
 echo "## E. wygaśnięcie, anulowanie, inna przeglądarka (Q17–Q19)" >> $LOG
 reset; stage "Q13 p03.11 + p03.12"; sbtn sc-plus-24; sk E.1 "p03.13 + p03.9: Zaproszenie wygasło (L29)" "p03.13 + p03.9"; ck E.2 "treść" "Zaproszenie wygasło"
@@ -114,7 +114,7 @@ reset; stage "Q13 p03.11 + p03.12"; go p01; sbtn sc-plus-1h; sk E.11 "Masz parti
 echo "## F. gość–gość do końca (Q20)" >> $LOG
 reset; stage "Q20 p05.1"; sk F.1 "p05.1 + p05.5 + p05.11" "p05.1 + p05.5 + p05.11"; eq F.2 "nazwy" "'$(names)'" "Gracz 2 (gość)|Ty: Ola (gość)"
 ck F.3 "ostrzeżenie p05.11" "Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii"
-line 9:C 9:D 9:E 9:F; sk F.4 "po czterech kamieniach partia trwa" p05.2 ; opp; cell 9 G; sleep 0.3; at F.5 "piątka kończy partię" p06; sk F.6 "p06.1 + p06.6 + p06.10" "p06.1 + p06.6 + p06.10"
+line 9:C 9:D 9:E 9:F; sk F.4 "po czterech kamieniach partia trwa" "p05.2 + p05.11"; opp; cell 9 G; sleep 0.3; at F.5 "piątka kończy partię" p06; sk F.6 "p06.1 + p06.6 + p06.10" "p06.1 + p06.6 + p06.10"
 ck F.7 "Wygrałeś" "Wygrałeś"; ck F.8 "token gościa do 1 h" "do 1 godziny"; acct T5; sk F.9 "Gracz 2 widzi przegraną" "p06.2 + p06.6 + p06.10"
 sbtn sc-plus-1h; sk F.10 "po godzinie token nie działa: p06.7" p06.7; acct T9; sk F.11 "to samo u twórcy" p06.7
 reset; stage "Q20 p06.2"; cb "Rewanż"; sbtn sc-rm-accept; sleep 0.4; at F.12 "rewanż → p05" p05; eq F.13 "nick zachowany, domyślna nazwa za miejscem: Gracz 1 (gość)|Ty: Ola (gość)" "'$(names)'" "Gracz 1 (gość)|Ty: Ola (gość)"

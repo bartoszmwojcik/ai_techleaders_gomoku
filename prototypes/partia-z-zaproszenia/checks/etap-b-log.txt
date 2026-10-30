@@ -143,13 +143,13 @@ PASS H.7 | Pokaż remis → p06.4
 PASS H.8 | pełna plansza
 PASS H.9 | gość: p05.11
 PASS H.10 | ostrzeżenie dla gościa
-PASS H.11 | gość nie ma nazwy
+PASS H.11 | gość ma domyślną nazwę „Gracz 2 (gość)”
 PASS H.12 | p06.6 po końcu
 PASS H.13 | wynik do 1 h
 PASS H.14 | po 1 h token nie działa: p06.7 (404)
 PASS H.15 | ten sam 404
 PASS H.16 | konto twórcy widzi wynik bez limitu
-PASS H.17 | twórca widzi przeciwnika „Gość”
+PASS H.17 | twórca widzi przeciwnika „Gracz 2 (gość)”
 ## I. rewanż
 PASS I.1 | p06.2 + p06.10
 PASS I.2 | zapowiedź odwróconych kolorów

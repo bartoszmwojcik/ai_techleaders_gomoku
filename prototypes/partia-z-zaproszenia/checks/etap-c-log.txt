@@ -66,17 +66,17 @@ PASS D.7 | s07.10
 PASS D.8 | błąd w linii
 PASS D.9 | wartość zostaje
 PASS D.10 | dołączył → p04
-FAIL D.11 | etykiety: Ty: Piotr (gość) | jest: Ty: Piotr (gość), oczekiwano: Ala_7|Ty: Piotr (gość)
+PASS D.11 | etykiety: Ty: Piotr (gość)
 PASS D.12 | p04.1 + p04.4
-FAIL D.13 | widok Ali: Piotr (gość) | jest: , oczekiwano: Piotr (gość)
-FAIL D.14 | Ty (Ala_7) | oczekiwano: Ty (Ala_7) | jest: Gomoku Lobby Historia Zalogowano jako Ala_7 Konto Przeciwnik dołączył Piotr (gość) dołączył do partii Za chwilę przejdziesz do partii. Przejdź do partii
-FAIL D.15 | puste pole: Ty: Gracz 2 (gość) | jest: Ty: Gracz 2 (gość), oczekiwano: Ala_7|Ty: Gracz 2 (gość)
+PASS D.13 | widok Ali: krok p03.5
+PASS D.14 | Ala_7 widzi „Piotr (gość) dołączył do partii”
+PASS D.15 | puste pole: Ty: Gracz 2 (gość)
 PASS D.16 | s07.1 + s07.11
 PASS D.17 | nagłówek
 PASS D.18 | zalogowany: s07.3 + s07.11
 PASS D.19 | konto dołącza do gościa → p04
 PASS D.20 | Kuba_P widzi Ola (gość)
-FAIL D.21 | własny link gościa-twórcy przekierowuje (s07.5) | ekran: p03, oczekiwano p04
+PASS D.21 | własny link gościa-twórcy przekierowuje do partii (s07.5)
 ## E. wygaśnięcie, anulowanie, inna przeglądarka (Q17–Q19)
 PASS E.1 | p03.13 + p03.9: Zaproszenie wygasło (L29)
 PASS E.2 | treść
@@ -93,7 +93,7 @@ PASS E.11 | Masz partię po zamknięciu karty
 PASS F.1 | p05.1 + p05.5 + p05.11
 PASS F.2 | nazwy
 PASS F.3 | ostrzeżenie p05.11
-FAIL F.4 | po czterech kamieniach partia trwa | stan: p05.2 + p05.11, oczekiwano p05.2
+PASS F.4 | po czterech kamieniach partia trwa
 PASS F.5 | piątka kończy partię
 PASS F.6 | p06.1 + p06.6 + p06.10
 PASS F.7 | Wygrałeś
@@ -101,3 +101,135 @@ PASS F.8 | token gościa do 1 h
 PASS F.9 | Gracz 2 widzi przegraną
 PASS F.10 | po godzinie token nie działa: p06.7
 PASS F.11 | to samo u twórcy
+PASS F.12 | rewanż → p05
+PASS F.13 | nick zachowany, domyślna nazwa za miejscem: Gracz 1 (gość)|Ty: Ola (gość)
+PASS F.14 | nowy token (p06.15)
+PASS F.15 | etykieta gościa w propozycji
+PASS F.16 | wyjście gościa na /
+PASS F.17 | p01.8
+## G. długi nick (L30)
+PASS G.1 | p05.1 + p05.5 + p05.11
+PASS G.2 | pełny nick w title
+PASS G.3 | znacznik założenia L30
+## L. szerokości 320 / 360 / 1440 i oba motywy
+PASS L.320.dark.p01.8 | p01.8 przy 320 px, motyw dark
+PASS L.320.dark.p08.1 | p08.1 przy 320 px, motyw dark
+PASS L.320.dark.p08.2 | p08.2 przy 320 px, motyw dark
+PASS L.320.dark.p08.4 | p08.4 przy 320 px, motyw dark
+PASS L.320.dark.p08.5 | p08.5 przy 320 px, motyw dark
+PASS L.320.dark.p08.7 | p08.7 przy 320 px, motyw dark
+PASS L.320.dark.p08.7d | p08.7 dialog przy 320 px, motyw dark
+PASS L.320.dark.p03.11 | p03.11 przy 320 px, motyw dark
+PASS L.320.dark.p03.13 | p03.13 przy 320 px, motyw dark
+PASS L.320.dark.s07.2 | s07.2 z nickiem przy 320 px, motyw dark
+PASS L.320.dark.s07.10 | s07.10 przy 320 px, motyw dark
+PASS L.320.dark.s07.11 | s07.11 przy 320 px, motyw dark
+PASS L.320.dark.p04 | p04 gość–gość przy 320 px, motyw dark
+PASS L.320.dark.p05.1 | p05.1 gość przy 320 px, motyw dark
+PASS L.320.dark.p05.long | p05 z długim nickiem przy 320 px, motyw dark
+PASS L.320.dark.p05.long-ellipsis | długi nick obcięty wielokropkiem, „(gość)” widoczne (przy 320 px, dark)
+PASS L.320.dark.p06.1 | p06.1 gość przy 320 px, motyw dark
+PASS L.320.dark.p06.11 | p06.11 gość przy 320 px, motyw dark
+PASS L.320.dark.p04.konto | p04 konto–gość przy 320 px, motyw dark
+PASS L.320.dark.p01.9 | p01.9 przy 320 px, motyw dark
+PASS L.320.light.p01.8 | p01.8 przy 320 px, motyw light
+PASS L.320.light.p08.1 | p08.1 przy 320 px, motyw light
+PASS L.320.light.p08.2 | p08.2 przy 320 px, motyw light
+PASS L.320.light.p08.4 | p08.4 przy 320 px, motyw light
+PASS L.320.light.p08.5 | p08.5 przy 320 px, motyw light
+PASS L.320.light.p08.7 | p08.7 przy 320 px, motyw light
+PASS L.320.light.p08.7d | p08.7 dialog przy 320 px, motyw light
+PASS L.320.light.p03.11 | p03.11 przy 320 px, motyw light
+PASS L.320.light.p03.13 | p03.13 przy 320 px, motyw light
+PASS L.320.light.s07.2 | s07.2 z nickiem przy 320 px, motyw light
+PASS L.320.light.s07.10 | s07.10 przy 320 px, motyw light
+PASS L.320.light.s07.11 | s07.11 przy 320 px, motyw light
+PASS L.320.light.p04 | p04 gość–gość przy 320 px, motyw light
+PASS L.320.light.p05.1 | p05.1 gość przy 320 px, motyw light
+PASS L.320.light.p05.long | p05 z długim nickiem przy 320 px, motyw light
+PASS L.320.light.p05.long-ellipsis | długi nick obcięty wielokropkiem, „(gość)” widoczne (przy 320 px, light)
+PASS L.320.light.p06.1 | p06.1 gość przy 320 px, motyw light
+PASS L.320.light.p06.11 | p06.11 gość przy 320 px, motyw light
+PASS L.320.light.p04.konto | p04 konto–gość przy 320 px, motyw light
+PASS L.320.light.p01.9 | p01.9 przy 320 px, motyw light
+PASS L.360.dark.p01.8 | p01.8 przy 360 px, motyw dark
+PASS L.360.dark.p08.1 | p08.1 przy 360 px, motyw dark
+PASS L.360.dark.p08.2 | p08.2 przy 360 px, motyw dark
+PASS L.360.dark.p08.4 | p08.4 przy 360 px, motyw dark
+PASS L.360.dark.p08.5 | p08.5 przy 360 px, motyw dark
+PASS L.360.dark.p08.7 | p08.7 przy 360 px, motyw dark
+PASS L.360.dark.p08.7d | p08.7 dialog przy 360 px, motyw dark
+PASS L.360.dark.p03.11 | p03.11 przy 360 px, motyw dark
+PASS L.360.dark.p03.13 | p03.13 przy 360 px, motyw dark
+PASS L.360.dark.s07.2 | s07.2 z nickiem przy 360 px, motyw dark
+PASS L.360.dark.s07.10 | s07.10 przy 360 px, motyw dark
+PASS L.360.dark.s07.11 | s07.11 przy 360 px, motyw dark
+PASS L.360.dark.p04 | p04 gość–gość przy 360 px, motyw dark
+PASS L.360.dark.p05.1 | p05.1 gość przy 360 px, motyw dark
+PASS L.360.dark.p05.long | p05 z długim nickiem przy 360 px, motyw dark
+PASS L.360.dark.p05.long-ellipsis | długi nick obcięty wielokropkiem, „(gość)” widoczne (przy 360 px, dark)
+PASS L.360.dark.p06.1 | p06.1 gość przy 360 px, motyw dark
+PASS L.360.dark.p06.11 | p06.11 gość przy 360 px, motyw dark
+PASS L.360.dark.p04.konto | p04 konto–gość przy 360 px, motyw dark
+PASS L.360.dark.p01.9 | p01.9 przy 360 px, motyw dark
+PASS L.360.light.p01.8 | p01.8 przy 360 px, motyw light
+PASS L.360.light.p08.1 | p08.1 przy 360 px, motyw light
+PASS L.360.light.p08.2 | p08.2 przy 360 px, motyw light
+PASS L.360.light.p08.4 | p08.4 przy 360 px, motyw light
+PASS L.360.light.p08.5 | p08.5 przy 360 px, motyw light
+PASS L.360.light.p08.7 | p08.7 przy 360 px, motyw light
+PASS L.360.light.p08.7d | p08.7 dialog przy 360 px, motyw light
+PASS L.360.light.p03.11 | p03.11 przy 360 px, motyw light
+PASS L.360.light.p03.13 | p03.13 przy 360 px, motyw light
+PASS L.360.light.s07.2 | s07.2 z nickiem przy 360 px, motyw light
+PASS L.360.light.s07.10 | s07.10 przy 360 px, motyw light
+PASS L.360.light.s07.11 | s07.11 przy 360 px, motyw light
+PASS L.360.light.p04 | p04 gość–gość przy 360 px, motyw light
+PASS L.360.light.p05.1 | p05.1 gość przy 360 px, motyw light
+PASS L.360.light.p05.long | p05 z długim nickiem przy 360 px, motyw light
+PASS L.360.light.p05.long-ellipsis | długi nick obcięty wielokropkiem, „(gość)” widoczne (przy 360 px, light)
+PASS L.360.light.p06.1 | p06.1 gość przy 360 px, motyw light
+PASS L.360.light.p06.11 | p06.11 gość przy 360 px, motyw light
+PASS L.360.light.p04.konto | p04 konto–gość przy 360 px, motyw light
+PASS L.360.light.p01.9 | p01.9 przy 360 px, motyw light
+PASS L.1440.dark.p01.8 | p01.8 przy 1440 px, motyw dark
+PASS L.1440.dark.p08.1 | p08.1 przy 1440 px, motyw dark
+PASS L.1440.dark.p08.2 | p08.2 przy 1440 px, motyw dark
+PASS L.1440.dark.p08.4 | p08.4 przy 1440 px, motyw dark
+PASS L.1440.dark.p08.5 | p08.5 przy 1440 px, motyw dark
+PASS L.1440.dark.p08.7 | p08.7 przy 1440 px, motyw dark
+PASS L.1440.dark.p08.7d | p08.7 dialog przy 1440 px, motyw dark
+PASS L.1440.dark.p03.11 | p03.11 przy 1440 px, motyw dark
+PASS L.1440.dark.p03.13 | p03.13 przy 1440 px, motyw dark
+PASS L.1440.dark.s07.2 | s07.2 z nickiem przy 1440 px, motyw dark
+PASS L.1440.dark.s07.10 | s07.10 przy 1440 px, motyw dark
+PASS L.1440.dark.s07.11 | s07.11 przy 1440 px, motyw dark
+PASS L.1440.dark.p04 | p04 gość–gość przy 1440 px, motyw dark
+PASS L.1440.dark.p05.1 | p05.1 gość przy 1440 px, motyw dark
+PASS L.1440.dark.p05.long | p05 z długim nickiem przy 1440 px, motyw dark
+PASS L.1440.dark.p05.long-ellipsis | długi nick obcięty wielokropkiem, „(gość)” widoczne (przy 1440 px, dark)
+PASS L.1440.dark.p06.1 | p06.1 gość przy 1440 px, motyw dark
+PASS L.1440.dark.p06.11 | p06.11 gość przy 1440 px, motyw dark
+PASS L.1440.dark.p04.konto | p04 konto–gość przy 1440 px, motyw dark
+PASS L.1440.dark.p01.9 | p01.9 przy 1440 px, motyw dark
+PASS L.1440.light.p01.8 | p01.8 przy 1440 px, motyw light
+PASS L.1440.light.p08.1 | p08.1 przy 1440 px, motyw light
+PASS L.1440.light.p08.2 | p08.2 przy 1440 px, motyw light
+PASS L.1440.light.p08.4 | p08.4 przy 1440 px, motyw light
+PASS L.1440.light.p08.5 | p08.5 przy 1440 px, motyw light
+PASS L.1440.light.p08.7 | p08.7 przy 1440 px, motyw light
+PASS L.1440.light.p08.7d | p08.7 dialog przy 1440 px, motyw light
+PASS L.1440.light.p03.11 | p03.11 przy 1440 px, motyw light
+PASS L.1440.light.p03.13 | p03.13 przy 1440 px, motyw light
+PASS L.1440.light.s07.2 | s07.2 z nickiem przy 1440 px, motyw light
+PASS L.1440.light.s07.10 | s07.10 przy 1440 px, motyw light
+PASS L.1440.light.s07.11 | s07.11 przy 1440 px, motyw light
+PASS L.1440.light.p04 | p04 gość–gość przy 1440 px, motyw light
+PASS L.1440.light.p05.1 | p05.1 gość przy 1440 px, motyw light
+PASS L.1440.light.p05.long | p05 z długim nickiem przy 1440 px, motyw light
+PASS L.1440.light.p05.long-ellipsis | długi nick obcięty wielokropkiem, „(gość)” widoczne (przy 1440 px, light)
+PASS L.1440.light.p06.1 | p06.1 gość przy 1440 px, motyw light
+PASS L.1440.light.p06.11 | p06.11 gość przy 1440 px, motyw light
+PASS L.1440.light.p04.konto | p04 konto–gość przy 1440 px, motyw light
+PASS L.1440.light.p01.9 | p01.9 przy 1440 px, motyw light
+DONE
