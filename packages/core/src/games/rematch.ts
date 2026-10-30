@@ -33,3 +33,33 @@ export function rematchStatus(rematch: StoredRematch, now: Date): RematchStatus 
   if (rematch.state === "pending" && !isRematchOpen(rematch, now)) return "expired";
   return rematch.state;
 }
+
+/** What the API tells a client about the offer (rematch spec, API Contracts). */
+export type RematchView = {
+  state: RematchStatus;
+  /** Seat of the player who offered. */
+  offeredBySeat: Seat;
+  expiresAt: Date;
+  /** The rematch game once accepted (`null` before, and after the cleanup deleted it). */
+  gameId: string | null;
+};
+
+/** The offer columns of a `games` row. */
+export type StoredRematchRow = {
+  state: RematchState | null;
+  offeredBySeat: Seat | null;
+  expiresAt: Date | null;
+  gameId: string | null;
+};
+
+/** The offer for the API, or `null` when there is none (the CHECKs keep the columns together). */
+export function rematchView(row: StoredRematchRow, now: Date): RematchView | null {
+  const state = rematchStatus(row, now);
+  if (state === null) return null;
+  return {
+    state,
+    offeredBySeat: row.offeredBySeat!,
+    expiresAt: row.expiresAt!,
+    gameId: row.gameId,
+  };
+}

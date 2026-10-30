@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isRematchOpen, rematchBlackSeat, rematchStatus } from "./rematch";
+import { isRematchOpen, rematchBlackSeat, rematchStatus, rematchView } from "./rematch";
 
 const now = new Date("2026-10-30T12:00:00Z");
 const at = (offsetMs: number) => new Date(now.getTime() + offsetMs);
@@ -43,5 +43,22 @@ describe("rematchStatus", () => {
   it("keeps the settled states whatever the time", () => {
     expect(rematchStatus({ state: "accepted", expiresAt: at(-1) }, now)).toBe("accepted");
     expect(rematchStatus({ state: "declined", expiresAt: at(-1) }, now)).toBe("declined");
+  });
+});
+
+describe("rematchView", () => {
+  it("is null without an offer", () => {
+    expect(rematchView({ state: null, offeredBySeat: null, expiresAt: null, gameId: null }, now)).toBeNull();
+  });
+
+  it("describes a pending offer and an expired one", () => {
+    const row = { state: "pending", offeredBySeat: 2, expiresAt: at(1000), gameId: null } as const;
+    expect(rematchView(row, now)).toEqual({ state: "pending", offeredBySeat: 2, expiresAt: row.expiresAt, gameId: null });
+    expect(rematchView({ ...row, expiresAt: at(-1000) }, now)?.state).toBe("expired");
+  });
+
+  it("carries the rematch game once accepted", () => {
+    const row = { state: "accepted", offeredBySeat: 1, expiresAt: at(-1), gameId: "g-2" } as const;
+    expect(rematchView(row, now)).toMatchObject({ state: "accepted", gameId: "g-2" });
   });
 });
