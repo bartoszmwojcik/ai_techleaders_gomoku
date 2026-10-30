@@ -4,13 +4,13 @@ import userEvent from "@testing-library/user-event";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { replace, apiCall } = vi.hoisted(() => ({ replace: vi.fn(), apiCall: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace, push: vi.fn() }) }));
+const { replace, push, apiCall } = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn(), apiCall: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace, push }) }));
 vi.mock("@/lib/api-client", () => ({ apiCall }));
 
 import type { GameView } from "@/server/http/game-view";
 
-import { formatValidUntil, GameRoom, JOIN_STEP_MS, PLAY_POLL_INTERVAL_MS, POLL_INTERVAL_MS, POLL_TIMEOUT_MS, RETURN_NOTICE_MS } from "./game-room";
+import { formatValidUntil, GameRoom, GUEST_RESULT_WINDOW_MS, JOIN_STEP_MS, REMATCH_IDLE_AFTER_MS, REMATCH_IDLE_POLL_INTERVAL_MS, PLAY_POLL_INTERVAL_MS, POLL_INTERVAL_MS, POLL_TIMEOUT_MS, RETURN_NOTICE_MS } from "./game-room";
 
 vi.setConfig({ testTimeout: 20_000 });
 
@@ -70,6 +70,7 @@ const user = () => userEvent.setup({ delay: null });
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   replace.mockReset();
+  push.mockReset();
   apiCall.mockReset().mockResolvedValue({ ok: true, data: waiting() });
   Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } });
   Object.defineProperty(navigator, "share", { configurable: true, value: undefined });
@@ -783,5 +784,222 @@ describe("GameRoom, play (p05, p06)", () => {
     expect(screen.getByText("Plansza była nieaktualna i została odświeżona. Spróbuj ponownie.")).toBeTruthy();
     expect(apiCall).toHaveBeenLastCalledWith("/api/games/g1?after=0", { method: "GET", signal: expect.any(AbortSignal) });
     expect(stonesOnBoard()).toHaveLength(1);
+  });
+});
+
+describe("GameRoom, the reads of a result screen (M2, L2-L4)", () => {
+  const GATE = "Ta partia nie istnieje albo nie masz do niej dostępu";
+  const theirs = { state: "pending", offeredBySeat: 2, expiresAt: "2999-01-01T00:00:00.000Z", gameId: null } as const;
+  const mineOffer = { ...theirs, offeredBySeat: 1 } as const;
+  const accepted = { state: "accepted", offeredBySeat: 2, expiresAt: "2999-01-01T00:00:00.000Z", gameId: "g2" } as const;
+  const visibility = (hidden: boolean) =>
+    act(() => {
+      Object.defineProperty(document, "visibilityState", { configurable: true, value: hidden ? "hidden" : "visible" });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+  afterEach(() => visibility(false));
+  const reads = () => apiCall.mock.calls.filter(([path]) => String(path).startsWith("/api/games/g1?")).length;
+  const deferred = () => {
+    let resolve!: (value: unknown) => void;
+    const promise = new Promise((done) => (resolve = done));
+    return { promise, resolve };
+  };
+
+  describe("the pace (M2)", () => {
+    beforeEach(() => apiCall.mockResolvedValue({ ok: true, data: finished() }));
+
+    it("slows down to 12 s after a few minutes without an offer", async () => {
+      room(finished());
+      await tick(REMATCH_IDLE_AFTER_MS + POLL_INTERVAL_MS);
+      apiCall.mockClear();
+      await tick(8000);
+      expect(reads()).toBe(0);
+      await tick(2000);
+      expect(reads()).toBe(1);
+      await tick(REMATCH_IDLE_POLL_INTERVAL_MS);
+      expect(reads()).toBe(2);
+    });
+
+    it("keeps the 3 s pace while an offer is open", async () => {
+      apiCall.mockResolvedValue({ ok: true, data: { ...finished(), rematch: theirs } });
+      room(finished());
+      await tick(REMATCH_IDLE_AFTER_MS + POLL_INTERVAL_MS);
+      apiCall.mockClear();
+      await tick(POLL_INTERVAL_MS);
+      expect(reads()).toBe(1);
+      await tick(POLL_INTERVAL_MS);
+      expect(reads()).toBe(2);
+    });
+
+    it("returns to 3 s and reads at once when the tab comes back", async () => {
+      room(finished());
+      await tick(REMATCH_IDLE_AFTER_MS + POLL_INTERVAL_MS);
+      apiCall.mockClear();
+      visibility(true);
+      visibility(false);
+      await tick(0);
+      expect(reads()).toBe(1);
+      await tick(POLL_INTERVAL_MS);
+      expect(reads()).toBe(2);
+    });
+
+    it("returns to 3 s and reads at once when the window gets the focus", async () => {
+      room(finished());
+      await tick(REMATCH_IDLE_AFTER_MS + POLL_INTERVAL_MS);
+      apiCall.mockClear();
+      await act(async () => void window.dispatchEvent(new Event("focus")));
+      await tick(0);
+      expect(reads()).toBe(1);
+      await tick(POLL_INTERVAL_MS);
+      expect(reads()).toBe(2);
+    });
+
+    it("returns to 3 s after the player's own answer to an offer", async () => {
+      apiCall.mockResolvedValue({ ok: true, data: { ...finished(), rematch: theirs } });
+      room(finished());
+      await tick(POLL_INTERVAL_MS);
+      apiCall.mockImplementation(async (path?: string) => ({
+        ok: true,
+        data: path?.endsWith("/decline") ? null : { ...finished(), rematch: theirs },
+      }));
+      await tick(REMATCH_IDLE_AFTER_MS);
+      await press(screen.getByRole("button", { name: "Odrzuć" }));
+      apiCall.mockClear();
+      await tick(POLL_INTERVAL_MS);
+      expect(reads()).toBe(1);
+    });
+
+    it("does not show the red banner for the failed reads of a finished game", async () => {
+      apiCall.mockResolvedValue(failure("network"));
+      room(finished());
+      await tick(POLL_INTERVAL_MS * 5);
+      expect(reads()).toBe(5);
+      expect(screen.queryByText(/Nie udało się sprawdzić stanu partii/)).toBeNull();
+      expect(screen.queryByText(/Ponawiamy sprawdzanie/)).toBeNull();
+    });
+  });
+
+  describe("a guest's token (L1)", () => {
+    const guestFinished = (over: Partial<GameView> = {}): GameView => ({ ...finished(), you: { seat: 1, kind: "guest" }, ...over });
+    const FINISHED_AT = Date.parse("2026-10-30T12:00:00.000Z");
+    const served = (kind: "guest" | "account") => async () => ({
+      ok: true,
+      data: { ...guestFinished({ you: { seat: 1, kind } }), finishedAt: new Date(FINISHED_AT).toISOString(), clock: { ...finished().clock, now: Date.now() } },
+    });
+
+    beforeEach(() => vi.setSystemTime(FINISHED_AT + 60_000));
+
+    it("stops reading 55 minutes after the end, going by the server's time", async () => {
+      apiCall.mockImplementation(served("guest"));
+      room({ ...guestFinished(), finishedAt: new Date(FINISHED_AT).toISOString(), clock: { ...finished().clock, now: FINISHED_AT + 60_000 } });
+      await tick(30 * 60_000);
+      expect(reads()).toBeGreaterThan(10);
+      await tick(26 * 60_000);
+      apiCall.mockClear();
+      await tick(10 * 60_000);
+      expect(reads()).toBe(0);
+      expect(screen.queryByText(GATE)).toBeNull();
+      // And neither a return to the tab nor the focus reads it.
+      visibility(true);
+      visibility(false);
+      await act(async () => void window.dispatchEvent(new Event("focus")));
+      await tick(0);
+      expect(reads()).toBe(0);
+    });
+
+    it("keeps reading for an account, whose session does not lapse", async () => {
+      apiCall.mockImplementation(served("account"));
+      room({ ...finished(), finishedAt: new Date(FINISHED_AT).toISOString(), clock: { ...finished().clock, now: FINISHED_AT + 60_000 } });
+      await tick(58 * 60_000);
+      apiCall.mockClear();
+      await tick(REMATCH_IDLE_POLL_INTERVAL_MS);
+      expect(reads()).toBeGreaterThanOrEqual(1);
+    });
+
+    it("exposes the length of the window", () => {
+      expect(GUEST_RESULT_WINDOW_MS).toBe(55 * 60_000);
+    });
+  });
+
+  describe("races of the reads", () => {
+    it("T1: after a read shows the rematch accepted, no read of the old game follows, not even the one a return queued (L2)", async () => {
+      apiCall.mockResolvedValue({ ok: true, data: { ...finished(), rematch: theirs } });
+      room({ ...finished(), rematch: theirs });
+      const answer = deferred();
+      apiCall.mockReturnValue(answer.promise);
+      await tick(POLL_INTERVAL_MS);
+      expect(reads()).toBe(1);
+      // The tab came back while the read was in flight: a second read is queued behind it.
+      visibility(true);
+      visibility(false);
+      apiCall.mockResolvedValue({ ok: true, data: { ...finished(), rematch: accepted } });
+      await act(async () => answer.resolve({ ok: true, data: { ...finished(), rematch: accepted } }));
+      await tick(POLL_INTERVAL_MS * 3);
+      expect(reads()).toBe(1);
+    });
+
+    it("does not call a 404 after the acceptance 'no access': the old game's token was replaced (L2)", async () => {
+      room({ ...finished(), rematch: theirs });
+      const answer = deferred();
+      apiCall.mockReturnValueOnce(answer.promise);
+      await tick(POLL_INTERVAL_MS);
+      apiCall.mockResolvedValue({ ok: true, data: { gameId: "g2" } });
+      await press(screen.getByRole("button", { name: "Przyjmij" }));
+      await act(async () => answer.resolve(failure("NOT_FOUND")));
+      expect(screen.queryByText(GATE)).toBeNull();
+    });
+
+    it("still says 'no access' for a 404 of a read when nothing was accepted", async () => {
+      room({ ...finished(), rematch: theirs });
+      apiCall.mockResolvedValue(failure("NOT_FOUND"));
+      await tick(POLL_INTERVAL_MS);
+      expect(screen.getByText(GATE)).toBeTruthy();
+    });
+
+    it("L3: calls off the read in flight when the acceptance starts and reads nothing until it is answered", async () => {
+      room({ ...finished(), rematch: theirs });
+      const read = deferred();
+      const accept = deferred();
+      apiCall.mockImplementation((path: string) => (path.endsWith("/accept") ? accept.promise : read.promise));
+      await tick(POLL_INTERVAL_MS);
+      const signal = (apiCall.mock.calls[0]![1] as { signal: AbortSignal }).signal;
+      expect(signal.aborted).toBe(false);
+      await press(screen.getByRole("button", { name: "Przyjmij" }));
+      expect(signal.aborted).toBe(true);
+      apiCall.mockClear();
+      await tick(POLL_INTERVAL_MS * 3);
+      expect(reads()).toBe(0);
+      // The called-off read comes back as a failure: it is no news and no 404.
+      await act(async () => read.resolve(failure("NOT_FOUND")));
+      expect(screen.queryByText(GATE)).toBeNull();
+      await act(async () => accept.resolve({ ok: true, data: { gameId: "g2" } }));
+      expect(push).toHaveBeenCalledWith("/games/g2");
+    });
+
+    it("L3: reads again when the acceptance fails", async () => {
+      room({ ...finished(), rematch: theirs });
+      apiCall.mockImplementation(async (path: string) => (path.endsWith("/accept") ? failure("network") : { ok: true, data: { ...finished(), rematch: theirs } }));
+      await press(screen.getByRole("button", { name: "Przyjmij" }));
+      apiCall.mockClear();
+      await tick(POLL_INTERVAL_MS);
+      expect(reads()).toBe(1);
+    });
+
+    it("L4: an older read that ends after the player's offer does not take the offer back; a newer read follows", async () => {
+      room(finished());
+      const old = deferred();
+      apiCall.mockReturnValueOnce(old.promise);
+      await tick(POLL_INTERVAL_MS);
+      apiCall.mockImplementation(async (path: string) =>
+        path.endsWith("/rematch") ? { ok: true, data: mineOffer } : { ok: true, data: { ...finished(), rematch: mineOffer } },
+      );
+      await press(screen.getByRole("button", { name: "Rewanż" }));
+      expect(screen.getByTestId("rematch-status").textContent).toContain("Zaproponowano rewanż");
+      apiCall.mockClear();
+      await act(async () => old.resolve({ ok: true, data: finished() }));
+      await tick(0);
+      expect(screen.getByTestId("rematch-status").textContent).toContain("Zaproponowano rewanż");
+      expect(reads()).toBe(1);
+    });
   });
 });

@@ -23,6 +23,8 @@ type Props = {
   onState: (next: GameView, after: number) => void;
   /** Reads the state now. */
   onRefresh: () => void;
+  /** The acceptance is on its way (`true`) or answered (`false`): the room reads nothing meanwhile (L3). */
+  onAccepting: (active: boolean) => void;
   /** The game is gone for this visitor (`404`). */
   onGone: () => void;
 };
@@ -52,7 +54,7 @@ export const REMATCH_POLL_INTERVAL_MS = 3000;
  * on an already accepted rematch makes it once, here, before it moves on. Without it the proposer
  * would find a 404 in the new game.
  */
-export function RematchPanel({ gameId, game, reopened, onState, onRefresh, onGone }: Props) {
+export function RematchPanel({ gameId, game, reopened, onState, onRefresh, onAccepting, onGone }: Props) {
   const router = useRouter();
   const guest = game.you.kind === "guest";
   const mySeat = game.you.seat;
@@ -115,8 +117,12 @@ export function RematchPanel({ gameId, game, reopened, onState, onRefresh, onGon
     setBusy(action);
     setProblem(null);
     if (action === "offer") await offer();
-    else if (action === "accept") await accept();
-    else await decline();
+    else if (action === "accept") {
+      // A read begun before the acceptance must not land after it and put the old token back (L3).
+      onAccepting(true);
+      await accept();
+      onAccepting(false);
+    } else await decline();
     inFlight.current = false;
     setBusy(null);
   }

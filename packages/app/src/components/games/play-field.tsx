@@ -57,6 +57,8 @@ type Props = {
   onState: (next: GameView, after: number) => void;
   /** Reads the state now (after a refused move, or on "Sprawdź teraz"). */
   onRefresh: () => void;
+  /** The rematch is being accepted (`true`) or the answer is in (`false`): the room reads nothing meanwhile. */
+  onAccepting: (active: boolean) => void;
   /** The game is gone for this visitor (`404`). */
   onGone: () => void;
 };
@@ -81,7 +83,7 @@ const LOW_TIME_ANNOUNCEMENT = "Zostało mniej niż minuta";
  * the room reads the state at once, because only the server decides that the time is up. Resigning
  * and the rematch (phase 5) go under the board / the result.
  */
-export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onState, onRefresh, onGone }: Props) {
+export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onState, onRefresh, onAccepting, onGone }: Props) {
   const touch = useSyncExternalStore(subscribePointer, isTouch, notTouchOnServer);
   // A selection belongs to the move it was made for: it lapses with the next move or the end of the turn.
   const [pick, setPick] = useState<{ cell: number; moveCount: number } | null>(null);
@@ -217,12 +219,13 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
           />
         )}
         {returnNotice && !finished && <Alert status="info" title={returnNotice} role="status" />}
-        {pollFails > 0 && pollFails < PLAY_POLL_FAILURES_BEFORE_BANNER && (
+        {/* A finished game is read in the background for an offer: its failed reads are quiet (offline, a sleeping laptop). */}
+        {!finished && pollFails > 0 && pollFails < PLAY_POLL_FAILURES_BEFORE_BANNER && (
           <p role="status" className="m-0 text-meta text-text-secondary">
             Ponawiamy sprawdzanie stanu partii (próba {pollFails} z {PLAY_POLL_FAILURES_BEFORE_BANNER}).
           </p>
         )}
-        {pollFails >= PLAY_POLL_FAILURES_BEFORE_BANNER && (
+        {!finished && pollFails >= PLAY_POLL_FAILURES_BEFORE_BANNER && (
           <Alert status="danger" title="Nie udało się sprawdzić stanu partii. Ponawiamy próby.">
             <Button variant="secondary" onClick={onRefresh}>
               Sprawdź teraz
@@ -344,7 +347,7 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
         )}
         {finished && (
           // D06: no component for the actions after the end; the block is built from Alert and Button.
-          <RematchPanel gameId={gameId} game={game} reopened={reopened ?? false} onState={onState} onRefresh={onRefresh} onGone={onGone} />
+          <RematchPanel gameId={gameId} game={game} reopened={reopened ?? false} onState={onState} onRefresh={onRefresh} onAccepting={onAccepting} onGone={onGone} />
         )}
       </div>
     </>

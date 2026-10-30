@@ -53,6 +53,7 @@ const failure = (code: string, extra: object = {}) => ({ ok: false, error: { cod
 
 const onRefresh = vi.fn();
 const onGone = vi.fn();
+const onAccepting = vi.fn();
 const seen: GameView[] = [];
 
 /** Keeps the state the way the room does: `onState` replaces the game. */
@@ -68,6 +69,7 @@ function Harness({ initial, reopened = false }: { initial: GameView; reopened?: 
         setGame(next);
       }}
       onRefresh={onRefresh}
+      onAccepting={onAccepting}
       onGone={onGone}
     />
   );
@@ -86,6 +88,7 @@ beforeEach(() => {
   push.mockReset();
   onRefresh.mockReset();
   onGone.mockReset();
+  onAccepting.mockReset();
   seen.length = 0;
 });
 afterEach(() => {
@@ -96,7 +99,7 @@ afterEach(() => {
 describe("RematchPanel, on the server", () => {
   it("renders the wait without a countdown, because the clock of the server is not the player's", () => {
     const html = renderToStaticMarkup(
-      <RematchPanel gameId="g1" game={finished({ rematch: offer() })} reopened={false} onState={vi.fn()} onRefresh={onRefresh} onGone={onGone} />,
+      <RematchPanel gameId="g1" game={finished({ rematch: offer() })} reopened={false} onState={vi.fn()} onRefresh={onRefresh} onAccepting={onAccepting} onGone={onGone} />,
     );
     expect(html).toContain("Zaproponowano rewanż");
     expect(html).not.toContain("Pozostało");
