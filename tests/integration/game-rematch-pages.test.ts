@@ -220,20 +220,28 @@ describe("rematch between two accounts", () => {
     await bodyHas(a.browser, "proponuje rewanż. Kolory zostaną zamienione.");
   });
 
-  it("expires on the client at the time of the offer, without a read (the countdown reaches zero)", async () => {
-    const { gameId, a } = await finishedGame({ a: "account", b: "account" });
-    await tap(a.browser, "[data-testid=rematch-offer]");
-    await bodyHas(a.browser, "Zaproponowano rewanż");
-    // Blocks the reads, so only the client's own clock can end the wait.
-    await a.browser.evaluate(`(() => {
-      const real = window.fetch.bind(window);
-      window.fetch = (url, init) => (init?.method === 'GET' ? Promise.reject(new TypeError('offline')) : real(url, init));
-      const RealDate = Date; const shift = 6 * 60 * 1000;
+  it("counts the offer against the server's time: a device clock 6 minutes fast or slow changes neither the wait nor the acceptance (M1)", async () => {
+    const { gameId, a, b } = await finishedGame({ a: "account", b: "account" });
+    const skew = (minutes: number) => `(() => {
+      const RealDate = Date; const shift = ${minutes} * 60 * 1000;
       window.Date = class extends RealDate { constructor(...args) { super(...(args.length ? args : [RealDate.now() + shift])); } static now() { return RealDate.now() + shift; } };
       return true;
-    })()`);
-    await bodyHas(a.browser, "Zaproszenie do rewanżu wygasło (po 5 minutach).");
+    })()`;
+    // The proposer's clock runs 6 minutes ahead, the opponent's 6 minutes behind: against the device clocks
+    // the offer would be over for the first and not yet made for the second.
+    await a.browser.evaluate(skew(6));
+    await b.browser.evaluate(skew(-6));
+    await tap(a.browser, "[data-testid=rematch-offer]");
+    await bodyHas(a.browser, "Zaproponowano rewanż");
+    await bodyHas(b.browser, "proponuje rewanż");
+    await a.browser.waitForFn(`/Pozostało [45]:\\d\\d/.test(document.body.innerText)`);
+    expect(await a.browser.count("[data-testid=rematch-offer]")).toBe(0);
+    const left = await b.browser.evaluate<string>("document.querySelector('[data-testid=rematch-countdown]').textContent");
+    expect(left).toMatch(/Pozostało [45]:\d\d/);
+    expect(await b.browser.count("[data-testid=rematch-accept]")).toBe(1);
     expect(await rematchRow(gameId)).toMatchObject({ rematch_state: "pending" });
+    await tap(b.browser, "[data-testid=rematch-accept]");
+    await a.browser.waitForFn(`location.pathname !== '/games/${gameId}'`);
   });
 
   it("answers 409 ACTIVE_GAME_EXISTS with a link to the player's own game and keeps the offer (L22)", async () => {
