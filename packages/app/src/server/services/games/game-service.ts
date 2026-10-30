@@ -36,7 +36,9 @@ import { GUEST_TOKEN_VALID_SQL } from "./guest-token";
 import {
   CANCEL_NOT_STARTED_OF_GAME,
   CANCEL_WAITING_GAME_SQL,
+  CANCEL_NOT_STARTED_OF_GUEST,
   EXPIRE_WAITING_OF_GAME,
+  EXPIRE_WAITING_OF_GUEST,
   closeStaleSlotsOfUser,
 } from "./lazy-closing";
 import type { TimeoutSettler } from "./timeout-settler";
@@ -57,7 +59,16 @@ export const ACTIVE_GAME_EXISTS_MESSAGE =
   "Masz już partię. Dokończ ją albo anuluj oczekującą.";
 export const GAME_NOT_CANCELLABLE_MESSAGE =
   "Tej partii nie można już anulować.";
+export const OWN_WAITING_GAME_MESSAGE =
+  "Masz oczekującą partię. Anuluj ją, aby utworzyć nową.";
 export const GAME_NOT_FOUND_MESSAGE = "Nie znaleziono partii.";
+
+function activeGameExists(gameId: string): ConflictError {
+  return new ConflictError(ACTIVE_GAME_EXISTS_MESSAGE, {
+    code: "ACTIVE_GAME_EXISTS",
+    data: { gameId },
+  });
+}
 
 /** Used only outside production, where `APP_ORIGIN` may be unset (as in e-mail links). */
 const AFTER_MESSAGE = "Nieprawidłowy parametr after.";
@@ -87,7 +98,37 @@ const START_CLOCK_SQL = `
     and not exists (
       select 1 from game_players p where p.game_id = games.id and p.seen_at is null and p.id <> ?)`;
 
+// Serializes the creates of one browser (same token hash); released at the commit.
+const ADVISORY_LOCK_SQL = `select pg_advisory_xact_lock(hashtext(?))`;
+
+// The slot a guest browser holds (BR-13): the game it waits in or plays.
+const GUEST_SLOT_SQL = `
+  select p.game_id, g.status, p.seat
+  from game_players p join games g on g.id = p.game_id
+  where p.guest_token_hash = ? and p.is_active`;
+
+// The browser's token moves to its new game; the rows that held it are ended (no slot left).
+const RELEASE_TOKEN_SQL = `update game_players set guest_token_hash = null where guest_token_hash = ?`;
+
 const RELEASE_SLOTS_SQL = `update game_players set is_active = false where game_id = ? and is_active`;
+
+/**
+ * Who creates a game: a signed-in account, or a visitor without one (E02-S08).
+ * `tokenHash` is the SHA-256 of the browser's guest token: the one in its cookie when it
+ * carries one, otherwise a fresh token the caller puts in the cookie. `limitKey` is the
+ * rate-limit key of the client address (`games-create-guest:ip:...`).
+ */
+export type GameCreator =
+  | { kind: "account"; userId: string }
+  | GuestCreator;
+
+export type GuestCreator = {
+  kind: "guest";
+  nickname?: string;
+  tokenHash: string;
+  limitKey: string;
+  cancelOwnWaitingGame?: boolean;
+};
 
 export type CreatedGame = {
   gameId: string;
@@ -150,12 +191,17 @@ export class GameService {
 
   /**
    * Creates a `waiting` game with the creator in seat 1 and a one-use invitation (#21).
-   * Games the user could not finish are closed first (Q16, Q17, Q21), so a free slot is
-   * visible to the partial unique index that enforces BR-13.
+   * Games the creator could not finish are closed first (Q16, Q17, Q21), so a free slot is
+   * visible to BR-13. An account is limited per user and guarded by the partial unique index;
+   * a guest (E02-S08) per client address and by the service, under an advisory lock on the
+   * browser's token (see `#createForGuest`).
    * @throws AppError 429 `RATE_LIMITED` over 10 games per hour (Q13);
-   * 409 `ACTIVE_GAME_EXISTS` when the user already holds a slot.
+   * 409 `ACTIVE_GAME_EXISTS` when the creator already holds a slot, for a guest also 409
+   * `OWN_WAITING_GAME` (`data.gameId`) unless `cancelOwnWaitingGame` is set.
    */
-  async create(userId: string): Promise<CreatedGame> {
+  async create(creator: GameCreator): Promise<CreatedGame> {
+    if (creator.kind === "guest") return this.#createForGuest(creator);
+    const { userId } = creator;
     await this.#rateLimiter.hit(
       `games-create:${userId}`,
       CREATE_GAME_LIMIT,
@@ -164,36 +210,13 @@ export class GameService {
     await this.#timeoutSettler.settleFor(userId);
 
     const now = this.#clock.now();
-    const expiresAt = new Date(now.getTime() + INVITATION_TTL_MS);
-    const code = this.#invitationCodes.generate();
+    const draft = this.#draft(now);
     try {
       const gameId = await this.#em.transactional(async (tx) => {
         await closeStaleSlotsOfUser(tx, userId, now);
-        const game = tx.create(Game, {
-          origin: "invite",
-          status: "waiting",
-          createdAt: now,
-        });
-        tx.create(GamePlayer, {
-          game,
-          seat: 1,
-          kind: "account",
-          user: tx.getReference(User, userId),
-          isActive: true,
-          joinedAt: now,
-        });
-        tx.create(Invitation, { game, code, createdAt: now, expiresAt });
-        await tx.flush();
-        return game.id;
+        return this.#insertGame(tx, draft, now, { kind: "account", userId });
       });
-      return {
-        gameId,
-        invitation: {
-          code: formatInvitationCode(code),
-          url: invitationUrl(this.#origin(), code),
-          expiresAt,
-        },
-      };
+      return this.#created(gameId, draft);
     } catch (error) {
       if (
         error instanceof UniqueConstraintViolationException &&
@@ -208,17 +231,131 @@ export class GameService {
   }
 
   /**
-   * Cancels a waiting game; only its creator may (Q5). Atomic: of a concurrent cancel and
+   * BR-13 for a browser without an account (Q7): the unique index covers only accounts, so the
+   * service holds the line. One browser is one token, and the new game takes over the token the
+   * browser already carries (cleared from its older, ended games: the cookie can hold only one
+   * token anyway), so a second request with the same cookie finds the first one's game as its
+   * slot. The check and the insert run under `pg_advisory_xact_lock` on the token hash. Requests
+   * without a cookie carry different tokens and cannot see each other (two games, the second
+   * cookie wins; the address limit bounds it).
+   * A refusal is returned out of the transaction and thrown after the commit, so the lazy
+   * closings written on the way are kept.
+   */
+  async #createForGuest(creator: GuestCreator): Promise<CreatedGame> {
+    await this.#rateLimiter.hit(
+      creator.limitKey,
+      CREATE_GAME_LIMIT,
+      CREATE_GAME_WINDOW_MS,
+    );
+    await this.#timeoutSettler.settleForGuest(creator.tokenHash);
+
+    const now = this.#clock.now();
+    const draft = this.#draft(now);
+    const outcome = await this.#em.transactional(
+      async (tx): Promise<{ gameId: string } | { refusal: ConflictError }> => {
+        await tx.execute(ADVISORY_LOCK_SQL, [creator.tokenHash], "run");
+        const cutoff = new Date(now.getTime() - READY_DEADLINE_MS);
+        await tx.execute(EXPIRE_WAITING_OF_GUEST, [now, creator.tokenHash], "run");
+        await tx.execute(CANCEL_NOT_STARTED_OF_GUEST, [cutoff, creator.tokenHash], "run");
+
+        const [slot] = await tx.execute<{ game_id: string; status: string; seat: number }[]>(
+          GUEST_SLOT_SQL,
+          [creator.tokenHash],
+        );
+        if (slot) {
+          const own = slot.status === "waiting" && slot.seat === 1;
+          if (!own || !creator.cancelOwnWaitingGame) {
+            return {
+              refusal: own
+                ? new ConflictError(OWN_WAITING_GAME_MESSAGE, {
+                    code: "OWN_WAITING_GAME",
+                    data: { gameId: slot.game_id },
+                  })
+                : activeGameExists(slot.game_id),
+            };
+          }
+          // Atomic against a concurrent join: when somebody joined first, nothing is cancelled.
+          const cancelled = await tx.execute<{ id: string }[]>(CANCEL_WAITING_GAME_SQL, [
+            slot.game_id,
+            now,
+          ]);
+          if (cancelled.length === 0) return { refusal: activeGameExists(slot.game_id) };
+          await tx.execute(RELEASE_SLOTS_SQL, [slot.game_id], "run");
+        }
+        // The token moves to the new game: the older rows are ended, their token is of no use.
+        await tx.execute(RELEASE_TOKEN_SQL, [creator.tokenHash], "run");
+        return {
+          gameId: await this.#insertGame(tx, draft, now, {
+            kind: "guest",
+            guestTokenHash: creator.tokenHash,
+            nickname: creator.nickname,
+          }),
+        };
+      },
+    );
+    if ("refusal" in outcome) throw outcome.refusal;
+    return this.#created(outcome.gameId, draft);
+  }
+
+  #draft(now: Date) {
+    return {
+      code: this.#invitationCodes.generate(),
+      expiresAt: new Date(now.getTime() + INVITATION_TTL_MS),
+    };
+  }
+
+  /** Writes the game, its seat-1 player and the invitation through `tx`; returns the game id. */
+  async #insertGame(
+    tx: EntityManager,
+    { code, expiresAt }: { code: string; expiresAt: Date },
+    now: Date,
+    creator:
+      | { kind: "account"; userId: string }
+      | { kind: "guest"; guestTokenHash: string; nickname?: string },
+  ): Promise<string> {
+    const game = tx.create(Game, {
+      origin: "invite",
+      status: "waiting",
+      createdAt: now,
+    });
+    tx.create(GamePlayer, {
+      game,
+      seat: 1,
+      ...(creator.kind === "account"
+        ? { kind: "account", user: tx.getReference(User, creator.userId) }
+        : { kind: "guest", guestTokenHash: creator.guestTokenHash, nickname: creator.nickname }),
+      isActive: true,
+      joinedAt: now,
+    });
+    tx.create(Invitation, { game, code, createdAt: now, expiresAt });
+    await tx.flush();
+    return game.id;
+  }
+
+  #created(gameId: string, { code, expiresAt }: { code: string; expiresAt: Date }): CreatedGame {
+    return {
+      gameId,
+      invitation: {
+        code: formatInvitationCode(code),
+        url: invitationUrl(this.#origin(), code),
+        expiresAt,
+      },
+    };
+  }
+
+  /**
+   * Cancels a waiting game; only its creator may (Q5): the participant of seat 1, an account
+   * or a guest browser (E02-S08). Atomic: of a concurrent cancel and
    * join exactly one wins, and `active` is never overwritten.
    * @throws AppError 404 for a stranger or a missing game; 409 `GAME_NOT_CANCELLABLE`
    * when the game is not `waiting` any more.
    */
-  async cancel(userId: string, gameId: string): Promise<void> {
+  async cancel(participant: GameParticipant, gameId: string): Promise<void> {
     await this.#em.transactional(async (tx) => {
       const creator = await tx.count(GamePlayer, {
+        id: participant.playerId,
         game: gameId,
         seat: 1,
-        user: userId,
       });
       if (creator === 0) throw new NotFoundError(GAME_NOT_FOUND_MESSAGE);
       const cancelled = await tx.execute<{ id: string }[]>(

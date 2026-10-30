@@ -269,4 +269,15 @@ describe("JoinActions with an own waiting game", () => {
     });
     expect(screen.getByRole("button", { name: "Dołączanie…" })).toBeTruthy();
   });
+
+  it("lets a guest creator do the same as a guest, with the acknowledgement (s07.7, L35)", async () => {
+    apiCall.mockResolvedValue(ok);
+    render(<JoinActions code="ABCD-EFGH" mode="swap-guest" />);
+    await userEvent.setup().click(screen.getByRole("button", { name: "Anuluj moją partię i dołącz" }));
+    expect(apiCall).toHaveBeenCalledWith("/api/invitations/ABCD-EFGH/accept", {
+      body: { as: "guest", acknowledgedGuestWarning: true, cancelOwnWaitingGame: true },
+    });
+    expect(replace).toHaveBeenCalledWith("/games/g1");
+    expect(screen.getByRole("button", { name: "Dołączanie…" })).toBeTruthy();
+  });
 });

@@ -9,6 +9,7 @@ import { promisify } from "node:util";
 import { createOrm, cleanupExpired, type CleanupResult, type Orm } from "@gomoku/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from "vitest";
 
+import { InvitationCodes } from "../../packages/app/src/server/services/games/invitation-codes";
 import { runCleanup } from "../../packages/db/src/cleanup/run-cleanup";
 
 const execFileAsync = promisify(execFile);
@@ -160,6 +161,108 @@ describe("cleanup thresholds on PostgreSQL", () => {
   });
 });
 
+describe("games rules (E02-S08, #39)", () => {
+  /** A game with a guest creator and an invitation expiring `expiredAgo` ms ago (negative: in the future). */
+  async function insertGame(status: string, expiredAgo: number, now: Date) {
+    const [game] = await orm.em.fork().execute<{ id: string }[]>(
+      `insert into games (origin, status, created_at) values ('invite', ?, ?) returning id`,
+      [status, new Date(now.getTime() - expiredAgo - 24 * HOUR)],
+    );
+    const id = game!.id;
+    await sql(`insert into game_players (game_id, seat, kind, guest_token_hash, is_active) values (?, 1, 'guest', ?, ?)`, [
+      id,
+      hash(),
+      status === "waiting",
+    ]);
+    await sql(`insert into invitations (game_id, code, created_at, expires_at) values (?, ?, ?, ?)`, [
+      id,
+      new InvitationCodes().generate(),
+      new Date(now.getTime() - expiredAgo - 24 * HOUR),
+      new Date(now.getTime() - expiredAgo),
+    ]);
+    return id;
+  }
+  const exists = async (id: string) => (await rows("games", `id = '${id}'`)) === "1";
+  const dependents = async (id: string) =>
+    Number(await rows("game_players", `game_id = '${id}'`)) + Number(await rows("invitations", `game_id = '${id}'`));
+
+  it("deletes an unjoined game only after the one-hour window past its invitation's expiry", async () => {
+    const now = new Date();
+    const open = await insertGame("waiting", -HOUR, now);
+    const justExpired = await insertGame("waiting", 5 * SECOND, now);
+    const inWindow = await insertGame("waiting", HOUR - 10 * SECOND, now);
+    const gone = await insertGame("waiting", HOUR + 10 * SECOND, now);
+
+    const result = await cleanupExpired({ em: orm.em.fork(), now });
+
+    expect(result.waitingGames).toBeGreaterThanOrEqual(1);
+    expect(await exists(open)).toBe(true);
+    expect(await exists(justExpired)).toBe(true);
+    expect(await exists(inWindow)).toBe(true);
+    expect(await exists(gone)).toBe(false);
+    // Players and the invitation go with the game (cascade); the others keep theirs.
+    expect(await dependents(gone)).toBe(0);
+    expect(await dependents(inWindow)).toBe(2);
+  });
+
+  it("deletes cancelled games older than 24 h (+ the 1 h window of an unjoined one), with their rows", async () => {
+    const now = new Date();
+    // Created `expiredAgo + 24 h` ago: the first two are inside 25 h, the last one is past it.
+    const inWindow = await insertGame("cancelled", HOUR - 10 * SECOND, now);
+    const fresh = await insertGame("cancelled", -HOUR, now);
+    const gone = await insertGame("cancelled", HOUR + 10 * SECOND, now);
+
+    const result = await cleanupExpired({ em: orm.em.fork(), now });
+
+    expect(result.cancelledGames).toBeGreaterThanOrEqual(1);
+    expect(await exists(inWindow)).toBe(true);
+    expect(await exists(fresh)).toBe(true);
+    expect(await exists(gone)).toBe(false);
+    expect(await dependents(gone)).toBe(0);
+  });
+
+  it("never deletes games in progress or finished ones", async () => {
+    const now = new Date();
+    const active = await insertGame("waiting", 5 * HOUR, now);
+    await sql(`update games set status = 'active', started_at = ?, black_seat = 1 where id = ?`, [ago(now, 5 * HOUR), active]);
+    const finished = await insertGame("waiting", 5 * HOUR, now);
+    await sql(
+      `update games set status = 'finished', started_at = ?, black_seat = 1, winner_seat = 1, end_reason = 'timeout', finished_at = ? where id = ?`,
+      [ago(now, 6 * HOUR), ago(now, 5 * HOUR), finished],
+    );
+
+    await cleanupExpired({ em: orm.em.fork(), now });
+
+    expect(await exists(active)).toBe(true);
+    expect(await exists(finished)).toBe(true);
+  });
+
+  it("clears the guest token hash one hour after the game finished, keeping the rows", async () => {
+    const now = new Date();
+    const finish = async (agoMs: number) => {
+      const id = await insertGame("waiting", 5 * HOUR, now);
+      await sql(
+        `update games set status = 'finished', started_at = ?, black_seat = 1, winner_seat = 1, end_reason = 'timeout', finished_at = ? where id = ?`,
+        [ago(now, 6 * HOUR), ago(now, agoMs), id],
+      );
+      return id;
+    };
+    const old = await finish(HOUR + 10 * SECOND);
+    const recent = await finish(HOUR - 10 * SECOND);
+    const hashOf = async (id: string) =>
+      (await orm.em.fork().execute<{ h: string | null }[]>(`select guest_token_hash as h from game_players where game_id = ?`, [id]))[0]!.h;
+
+    const result = await cleanupExpired({ em: orm.em.fork(), now });
+
+    expect(result.guestTokens).toBeGreaterThanOrEqual(1);
+    expect(await hashOf(old)).toBeNull();
+    expect(await hashOf(recent)).not.toBeNull();
+    expect(await exists(old)).toBe(true);
+    // A second run clears nothing more (the condition stops matching).
+    expect((await cleanupExpired({ em: orm.em.fork(), now })).guestTokens).toBe(0);
+  });
+});
+
 describe("batching and parallel runs", () => {
   async function seedOld(userId: string, now: Date, count: number) {
     await sql(
@@ -201,6 +304,9 @@ describe("batching and parallel runs", () => {
       rateLimitBuckets: 0,
       emailVerificationTokens: 0,
       passwordResetTokens: 0,
+      waitingGames: 0,
+      cancelledGames: 0,
+      guestTokens: 0,
       unverifiedUsers: null,
       errors: [],
       truncated: false,
@@ -269,7 +375,18 @@ describe("db:cleanup command", () => {
     const result = JSON.parse(stdout.trim()) as CleanupResult;
     expect(result.sessions).toBeGreaterThanOrEqual(1);
     expect(Object.keys(result).sort()).toEqual(
-      ["emailVerificationTokens", "errors", "passwordResetTokens", "rateLimitBuckets", "sessions", "truncated", "unverifiedUsers"],
+      [
+        "cancelledGames",
+        "emailVerificationTokens",
+        "errors",
+        "guestTokens",
+        "passwordResetTokens",
+        "rateLimitBuckets",
+        "sessions",
+        "truncated",
+        "unverifiedUsers",
+        "waitingGames",
+      ],
     );
     expect(result.errors).toEqual([]);
     expect(await rows("sessions", `user_id = '${userId}'`)).toBe("1");
@@ -287,7 +404,7 @@ describe("db:cleanup command", () => {
     const { stdout, stderr } = failure as { stdout: string; stderr: string };
     expect(stderr).not.toContain("s3cretpw");
     expect(stdout).not.toContain("s3cretpw");
-    expect(JSON.parse(stdout.trim()).errors).toHaveLength(4);
+    expect(JSON.parse(stdout.trim()).errors).toHaveLength(7);
     expect(JSON.parse(stderr.trim().split("\n").at(-1)!)).toMatchObject({ ok: false });
   });
 });

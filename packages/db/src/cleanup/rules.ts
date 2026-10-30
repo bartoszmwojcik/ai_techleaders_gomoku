@@ -13,11 +13,23 @@ export const LONGEST_RATE_LIMIT_WINDOW_MS = 24 * HOUR_MS;
 
 export type CleanupRule = {
   /** Key of the result object returned by `cleanupExpired`. */
-  readonly key: "sessions" | "rateLimitBuckets" | "emailVerificationTokens" | "passwordResetTokens";
+  readonly key:
+    | "sessions"
+    | "rateLimitBuckets"
+    | "emailVerificationTokens"
+    | "passwordResetTokens"
+    | "waitingGames"
+    | "cancelledGames"
+    | "guestTokens";
   readonly table: string;
   readonly primaryKey: string;
   /** SQL condition over the table's columns; each `?` is bound to the cutoff timestamp. Static text only. */
   readonly condition: string;
+  /**
+   * Instead of deleting the matching rows, sets this column to `NULL` (the condition must stop
+   * matching once it is cleared, or the rule never ends). Static identifier.
+   */
+  readonly clearColumn?: string;
   /** Only an optional rule treats a missing table (42P01) as "nothing to do" (`null`); otherwise it is an error. */
   readonly optional?: boolean;
   /** Rows matching the condition for cutoff = `now - graceMs` are deleted. */
@@ -57,11 +69,42 @@ export const CLEANUP_RULES: readonly CleanupRule[] = [
     condition: "expires_at < ? or used_at < ?",
     graceMs: 24 * HOUR_MS,
   },
+  {
+    // An unjoined game whose invitation expired: kept for 1 h after the expiry, because the guest
+    // creator's token works that long and shows "invitation expired" (E02-S08, L29). The rows of
+    // players and the invitation go with the game (`on delete cascade`).
+    key: "waitingGames",
+    table: "games",
+    primaryKey: "id",
+    condition:
+      "status = 'waiting' and exists (select 1 from invitations i where i.game_id = games.id and i.expires_at < ?)",
+    graceMs: HOUR_MS,
+  },
+  {
+    // Cancelled games (by the creator, expired unjoined or never opened) older than 24 h. The extra
+    // 1 h keeps an expired unjoined game (invitation expires 24 h after creation) for the same
+    // window as `waitingGames` above.
+    key: "cancelledGames",
+    table: "games",
+    primaryKey: "id",
+    condition: "status = 'cancelled' and created_at < ?",
+    graceMs: 25 * HOUR_MS,
+  },
+  {
+    // A guest token stops working 1 h after the game finished (BR-22); the hash is not needed after that.
+    key: "guestTokens",
+    table: "game_players",
+    primaryKey: "id",
+    clearColumn: "guest_token_hash",
+    condition:
+      "guest_token_hash is not null and game_id in (select id from games where finished_at < ?)",
+    graceMs: HOUR_MS,
+  },
 ];
 
 /**
  * Tables with an `expiresAt` column that are deliberately not swept by their own rule.
- * `invitations` go away with their game (`on delete cascade`); the games rules (cancelled and
- * expired `waiting` games, guest token clearing) arrive with the games cleanup (#39, E02).
+ * `invitations` go away with their game (`on delete cascade`, see the `waitingGames` and
+ * `cancelledGames` rules).
  */
 export const CLEANUP_EXEMPT_TABLES: readonly string[] = ["invitations"];

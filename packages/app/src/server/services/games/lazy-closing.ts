@@ -43,6 +43,7 @@ export const EXPIRE_WAITING_OF_GAME = expireWaitingSql(OF_GAME);
 export const CANCEL_NOT_STARTED_OF_USER = cancelNotStartedSql(OF_USER);
 export const CANCEL_NOT_STARTED_OF_GAME = cancelNotStartedSql(OF_GAME);
 
+export const EXPIRE_WAITING_OF_GUEST = expireWaitingSql(OF_GUEST);
 export const CANCEL_NOT_STARTED_OF_GUEST = cancelNotStartedSql(OF_GUEST);
 
 /**

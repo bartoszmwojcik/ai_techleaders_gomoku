@@ -23,6 +23,8 @@ import {
   GAME_NOT_CANCELLABLE_MESSAGE,
   GAME_NOT_FOUND_MESSAGE,
   GameService,
+  OWN_WAITING_GAME_MESSAGE,
+  type GuestCreator,
 } from "./game-service";
 
 const NOW = new Date("2026-10-29T12:00:00Z");
@@ -95,6 +97,7 @@ function setup(options: {
   const invitationCodes = { generate: vi.fn(() => "ABCDEFGH") };
   const timeoutSettler = {
     settleFor: vi.fn(async () => undefined),
+    settleForGuest: vi.fn(async () => undefined),
     settleGame: vi.fn(async () => false),
     settleExpired: vi.fn(async () => false),
   };
@@ -118,7 +121,7 @@ describe("GameService.create", () => {
   it("rate limits first, settles timeouts, closes stale games and then inserts", async () => {
     const { service, em, calls, created, rateLimiter, timeoutSettler } = setup();
 
-    const result = await service.create("user-1");
+    const result = await service.create({ kind: "account", userId: "user-1" });
 
     expect(rateLimiter.hit).toHaveBeenCalledWith(
       "games-create:user-1",
@@ -161,20 +164,20 @@ describe("GameService.create", () => {
 
   it("falls back to the development origin when APP_ORIGIN is unset", async () => {
     const { service } = setup({ config: {} });
-    const result = await service.create("user-1");
+    const result = await service.create({ kind: "account", userId: "user-1" });
     expect(result.invitation.url).toBe("http://localhost:3000/invite/ABCD-EFGH");
   });
 
   it("stops at the rate limit without touching the database", async () => {
     const { service, em, rateLimiter } = setup();
     rateLimiter.hit.mockRejectedValueOnce(new TooManyRequestsError("slow down"));
-    await expect(service.create("user-1")).rejects.toBeInstanceOf(TooManyRequestsError);
+    await expect(service.create({ kind: "account", userId: "user-1" })).rejects.toBeInstanceOf(TooManyRequestsError);
     expect(em.transactional).not.toHaveBeenCalled();
   });
 
   it("turns the BR-13 index violation into ACTIVE_GAME_EXISTS", async () => {
     const { service } = setup({ flushError: uniqueViolation(ACTIVE_SLOT_CONSTRAINT) });
-    await expect(service.create("user-1")).rejects.toMatchObject({
+    await expect(service.create({ kind: "account", userId: "user-1" })).rejects.toMatchObject({
       status: 409,
       code: "ACTIVE_GAME_EXISTS",
       message: ACTIVE_GAME_EXISTS_MESSAGE,
@@ -183,9 +186,141 @@ describe("GameService.create", () => {
 
   it("does not hide other unique violations or failures", async () => {
     const other = uniqueViolation("invitations_code_unique");
-    await expect(setup({ flushError: other }).service.create("user-1")).rejects.toBe(other);
+    await expect(setup({ flushError: other }).service.create({ kind: "account", userId: "user-1" })).rejects.toBe(other);
     const boom = new Error("boom");
-    await expect(setup({ flushError: boom }).service.create("user-1")).rejects.toBe(boom);
+    await expect(setup({ flushError: boom }).service.create({ kind: "account", userId: "user-1" })).rejects.toBe(boom);
+  });
+});
+
+describe("GameService.create for a guest (E02-S08)", () => {
+  const HASH = "c".repeat(64);
+  const guest = (extra: Partial<GuestCreator> = {}): GuestCreator => ({
+    kind: "guest",
+    tokenHash: HASH,
+    limitKey: "games-create-guest:ip:abc",
+    ...extra,
+  });
+  const slotRow = (status: string, seat = 1) => [{ game_id: "held-game", status, seat }];
+  // Statements of the transaction in order: advisory lock, expire, cancel not started, slot read.
+  const withSlot = (...rest: unknown[][]) => [[], [], [], ...rest];
+
+  it("limits per address, settles the browser's timeouts, locks the token and inserts the guest", async () => {
+    const { service, em, calls, created, rateLimiter, timeoutSettler } = setup({ executeRows: withSlot([]) });
+
+    const result = await service.create(guest({ nickname: "Ala" }));
+
+    expect(rateLimiter.hit).toHaveBeenCalledWith("games-create-guest:ip:abc", CREATE_GAME_LIMIT, CREATE_GAME_WINDOW_MS);
+    expect(timeoutSettler.settleForGuest).toHaveBeenCalledWith(HASH);
+    expect(timeoutSettler.settleFor).not.toHaveBeenCalled();
+    expect(rateLimiter.hit.mock.invocationCallOrder[0]).toBeLessThan(timeoutSettler.settleForGuest.mock.invocationCallOrder[0]!);
+    expect(calls).toEqual([
+      "execute:select pg_advisory_xact_lock(hashtext(?))",
+      "execute:with expired",
+      "execute:with stale",
+      "execute:select p.game_id,",
+      "execute:update game_players",
+      "flush",
+    ]);
+    expect(em.execute).toHaveBeenNthCalledWith(1, expect.stringContaining("pg_advisory_xact_lock"), [HASH], "run");
+    expect(em.execute).toHaveBeenNthCalledWith(2, expect.any(String), [NOW, HASH], "run");
+    expect(em.execute).toHaveBeenNthCalledWith(3, expect.any(String), [CUTOFF, HASH], "run");
+    expect(em.execute).toHaveBeenNthCalledWith(5, expect.stringContaining("set guest_token_hash = null"), [HASH], "run");
+    expect(created.map(({ entity }) => entity)).toEqual([Game, GamePlayer, Invitation]);
+    expect(created[1]!.data).toMatchObject({
+      seat: 1,
+      kind: "guest",
+      guestTokenHash: HASH,
+      nickname: "Ala",
+      isActive: true,
+      joinedAt: NOW,
+    });
+    expect(created[1]!.data).not.toHaveProperty("user");
+    expect(em.getReference).not.toHaveBeenCalled();
+    expect(result.gameId).toBe("game-1");
+    expect(result.invitation.code).toBe("ABCD-EFGH");
+  });
+
+  it("stops at the rate limit before anything else", async () => {
+    const { service, em, rateLimiter, timeoutSettler } = setup();
+    rateLimiter.hit.mockRejectedValueOnce(new TooManyRequestsError("slow down"));
+    await expect(service.create(guest())).rejects.toBeInstanceOf(TooManyRequestsError);
+    expect(timeoutSettler.settleForGuest).not.toHaveBeenCalled();
+    expect(em.transactional).not.toHaveBeenCalled();
+  });
+
+  it("refuses a browser that has a game in progress, with the game id", async () => {
+    const { service, created } = setup({ executeRows: withSlot(slotRow("active", 2)) });
+    await expect(service.create(guest({ cancelOwnWaitingGame: true }))).rejects.toMatchObject({
+      status: 409,
+      code: "ACTIVE_GAME_EXISTS",
+      data: { gameId: "held-game" },
+    });
+    expect(created).toEqual([]);
+  });
+
+  it("refuses an own waiting game unless asked to cancel it, naming the game", async () => {
+    const { service, created } = setup({ executeRows: withSlot(slotRow("waiting")) });
+    await expect(service.create(guest())).rejects.toMatchObject({
+      status: 409,
+      code: "OWN_WAITING_GAME",
+      message: OWN_WAITING_GAME_MESSAGE,
+      data: { gameId: "held-game" },
+    });
+    expect(created).toEqual([]);
+  });
+
+  it("does not take a waiting game of seat 2 for an own one", async () => {
+    // Cannot happen (a joiner makes the game active), but the seat decides, not the status.
+    const { service } = setup({ executeRows: withSlot(slotRow("waiting", 2)) });
+    await expect(service.create(guest({ cancelOwnWaitingGame: true }))).rejects.toMatchObject({
+      code: "ACTIVE_GAME_EXISTS",
+    });
+  });
+
+  it("cancels the own waiting game and creates the new one in the same transaction", async () => {
+    const { service, em, calls, created } = setup({
+      executeRows: withSlot(slotRow("waiting"), [{ id: "held-game" }]),
+    });
+    await service.create(guest({ cancelOwnWaitingGame: true }));
+    expect(calls.slice(3)).toEqual([
+      "execute:select p.game_id,",
+      "execute:cancel",
+      "execute:update game_players",
+      "execute:update game_players",
+      "flush",
+    ]);
+    expect(em.execute).toHaveBeenNthCalledWith(5, expect.stringContaining("update invitations"), ["held-game", NOW]);
+    expect(em.execute).toHaveBeenNthCalledWith(6, expect.any(String), ["held-game"], "run");
+    expect(em.transactional).toHaveBeenCalledOnce();
+    expect(created.map(({ entity }) => entity)).toEqual([Game, GamePlayer, Invitation]);
+  });
+
+  it("refuses when somebody joined the game before it could be cancelled", async () => {
+    const { service, created } = setup({ executeRows: withSlot(slotRow("waiting"), []) });
+    await expect(service.create(guest({ cancelOwnWaitingGame: true }))).rejects.toMatchObject({
+      status: 409,
+      code: "ACTIVE_GAME_EXISTS",
+      data: { gameId: "held-game" },
+    });
+    expect(created).toEqual([]);
+  });
+
+  it("throws a refusal after the transaction, so the lazy closings are not rolled back", async () => {
+    const { service, em } = setup({ executeRows: withSlot(slotRow("active", 2)) });
+    let committed = false;
+    em.transactional.mockImplementation(async (fn: (tx: unknown) => unknown) => {
+      const out = await fn(em);
+      committed = true;
+      return out;
+    });
+    await expect(service.create(guest())).rejects.toMatchObject({ code: "ACTIVE_GAME_EXISTS" });
+    expect(committed).toBe(true);
+  });
+
+  it("leaves other failures of the insert alone", async () => {
+    const boom = new Error("boom");
+    const { service } = setup({ executeRows: withSlot([]), flushError: boom });
+    await expect(service.create(guest())).rejects.toBe(boom);
   });
 });
 
@@ -193,9 +328,9 @@ describe("GameService.cancel", () => {
   it("cancels a waiting game and frees the slots in one transaction", async () => {
     const { service, em, calls } = setup({ executeRows: [[{ id: "game-1" }]] });
 
-    await service.cancel("user-1", "game-1");
+    await service.cancel({ playerId: "player-1" }, "game-1");
 
-    expect(em.count).toHaveBeenCalledWith(GamePlayer, { game: "game-1", seat: 1, user: "user-1" });
+    expect(em.count).toHaveBeenCalledWith(GamePlayer, { id: "player-1", game: "game-1", seat: 1 });
     expect(calls).toEqual(["count", "execute:cancel", "execute:update game_players"]);
     // The same statement voids the invitation, so the page can tell "cancelled" from "expired".
     expect(em.execute).toHaveBeenNthCalledWith(1, expect.stringContaining("update invitations"), ["game-1", NOW]);
@@ -204,7 +339,7 @@ describe("GameService.cancel", () => {
 
   it("answers 404 for a stranger or a missing game", async () => {
     const { service, em } = setup({ count: 0 });
-    await expect(service.cancel("user-2", "game-1")).rejects.toMatchObject({
+    await expect(service.cancel({ playerId: "player-2" }, "game-1")).rejects.toMatchObject({
       status: 404,
       message: GAME_NOT_FOUND_MESSAGE,
     });
@@ -213,7 +348,7 @@ describe("GameService.cancel", () => {
 
   it("answers 409 when the game is not waiting any more and frees nothing", async () => {
     const { service, em } = setup({ executeRows: [[]] });
-    await expect(service.cancel("user-1", "game-1")).rejects.toMatchObject({
+    await expect(service.cancel({ playerId: "player-1" }, "game-1")).rejects.toMatchObject({
       status: 409,
       code: "GAME_NOT_CANCELLABLE",
       message: GAME_NOT_CANCELLABLE_MESSAGE,
@@ -253,7 +388,7 @@ describe("GameService.findParticipant", () => {
     });
     expect(em.findOne).not.toHaveBeenCalled();
     expect(em.execute).toHaveBeenCalledWith(
-      expect.stringContaining("g.finished_at > ?"),
+      expect.stringContaining("g.finished_at else"),
       ["game-1", HASH, new Date(NOW.getTime() - GUEST_TOKEN_GRACE_MS)],
     );
   });

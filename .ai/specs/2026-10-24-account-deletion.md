@@ -85,3 +85,5 @@ Potwierdzone przez właściciela — Bartosza Wójcika.
 
 - **Definicja „aktywnej partii” (BR-21):** blokuje tylko partia **w toku** (obaj gracze, zegar biegnie). Partia oczekująca na przeciwnika i wpis w lobby nie blokują — są usuwane kaskadą razem z kontem. Dokładny status zapisujemy jako wymaganie wobec #26/#29 (`gameParticipation`).
 - **Limity per adres klienta** działają tylko przy wiarygodnie ustalonym adresie (spike #30); limit 10 prób na konto zostaje zawsze.
+
+> **Adnotacja 2026-10-30 (BR-29 / D-27, E02-S07):** gość nie jest już „Zaproszony przez link”: przeciwnik zapisanej partii jest nazwany „{nick} (gość)” (nick jawny albo „Gracz {miejsce}”); „Usunięty gracz” dotyczy wyłącznie konta usuniętego. Wiersze z „Zaproszony przez link” w tej specyfikacji (Q1 i tabela przypadków) czytaj jako „{nick} (gość)”.

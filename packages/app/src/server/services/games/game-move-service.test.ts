@@ -59,6 +59,7 @@ function setup(row: Row | null, options: { written?: { id: string }[]; settled?:
   const gameService = { stateOf: vi.fn(async () => state) };
   const timeoutSettler = {
     settleFor: vi.fn(async () => undefined),
+    settleForGuest: vi.fn(async () => undefined),
     settleGame: vi.fn(async () => options.settled ?? false),
     settleExpired: vi.fn(async () => false),
   };

@@ -3,7 +3,7 @@ import { connection } from "next/server";
 
 import { withRequestScope } from "@/server/container";
 import { apiHandler } from "@/server/http/api-handler";
-import { refreshGuestCookie } from "@/server/http/guest-cookie";
+import { guestCookieMaxAge, refreshGuestCookie } from "@/server/http/guest-cookie";
 import { resolveParticipant } from "@/server/http/participant";
 
 type Context = { params: Promise<{ id: string }> };
@@ -24,7 +24,10 @@ const getGame = apiHandler(async (request: Request, { params }: Context) => {
     const data = await cradle.gameService.getState(participant, gameId, after);
     // Sliding cookie (#21 Q10): until #23 a game may outlast the cookie's two hours. The
     // server still decides the token's validity; accounts have no guest cookie to refresh.
-    if (data.you.kind === "guest") await refreshGuestCookie(cradle.serverConfig);
+    // A waiting game of a guest creator keeps it until its invitation expired + 1 h (L29).
+    if (data.you.kind === "guest") {
+      await refreshGuestCookie(cradle.serverConfig, guestCookieMaxAge(data, cradle.clock.now()));
+    }
     return { data };
   });
 });

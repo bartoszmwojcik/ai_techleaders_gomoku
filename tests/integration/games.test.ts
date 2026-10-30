@@ -72,7 +72,7 @@ describe("GameService.create", () => {
     const user = await insertUser();
     const { gameService } = scope();
 
-    const { gameId, invitation } = await gameService.create(user);
+    const { gameId, invitation } = await gameService.create({ kind: "account", userId: user });
 
     expect(invitation.code).toMatch(/^[2-9A-HJKMNP-Z]{4}-[2-9A-HJKMNP-Z]{4}$/);
     expect(invitation.url).toBe(`https://gomoku.test/invite/${invitation.code}`);
@@ -90,9 +90,9 @@ describe("GameService.create", () => {
 
   it("refuses a second game while the first one is waiting (BR-13)", async () => {
     const user = await insertUser();
-    await scope().gameService.create(user);
+    await scope().gameService.create({ kind: "account", userId: user });
 
-    await expect(scope().gameService.create(user)).rejects.toMatchObject({
+    await expect(scope().gameService.create({ kind: "account", userId: user })).rejects.toMatchObject({
       status: 409,
       code: "ACTIVE_GAME_EXISTS",
     });
@@ -102,7 +102,7 @@ describe("GameService.create", () => {
   it("lets exactly one of parallel creates through", async () => {
     const user = await insertUser();
     const results = await Promise.allSettled(
-      Array.from({ length: 5 }, () => scope().gameService.create(user)),
+      Array.from({ length: 5 }, () => scope().gameService.create({ kind: "account", userId: user })),
     );
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     for (const result of results.filter((r) => r.status === "rejected")) {
@@ -113,10 +113,10 @@ describe("GameService.create", () => {
 
   it("closes an expired waiting game before inserting the new one (Q16)", async () => {
     const user = await insertUser();
-    const first = await scope().gameService.create(user);
+    const first = await scope().gameService.create({ kind: "account", userId: user });
     await run(`update invitations set expires_at = now() - interval '1 minute' where game_id = ?`, [first.gameId]);
 
-    const second = await scope().gameService.create(user);
+    const second = await scope().gameService.create({ kind: "account", userId: user });
 
     expect(second.gameId).not.toBe(first.gameId);
     expect(await status(first.gameId)).toBe("cancelled");
@@ -127,10 +127,10 @@ describe("GameService.create", () => {
   it("closes an active game nobody opened within 15 minutes before the BR-13 check (Q21)", async () => {
     const user = await insertUser();
     const opponent = await insertUser();
-    const first = await scope().gameService.create(user);
+    const first = await scope().gameService.create({ kind: "account", userId: user });
     await join(first.gameId, opponent, { startedAt: new Date(Date.now() - READY_DEADLINE_MS - 60_000) });
 
-    const second = await scope().gameService.create(user);
+    const second = await scope().gameService.create({ kind: "account", userId: user });
 
     expect(await status(first.gameId)).toBe("cancelled");
     expect(await status(second.gameId)).toBe("waiting");
@@ -140,45 +140,45 @@ describe("GameService.create", () => {
 
   it("keeps an active game that everybody opened, even a long one", async () => {
     const user = await insertUser();
-    const first = await scope().gameService.create(user);
+    const first = await scope().gameService.create({ kind: "account", userId: user });
     await join(first.gameId, await insertUser(), { startedAt: new Date(Date.now() - 2 * READY_DEADLINE_MS) });
     await run(`update game_players set seen_at = now() where game_id = ?`, [first.gameId]);
 
-    await expect(scope().gameService.create(user)).rejects.toMatchObject({ code: "ACTIVE_GAME_EXISTS" });
+    await expect(scope().gameService.create({ kind: "account", userId: user })).rejects.toMatchObject({ code: "ACTIVE_GAME_EXISTS" });
     expect(await status(first.gameId)).toBe("active");
   });
 
   it("limits creation to 10 games per hour (Q13)", async () => {
     const user = await insertUser();
     for (let i = 0; i < 10; i += 1) {
-      const { gameId } = await scope().gameService.create(user);
-      await scope().gameService.cancel(user, gameId);
+      const { gameId } = await scope().gameService.create({ kind: "account", userId: user });
+      await scope().gameService.cancel({ playerId: await playerOf(gameId, user) }, gameId);
     }
-    await expect(scope().gameService.create(user)).rejects.toBeInstanceOf(TooManyRequestsError);
+    await expect(scope().gameService.create({ kind: "account", userId: user })).rejects.toBeInstanceOf(TooManyRequestsError);
   });
 });
 
 describe("GameService.cancel", () => {
   it("cancels a waiting game, frees the slot and the user can start again", async () => {
     const user = await insertUser();
-    const { gameId } = await scope().gameService.create(user);
+    const { gameId } = await scope().gameService.create({ kind: "account", userId: user });
 
-    await scope().gameService.cancel(user, gameId);
+    await scope().gameService.cancel({ playerId: await playerOf(gameId, user) }, gameId);
 
     expect(await status(gameId)).toBe("cancelled");
     expect(await scope().participation.occupiesSlot(user)).toBe(false);
-    await expect(scope().gameService.create(user)).resolves.toBeTruthy();
+    await expect(scope().gameService.create({ kind: "account", userId: user })).resolves.toBeTruthy();
   });
 
   it("answers 409 on a repeated cancel and for an active game, 404 for a stranger", async () => {
     const user = await insertUser();
-    const { gameId } = await scope().gameService.create(user);
+    const { gameId } = await scope().gameService.create({ kind: "account", userId: user });
 
-    await expect(scope().gameService.cancel(await insertUser(), gameId)).rejects.toMatchObject({ status: 404 });
-    await expect(scope().gameService.cancel(user, crypto.randomUUID())).rejects.toMatchObject({ status: 404 });
+    await expect(scope().gameService.cancel({ playerId: crypto.randomUUID() }, gameId)).rejects.toMatchObject({ status: 404 });
+    await expect(scope().gameService.cancel({ playerId: await playerOf(gameId, user) }, crypto.randomUUID())).rejects.toMatchObject({ status: 404 });
 
     await join(gameId, await insertUser());
-    await expect(scope().gameService.cancel(user, gameId)).rejects.toMatchObject({
+    await expect(scope().gameService.cancel({ playerId: await playerOf(gameId, user) }, gameId)).rejects.toMatchObject({
       status: 409,
       code: "GAME_NOT_CANCELLABLE",
     });
@@ -191,7 +191,7 @@ describe("GameService.getState", () => {
   it("sets seen_at once and shows the invitation only to the creator", async () => {
     const user = await insertUser();
     const opponent = await insertUser();
-    const { gameId, invitation } = await scope().gameService.create(user);
+    const { gameId, invitation } = await scope().gameService.create({ kind: "account", userId: user });
     const creatorPlayer = await playerOf(gameId, user);
 
     const first = await scope().gameService.getState({ playerId: creatorPlayer }, gameId);
@@ -215,8 +215,8 @@ describe("GameService.getState", () => {
   });
 
   it("answers 404 to somebody else's game", async () => {
-    const { gameId } = await scope().gameService.create(await insertUser());
-    const other = await scope().gameService.create(await insertUser());
+    const { gameId } = await scope().gameService.create({ kind: "account", userId: await insertUser() });
+    const other = await scope().gameService.create({ kind: "account", userId: await insertUser() });
     const otherPlayer = await run(`select id from game_players where game_id = ?`, [other.gameId]);
     await expect(
       scope().gameService.getState({ playerId: otherPlayer[0]!.id as string }, gameId),
@@ -225,7 +225,7 @@ describe("GameService.getState", () => {
 
   it("reports an expired waiting game as cancelled and frees the slot (Q16)", async () => {
     const user = await insertUser();
-    const { gameId } = await scope().gameService.create(user);
+    const { gameId } = await scope().gameService.create({ kind: "account", userId: user });
     await run(`update invitations set expires_at = now() - interval '1 second' where game_id = ?`, [gameId]);
 
     const state = await scope().gameService.getState({ playerId: await playerOf(gameId, user) }, gameId);
@@ -238,7 +238,7 @@ describe("GameService.getState", () => {
   it("cancels a game nobody opened in 15 minutes instead of setting seen_at (Q21)", async () => {
     const user = await insertUser();
     const opponent = await insertUser();
-    const { gameId } = await scope().gameService.create(user);
+    const { gameId } = await scope().gameService.create({ kind: "account", userId: user });
     await join(gameId, opponent, { startedAt: new Date(Date.now() - READY_DEADLINE_MS - 1_000) });
 
     const state = await scope().gameService.getState({ playerId: await playerOf(gameId, opponent) }, gameId);
@@ -253,7 +253,7 @@ describe("GameParticipation on PostgreSQL", () => {
   it("tells a game in progress from a waiting one and honours the G5 moment", async () => {
     const user = await insertUser();
     const opponent = await insertUser();
-    const { gameId } = await scope().gameService.create(user);
+    const { gameId } = await scope().gameService.create({ kind: "account", userId: user });
 
     // Waiting: holds a slot, but no game is in progress.
     expect(await scope().participation.occupiesSlot(user)).toBe(true);

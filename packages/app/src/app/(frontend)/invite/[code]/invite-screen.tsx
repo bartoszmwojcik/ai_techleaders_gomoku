@@ -16,7 +16,9 @@ type Props = {
 function heading(view: Props["view"]): string {
   if (view.kind === "invalid") return "To zaproszenie jest już nieważne";
   if (view.kind === "limit") return "Zaproszenie do partii";
-  // The creator account may be gone, or the page cannot name it: a neutral word, never a guess.
+  // s07.11: a guest creator is "{nick} (gość)". `null` is only a deleted account, never a guest: the
+  // kind decides. The account may be gone, or the page cannot name it: a neutral word, never a guess.
+  if (view.creatorKind === "guest") return `${view.creatorName ?? "Gracz 1"} (gość) zaprasza Cię do partii Gomoku`;
   return `${view.creatorName ?? "Gracz"} zaprasza Cię do partii Gomoku`;
 }
 
@@ -54,7 +56,7 @@ export function InviteScreen({ code, view }: Props) {
           <Alert status="warning" title="Masz oczekującą partię">
             Żeby dołączyć do tej, musisz najpierw anulować swoją.
           </Alert>
-          <JoinActions code={code} mode="swap" />
+          <JoinActions code={code} mode={view.signedIn ? "swap" : "swap-guest"} />
           <TextLink href={`/games/${view.gameId}`} placement="standalone">
             Wróć do swojej partii
           </TextLink>

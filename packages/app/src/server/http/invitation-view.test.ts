@@ -22,13 +22,13 @@ beforeEach(() => {
   getCurrentUser.mockReset().mockResolvedValue(null);
   readGuestTokenHash.mockReset().mockResolvedValue(undefined);
   headers.mockReset().mockResolvedValue(new Headers());
-  preview.mockReset().mockResolvedValue({ creatorName: "Ala", state: "joinable" });
+  preview.mockReset().mockResolvedValue({ creatorName: "Ala", creatorKind: "guest", state: "joinable" });
 });
 
 describe("loadInvitationView", () => {
   it("previews the code for an anonymous visitor with the pool of the request", async () => {
     const view = await loadInvitationView("ABCD-EFGH");
-    expect(view).toEqual({ kind: "joinable", creatorName: "Ala", gameId: undefined, signedIn: false });
+    expect(view).toEqual({ kind: "joinable", creatorName: "Ala", creatorKind: "guest", gameId: undefined, signedIn: false });
     expect(preview).toHaveBeenCalledWith(
       "ABCD-EFGH",
       { userId: undefined, guestTokenHash: undefined },
@@ -44,8 +44,8 @@ describe("loadInvitationView", () => {
   });
 
   it.each([["has-active-game"], ["has-own-waiting-game"]])("keeps the viewer's other game for %s", async (state) => {
-    preview.mockResolvedValue({ creatorName: null, state, gameId: "g7" });
-    expect(await loadInvitationView("x")).toEqual({ kind: state, creatorName: null, gameId: "g7", signedIn: false });
+    preview.mockResolvedValue({ creatorName: null, creatorKind: "account", state, gameId: "g7" });
+    expect(await loadInvitationView("x")).toEqual({ kind: state, creatorName: null, creatorKind: "account", gameId: "g7", signedIn: false });
   });
 
   it.each([["own-invitation"], ["participant"]])("sends the %s viewer to the game", async (state) => {

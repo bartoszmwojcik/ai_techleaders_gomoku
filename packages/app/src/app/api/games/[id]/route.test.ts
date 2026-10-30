@@ -1,30 +1,33 @@
 import { NotFoundError } from "@gomoku/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { connection, getState, resolveParticipant, refreshGuestCookie } = vi.hoisted(() => ({
+const { connection, getState, resolveParticipant, refreshGuestCookie, guestCookieMaxAge } = vi.hoisted(() => ({
   connection: vi.fn(),
   refreshGuestCookie: vi.fn(),
+  guestCookieMaxAge: vi.fn(),
   getState: vi.fn(),
   resolveParticipant: vi.fn(),
 }));
 vi.mock("next/server", () => ({ connection }));
 vi.mock("@/server/http/participant", () => ({ resolveParticipant }));
-vi.mock("@/server/http/guest-cookie", () => ({ refreshGuestCookie }));
+vi.mock("@/server/http/guest-cookie", () => ({ refreshGuestCookie, guestCookieMaxAge }));
 vi.mock("@/server/container", () => ({
   withRequestScope: (fn: (scope: unknown) => unknown) =>
-    fn({ cradle: { gameService: { getState }, serverConfig: SERVER_CONFIG } }),
+    fn({ cradle: { gameService: { getState }, serverConfig: SERVER_CONFIG, clock: { now: () => NOW } } }),
 }));
 
 import { GET } from "./route";
 
 const GAME = "4d293981-7b3c-4f81-a1af-0a9e3bf3636b";
 const state = { status: "waiting", you: { seat: 1, kind: "account" }, players: [] };
+const NOW = new Date("2026-10-30T12:00:00Z");
 const SERVER_CONFIG = { sessionCookieSecure: false };
 const context = { params: Promise.resolve({ id: GAME }) };
 
 beforeEach(() => {
   connection.mockReset().mockResolvedValue(undefined);
   refreshGuestCookie.mockReset().mockResolvedValue(undefined);
+  guestCookieMaxAge.mockReset().mockReturnValue(4321);
   getState.mockReset().mockResolvedValue(state);
   resolveParticipant
     .mockReset()
@@ -57,7 +60,8 @@ describe("GET /api/games/[id]", () => {
     getState.mockResolvedValue({ ...state, you: { seat: 2, kind: "guest" } });
     const response = await GET(new Request(`https://gomoku.example/api/games/${GAME}`), context);
     expect(response.status).toBe(200);
-    expect(refreshGuestCookie).toHaveBeenCalledWith(SERVER_CONFIG);
+    expect(guestCookieMaxAge).toHaveBeenCalledWith(expect.objectContaining({ status: "waiting" }), NOW);
+    expect(refreshGuestCookie).toHaveBeenCalledWith(SERVER_CONFIG, 4321);
   });
 
   it("answers 404 for a stranger and reads nothing", async () => {

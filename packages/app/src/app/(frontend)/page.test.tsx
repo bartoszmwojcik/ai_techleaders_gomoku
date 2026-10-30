@@ -1,13 +1,15 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { connection, getCurrentUserWith, currentGame } = vi.hoisted(() => ({
+const { connection, getCurrentUserWith, currentGame, loadGuestCurrentGame } = vi.hoisted(() => ({
+  loadGuestCurrentGame: vi.fn(),
   connection: vi.fn(),
   getCurrentUserWith: vi.fn(),
   currentGame: vi.fn(),
 }));
 vi.mock("next/server", () => ({ connection }));
 vi.mock("@/server/http/auth", () => ({ getCurrentUserWith }));
+vi.mock("@/server/http/guest-game", () => ({ loadGuestCurrentGame }));
 vi.mock("@/components/auth/logout-button", () => ({
   LogoutButton: ({ hasActiveGame }: { hasActiveGame: boolean }) => (
     <button data-testid="logout" data-active={String(hasActiveGame)}>
@@ -53,6 +55,7 @@ const count = (html: string, fragment: string) => html.split(fragment).length - 
 beforeEach(() => {
   connection.mockReset().mockResolvedValue(undefined);
   currentGame.mockReset().mockResolvedValue(null);
+  loadGuestCurrentGame.mockReset().mockResolvedValue(null);
   signedOut();
 });
 
@@ -146,9 +149,36 @@ describe("HomePage", () => {
     );
   });
 
-  it("shows no notice to a signed-out visitor", async () => {
+  it("confirms a cancelled invitation to a guest creator too (E02-S08)", async () => {
     const html = renderToStaticMarkup(await HomePage({ searchParams: Promise.resolve({ notice: "cancelled" }) }));
-    expect(html).not.toContain('data-testid="notice"');
+    expect(html).toContain('data-testid="notice">Zaproszenie anulowane');
+  });
+
+  it("offers a visitor the guest game as a secondary button below the main actions (p01.8, L34)", async () => {
+    const html = renderToStaticMarkup(await HomePage({ searchParams: Promise.resolve({}) }));
+    expect(html).toContain('href="/play"');
+    expect(html).toContain("Zagraj ze znajomym bez konta");
+    expect(html.indexOf("/register")).toBeLessThan(html.indexOf("/play"));
+    expect(html).not.toContain("Masz partię");
+  });
+
+  it("does not offer a signed-in player the guest game nor looks for a guest game", async () => {
+    signedIn();
+    const html = renderToStaticMarkup(await HomePage({ searchParams: Promise.resolve({}) }));
+    expect(html).not.toContain('href="/play"');
+    expect(loadGuestCurrentGame).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["waiting", "Czekasz na przeciwnika."],
+    ["active", "Partia w toku."],
+  ])("reminds a guest of the %s game (p01.9, L27)", async (status, text) => {
+    loadGuestCurrentGame.mockResolvedValue({ gameId: "g5", status, seat: 1 });
+    const html = renderToStaticMarkup(await HomePage({ searchParams: Promise.resolve({}) }));
+    expect(html).toContain("Masz partię");
+    expect(html).toContain(text);
+    expect(html).toContain('href="/games/g5"');
+    expect(html).toContain('href="/play"');
   });
 
   it("shows the e-mail banner to a player with an unconfirmed address", async () => {
