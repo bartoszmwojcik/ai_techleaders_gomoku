@@ -18,6 +18,7 @@ export * from "./theme/theme";
 export * from "./games/constants";
 export * from "./games/clock";
 export * from "./games/invitation-code";
+export * from "./games/nickname";
 export * from "./games/types";
 export * from "./validators/games/accept-invitation-schema";
 export * from "./validators/games/game-id-schema";

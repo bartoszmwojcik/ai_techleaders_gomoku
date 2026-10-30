@@ -333,6 +333,52 @@ describe("InvitationService.accept as a guest", () => {
     expect(row).toEqual({ kind: "guest", guest_token_hash: hashOpaqueToken(result.guestToken!) });
   });
 
+  it("keeps no nickname by default and shows the default name by seat", async () => {
+    const { code, gameId } = await newGame();
+    const { guestToken } = await scope().invitations.accept(code, {}, GUEST, guard());
+    const [row] = await run(`select nickname from game_players where game_id = ? and seat = 2`, [gameId]);
+    expect(row).toEqual({ nickname: null });
+    const { games } = scope();
+    const me = (await games.findParticipant({ guestTokenHash: hashOpaqueToken(guestToken!) }, gameId))!;
+    const state = await games.getState(me, gameId);
+    expect(state.players[1]).toMatchObject({ kind: "guest", displayName: "Gracz 2" });
+  });
+
+  it("stores an explicit nickname, shows it to both players and never changes it", async () => {
+    const { creator, code, gameId } = await newGame();
+    const first = await scope().invitations.accept(code, {}, { ...GUEST, nickname: "Kasia" }, guard());
+    const [row] = await run(`select nickname from game_players where game_id = ? and seat = 2`, [gameId]);
+    expect(row).toEqual({ nickname: "Kasia" });
+
+    const { games } = scope();
+    const guest = (await games.findParticipant({ guestTokenHash: hashOpaqueToken(first.guestToken!) }, gameId))!;
+    const host = (await games.findParticipant({ userId: creator }, gameId))!;
+    for (const who of [guest, host]) {
+      expect((await games.getState(who, gameId)).players[1]).toMatchObject({ displayName: "Kasia" });
+    }
+    // A returning guest cannot rename themselves by accepting again.
+    await scope().invitations.accept(
+      code,
+      { guestTokenHash: hashOpaqueToken(first.guestToken!) },
+      { ...GUEST, nickname: "Inna" },
+      guard(),
+    );
+    expect(await run(`select nickname from game_players where game_id = ? and seat = 2`, [gameId])).toEqual([
+      { nickname: "Kasia" },
+    ]);
+  });
+
+  it("refuses a nickname for a signed-in user with a field error, and writes nothing", async () => {
+    const { code, gameId } = await newGame();
+    const user = await insertUser();
+    const error = await scope()
+      .invitations.accept(code, { userId: user }, { as: "user", nickname: "Ala" }, guard())
+      .catch((e: unknown) => e);
+    expect(error).toMatchObject({ status: 400, code: "VALIDATION" });
+    expect((error as { fieldErrors: unknown }).fieldErrors).toHaveProperty("nickname");
+    expect(await players(gameId)).toHaveLength(1);
+  });
+
   it("returns a returning guest to the game without a new token, and refuses a third person", async () => {
     const { code, gameId } = await newGame();
     const { guestToken } = await scope().invitations.accept(code, {}, GUEST, guard());
@@ -413,6 +459,21 @@ describe("InvitationService.accept as a guest", () => {
       if (outcome.status === "rejected") expect(outcome.reason).toMatchObject({ status: 410 });
     }
     expect(await players(gameId)).toHaveLength(2);
+  });
+
+  it("leaves exactly the winner's nickname on the row when guests race for the seat", async () => {
+    const { code, gameId } = await newGame();
+    const outcomes = await Promise.allSettled(
+      Array.from({ length: 6 }, (_, i) =>
+        scope().invitations.accept(code, {}, { ...GUEST, nickname: `Gosc ${i}` }, guard()),
+      ),
+    );
+
+    const winners = outcomes.flatMap((o, i) => (o.status === "fulfilled" ? [i] : []));
+    expect(winners).toHaveLength(1);
+    const rows = await run(`select nickname from game_players where game_id = ? and seat = 2`, [gameId]);
+    expect(rows).toEqual([{ nickname: `Gosc ${winners[0]}` }]);
+    expect(await run(`select 1 from game_players where nickname like 'Gosc %' and game_id <> ?`, [gameId])).toHaveLength(0);
   });
 });
 

@@ -279,7 +279,7 @@ describe("GameService.getState", () => {
     user: { displayName: "Ala" },
     seenAt: NOW,
   };
-  const guest = { id: "p2", seat: 2, kind: "guest", user: null, seenAt: null };
+  const guest = { id: "p2", seat: 2, kind: "guest", user: null, nickname: null, seenAt: null };
   const invitation = { code: "ABCDEFGH", expiresAt: new Date("2026-10-30T12:00:00Z") };
 
   it("does the lazy bookkeeping in order and shows the invitation to the creator", async () => {
@@ -324,7 +324,7 @@ describe("GameService.getState", () => {
     });
   });
 
-  it("hides the invitation from the opponent and names guests as null", async () => {
+  it("hides the invitation from the opponent and names a nickname-less guest by the seat", async () => {
     const { service } = setup({
       game: { status: "active" },
       players: [creator, guest],
@@ -334,8 +334,17 @@ describe("GameService.getState", () => {
     expect(state.you).toEqual({ seat: 2, kind: "guest" });
     expect(state.players).toEqual([
       { seat: 1, kind: "account", displayName: "Ala", seen: true },
-      { seat: 2, kind: "guest", displayName: null, seen: false },
+      { seat: 2, kind: "guest", displayName: "Gracz 2", seen: false },
     ]);
+  });
+
+  it("shows a guest's own nickname, and null only for a deleted account", async () => {
+    const { service } = setup({
+      game: { status: "active" },
+      players: [{ ...creator, user: null }, { ...guest, nickname: "Kasia" }],
+    });
+    const state = await service.getState({ playerId: "p2" }, "game-1");
+    expect(state.players.map(({ displayName }) => displayName)).toEqual([null, "Kasia"]);
   });
 
   it("does not show the invitation once the game is no longer waiting, and says it was cancelled", async () => {
