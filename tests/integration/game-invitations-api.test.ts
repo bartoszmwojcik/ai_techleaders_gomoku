@@ -228,13 +228,14 @@ describe("invitation flow over HTTP", () => {
     }
   });
 
-  it("answers 401 without a session, 400 for bad input and 403 without CSRF", async () => {
+  it("answers 400 / 404 for a visitor without a session (E02-S08), 401 for accept as a user, 400 for bad input and 403 without CSRF", async () => {
     const alice = await signedUp();
     const { code } = await createGame(alice);
 
-    expect((await post("/api/games")).status).toBe(401);
+    // Since E02-S08 a visitor may create a game: without the acknowledgement it is a 400, not a 401.
+    expect((await post("/api/games")).status).toBe(400);
     expect((await accept(code, { as: "user" })).status).toBe(401);
-    expect((await post("/api/games/4d293981-7b3c-4f81-a1af-0a9e3bf3636b/cancel")).status).toBe(401);
+    expect((await post("/api/games/4d293981-7b3c-4f81-a1af-0a9e3bf3636b/cancel")).status).toBe(404);
     expect((await accept(code, { as: "wizard" }, alice)).status).toBe(400);
     expect((await accept(code, { as: "guest" }, alice)).status).toBe(400);
     expect((await post("/api/games", undefined, { cookie: alice, "x-gomoku-request": null })).status).toBe(403);
@@ -343,9 +344,9 @@ describe("guest flow over HTTP", () => {
     expect(guestCookieOf(back)).toBeUndefined();
     expect((await accept(code, GUEST)).status).toBe(410);
 
-    // A guest has no account: no game creation, no cancelling.
-    expect((await post("/api/games", undefined, { cookie: guest })).status).toBe(401);
-    expect((await post(`/api/games/${gameId}/cancel`, undefined, { cookie: guest })).status).toBe(401);
+    // A guest in a game in progress may not create another (BR-13), and only the creator cancels.
+    expect((await post("/api/games", { acknowledgedGuestWarning: true }, { cookie: guest })).status).toBe(409);
+    expect((await post(`/api/games/${gameId}/cancel`, undefined, { cookie: guest })).status).toBe(404);
   });
 
   it("takes a guest's nickname from the body and shows it to the opponent", async () => {
