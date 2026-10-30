@@ -1,10 +1,13 @@
 "use client";
 
+import { nicknameSchema } from "@gomoku/core/games/nickname";
 import { Alert } from "@gomoku/ui/game/alert";
 import { Button } from "@gomoku/ui/game/button";
+import { Field } from "@gomoku/ui/game/field";
+import { TextInput } from "@gomoku/ui/game/text-input";
 import { TextLink } from "@gomoku/ui/game/text-link";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 
 import { apiCall } from "@/lib/api-client";
 
@@ -61,11 +64,42 @@ export function JoinActions({ code, mode }: Props) {
   const next = encodeURIComponent(nextHref);
   const busy = joining !== null || refreshing;
 
-  async function join(as: Joining, body: Record<string, boolean>) {
+  // The joiner takes seat 2, so "Gracz 2" is the name the empty field stands for.
+  const [nickname, setNickname] = useState("");
+  const [nicknameError, setNicknameError] = useState<string | null>(null);
+  const nicknameField = useRef<HTMLInputElement>(null);
+  // Bumped on every refusal; the effect moves focus once the field is enabled and shows the error (s07.10).
+  const [refusals, setRefusals] = useState(0);
+  useEffect(() => {
+    if (refusals > 0) nicknameField.current?.focus();
+  }, [refusals]);
+
+  function showNicknameError(message: string) {
+    setNicknameError(message);
+    setRefusals((count) => count + 1);
+  }
+
+  /** Joining as a guest: the nickname is checked here with the server's own schema (s07.10), then sent. */
+  function joinAsGuest() {
+    if (inFlight.current) return;
+    // LUKA D08: the text field has no counter and `maxLength` counts UTF-16 units, not code points, so the schema validates.
+    const checked = nicknameSchema.safeParse(nickname);
+    if (!checked.success) {
+      showNicknameError(checked.error.issues[0]!.message);
+      return;
+    }
+    void join("guest", {
+      acknowledgedGuestWarning: true,
+      ...(checked.data === undefined ? {} : { nickname: checked.data }),
+    });
+  }
+
+  async function join(as: Joining, body: Record<string, unknown>) {
     if (inFlight.current) return;
     inFlight.current = true;
     setJoining(as);
     setFailure(null);
+    setNicknameError(null);
     setOutdated(false);
     const result = await apiCall<{ gameId: string }>(`/api/invitations/${encodeURIComponent(code)}/accept`, {
       body: { as, ...body },
@@ -82,6 +116,9 @@ export function JoinActions({ code, mode }: Props) {
       // The invitation or the viewer changed under the page: the server decides what it shows now.
       setOutdated(true);
       startRefresh(() => router.refresh());
+    } else if (result.error.fieldErrors?.nickname?.[0] !== undefined) {
+      // The server refused the nickname (it validates too): same line under the field as a local refusal.
+      showNicknameError(result.error.fieldErrors.nickname[0]);
     } else if (errorCode === "RATE_LIMITED") {
       setFailure({ title: "Zbyt wiele prób — spróbuj za chwilę", details: "Sprawdź kod albo wróć później." });
     } else if (errorCode === "UNAUTHORIZED") {
@@ -131,14 +168,28 @@ export function JoinActions({ code, mode }: Props) {
       {mode === "visitor" && guestWarning && (
         <>
           <Alert status="warning" title="Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii">
-            Stracisz do niej dostęp, a Twój zegar będzie biegł dalej. Gość nie ma nazwy ani historii.
+            Stracisz do niej dostęp, a Twój zegar będzie biegł dalej. Gość nie ma historii partii.
           </Alert>
+          <Field
+            label="Twój nick"
+            requirement="(opcjonalnie)"
+            id="invite-nickname"
+            hint={"Zostaw puste, a będziesz „Gracz 2”"}
+            error={nicknameError}
+          >
+            {(control) => (
+              <TextInput
+                {...control}
+                ref={nicknameField}
+                autoComplete="off"
+                disabled={busy}
+                value={nickname}
+                onChange={(event) => setNickname(event.target.value)}
+              />
+            )}
+          </Field>
           <div className="flex flex-wrap gap-group">
-            <Button
-              loading={joining === "guest"}
-              disabled={busy}
-              onClick={() => void join("guest", { acknowledgedGuestWarning: true })}
-            >
+            <Button loading={joining === "guest"} disabled={busy} onClick={joinAsGuest}>
               {joining === "guest" ? "Dołączanie…" : "Rozumiem, graj jako gość"}
             </Button>
             <Button variant="secondary" disabled={busy} onClick={() => setGuestWarning(false)}>
