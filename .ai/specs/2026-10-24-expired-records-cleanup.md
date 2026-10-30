@@ -79,7 +79,7 @@ Potwierdzone przez właściciela — Bartosza Wójcika.
 - **Błąd wykryty dopiero na PostgreSQL:** `em.execute` wiąże placeholdery `?`, nie `$n` (`there is no parameter $1`); testy jednostkowe na fałszywym `em` tego nie pokazały. Reguły używają teraz `?` (po jednym związanym punkcie odcięcia na każde `?` warunku), a test integracyjny `tests/integration/cleanup.test.ts` sprawdza progi, partie, równoległość i komendę na prawdziwej bazie.
 - **Krok 3 planu** zrealizowany w `tests/integration/cleanup.test.ts` (progi: tuż przed, na i tuż za; partie; dwa równoległe przebiegi; idempotencja; `runCleanup`; `npm run -s db:cleanup` jako proces, kod `0` i `1`).
 - **Krok 4 planu:** README, sekcja „Sprzątanie wygasłych rekordów”; wpis `cron` w formie `/etc/cron.d/gomoku-cleanup` z `flock -n` i logiem (nie `docker exec` w gołym `crontab`). Obraz produkcyjny nie wymagał zmian — `tsx` i pakiet `db` są w obrazie (sprawdzone lokalnie: `docker build`, `docker exec … npm run -s db:cleanup` → kod `0` i JSON, kod `1` przy nieosiągalnej bazie).
-- **Nadal niedostępne:** `unverifiedUsers` (reguła BR-28) — `null` do czasu tabel partii (#29).
+- **Nadal niedostępne:** `unverifiedUsers` (reguła BR-28) — `null` do czasu tabel partii (#29). **[Wdrożone 2026-10-30 w E01-S06 (#37): reguła `unverifiedUsers` działa, wynik jest liczbą; zob. adnotację na końcu.]**
 - **Do wykonania ręcznie na serwerze po wdrożeniu:** dodać `/etc/cron.d/gomoku-cleanup` (treść w README).
 
 ## 📝 Adnotacje z review Fazy 9 (2026-10-28)
@@ -90,3 +90,9 @@ Potwierdzone przez właściciela — Bartosza Wójcika.
 - **Brak tabeli (L4):** `42P01` daje `null` tylko dla reguł z `optional: true` (dziś żadna); dla pozostałych jest błędem w `errors` (kod `1`). `unverifiedUsers` jest `null` zawsze (reguła BR-28 niezaimplementowana).
 - **Indeksy (L5):** na tym etapie **bez indeksów** na `sessions.expires_at` i `rate_limit_buckets.window_start` (sekcja Data Model zostaje opcją): skan sekwencyjny partiami jest akceptowalny przy małej bazie (VPS mikr.us). Do ponownej oceny z `EXPLAIN` przy wzroście tabel.
 - **Cron (L6):** wpis w README loguje datę i kod wyjścia, opisuje rotację (`logrotate`) i podkreśla, że `flock -n` jest optymalizacją (dwa przebiegi naraz są bezpieczne dzięki `skip locked`).
+
+## 📝 Adnotacja z wdrożenia reguły BR-28 (2026-10-30, E01-S06 / #37, krok 8)
+
+- Reguła `unverifiedUsers` (`packages/db/src/cleanup/rules.ts`): `users` z `email_verified_at IS NULL`, `created_at` starszym niż 14 dni i bez żadnego wiersza w `game_players` (`NOT EXISTS`). Jest **ostatnią** regułą, więc konto, któremu ten sam przebieg usunął ostatnią starą partię (`cancelledGames`), odpada od razu; konto z jakąkolwiek partią (także `cancelled` młodszą niż 25 h) zostaje.
+- Wynik `db:cleanup` ma `unverifiedUsers: n` (liczba), nie `null`; limit czasu jednego przebiegu to teraz 8 × 15 s. Zdanie „`unverifiedUsers` jest `null` zawsze” z adnotacji z 28.10 jest nieaktualne.
+- Testy: progi 14 dni, konto potwierdzone, konto z partią (`waiting`, `cancelled`, `finished`), kolejność względem `cancelledGames`, kaskada sesji i tokenów — `tests/integration/cleanup.test.ts` na PostgreSQL oraz `cleanup-expired.test.ts`.

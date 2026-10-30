@@ -100,7 +100,7 @@ Ręczny test po fazie: `npm run db:cleanup` na bazie ze starymi rekordami.
 - [x] 9.2 `cleanup-cli.ts`, `db:cleanup`
 - [x] 9.3 Testy integracyjne progów (`tests/integration/cleanup.test.ts`; wykryły i naprawiły błąd `$n` → `?` w `cleanupExpired`), README (cron). **Do wykonania ręcznie na serwerze po wdrożeniu: dodać `/etc/cron.d/gomoku-cleanup`** (treść w README, sekcja „Sprzątanie wygasłych rekordów”)
 - [x] 9.5 Poprawki po code review Fazy 9 (M1 próg liczników ≥ 25 h i poprawa opisu okna 24 h w README/komentarzu/specyfikacji, M2 błąd jednej reguły nie przerywa pozostałych i nie gubi wyniku częściowego, M3 budżet czasu na regułę + flaga `truncated`, L4 42P01 jako `null` tylko dla reguł opcjonalnych, L6 cron z datą i rotacją logu, kruche asercje w testach integracyjnych; L5 indeksy tylko jako adnotacja w specyfikacji)
-- [!] 9.4 Reguła „niepotwierdzone konto bez partii po 14 dniach” — zablokowana do #29 (tabela uczestników partii)
+- [x] 9.4 Reguła „niepotwierdzone konto bez partii po 14 dniach” (BR-28) — odblokowana tabelą `game_players`, wdrożona razem z usunięciem konta (#37, krok 8 specyfikacji `account-deletion`)
 
 ## Faza 10 — Usunięcie konta (#37)
 

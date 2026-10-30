@@ -3,6 +3,7 @@
 // Each new expiring table adds its rule together with its entity.
 
 const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
 
 /**
  * The longest rate-limit window the application uses: the daily e-mail pools
@@ -20,7 +21,8 @@ export type CleanupRule = {
     | "passwordResetTokens"
     | "waitingGames"
     | "cancelledGames"
-    | "guestTokens";
+    | "guestTokens"
+    | "unverifiedUsers";
   readonly table: string;
   readonly primaryKey: string;
   /** SQL condition over the table's columns; each `?` is bound to the cutoff timestamp. Static text only. */
@@ -99,6 +101,19 @@ export const CLEANUP_RULES: readonly CleanupRule[] = [
     condition:
       "guest_token_hash is not null and game_id in (select id from games where finished_at < ?)",
     graceMs: HOUR_MS,
+  },
+  {
+    // BR-28: an account that never confirmed its e-mail and took part in no game for 14 days.
+    // `not exists` over `game_players` keeps an account with any game, also a cancelled one, until
+    // the game rules above delete that game (so the account goes at the earliest in the run after
+    // the game did). The sessions and tokens of the user go with it (`on delete cascade`).
+    // Last in the list on purpose: the games of the same run are already swept.
+    key: "unverifiedUsers",
+    table: "users",
+    primaryKey: "id",
+    condition:
+      "email_verified_at is null and created_at < ? and not exists (select 1 from game_players gp where gp.user_id = users.id)",
+    graceMs: 14 * DAY_MS,
   },
 ];
 
