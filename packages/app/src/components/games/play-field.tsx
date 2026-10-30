@@ -18,12 +18,13 @@ import {
   COLOR_PLAYS,
   moveOf,
   outcomeOf,
-  playerName,
+  playerNameOf,
   stonesOf,
 } from "@/lib/games/play";
 import type { GameView } from "@/server/http/game-view";
 
 import { GameClock } from "./game-clock";
+import { PlayerLabel } from "./player-label";
 import { useGameClock } from "./use-game-clock";
 
 /** Failed polls in a row before the banner appears (L02); the counter lives in the room. */
@@ -196,7 +197,7 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
           {announced ? LOW_TIME_ANNOUNCEMENT : ""}
         </span>
         <GameClock
-          name={playerName(other)}
+          name={<PlayerLabel name={playerNameOf(other)} />}
           remainingMs={clocks.remainingMs[2 - game.you.seat]!}
           active={!myTurn && !finished}
           activeLabel="Ruch przeciwnika"
@@ -218,7 +219,7 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
           </p>
         )}
         <GameClock
-          name={`Ty (${playerName(mine)})`}
+          name={<PlayerLabel name={playerNameOf(mine)} you />}
           remainingMs={clocks.remainingMs[game.you.seat - 1]!}
           active={myTurn}
           activeLabel="Twój ruch"

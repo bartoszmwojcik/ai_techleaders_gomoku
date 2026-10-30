@@ -52,8 +52,22 @@ export function cellName(cell: number): string {
   return `Kolumna ${String.fromCharCode(65 + x)}, rząd ${y + 1}`;
 }
 
+/** How a participant is named on screen: the nickname or account name, and whether "(gość)" follows (E02-S07, L30). */
+export type PlayerName = { nick: string; guest: boolean; label: string };
+
+/**
+ * `displayName` is the nickname (never empty for a guest: the server fills in "Gracz N") or the
+ * account name (`null` for a deleted account). The "(gość)" suffix comes from `kind`, here in the UI layer.
+ */
+export function playerNameOf(player: GameView["players"][number] | undefined): PlayerName {
+  const guest = player?.kind === "guest";
+  const nick = player?.displayName ?? "Usunięty gracz";
+  return { nick, guest, label: guest ? `${nick} (gość)` : nick };
+}
+
+/** The full label as one string, for running text ("Gracz 2 (gość) dołączył do partii"). */
 export function playerName(player: GameView["players"][number] | undefined): string {
-  return player?.kind === "guest" ? "Gość" : (player?.displayName ?? "Usunięty gracz");
+  return playerNameOf(player).label;
 }
 
 export type Outcome = { result: "win" | "loss" | "draw"; title: string; detail: string };

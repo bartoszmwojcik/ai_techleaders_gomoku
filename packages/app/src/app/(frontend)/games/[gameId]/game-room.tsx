@@ -16,10 +16,11 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type Re
 import { CreateGameButton } from "@/components/games/create-game-button";
 import { DismissibleNotice } from "@/components/games/dismissible-notice";
 import { GameGate } from "@/components/games/game-gate";
+import { PlayerLabel } from "@/components/games/player-label";
 import { PlayField } from "@/components/games/play-field";
 import { usePageVisibility } from "@/components/games/use-page-visibility";
 import { apiCall } from "@/lib/api-client";
-import { mergeState, playerName } from "@/lib/games/play";
+import { mergeState, playerName, playerNameOf } from "@/lib/games/play";
 import type { GameView } from "@/server/http/game-view";
 
 /** Polling of a waiting game (#21 Q6): short polling every 3 s until a transport from #30 exists. */
@@ -432,8 +433,8 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
         <TurnStatus>
           {`Czekamy, aż ${nameOf(other)} otworzy partię — zegar ruszy, gdy obaj będziecie na stronie (do 15 min)`}
         </TurnStatus>
-        <PlayerClock name={nameOf(other)} remainingMs={TEN_MINUTES_MS} />
-        <PlayerClock name={`Ty (${nameOf(mine)})`} remainingMs={TEN_MINUTES_MS} />
+        <PlayerClock name={<PlayerLabel name={playerNameOf(other)} />} remainingMs={TEN_MINUTES_MS} />
+        <PlayerClock name={<PlayerLabel name={playerNameOf(mine)} you />} remainingMs={TEN_MINUTES_MS} />
         <TextLink href="/" placement="standalone">
           Wróć na stronę główną
         </TextLink>

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { GameView } from "@/server/http/game-view";
 
-import { cellLabel, cellName, colorOfSeat, mergeState, moveOf, outcomeOf, playerName, stonesOf } from "./play";
+import { cellLabel, cellName, colorOfSeat, mergeState, moveOf, outcomeOf, playerName, playerNameOf, stonesOf } from "./play";
 
 const view = (over: Partial<GameView> = {}): GameView => ({
   status: "active",
@@ -84,7 +84,13 @@ describe("labels", () => {
 
   it("names the players", () => {
     expect(playerName({ seat: 1, kind: "account", displayName: "Ala_7", seen: true })).toBe("Ala_7");
-    expect(playerName({ seat: 2, kind: "guest", displayName: null, seen: true })).toBe("Gość");
+    expect(playerName({ seat: 2, kind: "guest", displayName: "Piotr", seen: true })).toBe("Piotr (gość)");
+    expect(playerName({ seat: 2, kind: "guest", displayName: "Gracz 2", seen: true })).toBe("Gracz 2 (gość)");
+    expect(playerNameOf({ seat: 2, kind: "guest", displayName: "Piotr", seen: true })).toEqual({
+      nick: "Piotr",
+      guest: true,
+      label: "Piotr (gość)",
+    });
     expect(playerName({ seat: 2, kind: "account", displayName: null, seen: true })).toBe("Usunięty gracz");
     expect(playerName(undefined)).toBe("Usunięty gracz");
   });
