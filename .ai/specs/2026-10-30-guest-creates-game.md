@@ -108,3 +108,8 @@ Jedna faza, jeden PR (zgłoszenie E02-S08), **po** PR z `participant-nickname`.
 6. **UI po zatwierdzeniu zaktualizowanego prototypu:** akcja i ekran „nick + ostrzeżenie”, gość-twórca w p03, „Masz partię” gościa; testy przeglądarki (dwie sesje, oba motywy, 360 px).
 7. **Dokumentacja** (README, lekcje), mapa ekranów, zgłoszenia #21/#87/#88.
 
+## 📋 Odstępstwa wdrożenia (2026-10-30)
+
+- **Token przeglądarki przechodzi na nową partię.** Zamiast świeżego tokenu przy każdym utworzeniu, nowa partia gościa przejmuje token niesiony przez przeglądarkę (zdejmowany ze starych, zakończonych wierszy `game_players`; ciasteczko mieści jeden token). Tylko wtedy blokada `pg_advisory_xact_lock(hashtext(token_hash))` widzi partię z równoległego żądania z tym samym ciasteczkiem (jedna partia). Bez ciasteczka zachowanie jak w specyfikacji (dwie partie, limit adresu). Serwis przyjmuje `GuestCreator { tokenHash, limitKey, nickname?, cancelOwnWaitingGame? }`.
+- **L35 w backendzie:** `accept` jako gość z `cancelOwnWaitingGame` anuluje własną oczekującą partię gościa-twórcy (wcześniej gość zawsze dostawał `ACTIVE_GAME_EXISTS`); bez flagi odpowiedź to `OWN_WAITING_GAME`.
+- **Ekran p08** pod adresem `/play`; podgląd zaproszenia zwraca `creatorKind`.

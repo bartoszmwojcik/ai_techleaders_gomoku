@@ -156,7 +156,8 @@ Specyfikacje: `.ai/specs/2026-10-30-participant-nickname.md`, `.ai/specs/2026-10
   - Zrobione: reguły `waitingGames` (po oknie 1 h), `cancelledGames` (25 h od utworzenia), `guestTokens` (zerowanie hasha po `finished_at` + 1 h; reguła typu „update” przez `clearColumn`); wynik `db:cleanup` ma trzy nowe pola. README: „Sprzątanie”.
 - [x] 6.7 E02-S08 backend: `create` dla gościa (limit adresu, BR-13 przez token + blokada doradcza), `POST /api/games` bez sesji
   - Zrobione: `GameService.create(GameCreator)`, `createGuestGameSchema`, `POST /api/games` bez sesji, `creatorKind` w podglądzie zaproszenia, `GameParticipation.currentGameOfGuest`. Odstępstwo od specyfikacji: nowa partia gościa przejmuje token niesiony przez przeglądarkę (inaczej blokada doradcza nie widziałaby partii z równoległego żądania). Testy: `guest-create.test.ts`, `game-guest-create-api.test.ts`. UI (6.8) zostaje.
-- [ ] 6.8 E02-S08 UI: „Zagraj ze znajomym bez konta”, gość-twórca w p03, „Masz partię” gościa
+- [x] 6.8 E02-S08 UI: „Zagraj ze znajomym bez konta”, gość-twórca w p03, „Masz partię” gościa
+  - Zrobione: `/play` (p08.1–p08.8), przycisk na `/` (p01.8), „Masz partię” gościa (p01.9, `loadGuestCurrentGame`), ostrzeżenie p03.12 i „Zaproszenie wygasło” p03.13 dla gościa-twórcy, s07.11, s07.7 dla gościa-twórcy (backend: `accept` z `as: guest` przyjmuje `cancelOwnWaitingGame`, L35). Odstępstwa od prototypu: brak nagłówka z prototypu (aplikacja go nie ma), strona główna wyśrodkowana na wąskim ekranie jak dotąd. README: „Gość tworzy partię”.
 - [ ] 6.9 Dokumentacja, zgłoszenia E02-S07/E02-S08, adnotacje w #87/#88 i `account-deletion`
 
 ## Poza zakresem tego przebiegu
