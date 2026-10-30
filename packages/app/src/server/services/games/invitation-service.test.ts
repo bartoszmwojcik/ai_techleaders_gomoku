@@ -509,6 +509,26 @@ describe("InvitationService.accept as a guest", () => {
     expect(rateLimiter.release).toHaveBeenCalledOnce();
   });
 
+  it("offers a guest creator to give up the own waiting game (L35), and does it when asked", async () => {
+    const own = { game_id: "a-own-game", status: "waiting", seat: 1 };
+    const refused = setup({ slot: [[own], [own]] });
+    const error = await errorOf(refused.service.accept(CODE, { guestTokenHash: TOKEN_HASH }, GUEST_INPUT, GUARD));
+    expect(error.code).toBe("OWN_WAITING_GAME");
+    expect(error.data).toEqual({ gameId: "a-own-game" });
+
+    const { service, calls } = setup({ slot: [[own], [own]] });
+    const result = await service.accept(
+      CODE,
+      { guestTokenHash: TOKEN_HASH },
+      { ...GUEST_INPUT, cancelOwnWaitingGame: true },
+      GUARD,
+    );
+    expect(result).toEqual({ gameId: "game-1", guestToken: expect.any(String) });
+    const sqls = sqlsOf(calls);
+    expect(sqls.findIndex((sql) => sql.includes("update games set status = 'cancelled' where id = ?"))).toBeGreaterThan(-1);
+    expect(sqls.some((sql) => sql.includes("insert into game_players"))).toBe(true);
+  });
+
   it("joins a browser whose old token holds nothing (the old game ended)", async () => {
     const { service } = setup({ slot: [[], []] });
     const result = await service.accept(CODE, { guestTokenHash: TOKEN_HASH }, GUEST_INPUT, GUARD);

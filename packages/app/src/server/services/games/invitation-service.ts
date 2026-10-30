@@ -411,7 +411,7 @@ export class InvitationService {
     // given up (Q18).
     const slot = await this.#slotOf(tx, viewer);
     if (slot) {
-      if (input.as === "guest" || slot.status !== "waiting" || slot.seat !== 1) {
+      if (slot.status !== "waiting" || slot.seat !== 1) {
         throw new ConflictError(ACTIVE_GAME_EXISTS_MESSAGE, {
           code: "ACTIVE_GAME_EXISTS",
           data: { gameId: slot.game_id },

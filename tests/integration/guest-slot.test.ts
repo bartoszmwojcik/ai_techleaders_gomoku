@@ -163,6 +163,27 @@ describe("lazy expiry of an unjoined guest game", () => {
     expect((await row(again.gameId)).status).toBe("cancelled");
   });
 
+  it("lets a guest creator give up the own waiting game to join another invitation (L35)", async () => {
+    const mine = await guestGame();
+    const other = await guestGame();
+    const input = { as: "guest", acknowledgedGuestWarning: true } as const;
+
+    await expect(
+      scope().invitations.accept(other.code, { guestTokenHash: mine.hash }, input, guard()),
+    ).rejects.toMatchObject({ status: 409, code: "OWN_WAITING_GAME", data: { gameId: mine.gameId } });
+
+    const joined = await scope().invitations.accept(
+      other.code,
+      { guestTokenHash: mine.hash },
+      { ...input, cancelOwnWaitingGame: true },
+      guard(),
+    );
+    expect(joined.gameId).toBe(other.gameId);
+    expect(joined.guestToken).toBeDefined();
+    expect(await row(mine.gameId)).toEqual({ status: "cancelled", is_active: false, voided: true });
+    expect((await row(other.gameId)).status).toBe("active");
+  });
+
   it("does not touch a game whose invitation is still open", async () => {
     const { gameId, hash, code } = await guestGame();
     const preview = await scope().invitations.preview(code, { guestTokenHash: hash }, guard());
