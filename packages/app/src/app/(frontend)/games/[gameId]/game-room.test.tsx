@@ -21,7 +21,7 @@ const NO_BOARD = {
   turnSeat: null,
   moves: [],
   result: null,
-  clock: { remainingMs: [600_000, 600_000] as [number, number], running: null },
+  clock: { remainingMs: [600_000, 600_000] as [number, number], running: null, now: 0 },
 } as const;
 const waiting = (): GameView => ({
   ...NO_BOARD,
@@ -158,8 +158,15 @@ describe("GameRoom, waiting (p03)", () => {
     apiCall.mockResolvedValue({ ok: true, data: active() });
     await tick();
     expect(apiCall).toHaveBeenCalledTimes(3);
+    // The game is on: the cadence is the 2 s of a game in progress, not the 3 s of waiting.
+    apiCall.mockClear();
+    await tick(PLAY_POLL_INTERVAL_MS);
+    expect(apiCall).toHaveBeenCalledTimes(1);
+    apiCall.mockResolvedValue({ ok: true, data: { ...waiting(), status: "cancelled", closedReason: "cancelled" } });
+    await tick(PLAY_POLL_INTERVAL_MS);
+    apiCall.mockClear();
     await tick(POLL_INTERVAL_MS * 3);
-    expect(apiCall).toHaveBeenCalledTimes(3);
+    expect(apiCall).not.toHaveBeenCalled();
   });
 
   it("never sends a poll while the previous one is in flight", async () => {
@@ -331,12 +338,12 @@ describe("GameRoom, active (p04)", () => {
       screen.getByText("Czekamy, aż Ala_7 otworzy partię — zegar ruszy, gdy obaj będziecie na stronie (do 15 min)"),
     ).toBeTruthy();
     expect(screen.getByText("Ty (Kuba_P)")).toBeTruthy();
-    // Both opened the page: the board takes over (own turn, so nothing more to poll).
+    // Both opened the page: the board takes over (the game in progress is polled on the own turn too, #23).
     apiCall.mockResolvedValue({ ok: true, data: active({ you: { seat: 2, kind: "account" }, turnSeat: 2 }, [true, true]) });
     await tick();
     expect(screen.getByRole("heading", { name: "Partia w toku" })).toBeTruthy();
     await tick(PLAY_POLL_INTERVAL_MS * 3);
-    expect(apiCall).toHaveBeenCalledTimes(1);
+    expect(apiCall).toHaveBeenCalledTimes(4);
   });
 
   it("keeps the guest warning while the guest waits for the other player to open the page (p04.4)", () => {
@@ -436,9 +443,33 @@ describe("GameRoom, play (p05, p06)", () => {
     expect(apiCall).toHaveBeenCalledWith("/api/games/g1?after=1", { method: "GET" });
     expect(stonesOnBoard()).toHaveLength(2);
     expect(screen.getByText("Twój ruch (czarne)")).toBeTruthy();
-    // Own turn: nothing to read.
+    // Own turn: the clock runs for the player and the game can end without a move, so it is read too (#23).
     await tick(PLAY_POLL_INTERVAL_MS * 3);
+    expect(apiCall).toHaveBeenCalledTimes(4);
+  });
+
+  it("reads the state the moment the local clock reaches zero and shows the loss on time (p06.3)", async () => {
+    const running = { remainingMs: [3_000, 600_000] as [number, number], running: 1 as const, now: 5_000_000 };
+    room(active({ clock: running }));
+    expect(screen.getByText("Twój ruch (czarne)")).toBeTruthy();
+    apiCall.mockResolvedValue({ ok: true, data: active({ clock: running }) });
+    await tick(PLAY_POLL_INTERVAL_MS);
     expect(apiCall).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Twój ruch (czarne)")).toBeTruthy();
+    // The server settles the game when it is asked; the next regular read is at 4 s, the zero is at 3 s.
+    apiCall.mockResolvedValue({
+      ok: true,
+      data: active({
+        status: "finished",
+        turnSeat: null,
+        result: { winnerSeat: 2, reason: "timeout", winLine: null },
+        clock: { remainingMs: [0, 600_000], running: null, now: 5_003_100 },
+      }),
+    });
+    await tick(1_100);
+    expect(apiCall).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("Przegrałeś — skończył się Twój czas")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Koniec partii" })).toBeTruthy();
   });
 
   it("stops polling when the game ends and shows the result with the winning line", async () => {

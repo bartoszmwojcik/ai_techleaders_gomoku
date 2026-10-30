@@ -149,3 +149,9 @@ BR-04, BR-05, BR-06, BR-07, BR-13, D-03 (właściciel: Bartosz Wójcik). Spec pr
 
 - **Gość po terminie:** gość widzi wynik przy pierwszym odczycie, a token jest ważny godzinę od `finished_at` (nie od wykrycia przegranej), więc odczyt po ponad 1 h od terminu daje `404`. Kolejność „ocena tokenu po rozstrzygnięciu" jest bezpieczna, ale różni się od brzmienia o `settleGame` przed oceną tokenu.
 - **`accept` jako gość:** nie wywołuje `settleFor`, bo gość nie ma `userId`, więc może dostać `ACTIVE_GAME_EXISTS` do czasu odczytu jego przeterminowanej partii. Błąd niesie `gameId`, a odczyt rozstrzyga partię, więc stan samonaprawia się.
+
+## 📝 Adnotacja 2026-10-30: UI zegara (zadanie 4.4)
+
+- **`clock.now` (zatwierdzone przez właściciela):** odpowiedź `GET`/`POST` niesie dodatkowo `clock.now` (czas serwera, ms epoki, z chwili obliczenia `remainingMs`). Zmiana addytywna; zastępuje zdanie „Brak pola z czasem serwera: klient odlicza od momentu odbioru”. Klient mierzy offset względem monotonicznego `performance.now()` przy każdej odpowiedzi.
+- **Odpytywanie:** partia `active` jest czytana co 2 s także na własnym ruchu (przegrana na czas bez ruchu); lokalne dojście zegara do 0 wymusza natychmiastowy odczyt.
+- **Wariant „mało czasu”:** opakowanie `.low-clock` w `frontend.css` (LUKA D04, jak w prototypie), `aria-live` jednorazowo i tylko dla własnego zegara.

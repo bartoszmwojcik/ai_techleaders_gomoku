@@ -22,6 +22,11 @@ export type ClockView = {
   remainingMs: [number, number];
   /** Seat whose clock is running; `null` before the clock started and after the game. */
   running: Seat | null;
+  /**
+   * Server time (epoch ms) the `remainingMs` were computed at. The client measures its offset to
+   * the server from it and counts down against server time, not against its own clock.
+   */
+  now: number;
 };
 
 const stored = (state: ClockState, seat: Seat): number =>
@@ -74,6 +79,7 @@ export function clockView(state: ClockState, nowMs: number): ClockView {
   return {
     remainingMs: [remainingMs(state, 1, nowMs), remainingMs(state, 2, nowMs)],
     running: state.turnStartedAtMs === null ? null : state.turnSeat,
+    now: nowMs,
   };
 }
 

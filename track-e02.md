@@ -94,7 +94,22 @@ Ręczny test po fazie: start zegara po otwarciu strony przez obu, malejący zega
 - [x] 4.1 `core/src/games/clock.ts` (#23 krok 1)
 - [x] 4.2 Migracja kolumn zegara, start w `getState`, `spend`/`settleGame`/`settleFor`, `GAME_NOT_STARTED` (#23 kroki 2–6) — kolumny zegara i CHECK `timeout` istniały od fazy 1/3, migracji nie dodano
 - [x] 4.3 Testy integracyjne (wyścigi, rollback, BR-13) (#23 krok 7)
-- [ ] 4.4 UI: `useGameClock`, `PlayerClock`, wariant „mało czasu”, baner końca przez czas (#23 kroki 8–9) — po D3.2
+- [x] 4.4 UI: `useGameClock`, `PlayerClock`, wariant „mało czasu”, baner końca przez czas (#23 kroki 8–9) — wg zatwierdzonego prototypu etapu B (D3.2)
+  - Zrobione: `clock.now` (czas serwera, ms epoki) w odpowiedzi API (zatwierdzone przez właściciela; adnotacja w specyfikacji #23); `useGameClock` (odliczanie względem czasu serwera, tylko zegar na ruchu, stop na 0 i po `finished`, odczyt stanu przy zerze); `GameClock` (cyfry m:ss, wariant „mało czasu” < 60 s bez tekstu — LUKA D04 jak w prototypie, jednorazowe ogłoszenie `aria-live`); odpytywanie także na własnym ruchu; baner przegranej/wygranej na czas. Stany z mapy: p05.1 (z cyframi), p05.3, p06.3 (przegrana i wygrana na czas). Scenariusz `tests/integration/game-clock-pages.test.ts`.
+  - Odstępstwa od prototypu: wariant „mało czasu” obejmuje każdy zegar poniżej 60 s (także przeciwnika, jak w prototypie), ale ogłoszenie czytnika dotyczy tylko własnego; brak „Poddaj partię” i rewanżu (faza 5).
+
+#### Ręczny test po fazie 4 (krok po kroku)
+
+Świeża baza jednorazowa i `npm run dev` jak po fazie 2 (nie baza `gomoku` z danymi). Dwie przeglądarki / okno prywatne: konta `a` (twórca) i `b`. Do przesuwania czasu: `docker compose exec postgres psql -U gomoku -d gomoku_e02 -c "…"` na bazie jednorazowej.
+1. `a` tworzy partię, `b` dołącza. Zegary startują dopiero, gdy obaj otworzą `/games/{id}`: do tego czasu oba 10:00; potem u gracza na ruchu cyfry spadają co sekundę (w obu kartach), drugi zegar stoi.
+2. Ruch zmienia bieg: po ruchu czarnych tyka zegar białych (u obu graczy), a zegar czarnych zatrzymuje się na ostatniej wartości.
+3. „Mało czasu”: `update games set clock_ms_1 = 45000, turn_started_at = now() where id = '…'` (miejsce na ruchu wg `black_seat`). W ciągu ~2 s zegar zmienia kolor na jaskrawy i dostaje gruby obrys (u obu graczy), bez tekstu „Mało czasu”; czytnik ekranu ogłasza raz „Zostało mniej niż minuta” tylko właścicielowi tego zegara.
+4. Przegrana na czas bez ruchu: `update games set turn_started_at = now() - interval '2 minutes' where id = '…'`. Obie karty (także karta gracza, którego czas minął, na jego własnym ruchu) w ≤ 2 s pokazują „Przegrałeś — skończył się Twój czas” / „Wygrałeś — przeciwnikowi skończył się czas”, plansza tylko do odczytu, zegary stoją (0:00 u przegranego).
+5. Zero lokalnie: ustaw `clock_ms_N = 3000, turn_started_at = now()` — wynik pojawia się zaraz po dojściu do 0:00, bez czekania na kolejny odczyt.
+6. Odświeżenie w trakcie partii: te same wartości zegarów (z serwera), odliczanie trwa; odświeżenie po końcu: wynik i zamrożone zegary.
+7. Dwie karty tego samego gracza: obie pokazują ten sam czas (± 1 s); ukryta karta nie odpytuje, po powrocie jeden odczyt koryguje zegar.
+8. Przestaw zegar systemowy komputera o kilka minut: zegary w grze nie skaczą (liczy czas serwera).
+9. Oba motywy, szerokości 320, 360 i 1280 px: bez poziomego przewijania, wariant „mało czasu” czytelny w obu motywach.
 
 ### Faza 5 — Powrót po rozłączeniu (#24), poddanie (#87), rewanż (#88)
 Specyfikacje (zatwierdzone): `.ai/specs/2026-10-29-game-reconnection.md`, `…-game-resignation.md`, `…-game-rematch.md`. Prototyp: p05.10, p05.13–14, p06.5–p06.15. Każda podfaza = backend przed UI; UI po porównaniu z prototypem w obu motywach (360 i 1280 px). Kolejność: 5A → 5B → 5C (5B i 5C dotykają `GameView` i `game-room.tsx`: PR-y po kolei, każdy po rebase na `main`).

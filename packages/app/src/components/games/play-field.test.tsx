@@ -23,7 +23,7 @@ const game = (over: Partial<GameView> = {}): GameView => ({
   turnSeat: 1,
   moves: [],
   result: null,
-  clock: { remainingMs: [600_000, 600_000] as [number, number], running: null },
+  clock: { remainingMs: [600_000, 600_000] as [number, number], running: null, now: 0 },
   ...over,
 });
 const failure = (code: string) => ({ ok: false, error: { code, message: "x" } });
@@ -297,5 +297,94 @@ describe("PlayField, finished (p06)", () => {
     expect(screen.queryByText("Postaw kamień")).toBeNull();
     await press(cell("Kolumna O, rząd 15, puste"));
     expect(apiCall).not.toHaveBeenCalled();
+  });
+});
+
+describe("PlayField, clocks (#23, p05.1, p05.3, p06.3)", () => {
+  const clock = (remainingMs: [number, number], running: 1 | 2 | null = 1) => ({ remainingMs, running, now: 1_000_000 });
+  const digits = () => [...document.querySelectorAll("time")].map((time) => time.textContent);
+  const live = () => screen.getByTestId("low-live");
+
+  it("shows the digits of both clocks, the opponent's first, and counts down the one on turn", async () => {
+    field({ clock: clock([541_000, 300_000]) });
+    expect(digits()).toEqual(["5:00", "9:01"]);
+    await act(async () => void (await vi.advanceTimersByTimeAsync(3_000)));
+    expect(digits()).toEqual(["5:00", "8:58"]);
+  });
+
+  it("counts down the opponent's clock while they are on turn, and shows the seat's own clock for seat 2", async () => {
+    field({ you: { seat: 2, kind: "account" }, turnSeat: 1, clock: clock([200_000, 100_000]) });
+    expect(digits()).toEqual(["3:20", "1:40"]);
+    await act(async () => void (await vi.advanceTimersByTimeAsync(2_000)));
+    expect(digits()).toEqual(["3:18", "1:40"]);
+  });
+
+  it("flags low time on the clock below a minute, and announces it once (p05.3)", async () => {
+    field({ clock: clock([61_000, 600_000]) });
+    expect(document.querySelectorAll("[data-low]")).toHaveLength(0);
+    expect(live().textContent).toBe("");
+    await act(async () => void (await vi.advanceTimersByTimeAsync(2_000)));
+    expect(document.querySelectorAll("[data-low]")).toHaveLength(1);
+    expect(live().textContent).toBe("Zostało mniej niż minuta");
+    expect(live().getAttribute("role")).toBe("status");
+    expect(screen.queryByText("Mało czasu")).toBeNull();
+  });
+
+  it("does not say it again when a read puts the time back above the threshold", async () => {
+    const { rerender } = field({ clock: clock([30_000, 600_000]) });
+    await act(async () => void (await vi.advanceTimersByTimeAsync(10)));
+    expect(live().textContent).toBe("Zostało mniej niż minuta");
+    rerender(
+      <PlayField gameId="g1" game={game({ clock: clock([62_000, 600_000]) })} pollFails={0} onState={onState} onRefresh={onRefresh} onGone={onGone} />,
+    );
+    expect(document.querySelectorAll("[data-low]")).toHaveLength(0);
+    expect(live().textContent).toBe("Zostało mniej niż minuta");
+  });
+
+  it("does not announce the opponent's low time", async () => {
+    field({ turnSeat: 2, clock: clock([600_000, 20_000], 2) });
+    await act(async () => void (await vi.advanceTimersByTimeAsync(10)));
+    expect(document.querySelectorAll("[data-low]")).toHaveLength(1);
+    expect(live().textContent).toBe("");
+  });
+
+  it("reads the state at once when the running clock reaches zero", async () => {
+    field({ clock: clock([2_000, 600_000]) });
+    await act(async () => void (await vi.advanceTimersByTimeAsync(1_000)));
+    expect(onRefresh).not.toHaveBeenCalled();
+    await act(async () => void (await vi.advanceTimersByTimeAsync(1_500)));
+    expect(digits()[1]).toBe("0:00");
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("freezes the clocks of a finished game and says nothing about low time", async () => {
+    field({
+      status: "finished",
+      turnSeat: null,
+      result: { winnerSeat: 2, reason: "timeout", winLine: null },
+      clock: clock([0, 45_000], null),
+    });
+    expect(digits()).toEqual(["0:45", "0:00"]);
+    await act(async () => void (await vi.advanceTimersByTimeAsync(5_000)));
+    expect(digits()).toEqual(["0:45", "0:00"]);
+    expect(live().textContent).toBe("");
+    expect(onRefresh).not.toHaveBeenCalled();
+    expect(screen.getByText("Przegrałeś — skończył się Twój czas")).toBeTruthy();
+  });
+
+  it("shows the win on time for the opponent's lost clock (p06.1 variant)", () => {
+    field({
+      status: "finished",
+      turnSeat: null,
+      result: { winnerSeat: 1, reason: "timeout", winLine: null },
+      clock: clock([300_000, 0], null),
+    });
+    expect(screen.getByText("Wygrałeś — przeciwnikowi skończył się czas")).toBeTruthy();
+  });
+
+  it("does not run before the clock started", async () => {
+    field({ clock: clock([600_000, 600_000], null) });
+    await act(async () => void (await vi.advanceTimersByTimeAsync(5_000)));
+    expect(digits()).toEqual(["10:00", "10:00"]);
   });
 });

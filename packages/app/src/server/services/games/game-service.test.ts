@@ -308,7 +308,7 @@ describe("GameService.getState", () => {
     expect(timeoutSettler.settleExpired).toHaveBeenCalledWith("game-1", em, NOW);
     expect(state).toEqual({
       status: "waiting",
-      clock: { remainingMs: [INITIAL_CLOCK_MS, INITIAL_CLOCK_MS], running: null },
+      clock: { remainingMs: [INITIAL_CLOCK_MS, INITIAL_CLOCK_MS], running: null, now: NOW.getTime() },
       moveCount: 0,
       blackSeat: null,
       turnSeat: null,
@@ -399,7 +399,7 @@ describe("GameService.getState", () => {
       players: [creator, guest],
     });
     const state = await service.getState({ playerId: "p1" }, "game-1");
-    expect(state.clock).toEqual({ remainingMs: [590_000, 575_000], running: 2 });
+    expect(state.clock).toEqual({ remainingMs: [590_000, 575_000], running: 2, now: NOW.getTime() });
   });
 
   it("computes the clock view at the instant the expiry was settled, not at a later read", async () => {
@@ -422,7 +422,7 @@ describe("GameService.getState", () => {
     // At the settling instant seat 2 has 5 s - 5 s = 0 left only at `now`; a second read
     // would also show 0 or less, so assert the first read is the one used.
     expect(reads).toBe(1);
-    expect(state.clock).toEqual({ remainingMs: [600_000, 0], running: 2 });
+    expect(state.clock).toEqual({ remainingMs: [600_000, 0], running: 2, now: NOW.getTime() });
   });
 
   it("rejects `after` beyond the number of moves without doing the bookkeeping (optimization: no wasted writes)", async () => {
