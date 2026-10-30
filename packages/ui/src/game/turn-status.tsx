@@ -19,7 +19,9 @@ function TurnStatus({ children, color, className }: TurnStatusProps) {
         <span
           aria-hidden="true"
           className={cn(
-            "size-(--icon-size-md) shrink-0 rounded-piece border border-piece-outline",
+            // The marker sits on the page surface, not on the board: `piece-outline` is as dark as the black stone and
+            // as the dark page, so the black stone vanished in the dark theme; the control border shows in both.
+            "size-(--icon-size-md) shrink-0 rounded-piece border border-border-control",
             color === "black" ? "bg-piece-black" : "bg-piece-white",
           )}
         />

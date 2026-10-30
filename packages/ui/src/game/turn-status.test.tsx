@@ -4,6 +4,13 @@ import { describe, expect, it } from "vitest";
 import { TurnStatus } from "./turn-status";
 
 describe("TurnStatus", () => {
+  it("outlines the stone marker with the control border so a black stone shows on the dark page", () => {
+    const html = renderToStaticMarkup(<TurnStatus color="black">Twój ruch (czarne)</TurnStatus>);
+
+    expect(html).toContain("border-border-control");
+    expect(html).not.toContain("border-piece-outline");
+  });
+
   it("announces whose turn it is politely, in words", () => {
     const html = renderToStaticMarkup(<TurnStatus>Ruch przeciwnika</TurnStatus>);
 
