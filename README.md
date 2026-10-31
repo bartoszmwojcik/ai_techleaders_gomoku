@@ -194,7 +194,7 @@ Zalogowany gracz tworzy partię na `/` (przycisk „Utwórz zaproszenie”), dos
   Gość: `-c g.jar` na `accept` z `{"as":"guest","acknowledgedGuestWarning":true}` i świeżym kodzie (bez `acknowledgedGuestWarning` to `400`), potem `curl -b g.jar …/api/games/<gameId>`. Strony: patrz lista kroków w `track-e02.md` (po fazie 2).
 - **Testy:** jednostkowe obok kodu (serwisy, route'y, strony, komponenty), integracyjne `tests/integration/game-invitations-api.test.ts` (API, wyścigi) i `tests/integration/game-invitation-pages.test.ts` (przeglądarka: tworzenie, `/join`, gość, konto, anulowanie, BR-13, 404, limit).
 
-Specyfikacja: [`.ai/specs/2026-10-24-game-invitations.md`](.ai/specs/2026-10-24-game-invitations.md).
+Specyfikacja: [`.ai/specs/implemented/2026-10-24-game-invitations.md`](.ai/specs/implemented/2026-10-24-game-invitations.md).
 
 #### Rozgrywka (plansza, ruchy, koniec partii)
 
@@ -213,7 +213,7 @@ Specyfikacja: [`.ai/specs/2026-10-24-game-invitations.md`](.ai/specs/2026-10-24-
 - **Odstępstwa od prototypu:** bez nagłówka strony; brak komunikatu „Karta w tle…” (nikt go w ukrytej karcie nie zobaczy); „Wróć do panelu głównego” to link do `/` (panelu głównego jeszcze nie ma, E03); „Przeciwnik dołączył” → plansza bez pośredniego „Partia gotowa”. Luka DS D01 (zaznaczenie + „Postaw kamień”) odwzorowana jak w prototypie: `selected` z Planszy i zwykły Przycisk.
 - **Testy:** jednostkowe `play-field.test.tsx`, `game-room.test.tsx`, `lib/games/play.test.ts`; integracyjne `tests/integration/game-reconnection-pages.test.ts` (powrót po >30 s i po 20 s, partia przegrana na czas w nieobecności, drugie urządzenie konta, gość: wynik, `404` z innej przeglądarki i po 1 h) oraz `tests/integration/game-play-pages.test.ts` (dwie przeglądarki: twórca z kontem i gość grają do piątki, ruch poza turą, odświeżenie w trakcie, linia wygrywająca, 360 px bez przewijania poziomego).
 
-Specyfikacja: [`.ai/specs/2026-10-25-game-moves-win-detection.md`](.ai/specs/2026-10-25-game-moves-win-detection.md).
+Specyfikacja: [`.ai/specs/implemented/2026-10-25-game-moves-win-detection.md`](.ai/specs/implemented/2026-10-25-game-moves-win-detection.md).
 
 ### `@gomoku/core` — części wielokrotnego użytku
 

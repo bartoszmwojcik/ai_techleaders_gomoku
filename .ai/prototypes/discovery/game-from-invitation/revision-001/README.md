@@ -2,7 +2,7 @@
 
 - Brief: `.ai/specs/product-brief.md` (po zmianie 2026-10-26: D-24…D-26, BR-26…BR-28). Przepływ: Key flow „zaproszenie znajomego do partii”, etap A z podziału mapy: **utworzenie zaproszenia i oczekiwanie** (etap B: plansza, ruchy, zegary, wynik, poddanie, rewanż, powrót po rozłączeniu, nie jest w tej rewizji).
 - Data: 2026-10-29. Rewizja pierwsza nowego slugu `game-from-invitation`; poprzednia rewizja: brak (`previousRevision: null`). Granica symulacji zatwierdzona przez właściciela 2026-10-29.
-- Mapa ekranów: `lekcja-07/mapa-ekranow-partia.md` (ID p01–p04 i s07 z mapy; sekcje 0a, 0b, 1, 1a, 2, 3). Specyfikacje: `.ai/specs/2026-10-24-game-invitations.md` (#21: UI/UX, Edge Cases, Q3, Q5, Q6, Q11–Q13, Q18–Q22), `.ai/specs/2026-10-26-game-clock.md` (#23) i `.ai/specs/2026-10-29-game-reconnection.md` (#24), tylko pod kątem stanów p03/p04.
+- Mapa ekranów: `lekcja-07/mapa-ekranow-partia.md` (ID p01–p04 i s07 z mapy; sekcje 0a, 0b, 1, 1a, 2, 3). Specyfikacje: `.ai/specs/implemented/2026-10-24-game-invitations.md` (#21: UI/UX, Edge Cases, Q3, Q5, Q6, Q11–Q13, Q18–Q22), `.ai/specs/implemented/2026-10-26-game-clock.md` (#23) i `.ai/specs/implemented/2026-10-29-game-reconnection.md` (#24), tylko pod kątem stanów p03/p04.
 - Panel syntetyczny (`--panel-report`): nie podano. Hipotezy `[SYNTHETIC]` nie weszły do prototypu ani do tego dokumentu.
 - Wszystkie dane są fikcyjne (Ala_7, Kuba_P, kod `ABCD-EFGH`, adres `https://gomoku.example/…`, czas stały). Prototyp nie jest dowodem popytu ani gotowości produkcyjnej i nie spełnia Definition of Ready.
 

@@ -6,7 +6,7 @@ Stan: **etap A gotowy (D3.1); etap B (p05–p07: plansza, zegary, wynik, poddani
 
 - Mapa ekranów (zatwierdzona): `lekcja-07/mapa-ekranow-partia.md` (ID p01–p07, stanów pNN.M, scenariuszy Q01–Q12, kont T1–T8, luk L01–L24 i D01–D07 są stałe; sekcje 0a i 0b to decyzje i założenia robocze).
 - Szary prototyp: `.ai/prototypes/discovery/game-from-invitation/revision-002/` (teksty i założenia A-01…A-11 z etapu A).
-- Specyfikacje: `.ai/specs/2026-10-24-game-invitations.md` (#21), pozostałe `2026-10-2*-game-*.md` (dla etapu B).
+- Specyfikacje: `.ai/specs/implemented/2026-10-24-game-invitations.md` (#21), pozostałe `2026-10-2*-game-*.md` (dla etapu B).
 - Design system: `packages/ui/docs/design-system.md`, `packages/ui/docs/epics/partia.mdx`, komponenty `@gomoku/ui/game/*`.
 - Silnik przeglądu: `lekcja-07/silnik-przegladu/` (`prototype.js` bez zmian).
 
