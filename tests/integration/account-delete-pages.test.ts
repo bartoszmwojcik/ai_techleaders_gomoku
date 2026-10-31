@@ -67,11 +67,14 @@ async function signedUp(browser: Browser) {
   await giveCookie(browser, pair);
   return { ...input, id: body.data.user.id, cookie: pair };
 }
-type Account = Awaited<ReturnType<typeof signedUp>>;
 
 const bodyHas = (browser: Browser, text: string) =>
   browser.waitForFn(`document.body.innerText.includes(${JSON.stringify(text)})`);
 const shot = async (browser: Browser, name: string) => {
+  // The panel is far below the top of the page: bring it into the viewport (the dialog covers it anyway).
+  await browser.evaluate(
+    "(() => { document.querySelector('[data-testid=delete-account-panel]')?.scrollIntoView({ block: 'start' }); return true; })()",
+  );
   if (shotsDir) await browser.run("screenshot", `${shotsDir}/${name}-${shotsTheme}.png`);
 };
 const horizontalOverflow = (browser: Browser) =>
