@@ -40,6 +40,7 @@ Last filed: 2026-10-31
 | E06-S01-T02 | #126 | Migracja: typ uczestnika i kanał dołączenia | #127 | E06-S01-T01 (#125) | no |
 | E06-S02 | #128 | Agent gra partię do końca przez narzędzia MCP (join, get_state, play_move) pod zegarem 10 minut | #124 | E06-S01 (#127) | no |
 | E06-S03 | #129 | Właściciel widzi licznik zakończonych partii wg pary typów uczestników (konto, gość, agent) | #124 | E06-S01 (#127) | no |
+| E06-S04 | #140 | Człowiek widzi wskazówkę „Jak podłączyć agenta” (adres MCP, komenda, kod zaproszenia) | #124 | E06-S01 (#127), E06-S02 (#128) | no |
 
 Uwagi 2026-10-31: E02-S05…S08 (#87, #88, #94, #95) założono poza `om-backlog` (bez linii `Backlog source:`/`Backlog id:`); ich zależności nie zostały odtworzone, kolumna „Depends on” zawiera „—”. E06 to eksperyment właściciela (D-28), bez dowodu popytu (A-04, A-06); `SDLC.md` nie ma Definition of Ready. E06-S01-T01 (Q-09) blokuje E06-S01, E06-S01-T02 i E06-S02. Pozycje „Później” (CLI dla agenta, agent w lobby, przeciwnik hostowany przez nas) dopisano do E05 (#33).
 
