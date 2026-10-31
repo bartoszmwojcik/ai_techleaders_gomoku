@@ -26,6 +26,11 @@ x-app: &app
     EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:-}
     EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-}
     EMAIL_DAILY_LIMIT: ${EMAIL_DAILY_LIMIT:-}
+    # Limits of the MCP endpoint for agents (E06-S01): empty means the initial values of D-29.
+    MCP_REQUEST_LIMIT: ${MCP_REQUEST_LIMIT:-}
+    MCP_JOIN_LIMIT: ${MCP_JOIN_LIMIT:-}
+    MCP_LOOKUP_LIMIT: ${MCP_LOOKUP_LIMIT:-}
+    MCP_LOOKUP_GLOBAL_LIMIT: ${MCP_LOOKUP_GLOBAL_LIMIT:-}
 
 services:
   postgres:

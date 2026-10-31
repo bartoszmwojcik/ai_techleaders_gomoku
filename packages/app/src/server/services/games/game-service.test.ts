@@ -430,6 +430,37 @@ describe("GameService.findParticipant", () => {
     expect(await service.findParticipant({ guestTokenHash: HASH }, "game-1")).toBeNull();
   });
 
+  it("finds an agent by its own token hash, with the same lifetime as a guest's (BR-31)", async () => {
+    const { service, em } = setup({ executeRows: [[{ id: "agent-9" }]] });
+    expect(await service.findParticipant({ agentTokenHash: HASH }, "game-1")).toEqual({
+      playerId: "agent-9",
+    });
+    expect(em.execute).toHaveBeenCalledOnce();
+    expect(em.execute).toHaveBeenCalledWith(
+      expect.stringMatching(/p\.agent_token_hash = \?.*g\.finished_at else/s),
+      ["game-1", HASH, new Date(NOW.getTime() - GUEST_TOKEN_GRACE_MS)],
+    );
+  });
+
+  it("does not take a guest hash for an agent token, nor the other way round", async () => {
+    const { service, em } = setup({ executeRows: [[], []] });
+    expect(
+      await service.findParticipant({ guestTokenHash: HASH, agentTokenHash: "c".repeat(64) }, "game-1"),
+    ).toBeNull();
+    const [guestCall, agentCall] = em.execute.mock.calls as unknown as [string, unknown[]][];
+    expect(guestCall![0]).toContain("p.guest_token_hash = ?");
+    expect(guestCall![0]).not.toContain("agent_token_hash");
+    expect(guestCall![1]).toContain(HASH);
+    expect(agentCall![0]).toContain("p.agent_token_hash = ?");
+    expect(agentCall![0]).not.toContain("guest_token_hash");
+    expect(agentCall![1]).toContain("c".repeat(64));
+  });
+
+  it("is null for an agent token that matches no valid player", async () => {
+    const { service } = setup({ executeRows: [[]] });
+    expect(await service.findParticipant({ agentTokenHash: HASH }, "game-1")).toBeNull();
+  });
+
   it("falls back to the guest token when the signed-in account does not play there", async () => {
     const { service } = setup({ executeRows: [[{ id: "guest-3" }]] });
     expect(
@@ -512,6 +543,28 @@ describe("GameService.getState", () => {
     });
     const state = await service.getState({ playerId: "p2" }, "game-1");
     expect(state.players.map(({ displayName }) => displayName)).toEqual([null, "Kasia"]);
+  });
+
+  it("names an agent by its kind only, with the model name it declared (BR-31)", async () => {
+    const agent = { id: "p2", seat: 2, kind: "agent", user: null, nickname: null, agentName: "claude opus 5.5", seenAt: NOW };
+    const named = setup({ game: { status: "active" }, players: [creator, agent] });
+    const state = await named.service.getState({ playerId: "p1" }, "game-1");
+    expect(state.players[1]).toEqual({
+      seat: 2,
+      kind: "agent",
+      displayName: null,
+      agentName: "claude opus 5.5",
+      seen: true,
+    });
+    expect(state.players[0]).not.toHaveProperty("agentName");
+
+    const anonymous = setup({ game: { status: "active" }, players: [creator, { ...agent, agentName: null }] });
+    expect((await anonymous.service.getState({ playerId: "p1" }, "game-1")).players[1]).toMatchObject({
+      displayName: null,
+      agentName: null,
+    });
+    const unset = setup({ game: { status: "active" }, players: [creator, { ...agent, agentName: undefined }] });
+    expect((await unset.service.getState({ playerId: "p1" }, "game-1")).players[1]).toMatchObject({ agentName: null });
   });
 
   it("does not show the invitation once the game is no longer waiting, and says it was cancelled", async () => {

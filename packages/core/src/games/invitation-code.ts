@@ -36,3 +36,24 @@ export function normalizeInvitationCode(input: string): string | null {
 export function invitationUrl(origin: string, code: string): string {
   return `${origin}/invite/${formatInvitationCode(code)}`;
 }
+
+/**
+ * The code behind what an agent hands to `join` (E06-S01): exactly one of a code in any form
+ * (`normalizeInvitationCode`) or a link to the invitation page whose last path segment is the
+ * code (`https://host/invite/ABCD-EFGH`; query and fragment are ignored). The host is ignored
+ * too and nothing is fetched. Anything else, several codes in one text included, is `null`.
+ */
+export function extractInvitationCode(input: string): string | null {
+  const text = input.trim();
+  const code = normalizeInvitationCode(text);
+  if (code) return code;
+  let url: URL;
+  try {
+    url = new URL(text);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+  const segment = url.pathname.split("/").filter((part) => part !== "").at(-1);
+  return segment === undefined ? null : normalizeInvitationCode(segment);
+}

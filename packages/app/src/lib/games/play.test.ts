@@ -94,6 +94,17 @@ describe("labels", () => {
     expect(playerName({ seat: 2, kind: "account", displayName: null, seen: true })).toBe("Usunięty gracz");
     expect(playerName(undefined)).toBe("Usunięty gracz");
   });
+
+  it("names an agent Agent, with the declared model name marked as declared (BR-31)", () => {
+    expect(playerName({ seat: 2, kind: "agent", displayName: null, agentName: null, seen: true })).toBe("Agent");
+    expect(playerName({ seat: 2, kind: "agent", displayName: null, seen: true })).toBe("Agent");
+    expect(
+      playerName({ seat: 2, kind: "agent", displayName: null, agentName: "claude opus 5.5", seen: true }),
+    ).toBe("Agent · claude opus 5.5 (deklarowane)");
+    expect(
+      playerNameOf({ seat: 2, kind: "agent", displayName: null, agentName: "gpt-5", seen: true }),
+    ).toEqual({ nick: "Agent", guest: false, label: "Agent · gpt-5 (deklarowane)", agent: { declared: "gpt-5" } });
+  });
 });
 
 describe("outcomeOf", () => {

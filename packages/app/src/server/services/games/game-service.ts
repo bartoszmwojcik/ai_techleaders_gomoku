@@ -36,7 +36,7 @@ import type { ServerConfig } from "../../config";
 import type { Clock } from "../email/email-sender";
 import type { RateLimiter } from "../rate-limit/rate-limiter";
 import type { InvitationCodes } from "./invitation-codes";
-import { GUEST_TOKEN_VALID_SQL } from "./guest-token";
+import { PARTICIPANT_TOKEN_VALID_SQL } from "./participant-token";
 import {
   CANCEL_NOT_STARTED_OF_GAME,
   CANCEL_WAITING_GAME_SQL,
@@ -83,7 +83,12 @@ const DEV_ORIGIN = "http://localhost:3000";
 // The player a guest token stands for in this game, while the token is valid (BR-22).
 const FIND_GUEST_SQL = `
   select p.id from game_players p join games g on g.id = p.game_id
-  where p.game_id = ? and p.guest_token_hash = ? and ${GUEST_TOKEN_VALID_SQL}`;
+  where p.game_id = ? and p.guest_token_hash = ? and ${PARTICIPANT_TOKEN_VALID_SQL}`;
+
+// The player an agent token stands for in this game, while the token is valid (BR-31).
+const FIND_AGENT_SQL = `
+  select p.id from game_players p join games g on g.id = p.game_id
+  where p.game_id = ? and p.agent_token_hash = ? and ${PARTICIPANT_TOKEN_VALID_SQL}`;
 
 // First successful read of the page by a participant (#21 Q20); only while the game is open.
 const MEMBER_MOVE_COUNT_SQL = `
@@ -163,6 +168,11 @@ export type GameState = BoardView & {
      * The UI tells guests apart by `kind`, never by `null`.
      */
     displayName: string | null;
+    /**
+     * Only for an agent (BR-31): the model name it declared when it joined, or `null`. Unverified
+     * text: the UI shows it as "Agent · {name} (deklarowane)" in plain text.
+     */
+    agentName?: string | null;
     /** Whether the player already opened the game page (#21 Q20). */
     seen: boolean;
   }[];
@@ -190,6 +200,23 @@ export type GameState = BoardView & {
    */
   fromRematch?: true;
 };
+
+/** A guest's nickname, an account's name; `null` for a deleted account and for an agent (BR-31). */
+function displayNameOf(player: {
+  kind: string;
+  seat: number;
+  nickname?: string | null;
+  user?: { displayName: string } | null;
+}): string | null {
+  switch (player.kind as ParticipantKind) {
+    case "guest":
+      return player.nickname ?? defaultNickname(player.seat as Seat);
+    case "account":
+      return player.user?.displayName ?? null;
+    case "agent":
+      return null;
+  }
+}
 
 export type ClosedReason = "cancelled" | "expired" | "not_opened";
 
@@ -407,11 +434,12 @@ export class GameService {
   /**
    * The participant behind an identity in a game, or `null` (the caller answers `404`, so
    * nobody learns whether the game exists). Order: the signed-in account, then the guest
-   * token (#21 step 6). A guest token counts while the game is in progress and for one hour
-   * after it finished (BR-22); a game closed unplayed (Q21) voids it.
+   * token (#21 step 6), then the agent token (BR-31, used by the MCP tools of E06-S02). A guest
+   * or agent token counts while the game is in progress and for one hour after it finished
+   * (BR-22); a game closed unplayed (Q21) voids it. The two tokens never stand for each other.
    */
   async findParticipant(
-    identity: { userId?: string; guestTokenHash?: string },
+    identity: { userId?: string; guestTokenHash?: string; agentTokenHash?: string },
     gameId: string,
   ): Promise<GameParticipant | null> {
     if (identity.userId) {
@@ -421,13 +449,20 @@ export class GameService {
       });
       if (player) return { playerId: player.id };
     }
-    if (!identity.guestTokenHash) return null;
     const cutoff = new Date(this.#clock.now().getTime() - GUEST_TOKEN_GRACE_MS);
-    const [guest] = await this.#em.execute<{ id: string }[]>(
-      FIND_GUEST_SQL,
-      [gameId, identity.guestTokenHash, cutoff],
+    if (identity.guestTokenHash) {
+      const [guest] = await this.#em.execute<{ id: string }[]>(
+        FIND_GUEST_SQL,
+        [gameId, identity.guestTokenHash, cutoff],
+      );
+      if (guest) return { playerId: guest.id };
+    }
+    if (!identity.agentTokenHash) return null;
+    const [agent] = await this.#em.execute<{ id: string }[]>(
+      FIND_AGENT_SQL,
+      [gameId, identity.agentTokenHash, cutoff],
     );
-    return guest ? { playerId: guest.id } : null;
+    return agent ? { playerId: agent.id } : null;
   }
 
   /**
@@ -528,10 +563,8 @@ export class GameService {
       players: players.map((player) => ({
         seat: player.seat as Seat,
         kind: player.kind as ParticipantKind,
-        displayName:
-          player.kind === "guest"
-            ? (player.nickname ?? defaultNickname(player.seat as Seat))
-            : (player.user?.displayName ?? null),
+        displayName: displayNameOf(player),
+        ...(player.kind === "agent" && { agentName: player.agentName ?? null }),
         seen: player.seenAt !== null,
       })),
       ...board,

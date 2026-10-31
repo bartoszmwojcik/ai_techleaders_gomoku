@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { INVITATION_CODE_ALPHABET, INVITATION_CODE_LENGTH } from "./constants";
 import {
+  extractInvitationCode,
   formatInvitationCode,
   generateInvitationCode,
   invitationUrl,
@@ -67,5 +68,38 @@ describe("invitationUrl", () => {
     expect(invitationUrl("https://gomoku.test", "ABCDEFGH")).toBe(
       "https://gomoku.test/invite/ABCD-EFGH",
     );
+  });
+});
+
+describe("extractInvitationCode", () => {
+  it.each([
+    "ABCD-EFGH",
+    "abcd-efgh",
+    "ABCDEFGH",
+    "  abcd efgh  ",
+    "https://gomoku.example/invite/ABCD-EFGH",
+    "http://localhost:3000/invite/abcd-efgh/",
+    "https://other.host/invite/ABCD-EFGH?utm=1&x=ABCD-EFGH#ABCD-EFGH",
+    "https://u:p@host/a/b/ABCDEFGH",
+  ])("finds the code in %s", (input) => {
+    expect(extractInvitationCode(input)).toBe("ABCDEFGH");
+  });
+
+  it.each([
+    "",
+    "   ",
+    "ABCD-EFG",
+    "ABCD-EFGH ABCD-EFGH",
+    "kod: ABCD-EFGH",
+    "ABCD-EFGH oraz https://x/invite/ABCD-EFGH",
+    "https://x/invite/",
+    "https://x",
+    "https://x/invite/ABCD-EFG0",
+    "ftp://x/invite/ABCD-EFGH",
+    "javascript:ABCD-EFGH",
+    "not a url at all",
+    "x".repeat(500),
+  ])("rejects %j", (input) => {
+    expect(extractInvitationCode(input)).toBeNull();
   });
 });

@@ -15,6 +15,9 @@ export const RESERVED_DISPLAY_NAMES: readonly string[] = [
   "system",
   "gomoku",
   "support",
+  // The label of a game opponent that joined over MCP (E06-S01, BR-31): an account of that name
+  // would pass for an agent.
+  "agent",
 ];
 
 // Explicit character set (no \p{L}) so Cyrillic/Greek homoglyphs are rejected.

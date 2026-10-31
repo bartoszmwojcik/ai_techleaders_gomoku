@@ -1,6 +1,6 @@
 import type { EndReason, HistoryEntry, HistoryResult } from "@gomoku/core";
 
-import type { PlayerName } from "./play";
+import { agentNameOf, type PlayerName } from "./play";
 
 export const RESULT_LABEL: Record<HistoryResult, string> = {
   win: "Wygrana",
@@ -17,15 +17,15 @@ export const REASON_LABEL: Record<EndReason, string> = {
 };
 
 export const DELETED_PLAYER_LABEL = "Usunięty gracz";
-export const AGENT_LABEL = "Agent";
 
 /**
  * The opponent as the history names them, in the one place that decides: an account by its name,
  * a deleted account (`name` null) "Usunięty gracz" (BR-17), a guest "{nick} (gość)" (BR-24, BR-29),
- * an agent "Agent" (BR-30).
+ * an agent "Agent" or, when it declared a model name, "Agent · {name} (deklarowane)" (BR-31).
  */
 export function opponentNameOf({ kind, name }: HistoryEntry["opponent"]): PlayerName {
+  if (kind === "agent") return agentNameOf(name);
   const guest = kind === "guest";
-  const nick = kind === "agent" ? AGENT_LABEL : (name ?? DELETED_PLAYER_LABEL);
+  const nick = name ?? DELETED_PLAYER_LABEL;
   return { nick, guest, label: guest ? `${nick} (gość)` : nick };
 }
