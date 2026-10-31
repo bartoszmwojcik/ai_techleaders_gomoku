@@ -52,10 +52,12 @@ Aplikacja Next.js z App Routerem (`packages/app/src/app`). Ma dwie części, ka�
 | Część | Katalog | Adres | Style |
 | --- | --- | --- | --- |
 | Frontend — strony dla graczy | `src/app/(frontend)` | `/`, `/register`, `/login`, `/account` | Tailwind CSS z własnym motywem gry (`frontend.css`) |
-| Backend — panel administracyjny | `src/app/(backend)` | `/backend` | shadcn/ui z `@gomoku/ui` |
+| Backend — panel administracyjny | `src/app/(backend)` | `/backend` (tylko poza produkcją, w produkcji `404` do czasu roli administratora) | shadcn/ui z `@gomoku/ui` |
 | API | `src/app/api` | `/api/*` | — |
 
 Dzięki osobnym root layoutom style frontendu i panelu się nie mieszają. Przejście między częściami przeładowuje całą stronę.
+
+**Bramka panelu (#152):** do czasu roli administratora (E08) `/backend` odpowiada `404` w produkcji (`NODE_ENV=production`), a w `next dev` działa. Każdy `page.tsx`, `route.ts` i plik z `"use server"` w `(backend)` musi na początku wywołać `assertBackendEnabled()` z `@/server/backend-gate` (layout nie obejmuje route handlerów ani akcji); pilnuje tego `backend-gate.test.ts`. Komunikat błędu bazy trafia tylko do logu serwera.
 
 Kod serwerowy znajduje się w `src/server`:
 
@@ -425,7 +427,7 @@ Uruchamiane z katalogu głównego:
 | `npm test` | Testy jednostkowe (Vitest) z raportem pokrycia w `coverage/`; próg 100% dla każdego pliku |
 | `npm run test:watch` | Testy jednostkowe w trybie watch |
 | `npm run test:integration` | Testy integracyjne zbudowanej aplikacji (Docker, wcześniej `npm run build`) |
-| `npm run smoke` | Uruchamia zbudowaną aplikację i sprawdza `/`, `/backend`, `/api/health` (z bazą) i 404; port: `SMOKE_PORT` (domyślnie 3100) |
+| `npm run smoke` | Uruchamia zbudowaną aplikację i sprawdza `/`, `/backend` (oczekuje `404`), `/api/health` (z bazą) i 404; port: `SMOKE_PORT` (domyślnie 3100) |
 | `npm run check` | Pełna weryfikacja: `lint` → `typecheck` → `test` → `build` → `test:integration` |
 | `npm run db:migration:create` | Nowa migracja na podstawie różnic między encjami a schematem (`-- --blank`: pusta) |
 | `npm run db:migration:up` / `db:migration:down` | Zastosowanie / cofnięcie migracji |
