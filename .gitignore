@@ -48,8 +48,8 @@ next-env.d.ts
 
 # agent pipeline (om-* skills): per-run QA state and artifacts
 .ai/qa/artifacts_*/
-.ai/qa/test-env.json
-.ai/qa/test-env.env
+.ai/qa/test-env.*
+.ai/qa/test-env-build-cache.json
 
 # grey prototype copies served by Storybook (lesson 07)
 packages/ui/.storybook/public/prototypes/
