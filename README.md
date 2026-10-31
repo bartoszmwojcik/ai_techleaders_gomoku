@@ -317,14 +317,16 @@ Wygasłe sesje, liczniki limitów i tokeny nie wpływają na poprawność (są f
 | `password_reset_tokens` | `expires_at` **lub** `used_at` starsze niż 24 godziny |
 | `games` (`waiting`) | zaproszenie wygasło ponad 1 godzinę temu (okno 1 h, w którym twórca-gość widzi „Zaproszenie wygasło”; uczestnicy i zaproszenie znikają razem z partią, `on delete cascade`) |
 | `games` (`cancelled`) | `created_at` starsze niż 25 godzin (24 godziny życia zaproszenia + to samo okno 1 h dla niedołączonej wygasłej partii; razem z uczestnikami i zaproszeniem) |
+| `games` (`active`, tylko goście) | partia bez uczestnika-konta, w której zegar gracza na ruchu wygasł (a gdy zegar nie ruszył — 15 minut od `started_at`) ponad 1 godzinę temu; wynik nie jest zapisywany, usuwany jest wiersz (razem z uczestnikami i zaproszeniem) |
+| `games` (`finished`, tylko goście) | partia bez uczestnika-konta zakończona ponad 1 godzinę temu (partie z choć jednym kontem, także usuniętym, to historia i zostają) |
 | `game_players.guest_token_hash` | partia `finished` ponad 1 godzinę temu: hash tokenu jest zerowany (wiersz zostaje, token i tak nie działa po godzinie) |
 
-Użytkownicy nie są usuwani. Reguła BR-28 (niepotwierdzone konto bez partii po 14 dniach) czeka na tabele partii z Epiku 02 (#29), więc `unverifiedUsers` jest na razie zawsze `null`. Usuwanie idzie partiami po 1000 wierszy (krótkie transakcje, `for update skip locked`). Każda reguła ma własny budżet 15 sekund (wolna reguła nie zagłodzi następnych); po jego upływie reguła przerywa, a resztę zabierze następny przebieg (`truncated: true`). Dwa przebiegi naraz są bezpieczne.
+Użytkownicy nie są usuwani. Reguła BR-28 (niepotwierdzone konto bez partii po 14 dniach) czeka na tabele partii z Epiku 02 (#29), więc `unverifiedUsers` jest na razie zawsze `null`. Usuwanie idzie partiami po 1000 wierszy (krótkie transakcje, `for update skip locked`). Każda reguła ma własny budżet 15 sekund (wolna reguła nie zagłodzi następnych; przy 9 regułach najgorszy przebieg trwa 135 sekund); po jego upływie reguła przerywa, a resztę zabierze następny przebieg (`truncated: true`). Dwa przebiegi naraz są bezpieczne.
 
 **Wynik i kody wyjścia.** Jedna linia JSON na stdout: liczba usuniętych wierszy na regułę (przy błędzie reguły — liczba usuniętych do chwili błędu), `null` (tylko reguła oznaczona jako opcjonalna, gdy jej tabeli brak; dziś żadna nie jest, a `unverifiedUsers` jest zawsze `null`), `errors` (reguły, które zgłosiły błąd) i `truncated`:
 
 ```json
-{"sessions":3,"rateLimitBuckets":0,"emailVerificationTokens":1,"passwordResetTokens":0,"waitingGames":0,"cancelledGames":0,"guestTokens":0,"unverifiedUsers":null,"errors":[],"truncated":false}
+{"sessions":3,"rateLimitBuckets":0,"emailVerificationTokens":1,"passwordResetTokens":0,"waitingGames":0,"cancelledGames":0,"guestOnlyActiveGames":0,"guestOnlyFinishedGames":0,"guestTokens":0,"unverifiedUsers":null,"errors":[],"truncated":false}
 ```
 
 Błąd jednej reguły (w tym brak tabeli, np. nieuruchomione migracje) nie przerywa pozostałych: linia JSON z postępem nadal trafia na stdout, a w `errors` jest `{"rule":"sessions","code":"42P01"}` (nazwa reguły i kod SQL lub nazwa klasy błędu — bez komunikatu, który mógłby zawierać dane). Wtedy kod wyjścia to `1`, a na stderr jest `{"ok":false,"errors":[…]}`. Kod `1` i `{"ok":false,"error":"…"}` (zamaskowane hasło w adresie bazy) także przy innej awarii całego przebiegu. Kod `0` oznacza brak błędów (`truncated: true` to nie błąd). Następny przebieg `cron` spróbuje ponownie. Komenda nigdy nie tworzy brakującej bazy.

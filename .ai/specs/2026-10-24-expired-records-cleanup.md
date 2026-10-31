@@ -92,3 +92,7 @@ Potwierdzone przez właściciela — Bartosza Wójcika.
 - **Brak tabeli (L4):** `42P01` daje `null` tylko dla reguł z `optional: true` (dziś żadna); dla pozostałych jest błędem w `errors` (kod `1`). `unverifiedUsers` jest `null` zawsze (reguła BR-28 niezaimplementowana).
 - **Indeksy (L5):** na tym etapie **bez indeksów** na `sessions.expires_at` i `rate_limit_buckets.window_start` (sekcja Data Model zostaje opcją): skan sekwencyjny partiami jest akceptowalny przy małej bazie (VPS mikr.us). Do ponownej oceny z `EXPLAIN` przy wzroście tabel.
 - **Cron (L6):** wpis w README loguje datę i kod wyjścia, opisuje rotację (`logrotate`) i podkreśla, że `flock -n` jest optymalizacją (dwa przebiegi naraz są bezpieczne dzięki `skip locked`).
+
+## 📝 Adnotacje z wdrożenia #102 (2026-10-31)
+
+Dodano reguły `guestOnlyActiveGames` i `guestOnlyFinishedGames` (partie złożone wyłącznie z gości, margines 1 h; spec `2026-10-30-guest-only-games-cleanup.md`). Wynik `db:cleanup` ma dwa nowe klucze, a najgorszy przebieg trwa 9 x 15 s = 135 s. Test „never deletes games in progress or finished ones” dotyczy teraz partii z kontem.
