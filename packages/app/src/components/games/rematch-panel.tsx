@@ -300,6 +300,21 @@ export function RematchPanel({ gameId, game, reopened, onState, onRefresh, onAcc
     statusTone = "sr-only";
   } else if (mode.kind === "expired") statusText = "Zaproszenie do rewanżu wygasło (po 5 minutach).";
 
+  // The opponent deleted their account (#37): no offer is possible, and a closed offer is not announced.
+  if (other?.kind === "account" && other.displayName === null && !target) {
+    return (
+      <section aria-labelledby="rematch-h" className="flex flex-col gap-stack" data-testid="rematch-box">
+        <h2 ref={headingRef} id="rematch-h" tabIndex={-1} className={`m-0 text-subsection font-strong ${FOCUS_TARGET}`}>
+          Rewanż
+        </h2>
+        <Alert status="info" title="Rewanż niedostępny" role="status">
+          <span data-testid="rematch-unavailable">Ten gracz nie ma już konta, więc nie możesz zaproponować rewanżu.</span>
+        </Alert>
+        <div className="flex flex-wrap items-center gap-group">{back}</div>
+      </section>
+    );
+  }
+
   return (
     <section aria-labelledby="rematch-h" className="flex flex-col gap-stack" data-testid="rematch-box">
       <h2 ref={headingRef} id="rematch-h" tabIndex={-1} className={`m-0 text-subsection font-strong ${FOCUS_TARGET}`}>
