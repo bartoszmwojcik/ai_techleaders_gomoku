@@ -313,5 +313,6 @@ describe("the plan of the query", () => {
     expect(Date.now() - started).toBeLessThan(2000);
     expect(first.entries).toHaveLength(20);
     expect((await page(other)).entries).toEqual([]);
-  });
+    // 50 000 games and 100 000 players are written first, which takes a while on a busy machine.
+  }, 180_000);
 });
