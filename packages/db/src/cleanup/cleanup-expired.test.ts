@@ -101,7 +101,8 @@ describe("cleanupExpired", () => {
 
   it("registers the guest-only rules before the token rule", () => {
     const keys = CLEANUP_RULES.map((rule) => rule.key);
-    expect(keys.slice(-3)).toEqual(["guestOnlyActiveGames", "guestOnlyFinishedGames", "guestTokens"]);
+    // `unverifiedUsers` is last (BR-28): by then the games of the same run are swept.
+    expect(keys.slice(-4)).toEqual(["guestOnlyActiveGames", "guestOnlyFinishedGames", "guestTokens", "unverifiedUsers"]);
     for (const rule of CLEANUP_RULES.filter((r) => r.key.startsWith("guestOnly"))) {
       expect(rule.graceMs).toBe(GUEST_TOKEN_GRACE_MS);
     }
