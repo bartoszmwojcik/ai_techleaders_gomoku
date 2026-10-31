@@ -1,4 +1,4 @@
-import { GoneError, TooManyRequestsError, type ParticipantKind } from "@gomoku/core";
+import { GoneError, TooManyRequestsError, type CreatorKind } from "@gomoku/core";
 import { headers } from "next/headers";
 
 import { withRequestScope } from "../container";
@@ -18,7 +18,7 @@ export type InvitationView =
       kind: "joinable" | "has-active-game" | "has-own-waiting-game";
       creatorName: string | null;
       /** A guest creator is shown as "{name} (gość)"; `creatorName === null` is only a deleted account. */
-      creatorKind: ParticipantKind;
+      creatorKind: CreatorKind;
       /** The viewer's other game, for the two `has-*` kinds. */
       gameId?: string;
       /** Whether the viewer has an account session (otherwise they are a visitor). */

@@ -9,19 +9,14 @@ export const HISTORY_PAGE_SIZE = 20;
 /** Longest accepted `cursor` of `GET /api/history`; a real one is about 80 characters. */
 export const HISTORY_CURSOR_MAX_LENGTH = 200;
 
-/**
- * Who the opponent was. `agent` (D-28, BR-30) is not played yet: the mapping of the label is
- * exhaustive, so adding the kind to the game fails to compile until the history knows it.
- */
-export type OpponentKind = ParticipantKind | "agent";
-
 /** The outcome from the point of view of the one who reads the history. */
 export type HistoryResult = "win" | "loss" | "draw";
 
 /**
  * One finished game in the history of an account. The opponent's account id and e-mail are
  * never part of it: only the name that is public anyway. `name` is the nickname of a guest
- * (or `Gracz {seat}`), the display name of an account and `null` for a deleted account.
+ * (or `Gracz {seat}`), the display name of an account, `null` for a deleted account and, for an
+ * agent (BR-31), the model name it declared when it joined (or `null`): unverified text.
  */
 export type HistoryEntry = {
   gameId: string;
@@ -29,7 +24,7 @@ export type HistoryEntry = {
   finishedAt: string;
   result: HistoryResult;
   reason: EndReason;
-  opponent: { kind: OpponentKind; name: string | null };
+  opponent: { kind: ParticipantKind; name: string | null };
 };
 
 export type HistoryPage = {

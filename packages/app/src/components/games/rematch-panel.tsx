@@ -48,6 +48,7 @@ export const REMATCH_POLL_INTERVAL_MS = 3000;
 export const LEAVE_DECLINE_TIMEOUT_MS = 3000;
 
 const FOCUS_TARGET = "outline-none";
+export const AGENT_REMATCH_HINT = "Aby zagrać z agentem jeszcze raz, utwórz nową partię i przekaż mu nowy kod.";
 
 /**
  * The rematch block under the result (p06.10-p06.15): the offer, the wait with its countdown, the
@@ -300,15 +301,22 @@ export function RematchPanel({ gameId, game, reopened, onState, onRefresh, onAcc
     statusTone = "sr-only";
   } else if (mode.kind === "expired") statusText = "Zaproszenie do rewanżu wygasło (po 5 minutach).";
 
-  // The opponent deleted their account (#37): no offer is possible, and a closed offer is not announced.
-  if (other?.kind === "account" && other.displayName === null && !target) {
+  // No offer is possible against an agent (BR-31: a rematch has no code to hand to it) or against
+  // an account that was deleted (#37), and a closed offer is not announced.
+  const unavailableNote =
+    other?.kind === "agent"
+      ? { testId: "rematch-agent-hint", text: AGENT_REMATCH_HINT }
+      : other?.kind === "account" && other.displayName === null
+        ? { testId: "rematch-unavailable", text: "Ten gracz nie ma już konta, więc nie możesz zaproponować rewanżu." }
+        : null;
+  if (unavailableNote && !target) {
     return (
       <section aria-labelledby="rematch-h" className="flex flex-col gap-stack" data-testid="rematch-box">
         <h2 ref={headingRef} id="rematch-h" tabIndex={-1} className={`m-0 text-subsection font-strong ${FOCUS_TARGET}`}>
           Rewanż
         </h2>
         <Alert status="info" title="Rewanż niedostępny" role="status">
-          <span data-testid="rematch-unavailable">Ten gracz nie ma już konta, więc nie możesz zaproponować rewanżu.</span>
+          <span data-testid={unavailableNote.testId}>{unavailableNote.text}</span>
         </Alert>
         <div className="flex flex-wrap items-center gap-group">{back}</div>
       </section>

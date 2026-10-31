@@ -20,6 +20,9 @@ const account = (seat: 1 | 2, userId: string | null = `user-${seat}`): Row => ({
 const guest = (seat: 1 | 2, hash: string | null = `hash-${seat}`, nickname: string | null = null): Row => ({
   id: `p${seat}`, seat, kind: "guest", user_id: null, guest_token_hash: hash, nickname,
 });
+const agent = (seat: 1 | 2): Row => ({
+  id: `p${seat}`, seat, kind: "agent", user_id: null, guest_token_hash: null, nickname: null,
+});
 const finished = (extra: Row = {}): Row => ({
   status: "finished", black_seat: 1, rematch_state: null, rematch_offered_by_seat: null,
   rematch_game_id: null, expired: false, token_fresh: true, ...extra,
@@ -113,6 +116,18 @@ describe("RematchService.offer", () => {
         status: 409,
         code: "REMATCH_UNAVAILABLE",
         message: "Przeciwnik nie jest już dostępny, rewanż jest niemożliwy.",
+      });
+      expect(rateLimiter.hit).not.toHaveBeenCalled();
+      expect(ran("set rematch_state = 'pending'")).toHaveLength(0);
+    }
+  });
+
+  it("refuses an offer in a game with an agent without spending an attempt or writing (BR-31)", async () => {
+    for (const players of [[account(1), agent(2)], [guest(1), agent(2)]]) {
+      const { service, rateLimiter, ran } = setup({ players });
+      await expect(service.offer(me("p1"), "game-1")).rejects.toMatchObject({
+        status: 409,
+        code: "REMATCH_UNAVAILABLE",
       });
       expect(rateLimiter.hit).not.toHaveBeenCalled();
       expect(ran("set rematch_state = 'pending'")).toHaveLength(0);
@@ -269,6 +284,7 @@ describe("RematchService.accept", () => {
   it.each([
     ["a deleted account", [account(1, null), account(2)], pending(), "token"],
     ["a guest whose token was cleared", [guest(1, null), account(2)], pending(), "token"],
+    ["an agent", [account(1), agent(2)], pending(), "token"],
     ["a guest whose token expired", [guest(1), account(2)], pending({ token_fresh: false }), "token"],
   ])("refuses when the other player is gone: %s", async (_name, players, game, token) => {
     const { service, ran } = setup({ players, game });

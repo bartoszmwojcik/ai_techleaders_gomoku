@@ -6,6 +6,7 @@ import {
   REMATCH_OFFER_WINDOW_MS,
   REMATCH_TTL_MS,
   rematchBlackSeat,
+  type ParticipantKind,
   type RematchView,
   type Seat,
 } from "@gomoku/core";
@@ -41,7 +42,7 @@ export const REMATCH_UNAVAILABLE_MESSAGE = "Przeciwnik nie jest już dostępny, 
 type PlayerRow = {
   id: string;
   seat: Seat;
-  kind: "account" | "guest";
+  kind: ParticipantKind;
   user_id: string | null;
   guest_token_hash: string | null;
   nickname: string | null;
@@ -170,8 +171,9 @@ export class RematchService {
     const now = this.#clock.now();
     const game = await this.#game(this.#em, gameId, now);
     if (game.status !== "finished") throw gameNotFinished();
-    // Nobody to play against: no offer for a game with a deleted account (#37), and no attempt spent.
-    if (players.some((player) => isDeletedAccount(player))) throw rematchUnavailable();
+    // Nobody to play against: no offer for a game with a deleted account (#37) or with an agent
+    // (BR-31: a rematch has no code to hand over, so the agent could not follow), and no attempt spent.
+    if (players.some((player) => isDeletedAccount(player) || isAgent(player))) throw rematchUnavailable();
 
     // The attempt is reserved BEFORE the write (so the limit cannot be raced) and given back when
     // the conditional update refuses: a double click or `REMATCH_ALREADY_OFFERED` is no offer.
@@ -346,12 +348,17 @@ export class RematchService {
       : { gameId };
   }
 
-  // An account that was deleted, or a guest whose token is gone or about to expire (BR-22), so
+  // An account that was deleted, an agent (BR-31), or a guest whose token is gone or about to expire (BR-22), so
   // that no seat of the new game is left without a way to be claimed.
   #unavailable(player: PlayerRow, game: GameRow): boolean {
-    return player.kind === "account"
-      ? isDeletedAccount(player)
-      : player.guest_token_hash === null || !game.token_fresh;
+    switch (player.kind) {
+      case "account":
+        return isDeletedAccount(player);
+      case "agent":
+        return true;
+      case "guest":
+        return player.guest_token_hash === null || !game.token_fresh;
+    }
   }
 
   // BR-13 (Q4): neither account may hold a slot in another game. Stale slots are closed first.
@@ -402,6 +409,7 @@ export class RematchService {
 
 // A deleted account keeps its row with `user_id NULL` (#37); a guest has `user_id NULL` too.
 const isDeletedAccount = (player: PlayerRow) => player.kind === "account" && player.user_id === null;
+const isAgent = (player: PlayerRow) => player.kind === "agent";
 const rematchUnavailable = () =>
   new ConflictError(REMATCH_UNAVAILABLE_MESSAGE, { code: "REMATCH_UNAVAILABLE" });
 const gameNotFinished = () =>

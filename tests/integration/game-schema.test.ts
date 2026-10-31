@@ -300,6 +300,90 @@ describe("game_players", () => {
     ).resolves.toBeTruthy();
   });
 
+  describe("agents (E06-S01, BR-31)", () => {
+    // Each case breaks exactly one rule and keeps the rest valid: PostgreSQL names the CHECKs in
+    // alphabetical order, so a second broken rule would hide the one under test.
+    const agent = (extra: Record<string, unknown> = {}) => ({
+      seat: 2,
+      kind: "agent",
+      agent_token_hash: hash(),
+      join_channel: "mcp",
+      ...extra,
+    });
+
+    it("accepts an agent in seat 2 on the MCP channel, with or without a declared name", async () => {
+      await expect(insertPlayer(await insertGame(), agent({ agent_name: "claude opus 5.5" }))).resolves.toBeTruthy();
+      await expect(insertPlayer(await insertGame(), agent())).resolves.toBeTruthy();
+      // A cleared hash (the cleanup, 1 h after the end) is valid too.
+      await expect(insertPlayer(await insertGame(), agent({ agent_token_hash: null }))).resolves.toBeTruthy();
+    });
+
+    it("gives every other participant the web channel and no agent columns", async () => {
+      const game = await insertGame();
+      const id = await insertPlayer(game, { user_id: await insertUser() });
+      const [row] = await run(
+        `select join_channel, agent_token_hash, agent_name from game_players where id = ?`,
+        [id],
+      );
+      expect(row).toEqual({ join_channel: "web", agent_token_hash: null, agent_name: null });
+    });
+
+    it("never lets an agent be the creator (seat 1) or hold an account", async () => {
+      await expectViolation(insertPlayer(await insertGame(), agent({ seat: 1 })), "game_players_agent_seat_check");
+      await expectViolation(
+        insertPlayer(await insertGame(), agent({ user_id: await insertUser() })),
+        "game_players_agent_no_user_check",
+      );
+    });
+
+    it("ties the MCP channel to agents and the web channel to everybody else", async () => {
+      await expectViolation(insertPlayer(await insertGame(), agent({ join_channel: "web" })), "game_players_agent_channel_check");
+      await expectViolation(
+        insertPlayer(await insertGame(), { kind: "account", user_id: await insertUser(), join_channel: "mcp" }),
+        "game_players_agent_channel_check",
+      );
+      await expectViolation(insertPlayer(await insertGame(), agent({ join_channel: "sms" })), "game_players_join_channel_check");
+    });
+
+    it("keeps the agent token to agents, apart from the guest token, and unique", async () => {
+      await expectViolation(
+        insertPlayer(await insertGame(), { kind: "account", user_id: await insertUser(), agent_token_hash: hash() }),
+        "game_players_token_only_agent_check",
+      );
+      await expectViolation(
+        insertPlayer(await insertGame(), { kind: "guest", guest_token_hash: hash(), agent_token_hash: hash() }),
+        "game_players_token_only_agent_check",
+      );
+      await expectViolation(
+        insertPlayer(await insertGame(), agent({ guest_token_hash: hash() })),
+        "game_players_token_only_guest_check",
+      );
+      const token = hash();
+      await insertPlayer(await insertGame(), agent({ agent_token_hash: token }));
+      await expectViolation(
+        insertPlayer(await insertGame(), agent({ agent_token_hash: token })),
+        "game_players_agent_token_hash_unique",
+      );
+    });
+
+    it("allows the declared name only for an agent, 1-40 characters", async () => {
+      await expectViolation(
+        insertPlayer(await insertGame(), { kind: "account", user_id: await insertUser(), agent_name: "gpt" }),
+        "game_players_agent_name_only_agent_check",
+      );
+      await expectViolation(insertPlayer(await insertGame(), agent({ agent_name: "" })), "game_players_agent_name_length_check");
+      await expectViolation(insertPlayer(await insertGame(), agent({ agent_name: "a".repeat(41) })), "value too long");
+      await expect(insertPlayer(await insertGame(), agent({ agent_name: "a".repeat(40) }))).resolves.toBeTruthy();
+    });
+
+    it("gives an agent no nickname", async () => {
+      await expectViolation(
+        insertPlayer(await insertGame(), agent({ nickname: "Ala" })),
+        "game_players_nickname_only_guest_check",
+      );
+    });
+  });
+
   it("keeps guest token hashes unique", async () => {
     const token = hash();
     await insertPlayer(await insertGame(), { kind: "guest", guest_token_hash: token });

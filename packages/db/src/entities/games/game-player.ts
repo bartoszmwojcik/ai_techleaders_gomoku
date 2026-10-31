@@ -4,8 +4,9 @@ import { User } from "../auth/user";
 import { Game } from "./game";
 
 /**
- * A participant of a game: an account or a guest with a one-game token (BR-22).
- * `user` is NULL for a guest and for a deleted account (#37).
+ * A participant of a game: an account, a guest with a one-game token (BR-22) or an agent that
+ * joined over MCP with a one-game token of its own (BR-31, E06-S01).
+ * `user` is NULL for a guest, an agent and a deleted account (#37).
  */
 export const GamePlayer = defineEntity({
   name: "GamePlayer",
@@ -15,7 +16,7 @@ export const GamePlayer = defineEntity({
     game: () => p.manyToOne(Game).deleteRule("cascade"),
     // 1 = creator, 2 = joining player (#21 Q14).
     seat: p.smallint(),
-    // `account` | `guest`; CHECK below.
+    // `account` | `guest` | `agent`; CHECK below.
     kind: p.string().length(16),
     user: () => p.manyToOne(User).deleteRule("set null").nullable(),
     // SHA-256 of the guest token. Nullable even for a guest: NULL means the token was
@@ -32,6 +33,15 @@ export const GamePlayer = defineEntity({
     // NULL = no nickname: the default name "Gracz {seat}" is derived on every read. Always
     // NULL for an account (its name is `users.display_name`).
     nickname: p.string().length(24).nullable(),
+    // SHA-256 of the agent's token (E06-S01): kept apart from `guest_token_hash`, so a guest cookie
+    // and an agent token can never authenticate for one another. Nullable for the same reason as
+    // the guest's: the cleanup clears it 1 h after the game finished.
+    agentTokenHash: p.string().length(64).columnType("char(64)").nullable().unique(),
+    // Where the participant came in from: `web` (every account and guest) or `mcp` (an agent).
+    joinChannel: p.string().length(16).default("web"),
+    // The model name an agent declared on joining (decision 7 of #138): unverified, shown with
+    // "(deklarowane)". NULL = no name. Always NULL for anyone but an agent.
+    agentName: p.string().length(40).nullable(),
   },
   indexes: [
     // Lookups by account: the `set null` action of `DELETE FROM users` (#37), the cleanup rule of
@@ -51,7 +61,7 @@ export const GamePlayer = defineEntity({
   ],
   checks: [
     { name: "game_players_seat_check", expression: `seat in (1, 2)` },
-    { name: "game_players_kind_check", expression: `kind in ('account', 'guest')` },
+    { name: "game_players_kind_check", expression: `kind in ('account', 'guest', 'agent')` },
     {
       name: "game_players_guest_no_user_check",
       expression: `kind <> 'guest' or user_id is null`,
@@ -59,6 +69,32 @@ export const GamePlayer = defineEntity({
     {
       name: "game_players_token_only_guest_check",
       expression: `kind = 'guest' or guest_token_hash is null`,
+    },
+    {
+      name: "game_players_agent_no_user_check",
+      expression: `kind <> 'agent' or user_id is null`,
+    },
+    // An agent never creates a game (BR-30): the creator is seat 1.
+    {
+      name: "game_players_agent_seat_check",
+      expression: `kind <> 'agent' or seat = 2`,
+    },
+    {
+      name: "game_players_token_only_agent_check",
+      expression: `kind = 'agent' or agent_token_hash is null`,
+    },
+    { name: "game_players_join_channel_check", expression: `join_channel in ('web', 'mcp')` },
+    {
+      name: "game_players_agent_channel_check",
+      expression: `(kind = 'agent') = (join_channel <> 'web')`,
+    },
+    {
+      name: "game_players_agent_name_only_agent_check",
+      expression: `agent_name is null or kind = 'agent'`,
+    },
+    {
+      name: "game_players_agent_name_length_check",
+      expression: `agent_name is null or char_length(agent_name) between 1 and 40`,
     },
     {
       name: "game_players_nickname_not_empty_check",
