@@ -1,6 +1,6 @@
 # Licznik zakończonych partii wg pary typów uczestników (trwałe agregaty, odczyt przez polecenie operatora)
 
-Status: draft (specyfikacja do zatwierdzenia). Zgłoszenie: E06-S03 (#129), epik E06 (#124). Zależność: E06-S01 (#127, `game_players.kind`/`join_channel`, wdrożone).
+Status: **wdrożona (2026-10-31, PR implementacyjny z `Closes #129`; odstępstwa i dowody: sekcja na końcu)**; wcześniej zatwierdzona przez właściciela (zgoda z góry na specyfikacje i rekomendacje, 2026-10-31: Q1-Q4 potwierdzone, Q5-Q11 przyjęte). Zgłoszenie: E06-S03 (#129), epik E06 (#124). Zależność: E06-S01 (#127, `game_players.kind`/`join_channel`, wdrożone).
 Powiązane: E08-S02 (#158, panel `/backend`; specyfikacja `.ai/specs/2026-10-31-admin-panel-read-only.md`, PR #162): panel tylko wyświetla wartości z usługi odczytu zdefiniowanej tutaj.
 Decyzje: D-28, BR-30/BR-31 (agent jako osobny typ uczestnika), BR-29, BR-24, BR-18, D-32/BR-37, A-04, Q-06 (próg „ma sens” nieustalony; tej specyfikacji nie dotyczy). Decyzja zakresowa właściciela 2026-10-31 (komentarz na #129, PR #162 Q2): licznik NIE jest liczony po fakcie z `games`.
 
@@ -138,10 +138,10 @@ D-28 (licznik wg pary typów jako pomiar), BR-30/BR-31 (agent jako osobny typ, �
 
 | # | Pytanie | Przyjęta odpowiedź | Uzasadnienie | Potwierdzić? |
 |---|---|---|---|---|
-| Q1 | Jak właściciel czyta licznik w S03, skoro panel (E08) nie istnieje | Polecenie tylko do odczytu `npm run stats:games` (JSON, produkcja przez `docker exec`); panel #158 wyświetla te same wartości przez `FinishedGameStatsService` po wdrożeniu E08 | zgodne z priorytetem „kończymy najpierw E06”, zero nowej powierzchni HTTP, jedno źródło odczytu dla obu | ⚠ NEEDS HUMAN CONFIRMATION |
-| Q2 | Strefa dnia w agregacie | `Europe/Warsaw` | spójnie z #158 („dziś”) i z historią #27; zmiana później wymaga przeliczenia danych | ⚠ NEEDS HUMAN CONFIRMATION |
-| Q3 | Backfill z istniejących `games` | Tak, w migracji; dokładne dla par z kontem, zaniżone dla gość–gość i gość–agent sprzed wdrożenia (opis ograniczenia w README) | tanie, nie szkodzi; alternatywa „liczyć od wdrożenia” traci prawdziwe dane kont | ⚠ NEEDS HUMAN CONFIRMATION |
-| Q4 | Partie gościnne porzucone po upływie zegara i usunięte przez `db:cleanup` bez rozliczenia | Nie liczą się; `db:cleanup` bez zmian | zmiana semantyki sprzątania poza zakresem S03 (Q4 specyfikacji sprzątania) | ⚠ NEEDS HUMAN CONFIRMATION |
+| Q1 | Jak właściciel czyta licznik w S03, skoro panel (E08) nie istnieje | Polecenie tylko do odczytu `npm run stats:games` (JSON, produkcja przez `docker exec`); panel #158 wyświetla te same wartości przez `FinishedGameStatsService` po wdrożeniu E08 | zgodne z priorytetem „kończymy najpierw E06”, zero nowej powierzchni HTTP, jedno źródło odczytu dla obu | potwierdzone 2026-10-31 |
+| Q2 | Strefa dnia w agregacie | `Europe/Warsaw` | spójnie z #158 („dziś”) i z historią #27; zmiana później wymaga przeliczenia danych | potwierdzone 2026-10-31 |
+| Q3 | Backfill z istniejących `games` | Tak, w migracji; dokładne dla par z kontem, zaniżone dla gość–gość i gość–agent sprzed wdrożenia (opis ograniczenia w README) | tanie, nie szkodzi; alternatywa „liczyć od wdrożenia” traci prawdziwe dane kont | potwierdzone 2026-10-31 |
+| Q4 | Partie gościnne porzucone po upływie zegara i usunięte przez `db:cleanup` bez rozliczenia | Nie liczą się; `db:cleanup` bez zmian | zmiana semantyki sprzątania poza zakresem S03 (Q4 specyfikacji sprzątania) | potwierdzone 2026-10-31 |
 | Q5 | Mechanizm zapisu: funkcja w TS czy trigger | Funkcja `recordFinishedGame` + test strażnik | jawna, objęta progiem pokrycia i przeglądem; trigger ukrywa logikę | odwracalne |
 | Q6 | Agregat czy wiersz na partię | Agregat (decyzja właściciela), wiersz na partię jako opcja przy kontencji | zgodnie z decyzją; kontencja pomijalna przy skali znajomych | odwracalne |
 | Q7 | Okna czasowe w odczycie | Razem, „dziś”, ostatnie 7 dób (dziś + 6) na parę | to samo okno pokaże #158 („dziś” i „7 dni”); nowe okna to zmiana addytywna | odwracalne |
@@ -186,9 +186,27 @@ Warunek wstępny: przeczytać `AGENTS.md`, standardy inżynierskie, lekcje wymie
 
 ### Kryteria akceptacji (z #129)
 
-- [ ] Zakończone partie różnych par typów: właściciel (CLI, a po E08 panel) widzi liczby osobno dla każdej pary: konto–konto, konto–gość, konto–agent, gość–gość, gość–agent.
-- [ ] Partie nieskończone lub anulowane nie wchodzą do licznika (test integracyjny).
-- [ ] Znany zestaw partii testowych daje wartości zgodne z danymi (test integracyjny porównuje wynik `stats:games` z zasianymi partiami).
-- [ ] Licznik jest trwały: `db:cleanup` usuwający partie gość–gość i gość–agent nie zmniejsza wartości.
-- [ ] Każda ścieżka zakończenia (5 w linii, remis, czas, także leniwie, poddanie) zwiększa licznik dokładnie raz, jednolicie dla trzech typów uczestników.
-- [ ] Migracja up/down sprawdzona na PostgreSQL; README opisuje komendę i ograniczenia; nazwy uzgodnione z #158.
+- [x] Zakończone partie różnych par typów: właściciel (CLI, a po E08 panel) widzi liczby osobno dla każdej pary: konto–konto, konto–gość, konto–agent, gość–gość, gość–agent.
+- [x] Partie nieskończone lub anulowane nie wchodzą do licznika (test integracyjny).
+- [x] Znany zestaw partii testowych daje wartości zgodne z danymi (test integracyjny porównuje wynik `stats:games` z zasianymi partiami).
+- [x] Licznik jest trwały: `db:cleanup` usuwający partie gość–gość i gość–agent nie zmniejsza wartości.
+- [x] Każda ścieżka zakończenia (5 w linii, remis, czas, także leniwie, poddanie) zwiększa licznik dokładnie raz, jednolicie dla trzech typów uczestników.
+- [x] Migracja up/down sprawdzona na PostgreSQL; README opisuje komendę i ograniczenia; nazwy uzgodnione z #158.
+
+## 📝 Odstępstwa wdrożenia i dowody (2026-10-31)
+
+Odstępstwa od specyfikacji:
+
+- Nazwa migracji: `Migration20261031212354_game_pair_counters`. Wygenerowany plik zawierał obce zmiany (domyślne wartości `games`, ponownie zapisany CHECK `game_players_agent_name_length_check`: szum nieaktualnego snapshotu); usunięto je ręcznie, snapshot zawiera wyłącznie nową tabelę.
+- Okno `last7Days` ma górną granicę (`day between today - 6 and today`), żeby wiersze z przyszłych dób (niemożliwe produkcyjnie, możliwe w testach z wstrzykniętym zegarem) nie wchodziły do „ostatnich 7 dób”. Poza tym kształt `FinishedGameStats` jak w specyfikacji; typy, `KNOWN_PAIRS` i `buildFinishedGameStats` leżą w `packages/core/src/games/finished-stats.ts`, zapytanie w `packages/db/src/stats/read-finished-game-stats.ts`, polecenie w `packages/db/src/stats/run-stats.ts` + `cli/stats-cli.ts` (wzór `runCleanup`).
+- Partie z agentem w testach integracyjnych: po wdrożeniu `play_move` (#128) agent gra prawdziwym klientem MCP (`join`, `get_state`, `play_move`), a nie zasiewem SQL; agent nie ma narzędzia poddania, więc ścieżkę poddania w parach z agentem wykonuje człowiek.
+- Rewanż: nie ma osobnego scenariusza (rewanż to zwykła partia kończąca się tymi samymi ścieżkami; agent nie ma rewanżu, BR-31). Strażnik rozpoznaje przejścia w `finished` po instrukcji `update games set ... status = 'finished'` w kodzie produkcyjnym (`packages/*/src`, `scripts/`); zapis przez ORM-owe `em.persist` nie byłby wykryty (obecnie nie ma takiego kodu).
+- `.env.example` bez zmian (brak nowych zmiennych). `BACKWARD_COMPATIBILITY.md`: tabela addytywna, nowe polecenie `stats:games`, brak zmian chronionych kontraktów (bez wpisu).
+
+Dowody:
+
+- Testy jednostkowe 100% per plik (`npm test`), w tym test strażnik `finished-game-counter.guard.test.ts` (wymusza `recordFinishedGame` w każdym pliku kończącym partię w SQL; test pozytywny i negatywny).
+- `tests/integration/finished-game-counter.test.ts` na PostgreSQL (Testcontainers): macierz ścieżka zakończenia (pięć w linii, remis, poddanie także powtórzone, przegrana na czasie znaleziona przez odczyt przeciwnika, ruch spóźnionego, poddanie przeciwnika, BR-13 przy nowej partii) × pięć par typów × oba układy kolorów, każda komórka +1 dokładnie w swojej parze; wyścigi (ruch kończący / poddania / odczyt; upływ czasu znaleziony naraz przez ruch, poddanie, odczyt i nową partię); partie `waiting`/`cancelled`/`active` nie zmieniają liczników; rollback (wyjątek po zapisie licznika cofa partię i licznik) i wywołanie na partii w toku bez skutku; `db:cleanup` usuwający partie gość–gość i gość–agent nie zmniejsza liczników; usunięcie konta bez wpływu; tabela bez kluczy obcych i danych osobowych; doba `Europe/Warsaw` (lato, zima, zmiana czasu); okna `today`/`last7Days` z wstrzykniętym zegarem i nieznany `kind`; `npm run -s stats:games` jako proces (zasiany zestaw partii zmienia wynik dokładnie o oczekiwane wartości, wyjście bez e-maili i identyfikatorów; błąd bazy: kod 1, komunikat bez hasła).
+- `tests/integration/game-pair-counters-migration.test.ts`: `up` z backfillem (para, doba Warsaw, tylko `finished`), CHECK-i, `down`, ponowne `up` na osobnej bazie w kontenerze.
+- Migracja up/down/up sprawdzona także ręcznie na świeżym PostgreSQL 17.
+- Nie sprawdzono: obciążenia gorącego wiersza (skala znajomych, patrz „Edge Cases”); `docker exec` na produkcji (wdrożenie po zamknięciu epiku E06); okna czasowego między migracją a startem nowej wersji.

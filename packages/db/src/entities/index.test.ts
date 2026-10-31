@@ -5,6 +5,7 @@ import { EmailVerificationToken } from "./auth/email-verification-token";
 import { PasswordResetToken } from "./auth/password-reset-token";
 import { Session } from "./auth/session";
 import { Game } from "./games/game";
+import { GamePairCounter } from "./games/game-pair-counter";
 import { GamePlayer } from "./games/game-player";
 import { Invitation } from "./games/invitation";
 import { LobbySeeker } from "./games/lobby-seeker";
@@ -22,6 +23,7 @@ describe("entities registry", () => {
       "game_players",
       "invitations",
       "lobby_seekers",
+      "game_pair_counters",
     ]);
   });
 
@@ -97,6 +99,18 @@ describe("lobby seekers", () => {
     expect(expiresAt.nullable).toBeFalsy();
     expect(LobbySeeker.meta.checks.map((check) => check.name)).toEqual([
       "lobby_seekers_expiry_check",
+    ]);
+  });
+});
+
+describe("game pair counters", () => {
+  it("keys a row by day and the two kinds, with CHECKs on their order and the count", () => {
+    const { day, kindA, kindB, finishedCount } = GamePairCounter.meta.properties;
+    expect([day, kindA, kindB].every((property) => property.primary)).toBe(true);
+    expect(finishedCount.primary).toBeFalsy();
+    expect(GamePairCounter.meta.checks.map((check) => check.name)).toEqual([
+      "game_pair_counters_kind_order_check",
+      "game_pair_counters_count_check",
     ]);
   });
 });

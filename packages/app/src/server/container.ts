@@ -23,6 +23,7 @@ import { AgentSeatService } from "./services/games/agent-seat-service";
 import { ColorDraw } from "./services/games/color-draw";
 import { GameMoveService } from "./services/games/game-move-service";
 import { RematchService } from "./services/games/rematch-service";
+import { FinishedGameStatsService } from "./services/games/finished-game-stats-service";
 import { GameHistoryService } from "./services/games/game-history-service";
 import { GameService } from "./services/games/game-service";
 import { InvitationCodes } from "./services/games/invitation-codes";
@@ -78,6 +79,8 @@ export type AppCradle = {
   agentGameService: AgentGameService;
   /** The finished games of an account (E04-S01). */
   gameHistoryService: GameHistoryService;
+  /** Finished games per pair of participant kinds (E06-S03); the admin panel reads the same. */
+  finishedGameStatsService: FinishedGameStatsService;
   /** The "looking for a game" status and the lobby list (#25). */
   lobbyService: LobbyService;
   /** No-op until the clock (#23) delivers the real settlement of timed-out games. */
@@ -160,6 +163,7 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     agentSeatService: asClass(AgentSeatService).scoped(),
     agentGameService: asClass(AgentGameService).scoped(),
     gameHistoryService: asClass(GameHistoryService).scoped(),
+    finishedGameStatsService: asClass(FinishedGameStatsService).scoped(),
     lobbyService: asClass(LobbyService).scoped(),
     timeoutSettler: asClass(SqlTimeoutSettler).scoped(),
     rateLimiter: asClass(RateLimiter).scoped(),

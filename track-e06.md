@@ -26,7 +26,7 @@
 
 ## Faza 3 — Licznik wg pary typów (E06-S03, #129) i wskazówka „Jak podłączyć agenta” (E06-S04, #140)
 
-- [ ] 3.1 Licznik zakończonych partii wg pary typów (uwaga: partie gość–agent znikają po 1 h, R10)
+- [x] 3.1 Licznik zakończonych partii wg pary typów (E06-S03, #129): tabela `game_pair_counters` (agregat dobowy `Europe/Warsaw`), `recordFinishedGame` we wszystkich ścieżkach zakończenia + test strażnik, backfill w migracji, `npm run stats:games` (tylko odczyt; produkcja przez `docker exec`), `FinishedGameStatsService` wspólna z panelem #158; spec: `.ai/specs/implemented/2026-10-31-finished-games-pair-counter.md`
 - [ ] 3.2 Wskazówka w UI: adres MCP, komenda `claude mcp add --transport http`, kod zaproszenia
 
 ## Decyzje i znane ograniczenia po S01
@@ -36,3 +36,4 @@
 - `agentName`: odrzucenie niepoprawnej nazwy (nie obcinanie), alfabet łaciński, bez listy wulgaryzmów — odwracalne.
 - Utracona odpowiedź `join` = nowa partia z nowym kodem (bez ponowienia).
 - S02: ruch po upływie czasu kończy partię przegraną na czasie i zwraca `GAME_FINISHED` (zatwierdzony wyjątek od „błąd nie zmienia stanu”); `retryAfterMs` 2000 ms i format planszy tekstowej to wartości początkowe.
+- S03: gość–gość i gość–agent sprzed wdrożenia są nieodzyskiwalne (backfill dokładny tylko dla par z kontem); partie gościnne porzucone po upływie zegara i usunięte przez `db:cleanup` nie liczą się; `down` migracji kasuje liczniki (najpierw `pg_dump`).
