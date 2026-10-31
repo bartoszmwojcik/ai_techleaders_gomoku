@@ -4,6 +4,7 @@ import {
   GUEST_TOKEN_GRACE_MS,
   INITIAL_CLOCK_MS,
   INVITATION_TTL_MS,
+  NotFoundError,
   READY_DEADLINE_MS,
   TooManyRequestsError,
 } from "@gomoku/core";
@@ -86,7 +87,8 @@ function setup(options: {
       calls.push("flush");
       if (options.flushError) throw options.flushError;
     }),
-    findOneOrFail: vi.fn(async (entity: unknown) => {
+    findOneOrFail: vi.fn(async (...args: unknown[]) => {
+      const entity = args[0];
       calls.push("findOneOrFail");
       return entity === Game ? { ...EMPTY_BOARD, ...options.game } : options.invitation;
     }),
@@ -507,6 +509,18 @@ describe("GameService.getState", () => {
     const { service, em } = setup({ game: { status: "cancelled" }, players: [creator, guest] });
     expect((await service.getState({ playerId: "p1" }, "game-1")).closedReason).toBe("not_opened");
     expect(em.findOneOrFail).toHaveBeenCalledTimes(1);
+  });
+
+  it("answers 404 when the game was removed under the reader (cleanup of guest-only games)", async () => {
+    const { service, em } = setup({ game: { status: "active" }, players: [creator, guest] });
+
+    await service.getState({ playerId: "p1" }, "game-1");
+
+    const options = em.findOneOrFail.mock.calls.find(([entity]) => entity === Game)![2] as {
+      failHandler: () => Error;
+    };
+    expect(options.failHandler()).toBeInstanceOf(NotFoundError);
+    expect(options.failHandler().message).toBe(GAME_NOT_FOUND_MESSAGE);
   });
 
   it("has no closing reason while the game is not cancelled", async () => {

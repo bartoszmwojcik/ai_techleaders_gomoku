@@ -27,6 +27,8 @@ describe("runCleanup", () => {
       passwordResetTokens: 2,
       waitingGames: 2,
       cancelledGames: 2,
+      guestOnlyActiveGames: 2,
+      guestOnlyFinishedGames: 2,
       guestTokens: 2,
       unverifiedUsers: null,
       errors: [],
@@ -42,11 +44,11 @@ describe("runCleanup", () => {
     const code = await runCleanup({ createOrm: s.createOrm, stdout: s.stdout, stderr: s.stderr });
 
     expect(code).toBe(1);
-    expect(JSON.parse(s.stdout.write.mock.calls[0]![0]).errors).toHaveLength(7);
+    expect(JSON.parse(s.stdout.write.mock.calls[0]![0]).errors).toHaveLength(9);
     const line = s.stderr.write.mock.calls[0]![0] as string;
     expect(JSON.parse(line)).toEqual({
       ok: false,
-      errors: ["sessions", "rateLimitBuckets", "emailVerificationTokens", "passwordResetTokens", "waitingGames", "cancelledGames", "guestTokens"].map((rule) => ({
+      errors: ["sessions", "rateLimitBuckets", "emailVerificationTokens", "passwordResetTokens", "waitingGames", "cancelledGames", "guestOnlyActiveGames", "guestOnlyFinishedGames", "guestTokens"].map((rule) => ({
         rule,
         code: "42P01",
       })),

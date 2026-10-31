@@ -454,7 +454,11 @@ export class GameService {
     after = 0,
     now: Date = this.#clock.now(),
   ): Promise<GameState> {
-    const game = await tx.findOneOrFail(Game, gameId);
+    // A game removed under the caller (the cleanup of guest-only games, #102) is a 404 like any
+    // game the caller does not take part in, not an unhandled ORM error.
+    const game = await tx.findOneOrFail(Game, gameId, {
+      failHandler: () => new NotFoundError(GAME_NOT_FOUND_MESSAGE),
+    });
     if (after > game.moveCount) {
       throw new ValidationError(AFTER_MESSAGE);
     }

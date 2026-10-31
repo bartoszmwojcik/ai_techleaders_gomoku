@@ -137,3 +137,10 @@ Jedna faza, jeden PR (kod + testy + README), po zatwierdzeniu tej specyfikacji; 
 5. **Plan zapytań:** `EXPLAIN` obu warunków na jednorazowej bazie testowej z dużą liczbą wierszy `finished`/`active`; wynik w PR. Indeks (migracja) tylko gdy konieczny.
 6. **README** (sekcja „Sprzątanie wygasłych rekordów”): dwa wiersze tabeli, przykład JSON z nowymi kluczami, budżet 135 s, ostrzeżenie o `DATABASE_URL`; opis w `cron` bez zmian. Adnotacja w `2026-10-24-expired-records-cleanup.md`.
 7. **Weryfikacja:** `npm run check` (100% pokrycia per plik, bez `v8 ignore`), migracje (jeśli powstały) w górę i w dół, adnotacja „Odstępstwa wdrożenia”; lekcja w `.ai/lessons/`, jeśli napotkany błąd (np. wiązanie `?` i daty jako tekst — liczyć w SQL).
+
+## 📝 Odstępstwa wdrożenia (2026-10-31, PR #109)
+
+- **Zmiana w serwisie (spec zakładał brak):** test wyścigu (odczyt stanu w trakcie usuwania partii) dał `500`, bo `GameService.stateOf` używało `findOneOrFail` bez `failHandler` (nieobsłużony `NotFoundError` ORM). Teraz rzuca `NotFoundError` aplikacji, czyli `404`. Ruch w trakcie usuwania od razu dawał `< 500`.
+- **Plan zapytań (krok 5):** `EXPLAIN ANALYZE` na jednorazowej bazie (PostgreSQL 17, 202 000 partii, ~95% z kontem): `finished` z trafieniami 53 ms na 1000 wierszy, bez trafień 37 ms (skan sekwencyjny `games`); `active` 4 ms (indeks `games_status_created_at_index`). Indeks i migracja zbędne (Q8).
+- Test zgodności zegara SQL z `deadlineMs` porównuje decyzję reguły z `seatOutOfTime(…, cutoff - 1)`, bo reguła używa ścisłego `<`, a `seatOutOfTime` — `>=`.
+- Specyfikacja przeniesiona do `implemented/`.

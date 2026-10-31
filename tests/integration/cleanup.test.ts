@@ -6,12 +6,14 @@ import { execFile } from "node:child_process";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 
+import { INITIAL_CLOCK_MS, READY_DEADLINE_MS, seatOutOfTime, type Seat } from "@gomoku/core";
 import { createOrm, cleanupExpired, type CleanupResult, type Orm } from "@gomoku/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from "vitest";
 
 import { InvitationCodes } from "../../packages/app/src/server/services/games/invitation-codes";
 import { runCleanup } from "../../packages/db/src/cleanup/run-cleanup";
 
+const baseUrl = inject("baseUrl");
 const execFileAsync = promisify(execFile);
 const repoRoot = resolve(import.meta.dirname, "../..");
 const HOUR = 3_600_000;
@@ -221,11 +223,19 @@ describe("games rules (E02-S08, #39)", () => {
     expect(await dependents(gone)).toBe(0);
   });
 
-  it("never deletes games in progress or finished ones", async () => {
+  /** Seat 2 of a game as an account, so the game is no longer "guests only" (history of an account). */
+  async function withAccountSeat2(id: string) {
+    const userId = await insertUser();
+    await sql(`insert into game_players (game_id, seat, kind, user_id, is_active) values (?, 2, 'account', ?, false)`, [id, userId]);
+  }
+
+  it("never deletes games in progress or finished ones that have an account", async () => {
     const now = new Date();
     const active = await insertGame("waiting", 5 * HOUR, now);
+    await withAccountSeat2(active);
     await sql(`update games set status = 'active', started_at = ?, black_seat = 1 where id = ?`, [ago(now, 5 * HOUR), active]);
     const finished = await insertGame("waiting", 5 * HOUR, now);
+    await withAccountSeat2(finished);
     await sql(
       `update games set status = 'finished', started_at = ?, black_seat = 1, winner_seat = 1, end_reason = 'timeout', finished_at = ? where id = ?`,
       [ago(now, 6 * HOUR), ago(now, 5 * HOUR), finished],
@@ -241,6 +251,7 @@ describe("games rules (E02-S08, #39)", () => {
     const now = new Date();
     const finish = async (agoMs: number) => {
       const id = await insertGame("waiting", 5 * HOUR, now);
+      await withAccountSeat2(id); // a guest + an account: kept as history, only the guest hash goes
       await sql(
         `update games set status = 'finished', started_at = ?, black_seat = 1, winner_seat = 1, end_reason = 'timeout', finished_at = ? where id = ?`,
         [ago(now, 6 * HOUR), ago(now, agoMs), id],
@@ -250,7 +261,7 @@ describe("games rules (E02-S08, #39)", () => {
     const old = await finish(HOUR + 10 * SECOND);
     const recent = await finish(HOUR - 10 * SECOND);
     const hashOf = async (id: string) =>
-      (await orm.em.fork().execute<{ h: string | null }[]>(`select guest_token_hash as h from game_players where game_id = ?`, [id]))[0]!.h;
+      (await orm.em.fork().execute<{ h: string | null }[]>(`select guest_token_hash as h from game_players where game_id = ? and kind = 'guest'`, [id]))[0]!.h;
 
     const result = await cleanupExpired({ em: orm.em.fork(), now });
 
@@ -260,6 +271,319 @@ describe("games rules (E02-S08, #39)", () => {
     expect(await exists(old)).toBe(true);
     // A second run clears nothing more (the condition stops matching).
     expect((await cleanupExpired({ em: orm.em.fork(), now })).guestTokens).toBe(0);
+  });
+});
+
+describe("guest-only games rules (#102, spec 2026-10-30-guest-only-games-cleanup)", () => {
+  type Kind = "guest" | "account" | "deleted-account";
+  type Spec = {
+    kinds?: [Kind, Kind];
+    status?: "active" | "finished";
+    moveCount?: number;
+    blackSeat?: Seat;
+    clocks?: [number, number];
+    /** `turn_started_at`; `null` = the clock never started. */
+    turnStartedAt?: Date | null;
+    startedAt?: Date;
+    finishedAt?: Date;
+  };
+
+  /** Bit string of a board with `count` stones from cell `offset` (disjoint boards, matching `move_count`). */
+  const board = (count: number, offset: number) =>
+    "0".repeat(offset) + "1".repeat(count) + "0".repeat(225 - offset - count);
+
+  async function insertDuel(now: Date, spec: Spec = {}): Promise<string> {
+    const { kinds = ["guest", "guest"], status = "active", moveCount = 0, blackSeat = 1, clocks = [INITIAL_CLOCK_MS, INITIAL_CLOCK_MS] } = spec;
+    const black = Math.ceil(moveCount / 2);
+    const white = Math.floor(moveCount / 2);
+    const finished = status === "finished";
+    const [game] = await orm.em.fork().execute<{ id: string }[]>(
+      `insert into games (origin, status, created_at, started_at, black_seat, move_count, stones_black, stones_white, moves,
+                          clock_ms_1, clock_ms_2, turn_started_at, finished_at, winner_seat, end_reason)
+       values ('invite', ?, ?, ?, ?, ?, ?::bit(225), ?::bit(225), decode(repeat('00', ?::int), 'hex'), ?, ?, ?, ?, ?, ?) returning id`,
+      [
+        status,
+        ago(now, 30 * HOUR),
+        spec.startedAt ?? ago(now, 29 * HOUR),
+        blackSeat,
+        moveCount,
+        board(black, 0),
+        board(white, black),
+        moveCount,
+        clocks[0],
+        clocks[1],
+        finished ? null : (spec.turnStartedAt === undefined ? ago(now, 29 * HOUR) : spec.turnStartedAt),
+        finished ? (spec.finishedAt ?? ago(now, 2 * HOUR)) : null,
+        finished ? 1 : null,
+        finished ? "timeout" : null,
+      ],
+    );
+    const id = game!.id;
+    for (const [index, kind] of kinds.entries()) {
+      if (kind === "guest") {
+        await sql(`insert into game_players (game_id, seat, kind, guest_token_hash, is_active) values (?, ?, 'guest', ?, false)`, [id, index + 1, hash()]);
+      } else {
+        const userId = kind === "account" ? await insertUser() : null;
+        await sql(`insert into game_players (game_id, seat, kind, user_id, is_active) values (?, ?, 'account', ?, false)`, [id, index + 1, userId]);
+      }
+    }
+    await sql(`insert into invitations (game_id, code, created_at, expires_at) values (?, ?, ?, ?)`, [
+      id,
+      new InvitationCodes().generate(),
+      ago(now, 30 * HOUR),
+      ago(now, 6 * HOUR),
+    ]);
+    return id;
+  }
+  const exists = async (id: string) => (await rows("games", `id = '${id}'`)) === "1";
+  const dependents = async (id: string) =>
+    Number(await rows("game_players", `game_id = '${id}'`)) + Number(await rows("invitations", `game_id = '${id}'`));
+
+  /** An active guests-only game whose clock (the player on turn) ran out `deadlineAgo` ms before `now`. */
+  const expiredAt = (now: Date, deadlineAgo: number, onTurn = INITIAL_CLOCK_MS) => ago(now, deadlineAgo + onTurn);
+
+  it("active: removes a game only more than 1 h past the clock deadline (the boundary stays)", async () => {
+    const now = new Date();
+    const past = await insertDuel(now, { turnStartedAt: expiredAt(now, HOUR + SECOND) });
+    const onTheLine = await insertDuel(now, { turnStartedAt: expiredAt(now, HOUR) });
+    const inWindow = await insertDuel(now, { turnStartedAt: expiredAt(now, HOUR - SECOND) });
+    const alive = await insertDuel(now, { turnStartedAt: ago(now, SECOND) });
+
+    const result = await cleanupExpired({ em: orm.em.fork(), now });
+
+    expect(result.guestOnlyActiveGames).toBeGreaterThanOrEqual(1);
+    expect(await exists(past)).toBe(false);
+    expect(await dependents(past)).toBe(0); // players and invitation went with it (cascade)
+    expect(await exists(onTheLine)).toBe(true);
+    expect(await exists(inWindow)).toBe(true);
+    expect(await exists(alive)).toBe(true);
+  });
+
+  it("active: a clock that never started uses the ready deadline (15 min) plus 1 h", async () => {
+    const now = new Date();
+    const gone = await insertDuel(now, { turnStartedAt: null, startedAt: ago(now, HOUR + READY_DEADLINE_MS + SECOND) });
+    const onTheLine = await insertDuel(now, { turnStartedAt: null, startedAt: ago(now, HOUR + READY_DEADLINE_MS) });
+    const waiting = await insertDuel(now, { turnStartedAt: null, startedAt: ago(now, 74 * 60 * SECOND) });
+
+    await cleanupExpired({ em: orm.em.fork(), now });
+
+    expect(await exists(gone)).toBe(false);
+    expect(await exists(onTheLine)).toBe(true);
+    expect(await exists(waiting)).toBe(true);
+  });
+
+  it("never touches a game with an account, a deleted account or a guest next to an account", async () => {
+    const now = new Date();
+    const dead = { turnStartedAt: expiredAt(now, 5 * HOUR) };
+    const kinds: [Kind, Kind][] = [["account", "account"], ["guest", "account"], ["account", "guest"], ["deleted-account", "guest"], ["guest", "deleted-account"]];
+    const ids: string[] = [];
+    for (const pair of kinds) {
+      ids.push(await insertDuel(now, { ...dead, kinds: pair }));
+      ids.push(await insertDuel(now, { kinds: pair, status: "finished", finishedAt: ago(now, 5 * HOUR) }));
+    }
+    const guests = await insertDuel(now, dead);
+
+    await cleanupExpired({ em: orm.em.fork(), now });
+
+    for (const id of ids) expect(await exists(id), id).toBe(true);
+    expect(await exists(guests)).toBe(false);
+    // The guest-only deletion leaves the slots of accounts untouched (BR-13): none of those rows was removed.
+    expect(await rows("game_players", `game_id in (${ids.map((id) => `'${id}'`).join(",")})`)).toBe(String(ids.length * 2));
+  });
+
+  it("finished: removes a guests-only game 1 h after the end, keeps the boundary and games with an account", async () => {
+    const now = new Date();
+    const gone = await insertDuel(now, { status: "finished", finishedAt: ago(now, HOUR + SECOND) });
+    const onTheLine = await insertDuel(now, { status: "finished", finishedAt: ago(now, HOUR) });
+    const recent = await insertDuel(now, { status: "finished", finishedAt: ago(now, HOUR - SECOND) });
+    const history = await insertDuel(now, { status: "finished", kinds: ["guest", "account"], finishedAt: ago(now, 30 * HOUR) });
+
+    const result = await cleanupExpired({ em: orm.em.fork(), now });
+
+    expect(result.guestOnlyFinishedGames).toBeGreaterThanOrEqual(1);
+    expect(await exists(gone)).toBe(false);
+    expect(await dependents(gone)).toBe(0);
+    expect(await exists(onTheLine)).toBe(true);
+    expect(await exists(recent)).toBe(true);
+    expect(await exists(history)).toBe(true);
+    // The token of the surviving game's guest is still cleared by its own rule once old enough.
+    expect(await rows("game_players", `game_id = '${history}' and guest_token_hash is null and kind = 'guest'`)).toBe("1");
+  });
+
+  it("a rematch pointer to a removed game is cleared, and a second run removes nothing more", async () => {
+    const now = new Date();
+    const old = await insertDuel(now, { status: "finished", finishedAt: ago(now, 5 * HOUR) });
+    const next = await insertDuel(now, { turnStartedAt: ago(now, SECOND) });
+    await sql(`update games set rematch_game_id = ? where id = ?`, [next, old]);
+    const link = await insertDuel(now, { status: "finished", kinds: ["guest", "account"], finishedAt: ago(now, 5 * HOUR) });
+    await sql(`update games set rematch_game_id = ? where id = ?`, [old, link]);
+
+    await cleanupExpired({ em: orm.em.fork(), now });
+
+    expect(await exists(old)).toBe(false);
+    expect(await exists(next)).toBe(true);
+    expect((await orm.em.fork().execute<{ r: string | null }[]>(`select rematch_game_id as r from games where id = ?`, [link]))[0]!.r).toBeNull();
+    const second = await cleanupExpired({ em: orm.em.fork(), now });
+    expect(second.guestOnlyActiveGames).toBe(0);
+  });
+
+  it("the SQL clock agrees with seatOutOfTime of @gomoku/core (parity, both seats, clocks 0 and full)", async () => {
+    const now = new Date();
+    const cutoffMs = now.getTime() - HOUR;
+    const cases: { moveCount: number; blackSeat: Seat; clocks: [number, number]; offset: number }[] = [];
+    for (const moveCount of [0, 1, 2, 3]) {
+      for (const blackSeat of [1, 2] as Seat[]) {
+        for (const clocks of [[0, INITIAL_CLOCK_MS], [INITIAL_CLOCK_MS, 0], [123_456, 654_321 - 100_000]] as [number, number][]) {
+          for (const offset of [-5 * SECOND, 5 * SECOND]) cases.push({ moveCount, blackSeat, clocks, offset });
+        }
+      }
+    }
+    for (const { moveCount, blackSeat, clocks, offset } of cases) {
+      const turnSeat: Seat = moveCount % 2 === 0 ? blackSeat : ((3 - blackSeat) as Seat);
+      // The deadline of the seat on turn falls `offset` ms before the cutoff (negative: after it).
+      const turnStartedAt = new Date(cutoffMs - offset - clocks[turnSeat - 1]!);
+      const id = await insertDuel(now, { moveCount, blackSeat, clocks, turnStartedAt });
+      const expected = seatOutOfTime({ clockMs: clocks, turnStartedAtMs: turnStartedAt.getTime(), turnSeat }, cutoffMs - 1) !== null;
+
+      await cleanupExpired({ em: orm.em.fork(), now });
+
+      expect(await exists(id), JSON.stringify({ moveCount, blackSeat, clocks, offset })).toBe(!expected);
+    }
+  });
+});
+
+describe("guest-only games rules: races with the application (#102)", () => {
+  let addressCounter = 0;
+  const nextAddress = () => `198.21.${Math.floor(addressCounter / 250)}.${(addressCounter++ % 250) + 1}`;
+  type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const call = (method: "GET" | "POST", path: string, cookie?: string, body?: unknown) =>
+    fetch(`${baseUrl}${path}`, {
+      method,
+      headers: {
+        "content-type": "application/json",
+        origin: baseUrl,
+        "x-gomoku-request": "1",
+        "x-forwarded-for": nextAddress(),
+        ...(cookie ? { cookie } : {}),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  const cookieOf = (response: Response) => (response.headers.get("set-cookie") ?? "").split(";")[0] ?? "";
+
+  /** Two guests, both have opened the page (the clock runs). Returns the game and each seat's cookie. */
+  async function guestGame() {
+    const created = await call("POST", "/api/games", undefined, { acknowledgedGuestWarning: true });
+    expect(created.status).toBe(201);
+    const data = ((await created.json()) as { data: Json }).data;
+    const creator = cookieOf(created);
+    const joined = await call("POST", `/api/invitations/${data.invitation.code}/accept`, undefined, { acknowledgedGuestWarning: true, as: "guest" });
+    expect(joined.status).toBe(200);
+    const joiner = cookieOf(joined);
+    const gameId = data.gameId as string;
+    expect((await call("GET", `/api/games/${gameId}`, creator)).status).toBe(200);
+    expect((await call("GET", `/api/games/${gameId}`, joiner)).status).toBe(200);
+    const [row] = await orm.em.fork().execute<{ black_seat: 1 | 2 }[]>(`select black_seat from games where id = ?`, [gameId]);
+    const [black, white] = row!.black_seat === 1 ? [creator, joiner] : [joiner, creator];
+    return { gameId, creator, joiner, black, white };
+  }
+  const exists = async (id: string) => (await rows("games", `id = '${id}'`)) === "1";
+  const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
+  /** Holds `work` inside an open transaction until `release()`; resolves `ready` once `work` ran. */
+  function heldTransaction<T>(work: (tx: Orm["em"]) => Promise<T>) {
+    let release!: () => void;
+    let ready!: () => void;
+    const gate = new Promise<void>((resolveGate) => (release = resolveGate));
+    const readyPromise = new Promise<void>((resolveReady) => (ready = resolveReady));
+    const done = orm.em.fork().transactional(async (tx) => {
+      const value = await work(tx as unknown as Orm["em"]);
+      ready();
+      await gate;
+      return value;
+    });
+    return { ready: readyPromise, release, done };
+  }
+  const expireClock = (gameId: string, agoMs: number) =>
+    sql(`update games set turn_started_at = now() - ? * interval '1 millisecond' where id = ?`, [agoMs + INITIAL_CLOCK_MS, gameId]);
+
+  it("a player reading a game while the cleanup deletes it gets a 404, never a 500", async () => {
+    const game = await guestGame();
+    await expireClock(game.gameId, 2 * HOUR);
+    const cleanup = heldTransaction((tx) => cleanupExpired({ em: tx, now: new Date() }));
+    await cleanup.ready;
+
+    const reading = call("GET", `/api/games/${game.gameId}`, game.black);
+    await sleep(500); // the read is waiting for the lock of the row the cleanup deleted
+    cleanup.release();
+    await cleanup.done;
+    const response = await reading;
+
+    expect(response.status).toBe(404);
+    expect(await exists(game.gameId)).toBe(false);
+    expect((await call("GET", `/api/games/${game.gameId}`, game.black)).status).toBe(404);
+    expect((await call("GET", `/api/games/${game.gameId}`, game.white)).status).toBe(404);
+  });
+
+  it("a move arriving while the cleanup deletes the game gets a 404, never a 500", async () => {
+    const game = await guestGame();
+    await expireClock(game.gameId, 2 * HOUR);
+    const cleanup = heldTransaction((tx) => cleanupExpired({ em: tx, now: new Date() }));
+    await cleanup.ready;
+
+    const moving = call("POST", `/api/games/${game.gameId}/moves`, game.black, { x: 7, y: 7, moveNumber: 1 });
+    await sleep(500);
+    cleanup.release();
+    await cleanup.done;
+
+    expect((await moving).status).toBe(404);
+    expect(await exists(game.gameId)).toBe(false);
+  });
+
+  it("skips a game locked by a settlement and removes it in the next run", async () => {
+    const game = await guestGame();
+    await expireClock(game.gameId, 2 * HOUR);
+    const lock = heldTransaction((tx) => tx.execute(`select id from games where id = ? for update`, [game.gameId]));
+    await lock.ready;
+
+    await cleanupExpired({ em: orm.em.fork(), now: new Date() });
+    expect(await exists(game.gameId)).toBe(true); // skipped, not waited for
+
+    lock.release();
+    await lock.done;
+    await cleanupExpired({ em: orm.em.fork(), now: new Date() });
+    expect(await exists(game.gameId)).toBe(false);
+  });
+
+  it("a move made just before the cutoff moves the deadline and protects the game", async () => {
+    const game = await guestGame();
+    await expireClock(game.gameId, -(60 * SECOND)); // one minute of the black clock left
+    expect((await call("POST", `/api/games/${game.gameId}/moves`, game.black, { x: 7, y: 7, moveNumber: 1 })).status).toBe(200);
+    const later = new Date(Date.now() + HOUR + 5 * 60 * SECOND); // the old deadline is 1 h 4 min behind `later`
+
+    await cleanupExpired({ em: orm.em.fork(), now: later });
+
+    expect(await exists(game.gameId)).toBe(true); // white's deadline is 10 min after the move
+    await cleanupExpired({ em: orm.em.fork(), now: new Date(Date.now() + 3 * HOUR) });
+    expect(await exists(game.gameId)).toBe(false);
+  });
+
+  it("two parallel runs remove every game and report each row once", async () => {
+    const ids: string[] = [];
+    for (let index = 0; index < 4; index += 1) {
+      const game = await guestGame();
+      await expireClock(game.gameId, 2 * HOUR);
+      ids.push(game.gameId);
+    }
+    const now = new Date();
+
+    const [first, second] = await Promise.all([
+      cleanupExpired({ em: orm.em.fork(), now, batchSize: 1 }),
+      cleanupExpired({ em: orm.em.fork(), now, batchSize: 1 }),
+    ]);
+
+    for (const id of ids) expect(await exists(id), id).toBe(false);
+    expect(first.errors).toEqual([]);
+    expect(second.errors).toEqual([]);
+    expect(first.guestOnlyActiveGames! + second.guestOnlyActiveGames!).toBeGreaterThanOrEqual(ids.length);
   });
 });
 
@@ -306,6 +630,8 @@ describe("batching and parallel runs", () => {
       passwordResetTokens: 0,
       waitingGames: 0,
       cancelledGames: 0,
+      guestOnlyActiveGames: 0,
+      guestOnlyFinishedGames: 0,
       guestTokens: 0,
       unverifiedUsers: null,
       errors: [],
@@ -379,6 +705,8 @@ describe("db:cleanup command", () => {
         "cancelledGames",
         "emailVerificationTokens",
         "errors",
+        "guestOnlyActiveGames",
+        "guestOnlyFinishedGames",
         "guestTokens",
         "passwordResetTokens",
         "rateLimitBuckets",
@@ -404,7 +732,7 @@ describe("db:cleanup command", () => {
     const { stdout, stderr } = failure as { stdout: string; stderr: string };
     expect(stderr).not.toContain("s3cretpw");
     expect(stdout).not.toContain("s3cretpw");
-    expect(JSON.parse(stdout.trim()).errors).toHaveLength(7);
+    expect(JSON.parse(stdout.trim()).errors).toHaveLength(9);
     expect(JSON.parse(stderr.trim().split("\n").at(-1)!)).toMatchObject({ ok: false });
   });
 });

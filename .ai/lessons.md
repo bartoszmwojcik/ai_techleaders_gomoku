@@ -32,3 +32,4 @@ Indeks lekcji. Jedna linia na wpis: `- [Tytuł](lessons/YYYY-MM-DD-slug.md) — 
 - [Dwa zielone PR-y mogą razem zepsuć `main`](lessons/2026-10-30-two-green-prs-can-break-main-together.md) — po scaleniu PR-a zmieniającego wspólny typ zrób rebase pozostałych i sprawdź typecheck na main
 - [Mało, ale pełnych PR-ów](lessons/2026-10-30-fewer-bigger-prs.md) — jeden PR na funkcję (kod+testy+dokumentacja); spec do zatwierdzenia osobno; drobiazgi dołączaj do PR-a, którego dotyczą
 - [`git stash` jest wspólny dla worktree](lessons/2026-10-30-git-stash-is-shared-between-worktrees.md) — nie używaj stash/pop do porównań w worktree; wpis może należeć do innej gałęzi.
+- [`findOneOrFail` bez `failHandler` daje 500](lessons/2026-10-31-findoneorfail-needs-failhandler-under-deletion.md) — gdzie wiersz może zniknąć pod czytającym (np. sprzątanie), przekaż `failHandler` rzucający `NotFoundError` aplikacji; testuj wyścig na PostgreSQL.
