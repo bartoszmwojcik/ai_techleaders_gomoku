@@ -1,5 +1,7 @@
 # Sprzątanie wygasłych sesji, liczników i tokenów (E01-S02-T01, #39)
 
+> Rozszerzone przez 2026-10-30-guest-only-games-cleanup.
+
 > **Zmienione przez `2026-10-26-account-onboarding-simplification.md` (decyzje właściciela 2026-10-26, brief D-24…D-26, BR-26…BR-28).** Punkty poniżej są zastąpione; tekst niżej zostaje jako historia i jest oznaczony w miejscach zmian.
 > - Konta niepotwierdzone: kasowane po **14 dniach od założenia, tylko gdy nie mają żadnej partii** (BR-28; zastępuje 7 dni i Q14). Konto z partią zostaje (partie w historii przeciwników). Reguła wymaga tabeli uczestników z #29 (`E02-S01-T01`) i dochodzi dopiero po niej (pozycja w #39).
 
