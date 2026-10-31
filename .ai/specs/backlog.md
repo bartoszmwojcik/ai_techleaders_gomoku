@@ -2,7 +2,7 @@
 
 ## .ai/specs/product-brief.md
 Backlog source: .ai/specs/product-brief.md
-Last filed: 2026-10-24
+Last filed: 2026-10-31
 
 | Id | Issue | Title | Epic | Depends on | Adopted |
 |---|---|---|---|---|---|
@@ -23,6 +23,10 @@ Last filed: 2026-10-24
 | E02-S02 | #22 | Gracze wykonują naprzemienne ruchy, a system wykrywa wygraną lub remis | #16 | E02-S01 (#21) | no |
 | E02-S03 | #23 | Każdy gracz ma zegar 10 minut, a wyczerpanie czasu kończy partię | #16 | E02-S02 (#22) | no |
 | E02-S04 | #24 | Rozłączony gracz wraca do partii, a jego zegar w tym czasie biegł | #16 | E02-S03 (#23) | no |
+| E02-S05 | #87 | Gracz poddaje partię, a przeciwnik wygrywa z powodem „poddanie” | #16 | — | yes |
+| E02-S06 | #88 | Gracze proponują rewanż po partii, a przyjęcie tworzy nową partię z odwróconymi kolorami | #16 | — | yes |
+| E02-S07 | #94 | Gość podaje nick albo zatwierdza „Gracz 1” / „Gracz 2”, a przeciwnik widzi go jako „{nick} (gość)” | #16 | — | yes |
+| E02-S08 | #95 | Użytkownik bez konta tworzy partię i wysyła zaproszenie kodem lub linkiem | #16 | — | yes |
 | E03 | #17 | Otwarte lobby | — | — | no |
 | E03-S01 | #25 | Zalogowany użytkownik oznacza się jako „szukający gry” i widzi swój status, który wygasa po 5 minutach | #17 | E02-S01 (#21) | no |
 | E03-S01-T01 | #31 | Migracja: status „szukającego” | #25 | E02-S01-T01 (#29) | no |
@@ -30,6 +34,14 @@ Last filed: 2026-10-24
 | E04 | #18 | Historia partii | — | — | no |
 | E04-S01 | #27 | Użytkownik widzi listę swoich zakończonych partii z przeciwnikiem, wynikiem, datą i sposobem zakończenia | #18 | E02-S03 (#23) | no |
 | E05 | #33 | Later | — | — | no |
+| E06 | #124 | Gra z własnym agentem LLM przez MCP | — | — | no |
+| E06-S01 | #127 | Agent dołącza kodem lub linkiem do partii prywatnej jako uczestnik „Agent”, a człowiek widzi etykietę „Agent” | #124 | E02-S01 (#21), E02-S08 (#95), E06-S01-T01 (#125), E06-S01-T02 (#126) | no |
+| E06-S01-T01 | #125 | Decyzja: tożsamość klienta MCP, token, jego ważność i limity nadużyć (Q-09) | #127 | — | no |
+| E06-S01-T02 | #126 | Migracja: typ uczestnika i kanał dołączenia | #127 | E06-S01-T01 (#125) | no |
+| E06-S02 | #128 | Agent gra partię do końca przez narzędzia MCP (join, get_state, play_move) pod zegarem 10 minut | #124 | E06-S01 (#127) | no |
+| E06-S03 | #129 | Właściciel widzi licznik zakończonych partii wg pary typów uczestników (konto, gość, agent) | #124 | E06-S01 (#127) | no |
+
+Uwagi 2026-10-31: E02-S05…S08 (#87, #88, #94, #95) założono poza `om-backlog` (bez linii `Backlog source:`/`Backlog id:`); ich zależności nie zostały odtworzone, kolumna „Depends on” zawiera „—”. E06 to eksperyment właściciela (D-28), bez dowodu popytu (A-04, A-06); `SDLC.md` nie ma Definition of Ready. E06-S01-T01 (Q-09) blokuje E06-S01, E06-S01-T02 i E06-S02. Pozycje „Później” (CLI dla agenta, agent w lobby, przeciwnik hostowany przez nas) dopisano do E05 (#33).
 
 ## Zmiany z 2026-10-26: uproszczony start konta
 
