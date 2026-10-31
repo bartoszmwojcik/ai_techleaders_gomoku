@@ -24,7 +24,18 @@ describe("opponentNameOf", () => {
     expect(opponentNameOf({ kind: "guest", name: "Kasia" })).toEqual({ nick: "Kasia", guest: true, label: "Kasia (gość)" });
   });
 
-  it("calls an agent Agent (BR-30), whatever name came with it", () => {
-    expect(opponentNameOf({ kind: "agent", name: "x" })).toEqual({ nick: "Agent", guest: false, label: "Agent" });
+  it("calls an agent Agent (BR-31), with the model name it declared marked as such", () => {
+    expect(opponentNameOf({ kind: "agent", name: null })).toEqual({
+      nick: "Agent",
+      guest: false,
+      label: "Agent",
+      agent: { declared: null },
+    });
+    expect(opponentNameOf({ kind: "agent", name: "claude opus 5.5" })).toEqual({
+      nick: "Agent",
+      guest: false,
+      label: "Agent · claude opus 5.5 (deklarowane)",
+      agent: { declared: "claude opus 5.5" },
+    });
   });
 });

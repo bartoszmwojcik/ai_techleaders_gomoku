@@ -52,10 +52,12 @@ Aplikacja Next.js z App Routerem (`packages/app/src/app`). Ma dwie części, ka�
 | Część | Katalog | Adres | Style |
 | --- | --- | --- | --- |
 | Frontend — strony dla graczy | `src/app/(frontend)` | `/`, `/register`, `/login`, `/account` | Tailwind CSS z własnym motywem gry (`frontend.css`) |
-| Backend — panel administracyjny | `src/app/(backend)` | `/backend` | shadcn/ui z `@gomoku/ui` |
+| Backend — panel administracyjny | `src/app/(backend)` | `/backend` (tylko poza produkcją, w produkcji `404` do czasu roli administratora) | shadcn/ui z `@gomoku/ui` |
 | API | `src/app/api` | `/api/*` | — |
 
 Dzięki osobnym root layoutom style frontendu i panelu się nie mieszają. Przejście między częściami przeładowuje całą stronę.
+
+**Bramka panelu (#152):** do czasu roli administratora (E08) `/backend` odpowiada `404` w produkcji (`NODE_ENV=production`), a w `next dev` działa. Każdy `page.tsx`, `route.ts` i plik z `"use server"` w `(backend)` musi na początku wywołać `assertBackendEnabled()` z `@/server/backend-gate` (layout nie obejmuje route handlerów ani akcji); pilnuje tego `backend-gate.test.ts`. Komunikat błędu bazy trafia tylko do logu serwera.
 
 Kod serwerowy znajduje się w `src/server`:
 
@@ -252,9 +254,26 @@ Przy każdym wierszu listy jest przycisk „Zagraj” (potwierdzenie to jedno kl
 | `POST /api/lobby/seekers/{id}/pick` | `200` `{ gameId }` | `401`, `403`, `404` (`id` nie jest uuid), `409 ACTIVE_GAME_EXISTS` (BR-13, `data.gameId`), `409 LOBBY_SEEKER_TAKEN` (ktoś był szybszy, wycofał się albo wiersza już nie ma), `409 LOBBY_SEEKER_EXPIRED`, `409 CANNOT_PICK_SELF`, `429` (60 wyborów na godzinę, liczone także przy błędach) |
 
 Testy: `tests/integration/lobby-api.test.ts` (wyścigi N wybierających, A↔B, wybór kontra `POST /api/games`, wygaśnięcie, BR-13, limit), `lobby-pages.test.ts` (przeglądarka). Specyfikacja: [`.ai/specs/implemented/2026-10-31-lobby-opponent-selection.md`](.ai/specs/implemented/2026-10-31-lobby-opponent-selection.md).
+
+#### Agent dołącza do partii przez MCP (E06-S01, #127; decyzja D-29 i migracja #126)
+
+Właściciel może zagrać z własnym agentem LLM (D-28). Człowiek tworzy partię prywatną jak dotąd (kod lub link) i przekazuje ją agentowi, a agent dołącza **przez MCP**, jako osobny typ uczestnika `agent` (BR-31): z własnym tokenem jednej partii, bez konta, ciasteczka, historii i bez możliwości tworzenia zaproszeń czy wchodzenia do lobby. Człowiek widzi go jako **„Agent”**, a gdy agent podał nazwę modelu — **„Agent · {nazwa} (deklarowane)”** (zwykły tekst, niezweryfikowany; w partii, na ekranie końca i w historii). Rewanżu z agentem nie ma (`409 REMATCH_UNAVAILABLE`, panel pokazuje podpowiedź). Nazwa konta „Agent” jest zastrzeżona przy rejestracji.
+
+**Endpoint:** `POST /api/mcp` (Streamable HTTP, rewizja MCP 2026-07-28 oraz bezstanowa forma 2025; `GET` i `DELETE` → `405`). Serwer MCP to `@modelcontextprotocol/server` 2.x (`createMcpHandler`), tworzony na żądanie, bez sesji. Nie czyta ciasteczek ani sesji konta; żadna trasa REST nie rozpoznaje tokenu agenta. Podłączenie klienta: `claude mcp add --transport http gomoku https://<adres>/api/mcp`.
+
+| Narzędzie | Wejście | Wynik |
+| --- | --- | --- |
+| `join` | `code` (kod `ABCD-EFGH` albo link `…/invite/ABCD-EFGH`, do 64 znaków), opcjonalnie `agentName` (nazwa modelu: litery łacińskie, cyfry, spacja i `. - _ / : ( ) +`, do 40 znaków, bez adresów) | `structuredContent`: `{ token, gameId, you: { seat: 2, color }, status: "active", opponent: { kind: "account" \| "guest" } }`; **token tylko tu** (w bazie jest jego SHA-256), bez nicku, nazwy ani e-maila człowieka |
+
+Błąd narzędzia: `isError` i `structuredContent.error = { code, message, retryable, retryAfterMs? }`; kody: `INVALID_INPUT` (zły kształt albo niepoprawny `agentName` — bez echa wartości, kod zaproszenia pozostaje ważny), `INVALID_INVITATION` (jednolicie: nieznany, zużyty, wygasły, anulowany albo źle zapisany kod), `RATE_LIMITED`. Poza narzędziem: `403` (inny `Origin`), `413` (ciało ponad 8 KB), `429` z `Retry-After` (adres), `503` (nieznany adres klienta w produkcji, fail-closed), `405`.
+
+**Limity** (wartości początkowe bez danych, nadpisywane zmiennymi środowiskowymi, `.env.example`): żądania na adres `MCP_REQUEST_LIMIT` = 300 / min; udane dołączenia na adres `MCP_JOIN_LIMIT` = 10 / h; błędne kody agentów **w osobnej puli** `agent-lookup:*` (`MCP_LOOKUP_LIMIT` = 20 / 15 min na adres, `MCP_LOOKUP_GLOBAL_LIMIT` = 300 gdy adres niepewny) — nie zużywają puli kodów przeglądarki (`invitation-lookup:*`). Token jest ważny jak token gościa: w trakcie partii i 1 godzinę po jej końcu (`db:cleanup` zeruje skrót); utrata odpowiedzi `join` oznacza dołączenie do nowej partii z nowym kodem. Logi nie zawierają tokenu, kodu ani nazwy modelu.
+
+Ręcznie (`npm run dev`, PostgreSQL): utwórz partię i skopiuj kod, potem `curl -s -X POST localhost:3000/api/mcp -H 'content-type: application/json' -H 'accept: application/json, text/event-stream' -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"join","arguments":{"code":"ABCD-EFGH","agentName":"claude opus 5.5"}}}'` — strona partii pokaże „Agent dołączył do partii”. Testy: `agent-seat-service.test.ts`, `server/mcp/*.test.ts`, `tests/integration/agent-seat.test.ts`, `agent-join-api.test.ts`, `game-agent-pages.test.ts` (przeglądarka, 320 px), `game-schema.test.ts`, `cleanup.test.ts`. Specyfikacje: [`.ai/specs/implemented/2026-10-31-agent-joins-private-game.md`](.ai/specs/implemented/2026-10-31-agent-joins-private-game.md), [`.ai/specs/implemented/2026-10-31-mcp-agent-identity.md`](.ai/specs/implemented/2026-10-31-mcp-agent-identity.md). `get_state` i `play_move` to E06-S02 (#128).
+
 #### Historia partii (E04-S01, #27)
 
-Zalogowany użytkownik otwiera `/history` (przycisk „Historia” na stronie głównej; gość i wizytor są przekierowani na `/login?next=%2Fhistory`) i widzi **własne, zakończone** partie, od najnowszej: przeciwnika, wynik z jego punktu widzenia (Wygrana / Porażka / Remis), datę zakończenia (strefa `Europe/Warsaw`, CET/CEST) i sposób zakończenia (5 w linii, Koniec czasu, Poddanie, Plansza pełna). Przeciwnik-gość to „{nick} (gość)”, konto usunięte — „Usunięty gracz” (BR-17), a typ „Agent” (D-28) jest przewidziany w kontrakcie. Wiersz nie prowadzi do partii. To model odczytu nad `games` i `game_players`: bez nowej tabeli i bez migracji.
+Zalogowany użytkownik otwiera `/history` (przycisk „Historia” na stronie głównej; gość i wizytor są przekierowani na `/login?next=%2Fhistory`) i widzi **własne, zakończone** partie, od najnowszej: przeciwnika, wynik z jego punktu widzenia (Wygrana / Porażka / Remis), datę zakończenia (strefa `Europe/Warsaw`, CET/CEST) i sposób zakończenia (5 w linii, Koniec czasu, Poddanie, Plansza pełna). Przeciwnik-gość to „{nick} (gość)”, konto usunięte — „Usunięty gracz” (BR-17), a agent (E06-S01, BR-31) to „Agent” albo „Agent · {nazwa} (deklarowane)”, gdy podał nazwę swojego modelu (zwykły tekst, niezweryfikowany). Wiersz nie prowadzi do partii. To model odczytu nad `games` i `game_players`: bez nowej tabeli i bez migracji.
 
 Lista ładuje się po 20 wierszy, paginacja kluczem (`finished_at`, `id`) bez duplikatów i luk; „Pokaż starsze” dokleja kolejne strony. Odczyt najpierw rozlicza partie przegrane na czas (`timeoutSettler.settleFor`), więc taka partia jest na liście, choć nikt jej nie otworzył; jej data to moment rozliczenia.
 
@@ -372,17 +391,18 @@ Wygasłe sesje, liczniki limitów i tokeny nie wpływają na poprawność (są f
 | `lobby_seekers` | `expires_at` starsze niż 1 godzina (status „szukam gry” żyje 5 minut, odczyt filtruje wygasłe, więc godzina to tylko margines na rozjazd zegarów) |
 | `games` (`waiting`) | zaproszenie wygasło ponad 1 godzinę temu (okno 1 h, w którym twórca-gość widzi „Zaproszenie wygasło”; uczestnicy i zaproszenie znikają razem z partią, `on delete cascade`) |
 | `games` (`cancelled`) | `created_at` starsze niż 25 godzin (24 godziny życia zaproszenia + to samo okno 1 h dla niedołączonej wygasłej partii; razem z uczestnikami i zaproszeniem) |
-| `games` (`active`, tylko goście) | partia bez uczestnika-konta, w której zegar gracza na ruchu wygasł (a gdy zegar nie ruszył — 15 minut od `started_at`) ponad 1 godzinę temu; wynik nie jest zapisywany, usuwany jest wiersz (razem z uczestnikami i zaproszeniem) |
+| `games` (`active`, tylko goście) | partia bez uczestnika-konta (goście i agent; partia gość–agent znika jak gość–gość, konto–agent zostaje jako historia), w której zegar gracza na ruchu wygasł (a gdy zegar nie ruszył — 15 minut od `started_at`) ponad 1 godzinę temu; wynik nie jest zapisywany, usuwany jest wiersz (razem z uczestnikami i zaproszeniem) |
 | `games` (`finished`, tylko goście) | partia bez uczestnika-konta zakończona ponad 1 godzinę temu (partie z choć jednym kontem, także usuniętym, to historia i zostają) |
 | `game_players.guest_token_hash` | partia `finished` ponad 1 godzinę temu: hash tokenu jest zerowany (wiersz zostaje, token i tak nie działa po godzinie) |
+| `game_players.agent_token_hash` | to samo dla tokenu agenta (E06-S01): zerowany 1 godzinę po zakończeniu partii; wiersz i deklarowana nazwa modelu zostają z partią konta |
 | `users` | e-mail niepotwierdzony, `created_at` starsze niż 14 dni i brak jakiegokolwiek wiersza w `game_players` (BR-28; także partia `cancelled` blokuje, dopóki reguły partii jej nie usuną; sesje i tokeny znikają kaskadą). Reguła jest ostatnia, więc konto, któremu ten sam przebieg zabrał ostatnią partię, odpada od razu |
 
-Potwierdzone konta usuwa tylko ich właściciel ([Usunięcie konta](#usunięcie-konta)). Usuwanie idzie partiami po 1000 wierszy (krótkie transakcje, `for update skip locked`). Każda reguła ma własny budżet 15 sekund (wolna reguła nie zagłodzi następnych; najgorszy przebieg to 11 reguł × 15 s = 165 s, czyli mieści się w godzinnym odstępie `cron`); po jego upływie reguła przerywa, a resztę zabierze następny przebieg (`truncated: true`). Dwa przebiegi naraz są bezpieczne.
+Potwierdzone konta usuwa tylko ich właściciel ([Usunięcie konta](#usunięcie-konta)). Usuwanie idzie partiami po 1000 wierszy (krótkie transakcje, `for update skip locked`). Każda reguła ma własny budżet 15 sekund (wolna reguła nie zagłodzi następnych; najgorszy przebieg to 12 reguł × 15 s = 180 s, czyli mieści się w godzinnym odstępie `cron`); po jego upływie reguła przerywa, a resztę zabierze następny przebieg (`truncated: true`). Dwa przebiegi naraz są bezpieczne.
 
 **Wynik i kody wyjścia.** Jedna linia JSON na stdout: liczba usuniętych wierszy na regułę (przy błędzie reguły — liczba usuniętych do chwili błędu), `null` (tylko reguła oznaczona jako opcjonalna, gdy jej tabeli brak; dziś żadna nie jest), `errors` (reguły, które zgłosiły błąd) i `truncated`:
 
 ```json
-{"sessions":3,"rateLimitBuckets":0,"emailVerificationTokens":1,"passwordResetTokens":0,"lobbySeekers":0,"waitingGames":0,"cancelledGames":0,"guestOnlyActiveGames":0,"guestOnlyFinishedGames":0,"guestTokens":0,"unverifiedUsers":0,"errors":[],"truncated":false}
+{"sessions":3,"rateLimitBuckets":0,"emailVerificationTokens":1,"passwordResetTokens":0,"lobbySeekers":0,"waitingGames":0,"cancelledGames":0,"guestOnlyActiveGames":0,"guestOnlyFinishedGames":0,"guestTokens":0,"agentTokens":0,"unverifiedUsers":0,"errors":[],"truncated":false}
 ```
 
 Błąd jednej reguły (w tym brak tabeli, np. nieuruchomione migracje) nie przerywa pozostałych: linia JSON z postępem nadal trafia na stdout, a w `errors` jest `{"rule":"sessions","code":"42P01"}` (nazwa reguły i kod SQL lub nazwa klasy błędu — bez komunikatu, który mógłby zawierać dane). Wtedy kod wyjścia to `1`, a na stderr jest `{"ok":false,"errors":[…]}`. Kod `1` i `{"ok":false,"error":"…"}` (zamaskowane hasło w adresie bazy) także przy innej awarii całego przebiegu. Kod `0` oznacza brak błędów (`truncated: true` to nie błąd). Następny przebieg `cron` spróbuje ponownie. Komenda nigdy nie tworzy brakującej bazy.
@@ -425,7 +445,7 @@ Uruchamiane z katalogu głównego:
 | `npm test` | Testy jednostkowe (Vitest) z raportem pokrycia w `coverage/`; próg 100% dla każdego pliku |
 | `npm run test:watch` | Testy jednostkowe w trybie watch |
 | `npm run test:integration` | Testy integracyjne zbudowanej aplikacji (Docker, wcześniej `npm run build`) |
-| `npm run smoke` | Uruchamia zbudowaną aplikację i sprawdza `/`, `/backend`, `/api/health` (z bazą) i 404; port: `SMOKE_PORT` (domyślnie 3100) |
+| `npm run smoke` | Uruchamia zbudowaną aplikację i sprawdza `/`, `/backend` (oczekuje `404`), `/api/health` (z bazą) i 404; port: `SMOKE_PORT` (domyślnie 3100) |
 | `npm run check` | Pełna weryfikacja: `lint` → `typecheck` → `test` → `build` → `test:integration` |
 | `npm run db:migration:create` | Nowa migracja na podstawie różnic między encjami a schematem (`-- --blank`: pusta) |
 | `npm run db:migration:up` / `db:migration:down` | Zastosowanie / cofnięcie migracji |

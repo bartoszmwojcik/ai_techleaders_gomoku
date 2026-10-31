@@ -9,6 +9,7 @@ import { PlayerClock } from "@gomoku/ui/game/player-clock";
 import { Skeleton, SkeletonRegion } from "@gomoku/ui/game/skeleton";
 import { TextLink } from "@gomoku/ui/game/text-link";
 import { TurnStatus } from "@gomoku/ui/game/turn-status";
+import type { ReactNode } from "react";
 
 import { cellLabel, MIDGAME, MIDGAME_LAST_MOVE, WIN_LINE, WON_GAME, WON_LAST_MOVE } from "../shared";
 
@@ -37,7 +38,33 @@ const ENDINGS: Partial<Record<GameState, { result: GameResult; title: string; re
 
 const noop = () => undefined;
 
-export function GameScreen({ state }: { state: GameState }) {
+// The app names an agent "Agent", then (when it declared a model name) " · {name}" cut with an ellipsis
+// and a fixed "(deklarowane)" (E06-S01, BR-31); the same wrapper here. The name is a text node.
+export function AgentName({ declared }: { declared?: string }) {
+  const label = declared === undefined ? "Agent" : `Agent · ${declared} (deklarowane)`;
+  return (
+    <span className="flex min-w-0 max-w-full items-baseline" title={label}>
+      <span className="shrink-0 whitespace-pre">Agent</span>
+      {declared !== undefined && (
+        <>
+          <span className="shrink-0 whitespace-pre"> · </span>
+          <span className="min-w-0 truncate">{declared}</span>
+          <span className="shrink-0 whitespace-pre"> (deklarowane)</span>
+        </>
+      )}
+    </span>
+  );
+}
+
+type GameScreenProps = {
+  state: GameState;
+  /** The opponent's name on the clock; an account name by default. */
+  opponent?: ReactNode;
+  /** Set when the opponent is an agent: no rematch, a hint instead (R7). */
+  agentOpponent?: boolean;
+};
+
+export function GameScreen({ state, opponent = "Alicja_99", agentOpponent = false }: GameScreenProps) {
   if (state === "loading") {
     return (
       <SkeletonRegion label="Ładowanie partii" className="max-w-(--layout-width-board) gap-stack">
@@ -65,7 +92,7 @@ export function GameScreen({ state }: { state: GameState }) {
         <TurnStatus>
           {state === "waiting-for-opponent"
             ? "Czekamy na przeciwnika…"
-            : "Czekamy, aż Alicja_99 otworzy partię — zegar ruszy, gdy obaj będziecie na stronie (do 15 min)"}
+            : `Czekamy, aż ${typeof opponent === "string" ? opponent : "Agent"} otworzy partię — zegar ruszy, gdy obaj będziecie na stronie (do 15 min)`}
         </TurnStatus>
         <InviteCodeCard
           title="Zaproś znajomego"
@@ -107,7 +134,7 @@ export function GameScreen({ state }: { state: GameState }) {
       ) : (
         <TurnStatus color="black">{yourTurn ? "Twój ruch (czarne)" : "Ruch przeciwnika"}</TurnStatus>
       )}
-      <PlayerClock name="Alicja_99" remainingMs={state === "lost-on-time" ? 301_000 : 412_000} active={!finished && !yourTurn} activeLabel="Ruch przeciwnika" lowLabel="Mało czasu" />
+      <PlayerClock name={opponent} remainingMs={state === "lost-on-time" ? 301_000 : 412_000} active={!finished && !yourTurn} activeLabel="Ruch przeciwnika" lowLabel="Mało czasu" />
       <Board
         label="Plansza 15 na 15"
         cellLabel={cellLabel}
@@ -125,6 +152,11 @@ export function GameScreen({ state }: { state: GameState }) {
         lowLabel="Mało czasu"
       />
       {!finished && yourTurn && <Button>Postaw kamień</Button>}
+      {finished && agentOpponent && (
+        <Alert status="info" title="Rewanż niedostępny" role="status">
+          Aby zagrać z agentem jeszcze raz, utwórz nową partię i przekaż mu nowy kod.
+        </Alert>
+      )}
       {finished && (
         <EmptyState title="Partia jest zakończona" action={<TextLink href="#historia" placement="standalone">Zobacz historię partii</TextLink>}>
           Wynik zapisał się w historii obu graczy.

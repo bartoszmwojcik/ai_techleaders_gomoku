@@ -34,6 +34,7 @@ describe("cleanupExpired", () => {
       guestOnlyActiveGames: 0,
       guestOnlyFinishedGames: 0,
       guestTokens: 0,
+      agentTokens: 0,
       unverifiedUsers: 0,
       errors: [],
       truncated: false,
@@ -93,7 +94,7 @@ describe("cleanupExpired", () => {
     const finished = sqls.find((sql) => sql.includes("status = 'finished'"))!;
     for (const sql of [active, finished]) {
       expect(sql).toMatch(/^delete from games where id in/);
-      expect(sql).toContain("p.kind <> 'guest'");
+      expect(sql).toContain("p.kind not in ('guest', 'agent')");
       expect(sql).not.toContain("user_id");
     }
     expect(active).toContain(`started_at + ${READY_DEADLINE_MS} * interval '1 millisecond'`);
@@ -104,7 +105,7 @@ describe("cleanupExpired", () => {
   it("registers the guest-only rules before the token rule", () => {
     const keys = CLEANUP_RULES.map((rule) => rule.key);
     // `unverifiedUsers` is last (BR-28): by then the games of the same run are swept.
-    expect(keys.slice(-4)).toEqual(["guestOnlyActiveGames", "guestOnlyFinishedGames", "guestTokens", "unverifiedUsers"]);
+    expect(keys.slice(-5)).toEqual(["guestOnlyActiveGames", "guestOnlyFinishedGames", "guestTokens", "agentTokens", "unverifiedUsers"]);
     for (const rule of CLEANUP_RULES.filter((r) => r.key.startsWith("guestOnly"))) {
       expect(rule.graceMs).toBe(GUEST_TOKEN_GRACE_MS);
     }
@@ -181,7 +182,7 @@ describe("cleanupExpired", () => {
     const rules: CleanupRule[] = CLEANUP_RULES.map((rule) => ({ ...rule, optional: rule.key === "sessions" }));
     const result = await cleanupExpired({ em, now: NOW, rules });
     expect(result.sessions).toBeNull();
-    expect(result.errors.map((e) => e.rule)).toEqual(["rateLimitBuckets", "emailVerificationTokens", "passwordResetTokens", "lobbySeekers", "waitingGames", "cancelledGames", "guestOnlyActiveGames", "guestOnlyFinishedGames", "guestTokens", "unverifiedUsers"]);
+    expect(result.errors.map((e) => e.rule)).toEqual(["rateLimitBuckets", "emailVerificationTokens", "passwordResetTokens", "lobbySeekers", "waitingGames", "cancelledGames", "guestOnlyActiveGames", "guestOnlyFinishedGames", "guestTokens", "agentTokens", "unverifiedUsers"]);
   });
 
   it("keeps the counts of finished rules and of rows deleted before an error", async () => {

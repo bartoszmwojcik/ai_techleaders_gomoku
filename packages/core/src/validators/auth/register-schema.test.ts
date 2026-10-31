@@ -97,6 +97,11 @@ describe("displayNameSchema", () => {
     "Moderator",
     "support",
     "Administrator",
+    "Agent",
+    "agent",
+    "AGENT",
+    " agent ",
+    "A_g-ent",
   ])("rejects reserved name %s", (name) => {
     expect(messages(displayNameSchema.safeParse(name))).toEqual([
       "Ta nazwa jest zastrzeżona.",
@@ -112,6 +117,8 @@ describe("displayNameSchema", () => {
   it("allows similar but different names", () => {
     expect(displayNameSchema.safeParse("admina").success).toBe(true);
     expect(displayNameSchema.safeParse("gomoku2").success).toBe(true);
+    expect(displayNameSchema.safeParse("Agentka").success).toBe(true);
+    expect(displayNameSchema.safeParse("Agent1").success).toBe(true);
   });
 });
 

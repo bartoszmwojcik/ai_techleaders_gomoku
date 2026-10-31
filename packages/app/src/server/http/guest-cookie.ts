@@ -56,7 +56,7 @@ export async function setGuestCookie(
 /**
  * Sliding expiry: sets the cookie the browser already carries again, with a fresh `Max-Age`.
  * Only the carrier is extended; whether the token works is still decided by the server alone
- * (`GUEST_TOKEN_VALID_SQL`). Without a cookie it does nothing.
+ * (`PARTICIPANT_TOKEN_VALID_SQL`). Without a cookie it does nothing.
  */
 export async function refreshGuestCookie(
   config: CookieConfig,

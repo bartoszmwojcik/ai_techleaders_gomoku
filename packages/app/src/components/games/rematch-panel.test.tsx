@@ -144,6 +144,33 @@ describe("RematchPanel, the opponent deleted their account (#37, s08.2)", () => 
   });
 });
 
+describe("RematchPanel, the opponent is an agent (BR-31)", () => {
+  const agentOpponent = (rematch?: Rematch, agentName: string | null = null) =>
+    finished({
+      players: [
+        { seat: 1, kind: "account", displayName: "Ala_7", seen: true },
+        { seat: 2, kind: "agent", displayName: null, agentName, seen: true },
+      ],
+      ...(rematch ? { rematch } : {}),
+    });
+
+  it.each([
+    ["no offer", undefined],
+    ["an expired offer", offer({ state: "expired" })],
+  ])("offers no rematch, only the hint and the way back (%s)", (_name, rematch) => {
+    panel(agentOpponent(rematch, "claude opus 5.5"));
+    expect(screen.getByText("Rewanż niedostępny")).toBeTruthy();
+    expect(screen.getByTestId("rematch-agent-hint").textContent).toBe(
+      "Aby zagrać z agentem jeszcze raz, utwórz nową partię i przekaż mu nowy kod.",
+    );
+    expect(screen.getByRole("status")).toBeTruthy();
+    expect(screen.queryByTestId("rematch-offer")).toBeNull();
+    expect(screen.queryByTestId("rematch-unavailable")).toBeNull();
+    expect(link("Wróć do panelu głównego").getAttribute("href")).toBe("/");
+    expect(apiCall).not.toHaveBeenCalled();
+  });
+});
+
 describe("RematchPanel, no offer yet (p06.10)", () => {
   it("says the colours swap and offers the rematch and the way back", () => {
     panel(finished());

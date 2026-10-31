@@ -55,12 +55,21 @@ Utworzenie partii i zaproszenie, dołączenie, ruchy i wygrana, zegary, powrót 
 | koniec: przegrana na czas | [Partia: przegrana na czas](?path=/story/ekrany-partia--partia-przegrana-na-czas) |
 | koniec: remis | [Partia: remis](?path=/story/ekrany-partia--partia-remis) |
 | gość w trakcie partii (stałe ostrzeżenie) | [Partia: gość](?path=/story/ekrany-partia--partia-gosc-w-trakcie) |
+| przeciwnik „Agent” (dołączył przez MCP; bez nazwy modelu) | [Partia: przeciwnik Agent](?path=/story/ekrany-partia--partia-przeciwnik-agent) |
+| przeciwnik „Agent · {nazwa} (deklarowane)” | [Partia: Agent z nazwą modelu](?path=/story/ekrany-partia--partia-przeciwnik-agent-z-nazwa-modelu) |
+| nazwa modelu agenta przy 320 px (skrócona, „(deklarowane)” zostaje) | [Partia: Agent z długą nazwą](?path=/story/ekrany-partia--partia-przeciwnik-agent-dluga-nazwa-modelu) |
+| czekamy, aż Agent otworzy partię | [Partia: Agent, czekamy](?path=/story/ekrany-partia--partia-agent-czekamy-az-otworzy-strone) |
+| koniec z agentem: bez rewanżu, podpowiedź „utwórz nową partię” | [Partia: koniec z agentem](?path=/story/ekrany-partia--partia-koniec-z-agentem) |
+
+## Przeciwnik „Agent” (E06-S01, BR-31)
+
+Agent dołącza do partii prywatnej przez MCP, nie przez przeglądarkę. Człowiek widzi go jako **„Agent”** (zwykły tekst, bez „(gość)”, bez ikony); gdy agent podał nazwę modelu, widzi **„Agent · {nazwa} (deklarowane)”**. Oznaczenie „(deklarowane)” jest obowiązkowe: nazwa jest niezweryfikowana. Nazwa jest węzłem tekstowym (bez HTML, Markdownu i linków), przy 320 px skracana wielokropkiem, a „Agent” i „(deklarowane)” nigdy się nie skracają. Rewanżu z agentem nie ma: panel pokazuje tylko podpowiedź. Opakowanie `AgentName` w `docs/screens/game-screen.tsx` odpowiada `PlayerLabel` aplikacji; luka #135 (skracanie nicku gościa) go nie dotyczy.
 
 ## Pliki źródłowe
 
 - Komponenty: `src/game/board.tsx`, `player-clock.tsx`, `turn-status.tsx`, `game-result-banner.tsx`, `invite-code-card.tsx`, `format-clock.ts`.
 - Stories ekranów: `docs/screens/partia.stories.tsx`, `game-screen.tsx`, `invite-screens.tsx`, `home-screen.tsx`; wzorce: `docs/patterns/invitation.stories.tsx`, `detail.stories.tsx`, `permissions.stories.tsx`.
-- Specyfikacje: `.ai/specs/implemented/2026-10-24-game-invitations.md`, `.ai/specs/implemented/2026-10-25-game-moves-win-detection.md`.
+- Specyfikacje: `.ai/specs/implemented/2026-10-24-game-invitations.md`, `.ai/specs/implemented/2026-10-25-game-moves-win-detection.md`, `.ai/specs/implemented/2026-10-31-agent-joins-private-game.md`.
 - Zgłoszenia: epik #16, #21, #22, #23, #24 (spike #30).
 
 ## Co jeszcze zostaje w produkcie

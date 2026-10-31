@@ -41,8 +41,35 @@ Last filed: 2026-10-31
 | E06-S02 | #128 | Agent gra partię do końca przez narzędzia MCP (join, get_state, play_move) pod zegarem 10 minut | #124 | E06-S01 (#127) | no |
 | E06-S03 | #129 | Właściciel widzi licznik zakończonych partii wg pary typów uczestników (konto, gość, agent) | #124 | E06-S01 (#127) | no |
 | E06-S04 | #140 | Człowiek widzi wskazówkę „Jak podłączyć agenta” (adres MCP, komenda, kod zaproszenia) | #124 | E06-S01 (#127), E06-S02 (#128) | no |
+| E07 | #144 | Czat w partii | — | — | no |
+| E07-S01 | #146 | Uczestnik partii (konto lub gość) wysyła i czyta wiadomości przeciwnika w trwającej partii i na ekranie wyniku | #144 | E02-S02 (#22), E02-S08 (#95), E07-S01-T01 (#145) | no |
+| E07-S01-T01 | #145 | Migracja: wiadomości czatu i ustawienie wyłączenia per partia | #146 | E02-S01-T01 (#29) | no |
+| E07-S02 | #147 | Uczestnik wyłącza czat w partii, a rozmówca widzi „Rozmówca wyłączył czat” | #144 | E07-S01 (#146) | no |
+| E07-S03 | #148 | Czat znika po grze: wiadomości są usuwane w ciągu ok. 2 h od zakończenia, a także przy usunięciu konta lub wygaśnięciu tokenu | #144 | E07-S01 (#146); cron `db:cleanup` | no |
+| E07-S04 | #149 | Agent czyta i pisze na czacie przez MCP (`send_message`, pole `chat`, `chatStatus`) | #144 | E06-S02 (#128), E07-S01 (#146), E07-S02 (#147) | no |
+| E08 | #155 | Administrator instancji i panel /backend (v1) | — | — | no |
+| E08-S01 | #157 | Właściciel zakłada lub przejmuje konto administratora poleceniem npm run admin:create i loguje się nim | #155 | E08-S01-T01 (#156) | no |
+| E08-S01-T01 | #156 | Konfiguracja ADMIN_EMAIL (wymagany w produkcji, fail closed) | #157 | — | no |
+| E08-S02 | #158 | Administrator widzi w panelu /backend liczniki partii i listę kont ze stanami | #155 | E08-S01 (#157); #154 (bramka doraźna dla #152) | no |
+
+Uwagi 2026-10-31 (E08): rola administratora i panel `/backend` to eksperyment i potrzeba właściciela (D-32, A-10), bez dowodu popytu; `SDLC.md` nie ma Definition of Ready. Zgłoszenia założono przez `om-prepare-issue`. Q-13 i Q-15 blokują tylko historyjki poza v1, Q-14 dopiero udostępnienie osobom z zewnątrz. Zależność: licznik z E06-S03 (#129) jest odczytywany w panelu, więc wyświetla go E08-S02 (#158); sam panel nie czeka na E06. Niezałożone (E05 #33): nadawanie i odbieranie roli z dziennikiem audytowym (BR-36, BR-38), edycja nazwy gracza przez administratora, usuwanie cudzego konta przez administratora.
+
+Uwagi 2026-10-31 (E07): czat w partii to eksperyment właściciela (D-30), bez dowodu popytu (A-07); przyjęte ryzyka A-08 i A-09; `SDLC.md` nie ma Definition of Ready. Zgłoszenia założono przez `om-prepare-issue`. Niezałożone (E05 #33): zgłaszanie nadużyć i moderacja czatu (Q-10), historia czatu, gotowe frazy i emotki, zapamiętane ustawienie czatu na koncie; pominięto też licznik partii z wiadomością (niezatwierdzony) i stronę o danych (Q-11).
 
 Uwagi 2026-10-31: E02-S05…S08 (#87, #88, #94, #95) założono poza `om-backlog` (bez linii `Backlog source:`/`Backlog id:`); ich zależności nie zostały odtworzone, kolumna „Depends on” zawiera „—”. E06 to eksperyment właściciela (D-28), bez dowodu popytu (A-04, A-06); `SDLC.md` nie ma Definition of Ready. E06-S01-T01 (Q-09) blokuje E06-S01, E06-S01-T02 i E06-S02. Pozycje „Później” (CLI dla agenta, agent w lobby, przeciwnik hostowany przez nas) dopisano do E05 (#33).
+
+## Stan wdrożenia E06 (2026-10-31)
+
+Źródło: `track-e06.md`. Specyfikacje S01 i decyzja D-29 leżą w `.ai/specs/implemented/`.
+
+| Id | Issue | Stan | Dowód |
+|---|---|---|---|
+| E06-S01-T01 | #125 | decyzja zatwierdzona i wdrożona w S01 (token, transport, limity początkowe, `agentName`) | `.ai/specs/implemented/2026-10-31-mcp-agent-identity.md`, PR #138, wdrożenie w PR #143 |
+| E06-S01-T02 | #126 | wdrożone (`Migration20261031175106_agent_participant`, `Closes #126`) | PR #143 |
+| E06-S01 | #127 | wdrożone (`join`, etykieta „Agent”, rewanż niedostępny, `Closes #127`) | PR #143, `.ai/specs/implemented/2026-10-31-agent-joins-private-game.md` |
+| E06-S02 | #128 | następne: `get_state`, `play_move`, limit `mcp-token:*` | — |
+| E06-S03 | #129 | po S02; licznik nie może czytać partii gość–agent „po fakcie” (znikają po 1 h, R10) | — |
+| E06-S04 | #140 | po S02 | — |
 
 ## Zmiany z 2026-10-26: uproszczony start konta
 

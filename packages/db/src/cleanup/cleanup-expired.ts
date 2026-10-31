@@ -3,7 +3,7 @@ import type { EntityManager } from "@mikro-orm/postgresql";
 import { CLEANUP_RULES, type CleanupRule } from "./rules";
 
 export const DEFAULT_BATCH_SIZE = 1000;
-/** Time budget of a single rule; a slow rule cannot starve the later ones. With the 11 rules of `rules.ts` the worst case is 11 x 15 s = 165 s per run (the first 4 rules alone were 4 x 15 s = 60 s). */
+/** Time budget of a single rule; a slow rule cannot starve the later ones. With the 12 rules of `rules.ts` the worst case is 12 x 15 s = 180 s per run (the first 4 rules alone were 4 x 15 s = 60 s). */
 export const DEFAULT_RULE_TIME_LIMIT_MS = 15_000;
 
 const UNDEFINED_TABLE = "42P01";
@@ -29,6 +29,8 @@ export type CleanupResult = {
   guestOnlyFinishedGames: number | null;
   /** Guest token hashes cleared 1 h after the game finished (rows are kept, only the hash goes). */
   guestTokens: number | null;
+  /** Agent token hashes cleared 1 h after the game finished (E06-S01). */
+  agentTokens: number | null;
   /** Unconfirmed accounts without any game, older than 14 days (BR-28). */
   unverifiedUsers: number | null;
   /** Rules that raised an error; the remaining rules still ran. Empty on success. */
@@ -87,6 +89,7 @@ export async function cleanupExpired({
     guestOnlyActiveGames: 0,
     guestOnlyFinishedGames: 0,
     guestTokens: 0,
+    agentTokens: 0,
     unverifiedUsers: 0,
     errors: [],
     truncated: false,
