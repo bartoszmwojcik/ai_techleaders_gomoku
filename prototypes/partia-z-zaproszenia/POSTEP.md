@@ -49,7 +49,7 @@ Stan: **etap A gotowy (D3.1); etap B (p05–p07: plansza, zegary, wynik, poddani
 
 ## Etap C: gra bez konta (zadanie 6.2, rewizja 2026-10-30)
 
-Stan: **zbudowany, czeka na przegląd właściciela** (nie zatwierdzony). Źródło: mapa `lekcja-07/mapa-ekranow-partia.md` po aktualizacji 2026-10-30 (sekcje 0c, 0d, 1a, 1b, 2 Q13–Q22, 3 T9 i T10, luki L25–L35, D08–D12), specyfikacje `.ai/specs/2026-10-30-participant-nickname.md` (E02-S07, #94) i `.ai/specs/2026-10-30-guest-creates-game.md` (E02-S08, #95).
+Stan: **zbudowany, czeka na przegląd właściciela** (nie zatwierdzony). Źródło: mapa `lekcja-07/mapa-ekranow-partia.md` po aktualizacji 2026-10-30 (sekcje 0c, 0d, 1a, 1b, 2 Q13–Q22, 3 T9 i T10, luki L25–L35, D08–D12), specyfikacje `.ai/specs/implemented/2026-10-30-participant-nickname.md` (E02-S07, #94) i `.ai/specs/implemented/2026-10-30-guest-creates-game.md` (E02-S08, #95).
 
 - Symulator: gość tworzy partię (tokeny gościa na tożsamość T5/T9/T10), nick z normalizacją i regułami ze specyfikacji, limit adresu 10/godz., `500`, `409` (aktywna: odmowa; oczekująca: „Anuluj i utwórz nową” z potwierdzeniem), anulowanie przez gościa-twórcę, wygaśnięcie (L29: „Zaproszenie wygasło” przez 1 h, potem 404), gość–gość i gość–konto w obu kierunkach do końca partii, rewanż z zachowanym nickiem i nazwą domyślną idącą za miejscem. Brak blokady logowania gościa (decyzja 3).
 - Ekrany: nowy p08 (p08.1–p08.8), p01.8–p01.9, p03.11–p03.13, s07.2 z nickiem, s07.10, s07.11, etykiety „{nick} (gość)” / „Gracz 1/2 (gość)” w p03.5, p04, p05, p06, p07.3. Założenia oznaczone `data-assumption`; luki DS D08, D09, D10, D12 jako `LUKA` w kodzie.

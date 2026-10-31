@@ -110,7 +110,7 @@ Rejestracja ma też prawdziwy limit w symulacji: 6. próba w jednej sesji daje �
 
 ## Usunięcie konta (rewizja 2026-10-30, E01-S06, #37)
 
-Źródło: `.ai/specs/2026-10-24-account-deletion.md` (zaktualizowana 2026-10-30, sekcje Resolved Q1–Q9, UI/UX, Edge Cases, Open Questions O1–O6). Reguły z briefu: BR-17 (kasuje e-mail, hash, sesje; partie zostają jako „Usunięty gracz”), BR-21 („Najpierw dokończ albo poddaj partię”), BR-13, BR-24, BR-29 i D-27 („{nick} (gość)”), D-16. Brief nie został zmieniony. Droga wyjścia z blokady to poddanie partii (`.ai/specs/2026-10-29-game-resignation.md`, już na `main`: przycisk „Poddaj partię” na stronie partii).
+Źródło: `.ai/specs/2026-10-24-account-deletion.md` (zaktualizowana 2026-10-30, sekcje Resolved Q1–Q9, UI/UX, Edge Cases, Open Questions O1–O6). Reguły z briefu: BR-17 (kasuje e-mail, hash, sesje; partie zostają jako „Usunięty gracz”), BR-21 („Najpierw dokończ albo poddaj partię”), BR-13, BR-24, BR-29 i D-27 („{nick} (gość)”), D-16. Brief nie został zmieniony. Droga wyjścia z blokady to poddanie partii (`.ai/specs/implemented/2026-10-29-game-resignation.md`, już na `main`: przycisk „Poddaj partię” na stronie partii).
 
 Nic nie jest wysyłane. Hasło do usunięcia to hasło demo. Usunięcie jest w symulacji nieodwracalne do „Reset symulacji”.
 
