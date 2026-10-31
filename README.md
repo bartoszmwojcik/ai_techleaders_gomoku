@@ -252,6 +252,18 @@ Przy każdym wierszu listy jest przycisk „Zagraj” (potwierdzenie to jedno kl
 | `POST /api/lobby/seekers/{id}/pick` | `200` `{ gameId }` | `401`, `403`, `404` (`id` nie jest uuid), `409 ACTIVE_GAME_EXISTS` (BR-13, `data.gameId`), `409 LOBBY_SEEKER_TAKEN` (ktoś był szybszy, wycofał się albo wiersza już nie ma), `409 LOBBY_SEEKER_EXPIRED`, `409 CANNOT_PICK_SELF`, `429` (60 wyborów na godzinę, liczone także przy błędach) |
 
 Testy: `tests/integration/lobby-api.test.ts` (wyścigi N wybierających, A↔B, wybór kontra `POST /api/games`, wygaśnięcie, BR-13, limit), `lobby-pages.test.ts` (przeglądarka). Specyfikacja: [`.ai/specs/implemented/2026-10-31-lobby-opponent-selection.md`](.ai/specs/implemented/2026-10-31-lobby-opponent-selection.md).
+#### Historia partii (E04-S01, #27)
+
+Zalogowany użytkownik otwiera `/history` (przycisk „Historia” na stronie głównej; gość i wizytor są przekierowani na `/login?next=%2Fhistory`) i widzi **własne, zakończone** partie, od najnowszej: przeciwnika, wynik z jego punktu widzenia (Wygrana / Porażka / Remis), datę zakończenia (strefa `Europe/Warsaw`, CET/CEST) i sposób zakończenia (5 w linii, Koniec czasu, Poddanie, Plansza pełna). Przeciwnik-gość to „{nick} (gość)”, konto usunięte — „Usunięty gracz” (BR-17), a typ „Agent” (D-28) jest przewidziany w kontrakcie. Wiersz nie prowadzi do partii. To model odczytu nad `games` i `game_players`: bez nowej tabeli i bez migracji.
+
+Lista ładuje się po 20 wierszy, paginacja kluczem (`finished_at`, `id`) bez duplikatów i luk; „Pokaż starsze” dokleja kolejne strony. Odczyt najpierw rozlicza partie przegrane na czas (`timeoutSettler.settleFor`), więc taka partia jest na liście, choć nikt jej nie otworzył; jej data to moment rozliczenia.
+
+| Endpoint | Sukces | Błędy |
+| --- | --- | --- |
+| `GET /api/history?cursor=` | `200` `{ entries: [{ gameId, finishedAt, result: win\|loss\|draw, reason: five_in_row\|timeout\|resignation\|draw, opponent: { kind: account\|guest\|agent, name } }], nextCursor }` | `401` (brak sesji konta, także gość), `400` (niepoprawny `cursor`) |
+
+Odpowiedź nie zawiera e-maila ani identyfikatora konta przeciwnika. Testy: `tests/integration/game-history-api.test.ts` (m.in. `EXPLAIN` na ~10 000 partii jednego konta), `game-history-pages.test.ts` (przeglądarka, 320 px). Specyfikacja: [`.ai/specs/implemented/2026-10-31-game-history.md`](.ai/specs/implemented/2026-10-31-game-history.md).
+
 ### `@gomoku/core` — części wielokrotnego użytku
 
 Czysty TypeScript bez zależności od frameworków:

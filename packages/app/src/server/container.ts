@@ -21,6 +21,7 @@ import { GameParticipation } from "./services/auth/game-participation";
 import { ColorDraw } from "./services/games/color-draw";
 import { GameMoveService } from "./services/games/game-move-service";
 import { RematchService } from "./services/games/rematch-service";
+import { GameHistoryService } from "./services/games/game-history-service";
 import { GameService } from "./services/games/game-service";
 import { InvitationCodes } from "./services/games/invitation-codes";
 import { InvitationService } from "./services/games/invitation-service";
@@ -69,6 +70,8 @@ export type AppCradle = {
   /** Draws who plays black when the opponent joins (#22 Q1). */
   colorDraw: ColorDraw;
   invitationService: InvitationService;
+  /** The finished games of an account (E04-S01). */
+  gameHistoryService: GameHistoryService;
   /** The "looking for a game" status and the lobby list (#25). */
   lobbyService: LobbyService;
   /** No-op until the clock (#23) delivers the real settlement of timed-out games. */
@@ -148,6 +151,7 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     invitationCodes: asClass(InvitationCodes).singleton(),
     colorDraw: asClass(ColorDraw).singleton(),
     invitationService: asClass(InvitationService).scoped(),
+    gameHistoryService: asClass(GameHistoryService).scoped(),
     lobbyService: asClass(LobbyService).scoped(),
     timeoutSettler: asClass(SqlTimeoutSettler).scoped(),
     rateLimiter: asClass(RateLimiter).scoped(),

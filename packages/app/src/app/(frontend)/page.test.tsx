@@ -108,6 +108,8 @@ describe("HomePage", () => {
   it("offers no lobby link to a visitor without an account", async () => {
     const html = renderToStaticMarkup(await HomePage({ searchParams: Promise.resolve({}) }));
     expect(html).not.toContain("/lobby");
+    // A guest or a visitor has no history (BR-24).
+    expect(html).not.toContain("/history");
   });
 
   it("links a signed-in player to the account and offers logout", async () => {
@@ -118,6 +120,8 @@ describe("HomePage", () => {
     // The lobby is for accounts only (BR-22): the link is there for a signed-in player (#25 Q11).
     expect(html).toContain('href="/lobby"');
     expect(html).toContain("Lobby</a>");
+    expect(html).toContain('href="/history"');
+    expect(html).toContain("Historia</a>");
     expect(html).toContain('data-testid="logout" data-active="false"');
     expect(currentGame).toHaveBeenCalledWith("u1");
     expect(html).toContain('data-testid="create" data-held="null"');

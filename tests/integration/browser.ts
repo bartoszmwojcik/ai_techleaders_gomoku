@@ -55,7 +55,9 @@ export class Browser {
     await this.run("fill", selector, value);
   }
 
+  /** Scrolls the element into view first: the click lands at its centre, which must be inside the viewport. */
   async click(selector: string): Promise<void> {
+    await this.run("scrollintoview", selector);
     await this.run("click", selector);
   }
 

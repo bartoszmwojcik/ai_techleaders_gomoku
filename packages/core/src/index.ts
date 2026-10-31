@@ -31,3 +31,4 @@ export * from "./validators/games/seeker-id-schema";
 export * from "./validators/games/move-create-schema";
 export * from "./games/board-view";
 export * from "./validators/games/game-state-query-schema";
+export * from "./games/history";

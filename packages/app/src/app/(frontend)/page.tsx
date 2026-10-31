@@ -110,6 +110,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   <a href="/lobby">Lobby</a>
                 </Button>
                 <Button asChild variant="secondary">
+                  <a href="/history">Historia</a>
+                </Button>
+                <Button asChild variant="secondary">
                   <a href="/account">Konto</a>
                 </Button>
                 <LogoutButton hasActiveGame={hasActiveGame} />

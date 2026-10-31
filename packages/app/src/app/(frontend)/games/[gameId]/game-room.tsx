@@ -21,6 +21,7 @@ import { PlayField } from "@/components/games/play-field";
 import { serverNowMs } from "@/components/games/use-server-now";
 import { usePageVisibility } from "@/components/games/use-page-visibility";
 import { apiCall } from "@/lib/api-client";
+import { formatValidUntil } from "@/lib/format-date-time";
 import { mergeState, playerName, playerNameOf } from "@/lib/games/play";
 import type { GameView } from "@/server/http/game-view";
 
@@ -65,26 +66,6 @@ const COPY_FEEDBACK: Record<Exclude<Copy, "idle">, string> = {
   fail: "Nie można skopiować automatycznie. Link jest zaznaczony — skopiuj go ręcznie (Ctrl+C).",
   "share-fail": "Nie udało się otworzyć udostępniania. Skopiuj link ręcznie.",
 };
-
-const VALID_UNTIL_ZONE = "Europe/Warsaw";
-const validUntilFormat = new Intl.DateTimeFormat("pl-PL", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZone: VALID_UNTIL_ZONE,
-});
-// The zone abbreviation comes from en-GB, which prints "CET"/"CEST" (en-US would print "GMT+1"), so it
-// is correct in both seasons and identical on the server and in the browser.
-const validUntilZone = new Intl.DateTimeFormat("en-GB", { timeZone: VALID_UNTIL_ZONE, timeZoneName: "short" });
-
-/** "wtorek 27 października, 10:00 CET": a fixed zone, so the server and the browser print the same text. */
-export function formatValidUntil(iso: string): string {
-  const date = new Date(iso);
-  const zone = validUntilZone.formatToParts(date).find((part) => part.type === "timeZoneName")!.value;
-  return `${validUntilFormat.format(date)} ${zone}`;
-}
 
 // `navigator.share` exists only in some browsers; the server cannot know, so the first render says no.
 const subscribeNothing = () => () => {};

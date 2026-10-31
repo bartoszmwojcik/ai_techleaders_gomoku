@@ -8,7 +8,7 @@ describe("HistoryList and HistoryRow", () => {
     const html = renderToStaticMarkup(
       <HistoryList label="Zakończone partie" className="max-w-xl">
         <HistoryRow opponent="Alicja_99" result="win" resultLabel="Wygrana" date="24.10.2026" reason="5 w linii" />
-        <HistoryRow opponent="Zaproszony przez link" result="loss" resultLabel="Porażka" date="23.10.2026" className="py-4" />
+        <HistoryRow opponent="Kasia (gość)" result="loss" resultLabel="Porażka" date="23.10.2026" className="py-4" />
         <HistoryRow opponent="Usunięty gracz" result="draw" resultLabel="Remis" date="20.10.2026" reason="Plansza pełna" />
       </HistoryList>,
     );
@@ -19,7 +19,7 @@ describe("HistoryList and HistoryRow", () => {
     expect(html).toContain("border-status-success");
     expect(html).toContain("border-status-danger");
     expect(html).toContain("border-status-info");
-    expect(html).toContain("Zaproszony przez link");
+    expect(html).toContain("Kasia (gość)");
     expect(html).toContain("Usunięty gracz");
     expect(html).toContain("24.10.2026");
     expect(html).toContain("5 w linii");
