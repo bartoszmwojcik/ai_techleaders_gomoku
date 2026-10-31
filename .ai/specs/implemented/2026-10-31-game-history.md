@@ -1,6 +1,8 @@
 # Historia zakończonych partii (E04-S01, #27)
 
-> Status: **szkic do zatwierdzenia** (2026-10-31, szkic autonomiczny `om-auto-write-spec`; stan kodu: `origin/main` @ `4aa72d4`). Źródło: zgłoszenie #27 (E04-S01), epik #18, `.ai/specs/product-brief.md` (BR-17, BR-18, BR-24, BR-29, BR-30, D-04, D-28, A-04), specyfikacje wdrożone: `implemented/2026-10-24-game-invitations.md` (#21: `game_players`, `is_active`), `implemented/2026-10-26-game-clock.md` (lazy timeout), `implemented/2026-10-29-game-rematch.md` (`origin = 'rematch'`), `implemented/2026-10-30-participant-nickname.md` (nick gościa), `implemented/2026-10-24-account-deletion.md` (BR-17), `implemented/2026-10-30-guest-only-games-cleanup.md`, prototyp w Storybooku (`packages/ui/docs/screens/historia.stories.tsx`, `docs/epics/historia.mdx`).
+> Status: **wdrożona (2026-10-31; zgłoszenie #27, dowody w sekcji „Odstępstwa wdrożenia i dowody”)**; wcześniej zatwierdzona przez właściciela (decyzje: „{nick} (gość)”, bez podglądu partii, data przegranej na czas = moment rozliczenia, rewanż bez oznaczenia). Szkic autonomiczny `om-auto-write-spec` (2026-10-31; stan kodu: `origin/main` @ `4aa72d4`).
+>
+> Źródło: zgłoszenie #27 (E04-S01), epik #18, `.ai/specs/product-brief.md` (BR-17, BR-18, BR-24, BR-29, BR-30, D-04, D-28, A-04), specyfikacje wdrożone: `implemented/2026-10-24-game-invitations.md` (#21: `game_players`, `is_active`), `implemented/2026-10-26-game-clock.md` (lazy timeout), `implemented/2026-10-29-game-rematch.md` (`origin = 'rematch'`), `implemented/2026-10-30-participant-nickname.md` (nick gościa), `implemented/2026-10-24-account-deletion.md` (BR-17), `implemented/2026-10-30-guest-only-games-cleanup.md`, prototyp w Storybooku (`packages/ui/docs/screens/historia.stories.tsx`, `docs/epics/historia.mdx`).
 >
 > Zależność E02-S03 (#23, zegar) jest wdrożona: `finished_at`, `end_reason`, `winner_seat` istnieją i są zapisywane przy każdym zakończeniu (ruch, czas, poddanie).
 
@@ -162,3 +164,36 @@ Jedna faza, jeden PR implementacyjny (zgodnie z regułą „mało, ale pełnych 
 2. Q6: czy wiersz historii ma w przyszłości prowadzić do podglądu zakończonej partii (dziś poza zakresem)?
 3. Czy data partii przegranej na czas ma być momentem upływu zegara (rekomendacja: tak, jako osobna zmiana rozliczania w zegarze) czy wystarczy moment rozliczenia (założenie Q8)?
 4. Czy partie z `origin = 'rematch'` mają być oznaczone w historii (Q7)?
+
+## 📝 Odstępstwa wdrożenia i dowody (2026-10-31)
+
+Decyzje właściciela z przeglądu specyfikacji (#131) obowiązują bez zmian: etykieta gościa „{nick} (gość)” (Q5), wiersz bez linku (Q6), data przegranej na czas to moment rozliczenia (Q8), rewanż bez oznaczenia (Q7).
+
+**Odstępstwa od tekstu specyfikacji:**
+
+1. **`Cache-Control: no-store`** nie jest ustawiany jawnie. `GET /api/history` jest dynamiczny (`await connection()`), tak jak `GET /api/lobby` i `GET /api/games/{id}`, które też nie ustawiają nagłówka; wspólny `apiHandler` go nie dodaje, a dopisanie go tylko tu byłoby niespójne.
+2. **Etykiety powodu zakończenia** to `Record<EndReason, string>` (`lib/games/history.ts`), nie `switch`; skutek ten sam: nowy `EndReason` nie skompiluje się bez etykiety. Mapowanie nazwy przeciwnika w serwisie to wyczerpujący `switch` bez `default` (typ `OpponentKind`).
+3. **Błąd pierwszej strony** nie ma `ErrorState` z ponowieniem: pierwszą stronę czyta komponent serwerowy w `getCurrentUserWith`, który przy błędzie (np. bazy) zawodzi „zamknięcie” i przekierowuje na `/login?next=%2Fhistory`, tak jak `/lobby`. Błąd kolejnej strony („Pokaż starsze”) pokazuje `Alert` i przycisk „Spróbuj ponownie” z tym samym kursorem.
+4. **Pusty stan** używa `CreateGameButton` z `heldGame = null` (użytkownik, który już ma partię, zobaczy „Masz już partię” bez linku).
+5. **Kursor** niesie `finished_at` jako tekst z mikrosekundami (`to_char(... 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`), nie ISO z milisekundami: data JavaScript obcięłaby mikrosekundy i następna strona mogłaby powtórzyć albo pominąć wiersz. Wartość odpowiedzi `finishedAt` to ISO z milisekundami. Kursor kodują `btoa`/`atob` (pakiet `core` działa też w przeglądarce, bez `Buffer`).
+6. **Dwa zapytania SQL zamiast jednego z `? is null`:** PostgreSQL nie wnioskuje typu nietypowanego parametru w `? is null`, więc pierwsza strona i kolejne mają osobne warianty tego samego zapytania (`historySql(afterCursor)`).
+7. **Skracanie nicka gościa:** wiersz historii (DS) nadal łamie tekst (`wrap-anywhere`); w aplikacji nazwę przeciwnika opakowuje istniejący `PlayerLabel` (nick skracany wielokropkiem, „(gość)” zawsze widoczne, pełna nazwa w `title`). Luka DS dopisana do „Czego brakuje” razem z paginacją.
+8. **Prototyp:** poprawione stories i dokumentacja DS („Zaproszony przez link” → „{nick} (gość)”, daty w formacie aplikacji, nowa story `HistoriaGoscZDlugimNickiem` z „Pokaż starsze”).
+9. **Helper daty:** `lib/format-date-time.ts` (`formatValidUntil` przeniesiony z `game-room.tsx` bez zmiany zachowania, nowy `formatFinishedAt`: „30 października 2026, 10:00 CET”); testy przeniesione razem z funkcją.
+
+**Plan zapytania (krok `EXPLAIN`, Q3):** test `tests/integration/game-history-api.test.ts` — „the plan of the query” — wstawia 10 000 partii jednego konta i 40 000 partii innego, wykonuje `ANALYZE` i `EXPLAIN (ANALYZE, FORMAT JSON)` dokładnie tego SQL, który wykonuje serwis (eksport `historySql`). Wynik: `Bitmap Index Scan` na `game_players_user_id_index` (10 000 wierszy), brak `Seq Scan` na `game_players`; `games` jest czytane sekwencyjnie jako strona `Hash Join` (równoległy `Seq Scan` 50 000 wierszy z filtrem `status = 'finished'`), sortowanie quicksort w pamięci, `Execution Time` ok. 23 ms (próg testu 200 ms). Indeks ani migracja nie zostały dodane: częściowy indeks na `games` nie zmniejszyłby pracy konta (sortowanie dotyczy wybranych wierszy), a plan dla typowego konta zaczyna od indeksu. Obserwacja do dalszego monitorowania: przy dużej liczbie partii wszystkich kont koszt skanu `games` rośnie, planista przełączy się wtedy na pętlę zagnieżdżoną po kluczu głównym.
+
+**Dowody kryteriów akceptacji:**
+
+| Kryterium | Dowód |
+| --- | --- |
+| Zakończona partia na liście obu kont z przeciwnikiem, wynikiem, datą, sposobem zakończenia | `game-history-api.test.ts` — „shows a finished game to both accounts…”, „says how each game ended…”; `game-history-pages.test.ts` — „lists the games with the opponent, the result, the date in Warsaw time…”; jednostkowo `game-history-service.test.ts`, `history-view.test.tsx` |
+| Użytkownik A nie widzi cudzych partii | `game-history-api.test.ts` — trzecie konto widzi pustą listę |
+| Trwająca, oczekująca, anulowana nie są na liście | `game-history-api.test.ts` — „leaves out games that are waiting, running or cancelled” |
+| „Usunięty gracz” (BR-17) | `game-history-api.test.ts` — „names the opponent…” (usunięcie konta przeciwnika w bazie); `opponentNameOf` w `lib/games/history.test.ts` |
+| „{nick} (gość)”, gość bez historii (BR-24, BR-29) | `game-history-api.test.ts` — nick, domyślne „Gracz {miejsce}”, `401` dla gościa; `game-history-pages.test.ts` — „Kasia (gość)”, link „Historia” tylko dla konta |
+| Gość z 24-znakowym nickiem przy 320 px | `game-history-pages.test.ts` — brak przewijania poziomego, „(gość)” w widoku, pełna nazwa w `title`; zrzuty w obu motywach |
+| Paginacja bez duplikatów i luk; plan zapytania | `game-history-api.test.ts` — 45 partii z równymi `finished_at` na stronach 20/20/5, nowa partia między stronami, `EXPLAIN` |
+| Brak e-maila i identyfikatora konta | `game-history-api.test.ts` — „does not reveal an e-mail, an account id…”; `game-history-service.test.ts` |
+| Rozliczenie przegranej na czas przed odczytem (Q8) | `game-history-api.test.ts` — „a game out of time that nobody opened” (partia `active` z przekroczonym zegarem kończy się odczytem) |
+| 100% pokrycia, `npm run check`, zrzuty | zob. opis PR (wyniki z kodami wyjścia) |
