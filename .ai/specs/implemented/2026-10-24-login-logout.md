@@ -4,9 +4,9 @@
 > - Konto bez potwierdzonego e-maila loguje się i gra normalnie; baner na `/` i `/account` jest nieblokujący (BR-26). Komunikat „Potwierdź e-mail, aby grać” zastąpiony bannerem „Potwierdź adres e-mail”.
 
 
-> Status: **zatwierdzona do implementacji** (po niezależnym przeglądzie, poprawki wprowadzone) — odpowiedzi właściciela z 2026-10-24: „zgoda na wszystkie” (Q1–Q4 zgodnie z
+> Status: **wdrożona (2026-10-31; zgłoszenie #20 domknięte, dowody w sekcji „Odstępstwa wdrożenia i dowody”)**; wcześniej: **zatwierdzona do implementacji** (po niezależnym przeglądzie, poprawki wprowadzone) — odpowiedzi właściciela z 2026-10-24: „zgoda na wszystkie” (Q1–Q4 zgodnie z
 > rekomendacją). Źródło: issue #20 (`Backlog id: E01-S02`), `.ai/specs/product-brief.md`,
-> `.ai/specs/2026-10-24-account-registration.md` (wspólna warstwa, decyzje G1–G8),
+> `.ai/specs/implemented/2026-10-24-account-registration.md` (wspólna warstwa, decyzje G1–G8),
 > `.ai/docs/2026-09-01-engineering-standards.md`. Zależy od implementacji #19 (PR A i PR B).
 
 ## 📝 TLDR
@@ -177,3 +177,15 @@ Jeden PR (Q1), `Closes #20`. Każdy krok zostawia działającą aplikację z zie
 6. **`SessionService.revoke` i route `api/auth/logout/route.ts`.** Testy: unieważnienie bieżącej sesji (inne sesje tego użytkownika zostają), idempotencja, koperta `200`, usunięcie ciasteczka w obu trybach nazwy (`__Host-` / zwykła, przez `set` z `maxAge: 0`), usunięcie ciasteczka mimo błędu bazy, `403` bez nagłówków CSRF.
 7. **`requireSession` / `requirePageSession`, `gameParticipation`, strona `/account`, `LogoutButton`, linki na `/`.** Testy: `401` / przekierowanie z zakodowanym `next` (`redirect` poza `try/catch`), ostrzeżenie Q4 przy `hasActiveGame = true`, brak przy `false`. Test integracyjny agent-browser: wejście na `/account` bez sesji → `/login?next=%2Faccount` → logowanie → `/account` → „Wyloguj” → `/account` znów przekierowuje na logowanie.
 8. **Dokumentacja.** README (logowanie, limity), sekcja „Where Code Goes” w standardach bez zmian; komentarz w #20 z linkiem do PR.
+
+## 📝 Odstępstwa wdrożenia i dowody (2026-10-31)
+
+Odstępstwa od pierwotnej treści opisuje adnotacja „Zmienione przez `2026-10-26-account-onboarding-simplification.md`” na początku dokumentu: konto z niepotwierdzonym e-mailem loguje się i gra normalnie (BR-26), komunikat „Potwierdź e-mail, aby grać” zastąpiony nieblokującym banerem. Kryteria zgłoszenia #20 pozostały bez zmian.
+
+| Kryterium | Dowód |
+| --- | --- |
+| K1: poprawne dane: użytkownik jest zalogowany | `tests/integration/login.test.ts` — „answers 200 with the user and the session cookie”, „logs in an account with an unconfirmed e-mail (BR-26)”; `login-page.test.ts` — „logs in a registered player in a fresh browser context and follows ?next=”; `user-service.test.ts` — „returns the user for correct credentials, looked up by the normalized e-mail” |
+| K2: błędne hasło: logowanie się nie udaje, komunikat nie zdradza istnienia konta | `login.test.ts` — „answers 401 with an identical body for an unknown e-mail and a wrong password”, limity: „answers 429 after 10 failed attempts for an e-mail and address pair…”; `user-service.test.ts` — „verifies against the dummy hash for an unknown e-mail and rejects identically”; `login-page.test.ts` — „shows one general error for a wrong password and focuses the password field” |
+| K3: po wylogowaniu strony wymagające logowania są niedostępne | `tests/integration/logout.test.ts` — „answers 200, clears the cookie and ends the session”, „revokes only the current session”; `account-page.test.ts` — „sends a guest to the login page, returns to /account after login and logs out”; `account/page.test.tsx`, `server/http/auth.test.ts` (strażnik `requireSession`) |
+
+Sprawdzenie 2026-10-31 na `origin/main` przez czytanie testów i kodu; testy nie były uruchamiane w ramach tego domknięcia (zmiana dokumentacyjna).

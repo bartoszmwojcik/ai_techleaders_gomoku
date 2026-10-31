@@ -103,7 +103,7 @@ Rejestracja ma też prawdziwy limit w symulacji: 6. próba w jednej sesji daje �
 
 ## Dla developera
 
-- `src/sim.ts`: symulowany serwer (konta, sesja 30 dni, tokeny 24 h, limity, scenariusze). Reguły z `.ai/specs/2026-10-24-account-registration.md`, `login-logout.md` i `email-verification.md`.
+- `src/sim.ts`: symulowany serwer (konta, sesja 30 dni, tokeny 24 h, limity, scenariusze). Reguły z `.ai/specs/implemented/2026-10-24-account-registration.md`, `login-logout.md` i `email-verification.md`.
 - `src/screens/s0N-*.tsx`: jeden plik na ekran, nazwy zgodne z mapą. `src/chrome.tsx`: nagłówek, dialog „Poza prototypem”, przejścia (`go`).
 - `src/review/`: silnik przeglądu (`prototype.js` bez zmian), most do tokenów (`mostek.css`) i style hosta (`host.css`).
 - Przy budowie prawdziwych ekranów: te same komponenty `@gomoku/ui/game/*`; zmieniają się źródła danych (route handlery zamiast `sim.ts`).

@@ -1,6 +1,6 @@
 # Strony i route handlery mają osobne kopie modułów aplikacji
 
-- Data: 2026-10-27. Powiązane: `.ai/specs/2026-10-24-account-registration.md` (krok 10), `packages/app/src/server/container.ts`.
+- Data: 2026-10-27. Powiązane: `.ai/specs/implemented/2026-10-24-account-registration.md` (krok 10), `packages/app/src/server/container.ts`.
 
 ## Problem
 

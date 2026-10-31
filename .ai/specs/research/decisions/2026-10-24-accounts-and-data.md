@@ -7,7 +7,7 @@ confirmer: Bartosz Wójcik (właściciel produktu)
 # Konta, dane i potwierdzenia domyślnych wartości (2026-10-24)
 
 Źródło: odpowiedzi właściciela w sesji `om-discover --refresh` (2026-10-24) oraz w bramce pytań
-specyfikacji `.ai/specs/2026-10-24-account-registration.md` (2026-10-24). Każda decyzja poniżej
+specyfikacji `.ai/specs/implemented/2026-10-24-account-registration.md` (2026-10-24). Każda decyzja poniżej
 była wyborem właściciela spośród wariantów przedstawionych przez agenta; przy każdej podano, czy
 pokrywała się z rekomendacją agenta.
 
