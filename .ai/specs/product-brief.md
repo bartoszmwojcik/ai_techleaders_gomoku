@@ -1,12 +1,12 @@
 # Specyfikacja produktu: Gomoku 1:1 online
 
-- Data: 2026-10-24 (odświeżenie; poprzednia wersja 2026-10-13)
-- Tryb: own; Właściciel: Bartosz Wójcik; Przebieg: pełny (`om-discover --refresh`, 3 rundy)
-- Podstawa dowodowa: wyłącznie decyzje i przypuszczenia jednego właściciela produktu (sesje 2026-10-13, 2026-10-20, 2026-10-24) oraz benchmark trzech serwisów z 2026-10-20. Brak wywiadów z graczami, danych użycia i testów prototypu. Najbardziej konsekwentne nieprzetestowane przekonanie: że ktokolwiek poza właścicielem i jego znajomymi zechce grać i zostawić feedback (A-01).
-- Coverage: 70 claims — 65 sourced (interview 0, data 0, document 61, product 1, benchmark 3), 0 synthetic, 5 assumed; 3 entries on the collection plan
+- Data: 2026-10-31 (odświeżenie; poprzednie wersje 2026-10-24 i 2026-10-13)
+- Tryb: own; Właściciel: Bartosz Wójcik; Przebieg: pełny (`om-discover --refresh`, 3 rundy; 2026-10-31: 3 rundy z recenzją skeptyka)
+- Podstawa dowodowa: wyłącznie decyzje i przypuszczenia jednego właściciela produktu (sesje 2026-10-13, 2026-10-20, 2026-10-24) oraz benchmark trzech serwisów z 2026-10-20. Brak wywiadów z graczami, danych użycia i testów prototypu. Funkcja „gra z własnym agentem” (2026-10-31) opiera się wyłącznie na wypowiedziach właściciela; nie opisał on własnego doświadczenia z agentem w grze. Najbardziej konsekwentne nieprzetestowane przekonanie: że ktokolwiek poza właścicielem i jego znajomymi zechce grać i zostawić feedback (A-01).
+- Coverage: 76 claims — 68 sourced (interview 0, data 0, document 64, product 1, benchmark 3), 0 synthetic, 8 assumed; 4 entries on the collection plan
 - Hipotezy syntetyczne poza Coverage: 0
 - Definition of Ready podpisane przez: nie dotyczy — `SDLC.md` nie ma Definition of Ready (`om-setup-discovery-pipeline`); gotowe do: planowania implementacji uzgodnionego zakresu jako projektu edukacyjnego (D-11), nie do wniosków o popycie
-- Źródła: `research/decisions/2026-10-13-reconciliation.md`, `research/decisions/2026-10-24-accounts-and-data.md`, `research/2026-10-20-stakeholders.md`, `research/2026-10-20-journey-current-state.md`, `research/2026-10-20-benchmark-{playok,papergames,donkeycat-gomoku}.md`, `2026-10-24-account-registration.md`
+- Źródła: `research/decisions/2026-10-13-reconciliation.md`, `research/decisions/2026-10-24-accounts-and-data.md`, `research/2026-10-20-stakeholders.md`, `research/2026-10-20-journey-current-state.md`, `research/2026-10-20-benchmark-{playok,papergames,donkeycat-gomoku}.md`, `2026-10-24-account-registration.md`, `research/decisions/2026-10-31-agent-opponent.md`
 
 > Wersja z 2026-10-13 powstała z pogodzenia dwóch sesji discovery (`research/decisions/2026-10-13-reconciliation.md`).
 > Odświeżenie z 2026-10-24 dodaje decyzje o kontach i danych (D-12…D-23, BR-14…BR-25), interesariuszy,
@@ -14,6 +14,7 @@
 > nadpisujące.
 > Zmiana 2026-10-26 (osąd właściciela, nie wynik badania): D-24…D-26 i BR-26…BR-28 nadpisują D-17, BR-23, BR-25 i G3 (konto aktywne od razu, potwierdzenie e-maila asynchroniczne i nieblokujące, hasło ≥ 8 znaków, reset tylko po potwierdzeniu, sprzątanie niepotwierdzonych kont bez partii po 14 dniach). Źródło: `research/decisions/2026-10-26-onboarding-simplification.md`, specyfikacja `2026-10-26-account-onboarding-simplification.md`.
 > Zmiana 2026-10-30 (osąd właściciela, nie wynik badania): D-27 i BR-29 nadpisują BR-22, część BR-24 i wyjątek w D-23: gość (bez konta) może także **tworzyć** zaproszenie i podaje nick; nadal wyłącznie przez kod/link, bez lobby i historii. Specyfikacje: `2026-10-30-participant-nickname.md` (E02-S07) i `2026-10-30-guest-creates-game.md` (E02-S08).
+> Zmiana 2026-10-31 (osąd właściciela, nie wynik badania): N-10 nadpisuje N-06 (poza zakresem zostaje przeciwnik AI hostowany przez nas), D-28 i BR-30 wprowadzają grę człowieka z własnym agentem przez MCP (agent jako osobny typ uczestnika, partie prywatne, ten sam zegar), A-04…A-06 i Q-09 opisują ryzyka i bloker. Źródło: `research/decisions/2026-10-31-agent-opponent.md`.
 
 ## Decision summary
 
@@ -31,6 +32,14 @@ anonimizacją partii (D-13…D-18). To podnosi zakres MVP o wysyłkę poczty —
 planu (D-20), dostawca do wyboru w #38 (Q-02). Od 2026-10-26 konto jest aktywne bez potwierdzenia e-maila (D-24, BR-26), więc poczta nie blokuje gry; zaproszony znajomy może zagrać jako gość, bez konta (BR-22).
 Wysyłka ma się zmieścić w darmowym planie dostawcy (D-20), a gra ma działać także w przeglądarce
 telefonu (BR-20).
+
+Od 2026-10-31 w zakresie jest też gra człowieka (konto albo gość) z agentem LLM, którego człowiek sam
+uruchamia i który łączy się przez serwer MCP (D-28, BR-30): partia prywatna, agent dołącza kodem lub linkiem
+jako osobny typ uczestnika z etykietą „Agent”, pod tym samym zegarem 10 minut. Powód właściciela: „chcę
+zobaczyć, jak agent gra”. Wariant nie adresuje nauki gry przez początkujących ani zwiększenia puli partii
+(napięcie, A-05); właściciel wybrał go mimo to. Przeciwnik hostowany przez nas pozostaje poza zakresem
+(N-10). Bloker specyfikacji interfejsu MCP: tożsamość klienta, token i limity nadużyć (Q-09). Pomiar: licznik
+zakończonych partii wg pary typów uczestników (konto, gość, agent); próg „ma sens” nieustalony (Q-06).
 
 Wszystkie decyzje pochodzą od właściciela; popytu nikt nie sprawdził (A-01). Najbliższe blokery:
 mechanizm czasu rzeczywistego dla partii i lobby (Q-01, spike #30) oraz wybór dostawcy poczty
@@ -72,6 +81,7 @@ e-maila) da się sprawdzić dopiero pomiarem po udostępnieniu gry.
 - Użytkownik wraca do historii zakończonych partii (BR-08). `[DOCUMENT]` tamże
 - Użytkownik, który zapomniał hasła, ustawia nowe przez link wysłany na e-mail; zalogowany może zmienić hasło (D-15, D-18). `[DOCUMENT]` `research/decisions/2026-10-24-accounts-and-data.md`
 - Użytkownik usuwa konto; jego partie zostają w historii przeciwników jako „Usunięty gracz” (BR-17, D-16). `[DOCUMENT]` tamże
+- Zalogowany użytkownik albo gość tworzy partię prywatną, przekazuje kod lub link własnemu agentowi LLM, który dołącza przez MCP jako „Agent” i gra do końca pod tym samym zegarem (D-28, BR-30). `[DOCUMENT]` `research/decisions/2026-10-31-agent-opponent.md`
 
 ## Produkt i wyróżnik
 
@@ -84,7 +94,7 @@ e-maila) da się sprawdzić dopiero pomiarem po udostępnieniu gry.
 | papergames.io | gra ze znajomym przez link, losowy przeciwnik, bot, gra jako gość `[BENCHMARK]` | zegar, historia: brak danych; recenzja o utracie czasu przy zerwaniu połączenia | 2026-10-20 | `research/2026-10-20-benchmark-papergames.md` |
 | Gomoku – Online Boardgame (DonkeyCat) | gra online bez logowania, trzech przeciwników komputerowych `[BENCHMARK]` | zaproszenie, zegar, historia: brak danych | 2026-10-20 | `research/2026-10-20-benchmark-donkeycat-gomoku.md` |
 
-Wpływ botów na odbiór gry: brak danych w żadnym z serwisów. „Przeciwnik AI” pozostaje non-goal (N-06).
+Wpływ botów na odbiór gry: brak danych w żadnym z serwisów. Przeciwnik AI hostowany przez nas pozostaje non-goal (N-10, wcześniej N-06); agent, którego uruchamia sam gracz, jest w zakresie (D-28).
 
 ## Zakres MVP
 
@@ -105,12 +115,14 @@ Wpływ botów na odbiór gry: brak danych w żadnym z serwisów. „Przeciwnik A
 - zegar 10 minut dla każdego gracza, działający jak zegar szachowy;
 - zapisywanie historii partii;
 - obsługa ponownego połączenia bez zatrzymywania zegara;
-- zakończenie partii po wygranej, remisie albo wyczerpaniu czasu.
+- zakończenie partii po wygranej, remisie albo wyczerpaniu czasu;
+- gra człowieka z własnym agentem LLM przez serwer MCP (D-28, BR-30): człowiek tworzy partię prywatną, agent dołącza kodem lub linkiem, narzędzia co najmniej `join(kod)`, `get_state()` (stan planszy, oba zegary, wynik) i `play_move(x,y)`; licznik zakończonych partii wg pary typów uczestników (konto, gość, agent).
 
 ### Później
 
 - zmiana adresu e-mail i nazwy gracza (D-18);
-- strona z informacją o przetwarzaniu danych — przed udostępnieniem gry osobom z zewnątrz (S3), nie dla znajomych (D-22).
+- strona z informacją o przetwarzaniu danych — przed udostępnieniem gry osobom z zewnątrz (S3), nie dla znajomych (D-22);
+- interfejs CLI dla agenta, agent w lobby, przeciwnik hostowany przez nas (N-10; osobna decyzja po zobaczeniu licznika z D-28).
 
 ### Poza zakresem MVP
 
@@ -119,10 +131,11 @@ Wpływ botów na odbiór gry: brak danych w żadnym z serwisów. „Przeciwnik A
 - N-03 trwała lista znajomych jako osobna funkcja (zaproszenie jest jednorazowe/ad-hoc);
 - N-04 czat;
 - N-05 obserwowanie partii przez osoby trzecie;
-- N-06 przeciwnik AI;
+- N-06 ~~przeciwnik AI~~ — **nadpisane przez N-10**;
 - N-07 turnieje;
 - N-08 warianty gry inne niż swobodne gomoku 15×15 (w tym Renju);
-- N-09 natywne aplikacje mobilne.
+- N-09 natywne aplikacje mobilne;
+- N-10 przeciwnik AI hostowany przez nas (bot lub silnik po naszej stronie, koszt modelu po naszej stronie); agent LLM uruchamiany przez samego gracza i dołączający przez MCP nie podlega temu non-goalowi (D-28). Nadpisuje N-06; 2026-10-31, właściciel: Bartosz Wójcik, `research/decisions/2026-10-31-agent-opponent.md`.
 
 Właściciel wszystkich: Bartosz Wójcik; zmiana wymaga nowego wpisu zatwierdzonego przez właściciela. `[DOCUMENT]` `research/decisions/2026-10-13-reconciliation.md` (id N-xx nadane 2026-10-24 bez zmiany treści)
 
@@ -159,6 +172,7 @@ Właściciel wszystkich: Bartosz Wójcik; zmiana wymaga nowego wpisu zatwierdzon
 | BR-27 | Reset hasła odbywa się przez jednorazowy link (ważny 1 h) wysłany wyłącznie na **potwierdzony** e-mail konta; dla niepotwierdzonego nic nie jest wysyłane, a odpowiedź dla klienta jest ta sama. Ustawienie nowego hasła unieważnia wszystkie sesje konta. Wraca BR-19; nadpisuje BR-25. | Decyzja właściciela 2026-10-26 `[DOCUMENT]` tamże |
 | BR-28 | Hasło ma co najmniej 8 znaków i najwyżej 72 bajty UTF-8 (nadmiar odrzucany, nie skracany); bez listy popularnych haseł i kontroli wycieków. Nadpisuje G3 ze specyfikacji rejestracji. Konta niepotwierdzone i bez żadnej partii są kasowane po 14 dniach od założenia (zastępuje Q14); konta z partią zostają. | Decyzja właściciela 2026-10-26 `[DOCUMENT]` tamże |
 | BR-29 | Gość (bez konta) może **tworzyć** zaproszenie (kod/link) i **przyjmować** je; przed wejściem do partii podaje nick (1–24 znaki) albo zatwierdza domyślne „Gracz 1” / „Gracz 2” (numer miejsca; kolory losowane osobno). Przeciwnik widzi go jako „{nick} (gość)”. Nadal tylko przez zaproszenie (jeden link = jedna partia, BR-11): bez lobby, historii i konta; dwie osoby bez kont mogą grać ze sobą. Rozpoznaje go token jednej przeglądarki w ciasteczku: ważny przy oczekującej partii do wygaśnięcia zaproszenia (24 h), potem do końca partii + 1 h; jedna partia oczekująca/aktywna na przeglądarkę (BR-13); zmiana przeglądarki oznacza utratę dostępu (ostrzeżenie przed utworzeniem i przed dołączeniem). Założenie konta po partii nie przejmuje tej partii. Nadpisuje BR-22. | Decyzja właściciela 2026-10-30 (Q1–Q8 specyfikacji nicku i gościa-twórcy) `[DOCUMENT]` `2026-10-30-guest-creates-game.md` |
+| BR-30 | Agent (klient MCP uruchamiany przez gracza) jest osobnym typem uczestnika z własnym tokenem: dołącza wyłącznie do partii prywatnej utworzonej przez człowieka (konto albo gość, BR-29) kodem lub linkiem, nie tworzy zaproszeń, nie wchodzi do lobby, nie ma historii ani konta. Przeciwnik widzi go z etykietą „Agent” (wyjątek od zasady nazwy z BR-29). Gra pod tym samym zegarem 10 minut bez wyjątku (BR-04, D-05, BR-07); `get_state()` zwraca oba zegary i wynik. „Agent” w statystyce oznacza „dołączył przez interfejs MCP”, a nie dowód, że to LLM. Tożsamość i token klienta oraz limity nadużyć: Q-09. | Decyzja właściciela 2026-10-31 `[DOCUMENT]` `research/decisions/2026-10-31-agent-opponent.md` |
 
 Właściciel wszystkich reguł: Bartosz Wójcik. Zmiana reguły: nowy wiersz nadpisujący, zatwierdzony przez właściciela. Termin przeglądu: nieustalony (unknown).
 
@@ -231,6 +245,7 @@ Właściciel wszystkich reguł: Bartosz Wójcik. Zmiana reguły: nowy wiersz nad
 | D-25 | Hasło minimum 8 znaków (BR-28). Słabsze hasła to ryzyko przyjęte przez właściciela (limity prób H1 zostają). Nadpisuje G3. | Bartosz Wójcik | Potwierdzona 2026-10-26 `[DOCUMENT]` |
 | D-26 | Reset tylko po potwierdzeniu e-maila (BR-27); niepotwierdzone konta bez partii kasowane po 14 dniach (BR-28). Przyjęte ryzyko: osoba, która zajmie cudzy adres i zagra jedną partię, utrzymuje go bezterminowo; ścieżka „To nie ja” może być późniejszą historią. Nadpisuje BR-25 i Q14. | Bartosz Wójcik | Potwierdzona 2026-10-26 `[DOCUMENT]` |
 | D-27 | Gra bez konta: gość może tworzyć i przyjmować zaproszenia kodem/linkiem i podaje nick (BR-29); zaproszenia nadal są jedyną drogą dla gościa (bez lobby). Nadpisuje wyjątek w D-23 i BR-22. Nick osobną specyfikacją (E02-S07), gość-twórca osobną (E02-S08). | Bartosz Wójcik | Potwierdzona 2026-10-30 `[DOCUMENT]` `2026-10-30-guest-creates-game.md` |
+| D-28 | Gra z własnym agentem LLM: człowiek (konto albo gość) tworzy partię prywatną, agent dołącza przez serwer MCP jako osobny typ uczestnika „Agent” (BR-30), pod tym samym zegarem; MCP jedynym interfejsem na start. Powód właściciela: „chcę zobaczyć, jak agent gra”; wariant nie adresuje nauki gry przez początkujących (A-05), a prywatna partia nie zwiększa puli partii; właściciel wybrał go mimo to. Rozważone: przeciwnik hostowany przez nas (odłożony, N-10), CLI (odłożone), agent w lobby (odrzucone). Licznik zakończonych partii wg pary typów uczestników (konto, gość, agent) mierzy użycie; próg „ma sens” nieustalony (Q-06). Osąd właściciela, nie wynik badania. Nadpisuje N-06. | Bartosz Wójcik | Potwierdzona 2026-10-31 `[DOCUMENT]` `research/decisions/2026-10-31-agent-opponent.md` |
 
 Termin przeglądu decyzji: nieustalony (unknown). Zmiana decyzji: nowy wiersz nadpisujący, zatwierdzony przez właściciela.
 
@@ -241,6 +256,9 @@ Termin przeglądu decyzji: nieustalony (unknown). Zmiana decyzji: nowy wiersz na
 | A-01 | Gracze spoza grona właściciela zechcą grać w Gomoku 1:1 online i zostawić feedback. `[ASSUMPTION]` właściciel, brak materiału | wysoka | brak; benchmark pokazuje istniejące serwisy, nie popyt na nasz | zakres „realnego produktu” (D-11) i koszty poczty (D-15, D-19) nie mają uzasadnienia poza nauką | rozmowy z graczami (pytania 1–7 z mapy ścieżki); po udostępnieniu (wymaga Q-05, Q-07) obserwacja, czy gracz spoza grona właściciela, niezaproszony przez niego, rozgrywa partię — propozycja agenta, bez progu liczbowego | Bartosz Wójcik | unknown | untested |
 | A-02 | Gracz rezygnuje, jeśli szukanie partnera nie jest szybkie; 5 minut w lobby mu odpowiada. `[ASSUMPTION]` właściciel, `research/2026-10-20-journey-current-state.md` | średnia | brak; przypuszczenie właściciela | inny czas wygaśnięcia BR-12 lub inny sposób informowania o oczekiwaniu | pytanie 5 z mapy ścieżki w rozmowach z graczami | Bartosz Wójcik | unknown | accepted untested (D-09) |
 | A-03 | Wymóg potwierdzenia e-maila przed pierwszą grą (dla kont; zaproszeni mogą grać jako goście, BR-22) nie zniechęci nowych graczy. `[ASSUMPTION]` agent, wynikało z D-17 (nadpisane przez D-24 w 2026-10-26: potwierdzenie przestało blokować grę; założenie dotyczy już tylko niewymuszonego kroku; osąd właściciela, nie badanie) | średnia | brak danych o naszych graczach; wszystkie trzy sprawdzone serwisy pozwalają grać bez logowania lub jako gość (wiersze benchmarku w „Produkt i wyróżnik”) — to zachowanie konkurencji, nie dowód preferencji graczy | odejście nowych graczy z kontem przed pierwszą partią w lobby lub przed pierwszym zaproszeniem; rozważyć weryfikację dopiero przed resetem | po udostępnieniu: ile kont potwierdza e-mail i rozgrywa pierwszą partię (wymaga pomiaru) | Bartosz Wójcik | unknown | accepted untested (D-17) |
+| A-04 | Osoby techniczne, które mają własnego agenta LLM, zechcą zagrać z nim partię na tej platformie. `[ASSUMPTION]` właściciel, brak materiału (właściciel nie opisał własnego doświadczenia z agentem w grze) | wysoka | brak | funkcja nie jest używana; zostaje demo dla właściciela, a decyzja o przeciwniku hostowanym (N-10) lub zamknięciu funkcji wraca do właściciela | po udostępnieniu osobom z zewnątrz (S3): czy ktoś spoza grona właściciela, niezaproszony przez niego, rozegrał partię przez MCP (licznik); bez progu liczbowego | Bartosz Wójcik | unknown | untested |
+| A-05 | Gra z agentem pomaga osobie, która nie zna gomoku, szybko poznać grę. `[ASSUMPTION]` właściciel (uzasadnienie podane w rozmowie, ale wariant D-28 go nie adresuje); agent zauważył, że osoba bez znajomości gry zwykle nie ma własnego agenta z MCP | niska | brak | uzasadnienie „nauka gry” odpada; pomoc początkującym wymagałaby przeciwnika hostowanego (N-10) | po S3: krótka rozmowa z kilkoma osobami spoza grona właściciela, które zagrały z agentem, o tym, czy to pomogło; licznik tego nie rozstrzygnie | Bartosz Wójcik | unknown | untested |
+| A-06 | Czas odpowiedzi modelu mieści się w zegarze 10 minut na gracza (BR-04, D-05), a agent odpytujący `get_state()` bez powiadomień nie traci partii na czasie. `[ASSUMPTION]` agent, koszt tokenów po stronie gracza również założenie agenta (zależy od sposobu uruchamiania agenta) | średnia | brak; Q-01 (mechanizm czasu rzeczywistego) rozstrzygnięty tylko dla przeglądarki | agent regularnie przegrywa na czasie i funkcja nie nadaje się do gry; potrzebna inna reguła czasu (wymaga decyzji właściciela zmieniającej BR-04/D-05) | pierwsze partie właściciela z agentem: ile ruchów wykonał w limicie, kto przegrał na czasie | Bartosz Wójcik | unknown | untested |
 
 ## Kill criteria
 
@@ -260,9 +278,10 @@ Brak hipotez syntetycznych (nie było paneli `om-synthetic-users`).
 | Q-03 | Czy wznowienie partii po rozłączeniu działa w wybranym mechanizmie. | nie — wynika z Q-01 | zespół techniczny | open |
 | Q-04 | Potwierdzenie, że partia zapisuje sposób powstania (`invite`/`lobby`). | — | właściciel | closed 2026-10-24 → D-21 |
 | Q-05 | Kiedy i w jakiej formie informacja o przetwarzaniu danych. | — | właściciel | closed 2026-10-24 → D-22 (treść do przygotowania przed udostępnieniem S3) |
-| Q-06 | Jaki wynik po udostępnieniu grze skłoni do zmiany ambicji (kill criteria). | nie | właściciel | odpowiedź częściowa 2026-10-24 (patrz Kill criteria); próg wyniku nieustalony |
+| Q-06 | Jaki wynik po udostępnieniu grze skłoni do zmiany ambicji (kill criteria), w tym jaki wynik licznika partii wg pary typów uczestników (konto, gość, agent, D-28) uzna właściciel za „ma sens”. | nie | właściciel | odpowiedź częściowa 2026-10-24 (patrz Kill criteria); próg wyniku nieustalony; licznik dodany 2026-10-31 |
 | Q-07 | Kanał promocji i jego regulamin. | nie — dopiero przy udostępnieniu S3 | właściciel | open („nie wiem”, 2026-10-24) |
 | Q-08 | Czy gra w przeglądarce telefonu jest w MVP. | — | właściciel | closed 2026-10-24 → BR-20 |
+| Q-09 | Tożsamość klienta MCP, wydawanie i ważność jego tokenu oraz limity nadużyć dla klienta automatycznego (BR-29 identyfikuje gościa ciasteczkiem przeglądarki, klient MCP go nie ma). | tak — specyfikacja interfejsu MCP (D-28) | właściciel (decyzja), zespół techniczny (wariant) | open |
 
 Zamknięte w tym odświeżeniu: czas wygaśnięcia lobby (CP-1 → D-09), minimalne dane konta i retencja (CP-2 → D-13, BR-17, BR-18).
 
@@ -281,6 +300,7 @@ Wartość produktu i jej atrakcyjność względem istniejących serwisów są ni
 3. Zespół techniczny: sprawdzić w prototypie synchronizację zegara, lobby w czasie rzeczywistym, odświeżenie strony i ponowne połączenie (Q-01, spike #30).
 4. Właściciel produktu: analiza różnicowania względem istniejących serwisów — benchmark z 2026-10-20 opisuje trzy serwisy, różnicowanie nieustalone.
 5. Właściciel produktu: rozmowy z graczami (znajomi S2 i, gdy będą, gracze zewnętrzni S3) według 7 pytań z `research/2026-10-20-journey-current-state.md` — sprawdza A-01 i A-02.
+6. Właściciel produktu: po S3 odczyt licznika zakończonych partii wg pary typów uczestników (konto, gość, agent) i krótka rozmowa z osobami, które zagrały z agentem — sprawdza A-04 i A-05 (Q-06); wymaga kanału (Q-07).
 
 ## Następna niepewność
 
@@ -289,3 +309,6 @@ spike #30). Przed implementacją potwierdzenia e-maila i resetu hasła trzeba wy
 (Q-02). Rejestracji (#19) i logowania (#20) nic nie blokuje; zakres #19 wymaga aktualizacji o
 stan „niepotwierdzony e-mail” (BR-23), a backlog — nowych historyjek dla potwierdzenia e-maila,
 resetu i zmiany hasła oraz usunięcia konta.
+
+Dla gry z własnym agentem (D-28) blokuje specyfikację interfejsu MCP pytanie Q-09 (tożsamość klienta, token,
+limity nadużyć); wiedzę o popycie da dopiero licznik partii po S3 (A-04, A-05, Q-06).
