@@ -106,7 +106,7 @@ Prototyp (stories, obejrzeć w Storybooku — `npm run storybook -w @gomoku/ui`)
 | Nowa partia zakończona w trakcie przeglądania | Pojawi się po odświeżeniu; kursor starszych stron pozostaje poprawny. |
 | Niepoprawny/zmanipulowany kursor | `400`; nie trafia do SQL (dekoder waliduje `finished_at` jako ISO i `id` jako uuid; tekst i tak jest wiązany parametrem `?`). |
 | Sesja wygasła przy „Pokaż starsze” | `401` → UI kieruje do `/login?next=%2Fhistory`. |
-| Baza niedostępna | `500` → `ErrorState` z ponowieniem; nic nie zapisano. |
+| Baza niedostępna | `500` → `ErrorState` z ponowieniem; odczyt nic nie zapisuje poza ewentualnym rozliczeniem przegranej na czas (Q8), które jest idempotentne i ma własną transakcję. |
 | Sprzątanie usuwa partię między stronami | Wiersz mógł zniknąć między stronami — kursor porównuje wartości, nie pozycję, więc brak błędu (lekcja o `failHandler` nie dotyczy: brak `findOneOrFail`). |
 | Rozjazd stref | `finishedAt` w UTC, formatowany w stałej `Europe/Warsaw` na serwerze i w przeglądarce; test dla CET i CEST oraz dla północy. |
 | Wyciek e-maila | SQL nie czyta `users.email`; test sprawdza, że serializowana odpowiedź nie zawiera `@` ani pól `email`/`userId`. |
@@ -116,7 +116,7 @@ Prototyp (stories, obejrzeć w Storybooku — `npm run storybook -w @gomoku/ui`)
 `risk-medium` (jak etykieta zgłoszenia): odczyt, bez migracji, ale wiersz widoczny dla użytkownika pokazuje dane innych osób.
 
 - **Prywatność przeciwnika:** nazwa konta jest publiczna (brief: „nazwa gracza (publiczna)”), e-mail nie. Ryzyko pojawi się, jeśli ktoś doda pola do zapytania — stąd test na brak `email`/`user_id` w odpowiedzi.
-- **Data rozliczenia na czas:** przy leniwym rozliczeniu `finished_at` to moment wykrycia, nie upływu zegara (`timeout-settler.ts`: `finished_at = now`). Użytkownik, który wraca po godzinach, zobaczy późniejszą datę niż faktyczny koniec. Nie zmieniamy rozliczania (to zmiana zachowania wdrożonego zegara); ograniczenie opisane, propozycja w pytaniach.
+- **Data rozliczenia na czas:** przy leniwym rozliczeniu `finished_at` to moment wykrycia, nie upływu zegara (`timeout-settler.ts`: `finished_at = now`). Użytkownik, który wraca po godzinach, zobaczy późniejszą datę niż faktyczny koniec. Nie zmieniamy rozliczania (to zmiana zachowania wdrożonego zegara); ograniczenie opisane, propozycja: zapisywać moment upływu zegara jako `finished_at` (osobna zmiana zegara, Pytanie 3).
 - **Wydajność:** zapytanie opiera się o `game_players_user_id_index`; dla konta z tysiącami partii sortuje się je w pamięci. Weryfikacja `EXPLAIN` (Q3) i test czasu na ~10 000 partii jednego konta; w razie potrzeby indeks `(game_id)` na `game_players` istnieje przez unikalność `game_id, seat`, a częściowy `games(finished_at, id) where status='finished'` byłby osobną migracją.
 - **Partie osierocone:** gdy usunięte są oba konta, wiersz `games` zostaje bez właściciela (BR-18 nie przewiduje sprzątania; reguły `guestOnly*` dotyczą wyłącznie partii gości). Nie wpływa na historię; to pytanie o retencję danych (CP-2), poza zakresem.
 - **Zależność od przyszłego typu `agent`:** zmiana `PARTICIPANT_KINDS` łamie kompilację mapowania — zamierzone; przy wdrożeniu D-28 należy sprawdzić też `CHECK` `game_players_kind_check` (migracja po stronie tamtej specyfikacji).
@@ -129,20 +129,20 @@ BR-24 (historia kont uczestników, gość bez historii, „{nick} (gość)”), 
 
 ## 📋 Phasing
 
-Jedna faza, jeden PR implementacyjny (kod + testy + dokumentacja; `Refs #27`, zamknięcie przez właściciela po akceptacji): „Strona historii z paginacją”. Spec zatwierdzany osobno (ten PR).
+Jedna faza, jeden PR implementacyjny (zgodnie z regułą „mało, ale pełnych PR-ów”; refaktor helpera daty i poprawki prototypu są małe i dotyczą tej samej funkcji) (kod + testy + dokumentacja; `Refs #27`, zamknięcie przez właściciela po akceptacji): „Strona historii z paginacją”. Spec zatwierdzany osobno (ten PR).
 
 ## 📋 Implementation Plan
 
 1. **`core`:** `games/history.ts` (stałe, `historyResultOf`, kursor, typy `HistoryEntry`/`OpponentKind`, etykieta powodu przez wyczerpujący `switch`); testy 100% (win/loss/draw, oba miejsca, kursor poprawny/uszkodzony/z niepoprawnym uuid/datą).
 2. **`GameHistoryService`** + rejestracja w `container.ts`: `settleFor` → SQL → mapowanie (konto, usunięte konto, gość z nickiem/bez, `agent`); testy na fałszywym `em` (gałęzie: pusto, dokładnie 20, 21 → `nextCursor`, kursor przekazany do SQL); testy `container.test.ts`.
-3. **Zapytanie na prawdziwym PostgreSQL** (lekcje `?`/daty jako tekst): test integracyjny w `tests/integration/game-history-api.test.ts`: dwa konta, partie `five_in_row`/`timeout`/`resignation`/`draw`, rewanż, gość (z nickiem i bez), usunięte konto przeciwnika, `active`/`waiting`/`cancelled` (nie ma), partia cudza (nie ma), partia z identycznym `finished_at` na granicy strony, ~10 000 partii + `EXPLAIN` (używa `game_players_user_id_index`), brak `email`/`userId` w JSON, przegrana na czas rozliczona przez odczyt.
+3. **Zapytanie na prawdziwym PostgreSQL** (lekcje `?`/daty jako tekst): test integracyjny w `tests/integration/game-history-api.test.ts`: dwa konta, partie `five_in_row`/`timeout`/`resignation`/`draw`, rewanż, gość (z nickiem i bez), usunięte konto przeciwnika, `active`/`waiting`/`cancelled` (nie ma), partia cudza (nie ma), partia z identycznym `finished_at` na granicy strony, ~10 000 partii jednego konta + `EXPLAIN` (kryterium: plan zawiera `game_players_user_id_index`, a zapytanie trwa < 200 ms; przy skanie sekwencyjnym krok kończy się dodaniem migracji z indeksem częściowym i powtórzeniem testu), brak `email`/`userId` w JSON, przegrana na czas rozliczona przez odczyt.
 4. **Route handler** `GET /api/history` przez `apiHandler` (`401` gość i brak sesji, `400` kursor, `200`, `no-store`); testy jednostkowe.
 5. **Helper daty:** wydzielić `formatValidUntil`-owy formatter do `lib/format-date-time.ts` (`formatFinishedAt`), `game-room.tsx` importuje go bez zmiany zachowania; testy (CET, CEST, północ).
 6. **Strona `/history`** + `loading.tsx` + komponent kliencki „Pokaż starsze” (`@testing-library/react`, `userEvent.setup({ delay: null })`; podwójne kliknięcie nie wysyła dwóch żądań — `useRef`); stany: pusto, błąd, błąd kolejnej strony, 401, 21+ wierszy; przekierowanie gościa.
 7. **Punkt wejścia:** przycisk „Historia” na stronie głównej (test `page.test.tsx`: zalogowany tak, gość i wizytor nie).
-8. **DS i dokumentacja:** poprawić stories/`historia.mdx` (etykieta gościa, wiersz z długim nickiem, „Pokaż starsze”), wpis do „Czego brakuje”, `npm run test:stories -w @gomoku/ui`, `npm run check:tokens -w @gomoku/ui`; przenieść spec do `implemented/`, odhaczyć `track.md`/`track-e04.md` jeśli powstanie.
+8. **DS i dokumentacja:** poprawić stories/`historia.mdx` (etykieta gościa, wiersz z długim nickiem, „Pokaż starsze”), wpis do „Czego brakuje”, `npm run test:stories -w @gomoku/ui`, `npm run check:tokens -w @gomoku/ui`; przenieść spec do `implemented/`, dopisać `track-e04.md` (Faza historii) z odhaczonymi krokami.
 9. **Scenariusz przeglądarkowy** (`game-history-pages.test.ts`, `agent-browser`): rozegrana partia → `/history` pokazuje przeciwnika, wynik, datę, powód; gość-przeciwnik „(gość)”; paginacja „Pokaż starsze”; wizytor przekierowany do logowania; zrzuty w obu motywach przy 320/1280 px.
-10. **Weryfikacja:** `npm run check` (z Dockerem), `npm run build` przed `test:integration`, ręcznie `npm run dev` (restart po zmianie serwisu, lekcja 2026-10-28).
+10. **Weryfikacja:** `npm run check` (z Dockerem), `npm run build` przed `test:integration`, ręcznie `npm run dev` (restart po zmianie serwisu, lekcja 2026-10-28): lista, pusto, „Pokaż starsze”, gość jako przeciwnik, 320 px.
 
 ## 📝 Acceptance criteria (mapowanie)
 
@@ -151,6 +151,7 @@ Jedna faza, jeden PR implementacyjny (kod + testy + dokumentacja; `Refs #27`, za
 - [ ] Trwająca (i oczekująca, anulowana) partia nie jest na liście.
 - [ ] Przeciwnik z usuniętym kontem → „Usunięty gracz” (BR-17).
 - [ ] Przeciwnik-gość → „{nick} (gość)” (BR-24/BR-29); gość nie ma historii ani linku do niej.
+- [ ] Gość z 24-znakowym nickiem: nick obcięty lub złamany, „(gość)” widoczne przy 320 px bez poziomego przewijania.
 - [ ] Paginacja kluczem bez duplikatów i luk; plan zapytania używa `game_players_user_id_index`.
 - [ ] Brak e-maila i identyfikatora konta przeciwnika w odpowiedzi.
 - [ ] 100% pokrycia per plik, `npm run check` zielone, zrzuty w obu motywach przy 320 px.
@@ -159,5 +160,5 @@ Jedna faza, jeden PR implementacyjny (kod + testy + dokumentacja; `Refs #27`, za
 
 1. Q5: potwierdzić, że etykieta gościa to „{nick} (gość)” (BR-24, BR-29), a nie „Zaproszony przez link” z treści #27 — i zaktualizować kryterium w zgłoszeniu.
 2. Q6: czy wiersz historii ma w przyszłości prowadzić do podglądu zakończonej partii (dziś poza zakresem)?
-3. Czy data partii przegranej na czas ma być momentem upływu zegara (wymaga zmiany `finished_at` w rozliczaniu), czy wystarczy moment rozliczenia (założenie Q8)?
+3. Czy data partii przegranej na czas ma być momentem upływu zegara (rekomendacja: tak, jako osobna zmiana rozliczania w zegarze) czy wystarczy moment rozliczenia (założenie Q8)?
 4. Czy partie z `origin = 'rematch'` mają być oznaczone w historii (Q7)?
