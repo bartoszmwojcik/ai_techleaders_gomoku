@@ -11,6 +11,7 @@ export const SCREENS = [
   { id: "s05", title: "Konto" },
   { id: "s06", title: "Skrzynka demo" },
   { id: "s07", title: "Zaproszenie" },
+  { id: "s08", title: "Partia: widok przeciwnika" },
 ] as const;
 
 /** The review bar: screen picker, theme and the "Prototyp" mark. The engine adds its own buttons to it. */

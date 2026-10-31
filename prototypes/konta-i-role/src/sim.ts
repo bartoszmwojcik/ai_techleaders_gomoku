@@ -23,6 +23,8 @@ export type Account = {
   activeGame: boolean;
   /** The account has been in at least one game: unconfirmed accounts with a game are never deleted (BR-28). */
   hasGames: boolean;
+  /** The account owns a game that waits for an opponent (status `waiting`); account deletion removes it (spec #37, Q6). */
+  waitingGame?: boolean;
 };
 
 export type Token = { id: number; email: string; issuedAt: number; usedAt: number | null; invalidated: boolean };
@@ -48,6 +50,16 @@ export type Scenario = {
   dbDown: boolean;
   /** Home and account show a skeleton instead of content (s04.12, s05.9). */
   loadingPages: boolean;
+  /** The account deletion form answers 429 on the next send (s05.17). */
+  deleteLimit: boolean;
+  /** The account deletion answers 500 on the next send, with a correct password (s05.18). */
+  deleteServerError: boolean;
+  /** The session expired while the player was on /account: the next send answers 401 (s05.19). */
+  deleteSessionExpired: boolean;
+  /** s08 shows a notice about the unavailable rematch (assumption, see README O2). */
+  rematchNotice: boolean;
+  /** s08 is viewed by a guest (BR-29) instead of an account. */
+  opponentIsGuest: boolean;
 };
 
 export type BannerState = "idle" | "sending" | "sent" | "limited" | "failed";
@@ -81,6 +93,14 @@ export type Sim = {
   epoch: number;
   /** A one-off message for the home page, e.g. after a logout the server did not confirm. */
   notice: string | null;
+  /** `/?notice=account-deleted`: the home page says the account is gone (s04.14). */
+  deletedNotice: boolean;
+  /** What /account shows about the games of the player: a snapshot read when the page opens, so it can be stale (s05.12, s05.20). */
+  accountView: { active: boolean; waiting: boolean };
+  /** Failed password attempts in the 15-minute window of the account deletion (limit 10, spec #37 Q2); the window starts at the first failure. */
+  deleteFails: { email: string; count: number; since: number };
+  /** The opponent's account (the one in the finished game on s08) was deleted. */
+  opponentDeleted: boolean;
   /** Width of the preview frame in px, 0 = full. */
   width: number;
 };
@@ -89,6 +109,7 @@ const seedAccounts = (): Record<string, Account> => ({
   "ala@example.com": { email: "ala@example.com", name: "Ala_7", password: DEMO_PASSWORD, verified: true, createdAt: -14 * DAY, activeGame: false, hasGames: true },
   "marek@example.com": { email: "marek@example.com", name: "Marek_Z", password: DEMO_PASSWORD, verified: true, createdAt: -30 * DAY, activeGame: true, hasGames: true },
   "ewa@example.com": { email: "ewa@example.com", name: "Ewa_B", password: DEMO_PASSWORD, verified: false, createdAt: -6 * DAY, activeGame: false, hasGames: false },
+  "ola@example.com": { email: "ola@example.com", name: "Ola_W", password: DEMO_PASSWORD, verified: true, createdAt: -3 * DAY, activeGame: false, hasGames: true, waitingGame: true },
 });
 
 export const defaultScenario = (): Scenario => ({
@@ -102,6 +123,11 @@ export const defaultScenario = (): Scenario => ({
   alreadyAuthenticated: false,
   dbDown: false,
   loadingPages: false,
+  deleteLimit: false,
+  deleteServerError: false,
+  deleteSessionExpired: false,
+  rematchNotice: false,
+  opponentIsGuest: false,
 });
 
 const fresh = (): Sim => ({
@@ -123,6 +149,10 @@ const fresh = (): Sim => ({
   seq: 1,
   epoch: 0,
   notice: null,
+  deletedNotice: false,
+  accountView: { active: false, waiting: false },
+  deleteFails: { email: "", count: 0, since: 0 },
+  opponentDeleted: false,
   width: 0,
 });
 
@@ -201,7 +231,7 @@ export type RegisterResult =
   | { kind: "already" };
 
 /** Safe return path (G8): relative, starts with a single slash, no scheme. In the prototype only screen ids count. */
-export const safeNext = (value: string | null | undefined) => (value && /^s0[1-7]$/.test(value) ? value : null);
+export const safeNext = (value: string | null | undefined) => (value && /^s0[1-8]$/.test(value) ? value : null);
 
 function issueMail(email: string, name: string) {
   const sim = state;
@@ -292,10 +322,10 @@ export const expireSession = () => set((s) => (s.session ? { session: { ...s.ses
 export const setClock = (ms: number) => set({ clock: ms });
 export const setWidth = (width: number) => set({ width });
 
-/** Switches the demo account without a form (scenario control): "A0".."A6". */
+/** Switches the demo account without a form (scenario control): "A0".."A8". */
 export function switchAccount(code: string) {
   const sim = state;
-  const email = { A1: "ala@example.com", A3: "marek@example.com", A5: "ewa@example.com", A2: "kuba@example.com", A4: "kuba@example.com" }[code];
+  const email = { A1: "ala@example.com", A3: "marek@example.com", A5: "ewa@example.com", A8: "ola@example.com", A2: "kuba@example.com", A4: "kuba@example.com" }[code];
   if (code === "A0" || code === "A6") {
     set({ session: null, guestGame: code === "A6", banner: { state: "idle", outcome: "none" } });
     return;
@@ -308,6 +338,7 @@ export function switchAccount(code: string) {
     issueMail(email, "Kuba_P");
   }
   set({ session: { email, at: nowMs(state) }, guestGame: code === "A4", banner: { state: "idle", outcome: "none" } });
+  refreshAccountView();
 }
 
 // ---- e-mail confirmation (email-verification) -------------------------------------------------------
@@ -399,3 +430,92 @@ export const clockSteps = { hour: HOUR, day: DAY };
 
 /** The mailbox of the demo: messages sent to the address of the last registered or selected account. */
 export const mailboxFor = (sim: Sim) => [...sim.mails].reverse();
+
+
+// ---- account deletion (spec 2026-10-24-account-deletion.md, E01-S06 #37) ---------------------------------
+
+export const DELETE_LIMIT = 10;
+export const DELETE_WINDOW = 15 * 60_000;
+
+/** The page reads the player's games when it opens or is refreshed; later changes stay invisible until then (s05.20). */
+export function refreshAccountView() {
+  const account = viewer(state);
+  set({ accountView: { active: Boolean(account?.activeGame), waiting: Boolean(account?.waitingGame) } });
+}
+
+/** Another tab resigned the running game (E02-S05): the account page learns it after a refresh (s05.12). */
+export function resignElsewhere() {
+  const account = viewer(state);
+  if (!account) return;
+  set({ accounts: { ...state.accounts, [account.email]: { ...account, activeGame: false } } });
+}
+
+/** The opponent joined the waiting game while the account page was open: the page is stale (s05.20). */
+export function opponentJoinsWaitingGame() {
+  const account = viewer(state);
+  if (!account) return;
+  set({ accounts: { ...state.accounts, [account.email]: { ...account, waitingGame: false, activeGame: true } } });
+}
+
+/** Failed attempts still counted in the window; the window moves with the demo clock. */
+export function deleteFailures(sim: Sim): number {
+  // The counter is per account (spec: `account-delete:user:{id}`), so it does not follow a switch of the demo account.
+  if (sim.deleteFails.email !== viewer(sim)?.email) return 0;
+  return nowMs(sim) - sim.deleteFails.since >= DELETE_WINDOW ? 0 : sim.deleteFails.count;
+}
+
+export type DeleteResult =
+  | { kind: "ok" }
+  | { kind: "wrong-password" }
+  | { kind: "limit"; minutes: number }
+  | { kind: "active-game" }
+  | { kind: "unauthorized" }
+  | { kind: "server" }
+  | { kind: "network" };
+
+/**
+ * POST /api/account/delete. The order follows the spec: session (401), limit (429), password (400), active game (409), delete.
+ * A wrong password is the only outcome that uses up an attempt.
+ */
+export async function deleteAccount(password: string): Promise<DeleteResult> {
+  await wait(LATENCY);
+  const sim = state;
+  if (sim.scenario.forceNetworkError) return { kind: "network" };
+  const account = viewer(sim);
+  if (sim.scenario.deleteSessionExpired || !account) {
+    set({ session: null, scenario: { ...sim.scenario, deleteSessionExpired: false } });
+    return { kind: "unauthorized" };
+  }
+  const fails = deleteFailures(sim);
+  if (sim.scenario.deleteLimit || fails >= DELETE_LIMIT) {
+    const left = Math.max(1, Math.ceil((sim.deleteFails.since + DELETE_WINDOW - nowMs(sim)) / 60_000));
+    return { kind: "limit", minutes: sim.scenario.deleteLimit && fails < DELETE_LIMIT ? 12 : left };
+  }
+  if (password !== account.password) {
+    const count = fails + 1;
+    set({ deleteFails: { email: account.email, count, since: fails === 0 ? nowMs(sim) : sim.deleteFails.since } });
+    return { kind: "wrong-password" };
+  }
+  if (sim.scenario.deleteServerError) return { kind: "server" };
+  if (account.activeGame) {
+    set({ accountView: { active: true, waiting: false } });
+    return { kind: "active-game" };
+  }
+  // One transaction: the waiting game goes with the account (Q6), a pending rematch offer is declined (O2), sessions go by cascade.
+  const { [account.email]: _gone, ...rest } = sim.accounts;
+  set({
+    accounts: rest,
+    session: null,
+    deletedNotice: true,
+    notice: null,
+    opponentDeleted: true,
+    deleteFails: { email: "", count: 0, since: 0 },
+    banner: { state: "idle", outcome: "none" },
+  });
+  return { kind: "ok" };
+}
+
+export const clearDeletedNotice = () => set({ deletedNotice: false });
+
+/** Scenario control: the other player of the finished game on s08 has deleted the account (without deleting one here). */
+export const setOpponentDeleted = (value: boolean) => set({ opponentDeleted: value });

@@ -5,8 +5,9 @@ import { StatusBadge } from "@gomoku/ui/game/status-badge";
 import { TextLink } from "@gomoku/ui/game/text-link";
 
 import { go, Main, SiteHeader, useScreenEnter } from "../chrome";
-import { setNext, useSim, viewer, getSim } from "../sim";
+import { refreshAccountView, setNext, useSim, viewer, getSim } from "../sim";
 import { ConfirmBanner } from "./banner";
+import { DeleteAccountSection } from "./delete-account";
 import { SignOutButton } from "./sign-out-button";
 
 export function S05Account() {
@@ -18,7 +19,10 @@ export function S05Account() {
     if (!viewer(getSim())) {
       setNext("s05");
       go("s02");
+      return;
     }
+    // The page reads the player's games when it opens (s05.12, s05.20).
+    refreshAccountView();
   });
 
   return (
@@ -50,6 +54,7 @@ export function S05Account() {
                 <SignOutButton />
               </div>
             </Panel>
+            <DeleteAccountSection key={sim.epoch} />
           </>
         )}
       </Main>

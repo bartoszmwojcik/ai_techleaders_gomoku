@@ -63,8 +63,9 @@
 .segmented button, .btn { white-space: nowrap; }
 
 /* The engine moves focus to the heading of the screen it shows (so screen readers announce it); the heading is
-   not interactive, so it gets no focus ring (review comments on s01 and s02). */
-.frame [tabindex="-1"]:focus, .frame [tabindex="-1"]:focus-visible { outline: none; }
+   not interactive, so it gets no focus ring (review comments on s01 and s02). Only headings: other containers that take
+   programmatic focus (the s05.12 blocker) keep their `focus-visible:focus-ring` (PR #105 review, s05.20). */
+.frame :is(h1, h2, h3)[tabindex="-1"]:focus, .frame :is(h1, h2, h3)[tabindex="-1"]:focus-visible { outline: none; }
 
 /* Preview width control: narrows the frame of every screen, to try 320 and 360 px (P13). */
 .doc[data-width] .frame { max-width: var(--preview-width); margin-inline: auto; }

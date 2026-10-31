@@ -5,7 +5,7 @@ import { Skeleton, SkeletonRegion } from "@gomoku/ui/game/skeleton";
 
 import { Main, OutsideLink, SiteHeader } from "../chrome";
 import { cellLabel, OPENING } from "../demo";
-import { clearNotice, showOutside, useSim, viewer } from "../sim";
+import { clearDeletedNotice, clearNotice, showOutside, useSim, viewer } from "../sim";
 import { ConfirmBanner } from "./banner";
 import { SignOutButton } from "./sign-out-button";
 
@@ -36,6 +36,14 @@ export function S04Home() {
           <Alert status="warning" title="Wylogowano">
             {sim.notice} <Button variant="secondary" onClick={clearNotice}>Zamknij</Button>
           </Alert>
+        )}
+        {sim.deletedNotice && !account && (
+          // s04.14: `/?notice=account-deleted`, a closable message without a session (spec #37, "Sukces").
+          <div data-testid="account-deleted-notice">
+            <Alert status="info" title="Konto zostało usunięte" role="status">
+              <Button variant="secondary" onClick={clearDeletedNotice}>Zamknij</Button>
+            </Alert>
+          </div>
         )}
         {unverified && <ConfirmBanner />}
         <div className="flex flex-wrap items-center justify-center gap-section">
