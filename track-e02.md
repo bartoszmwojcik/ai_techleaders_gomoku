@@ -144,7 +144,7 @@ Ręczny test po fazie: powrót do trwającej i zakończonej partii z drugiego ur
 - [x] 5.7 Dokumentacja (README), lekcje (komentarz w #38 o dostawcy poczty pominięty na polecenie właściciela — poza zakresem PR rewanżu); odblokowanie Fazy 10 z `track.md` (usunięcie konta, #37) po 5.3–5.4
 
 ### Faza 6 — Gra bez konta: nick (E02-S07) i gość tworzy partię (E02-S08)
-Specyfikacje: `.ai/specs/2026-10-30-participant-nickname.md`, `.ai/specs/2026-10-30-guest-creates-game.md` (decyzje właściciela 2026-10-30; BR-29, D-27). Kolejność: najpierw nick (E02-S07), potem gość-twórca (E02-S08). Ekrany po zatwierdzeniu zaktualizowanego prototypu.
+Specyfikacje: `.ai/specs/implemented/2026-10-30-participant-nickname.md`, `.ai/specs/implemented/2026-10-30-guest-creates-game.md` (decyzje właściciela 2026-10-30; BR-29, D-27). Kolejność: najpierw nick (E02-S07), potem gość-twórca (E02-S08). Ekrany po zatwierdzeniu zaktualizowanego prototypu.
 - [x] 6.1 Aktualizacja mapy ekranów (`lekcja-07/mapa-ekranow-partia.md`): akcja gościa na p01, ekran „nick + ostrzeżenie”, p03 gościa-twórcy, s07 z polem nicku; zatwierdzenie (mapa zatwierdzona przez właściciela 2026-10-30; luki L25–L35 otwarte, do prototypu założenia robocze w sekcji 0d mapy)
   - Status (2026-10-30): mapa zaktualizowana (sekcja 0c, ekran p08, stany p01.8–p01.9, p03.11–p03.13, s07.10–s07.11 proponowane, scenariusze Q13–Q22, konta T9–T10, luki L25–L35, D08–D12), czeka na zatwierdzenie właściciela; nie odhaczone.
 - [x] 6.2 Rewizja klikalnego prototypu (`prototypes/partia-z-zaproszenia`): stany gościa-twórcy i nicku; przegląd właściciela (etap C zbudowany i zatwierdzony przez właściciela 2026-10-30; luki L25–L35 rozstrzygnięte)
