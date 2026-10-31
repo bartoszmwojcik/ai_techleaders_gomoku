@@ -169,7 +169,7 @@ Sekcja „Usuń konto” na `/account` (pod „Zmień hasło”, panel z czerwon
 - **Sprzątanie:** konto niepotwierdzone, bez żadnej partii, starsze niż 14 dni usuwa `npm run db:cleanup` ([Sprzątanie wygasłych rekordów](#sprzątanie-wygasłych-rekordów), reguła BR-28).
 - **Ograniczenia:** brak eksportu danych i panelu administratora do usuwania kont; kopie zapasowe (jeśli powstaną) zawierają usunięte dane. Punkt integracji z rewanżem (E02-S06, #88, osobny PR): UI rewanżu wobec uczestnika `kind = 'account'` z `user_id NULL` ma pokazywać wyłącznie „Rewanż niedostępny”, a serwer odrzucać nową ofertę i akceptację kodem `409` `REMATCH_UNAVAILABLE`; ten PR zamyka tylko oferty `pending` konta.
 
-Testy: `account-service.test.ts`, `route.test.ts`, `delete-account-form.test.tsx` (jednostkowe), `account-delete-db.test.ts` (PostgreSQL), `account-delete-api.test.ts` (HTTP) i `account-delete-pages.test.ts` (przeglądarka). Specyfikacja: [`.ai/specs/2026-10-24-account-deletion.md`](.ai/specs/2026-10-24-account-deletion.md); prototyp: `prototypes/konta-i-role` (stany s05.10–s05.20, s04.14, s08).
+Testy: `account-service.test.ts`, `route.test.ts`, `delete-account-form.test.tsx` (jednostkowe), `account-delete-db.test.ts` (PostgreSQL), `account-delete-api.test.ts` (HTTP) i `account-delete-pages.test.ts` (przeglądarka). Specyfikacja: [`.ai/specs/implemented/2026-10-24-account-deletion.md`](.ai/specs/implemented/2026-10-24-account-deletion.md); prototyp: `prototypes/konta-i-role` (stany s05.10–s05.20, s04.14, s08).
 
 #### Partia z zaproszenia
 

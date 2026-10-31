@@ -105,7 +105,7 @@ Ręczny test po fazie: `npm run db:cleanup` na bazie ze starymi rekordami.
 
 ## Faza 10 — Usunięcie konta (#37)
 
-Odblokowana (tabele partii, `gameParticipation`, poddanie #87). Jeden PR (`Closes #37`), kroki 1–8 ze specyfikacji [`account-deletion`](.ai/specs/2026-10-24-account-deletion.md):
+Odblokowana (tabele partii, `gameParticipation`, poddanie #87). Jeden PR (`Closes #37`), kroki 1–8 ze specyfikacji [`account-deletion`](.ai/specs/implemented/2026-10-24-account-deletion.md):
 
 - [x] 10.1 `accountDeleteSchema` w `core`
 - [x] 10.2 Migracja: indeks `game_players(user_id)` (w górę i w dół sprawdzone na jednorazowym PostgreSQL)

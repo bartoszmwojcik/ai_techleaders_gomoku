@@ -33,7 +33,7 @@ Last filed: 2026-10-24
 
 ## Zmiany z 2026-10-26: uproszczony start konta
 
-Źródło: `.ai/specs/2026-10-26-account-onboarding-simplification.md` (decyzje D-24…D-26, BR-26…BR-28; osąd właściciela, nie wynik badania). Tabela wyżej odpowiada jeszcze tytułom zgłoszeń sprzed zmiany; edycje zgłoszeń to osobna pozycja (Faza 4) i **muszą być zakończone przed rozpoczęciem implementacji #20, #21 i dalszych**.
+Źródło: `.ai/specs/implemented/2026-10-26-account-onboarding-simplification.md` (decyzje D-24…D-26, BR-26…BR-28; osąd właściciela, nie wynik badania). Tabela wyżej odpowiada jeszcze tytułom zgłoszeń sprzed zmiany; edycje zgłoszeń to osobna pozycja (Faza 4) i **muszą być zakończone przed rozpoczęciem implementacji #20, #21 i dalszych**.
 
 | Pozycja | Zmiana | Zgłoszenie |
 |---|---|---|
