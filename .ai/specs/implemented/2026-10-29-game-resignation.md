@@ -1,6 +1,6 @@
 # Poddanie partii
 
-> Status: **zatwierdzona do implementacji** (Q1–Q6 rozstrzygnięte) (`om-spec-writing`, tryb interaktywny, 2026-10-29). Źródło: decyzja właściciela z 2026-10-26 (L12: poddanie wchodzi do MVP), `.ai/specs/product-brief.md` (BR-13, BR-21: „Najpierw dokończ albo poddaj partię”), #22 Q6 (poddanie było poza zakresem — ta specyfikacja je zmienia), #21 (`resolveParticipant`, `is_active`), #23 (zegar, `settleGame`), mapa `lekcja-07/mapa-ekranow-partia.md` (p05.13, p05.14, p06.8, p06.9, L23). Wymaga nowego zgłoszenia w trackerze (E02-S05) — do utworzenia po zatwierdzeniu.
+> Status: **wdrożona (2026-10-31; zgłoszenie #87 domknięte, dowody w sekcji „Odstępstwa wdrożenia i dowody”)**; wcześniej: **zatwierdzona do implementacji** (Q1–Q6 rozstrzygnięte) (`om-spec-writing`, tryb interaktywny, 2026-10-29). Źródło: decyzja właściciela z 2026-10-26 (L12: poddanie wchodzi do MVP), `.ai/specs/product-brief.md` (BR-13, BR-21: „Najpierw dokończ albo poddaj partię”), #22 Q6 (poddanie było poza zakresem — ta specyfikacja je zmienia), #21 (`resolveParticipant`, `is_active`), #23 (zegar, `settleGame`), mapa `lekcja-07/mapa-ekranow-partia.md` (p05.13, p05.14, p06.8, p06.9, L23). Wymaga nowego zgłoszenia w trackerze (E02-S05) — do utworzenia po zatwierdzeniu.
 
 ## 📝 TLDR
 
@@ -77,3 +77,14 @@ Jedna faza, jeden PR (`Closes` nowe zgłoszenie E02-S05) po #22 i #23.
 - Dialog zostaje otwarty przy błędzie sieci/serwera (komunikat w opisie, przycisk „Spróbuj ponownie”); `409 GAME_FINISHED`/`GAME_NOT_ACTIVE` zamyka go, odświeża stan i pokazuje wynik; `404` oddaje partię pokojowi (`onGone`). Esc i „Wróć do gry” nie działają w trakcie wysyłania.
 - Link do partii w komunikacie blokady usunięcia konta (krok 6) idzie z #37.
 
+## 📝 Odstępstwa wdrożenia i dowody (2026-10-31)
+
+Odstępstwa od pierwotnej treści opisują adnotacje na końcu specyfikacji (2026-10-30: gość i partia `waiting` przy E02-S08; zadanie 5.3: brak migracji, nazwa `resolveResignation`, ponowne poddanie zwraca `200` poddającemu i `409 GAME_FINISHED` zwycięzcy; zadanie 5.4: etykiety wyniku, zachowanie dialogu przy błędach) oraz status „zatwierdzona do implementacji” zastąpiony wdrożeniem. Link do partii w komunikacie blokady usunięcia konta idzie z #37 (w toku; poza zakresem #87). Dowody kryteriów zgłoszenia #87:
+
+| Kryterium #87 | Dowód |
+| --- | --- |
+| Given partia `active`, uczestnik potwierdza w dialogu → wygrana przeciwnika, `end_reason = resignation`, obaj zwolnieni z BR-13 | `tests/integration/game-resign-api.test.ts` — „ends the game for the opponent, shows the result to both, frees both slots (BR-13)”, „works before the first move, with the clock not yet started, and for the creator”, „lets a guest resign with the token, and the account win”, „lets an account resign against a guest”; strona: `game-resignation-pages.test.ts` — „asks first (focus on the way out, Esc), resigns out of turn, shows the result with its reason to both and frees the player”, „lets a guest resign, and shows the account the result”, „keeps the dialog on a network error and sends again…”; jednostkowo: `packages/core/src/games/resign.test.ts`, `packages/app/src/app/api/games/[id]/resign/route.test.ts` |
+| Given partia zakończona (piątka, remis, czas, poddanie), próba poddania → idempotentnie/odrzucone, stan bez zmian | `game-resign-api.test.ts` — „is idempotent for the player who resigned and a conflict for the winner”, „answers 403, 404 and 409 with the documented codes and changes nothing”, „refuses a waiting and a cancelled game”, „cannot resign it: 409 GAME_NOT_ACTIVE, and the game stays waiting (it is cancelled instead)”; strona: „shows the result when the game ended in the meantime (409 GAME_FINISHED)” |
+| Given równoległy ruch lub upływ czasu, poddanie → dokładnie jedno zdarzenie kończy partię (bez 500) | `game-resign-api.test.ts` — „lets exactly one of a resignation and a five-completing move end the game”, „lets the loss on time win over a late resignation”, „never answers 500 when both players resign at once; the first writer decides”, „undoes the finish and the freed slots when the transaction fails afterwards” |
+
+Sprawdzenie wykonane 2026-10-31 na `origin/main` przez czytanie testów i kodu; testy nie były uruchamiane w ramach tego domknięcia (zmiana dokumentacyjna).
