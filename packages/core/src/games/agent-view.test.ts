@@ -72,6 +72,16 @@ describe("agentGameView", () => {
     expect(view.clock).toEqual({ youMs: 2, opponentMs: 1, runningSide: "opponent", serverNow: 5 });
   });
 
+  it("reads the clocks the other way round for the agent on seat 1", () => {
+    const view = agentGameView(
+      input({ blackSeat: 1, turnSeat: 1, clock: { remainingMs: [1, 2], running: 1, now: 5 }, you: { seat: 1 } }),
+    );
+
+    expect(view.you.color).toBe("black");
+    expect(view.turn).toBe("you");
+    expect(view.clock).toEqual({ youMs: 1, opponentMs: 2, runningSide: "you", serverNow: 5 });
+  });
+
   it("has no colour and no running clock before the colours are drawn", () => {
     const view = agentGameView(
       input({ status: "waiting", blackSeat: null, turnSeat: null, clock: { remainingMs: [1, 2], running: null, now: 5 } }),

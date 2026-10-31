@@ -62,8 +62,8 @@ type PeekRow = {
 type Seated = { participant: GameParticipant; gameId: string };
 
 /** `INVALID_INPUT` naming the field only, never the value (decision 8: no echo of the input). */
-function invalidInput(field: string | number | symbol | undefined): ValidationError {
-  return new ValidationError(`Nieprawidłowe pole: ${String(field ?? "wejście")}.`, {
+function invalidInput(field: string): ValidationError {
+  return new ValidationError(`Nieprawidłowe pole: ${field}.`, {
     code: "INVALID_INPUT",
   });
 }
