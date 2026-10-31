@@ -38,6 +38,10 @@ Brak wariantów wyglądu. Wiersz ma dwa stany danych: zwykły i w trakcie wybier
 
 <Canvas of={Stories.WybieranieTrwa} />
 
+Bez wyboru (E03-S01): wiersz bez `onSelect` nie ma przycisku, to sama lista do odczytu.
+
+<Canvas of={Stories.DoOdczytu} />
+
 ## 6. Stany
 
 Zwykły, wybieranie trwa (przycisk zajęty), dużo graczy, długie nazwy. Stany całej listy (ładowanie, pusto, błąd) składa wzorzec „Lista” ze [Szkieletem](?path=/docs/prymitywy-szkielet-ładowania--docs), [Pustym stanem](?path=/docs/prymitywy-pusty-stan--docs) i [Stanem błędu](?path=/docs/prymitywy-stan-błędu--docs).
@@ -65,7 +69,7 @@ Wiersz zachowuje przycisk po prawej i zawija nazwę; długie nazwy bez spacji za
 
 <ArgTypes of={LobbyList} />
 
-`LobbyRow` przyjmuje: `name`, `since`, `expiresLabel`, `expiresInMs`, `selectLabel`, `selectAriaLabel`, `selecting`, `onSelect`, `className`.
+`LobbyRow` przyjmuje: `name`, `since`, `expiresLabel`, `expiresInMs`, `className` oraz razem (albo wcale) `selectLabel`, `selectAriaLabel`, `selecting`, `onSelect`. Bez `onSelect` wiersz nie ma przycisku.
 
 ## 11. Kod
 

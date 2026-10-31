@@ -29,6 +29,7 @@ import {
   closeStaleSlotsOfUser,
 } from "./lazy-closing";
 import { GUEST_TOKEN_VALID_SQL } from "./guest-token";
+import { deleteSeekersSql } from "./lobby-seeker-sql";
 import type { ColorDraw } from "./color-draw";
 import type { TimeoutSettler } from "./timeout-settler";
 
@@ -449,6 +450,8 @@ export class InvitationService {
       gameId,
     ]);
     if (started.length === 0) throw invalidInvitation();
+    // The joiner is in a game now: their "looking for a game" status goes with the same commit (#25 Q5).
+    if (userId) await tx.execute(deleteSeekersSql(1), [userId], "run");
     return { game: { gameId }, joined: true };
   }
 

@@ -41,6 +41,7 @@ export type CleanupRule = {
     | "rateLimitBuckets"
     | "emailVerificationTokens"
     | "passwordResetTokens"
+    | "lobbySeekers"
     | "waitingGames"
     | "cancelledGames"
     | "guestOnlyActiveGames"
@@ -94,6 +95,15 @@ export const CLEANUP_RULES: readonly CleanupRule[] = [
     primaryKey: "id",
     condition: "expires_at < ? or used_at < ?",
     graceMs: 24 * HOUR_MS,
+  },
+  {
+    // "Looking for a game" statuses (#25) live 5 minutes (BR-12) and reads filter on `expires_at`, so a
+    // dead row never matters for correctness; the 1 h margin only absorbs clock skew between Node and the database.
+    key: "lobbySeekers",
+    table: "lobby_seekers",
+    primaryKey: "id",
+    condition: "expires_at < ?",
+    graceMs: HOUR_MS,
   },
   {
     // An unjoined game whose invitation expired: kept for 1 h after the expiry, because the guest

@@ -154,6 +154,7 @@ describe("auth services", () => {
       expect(cradle.invitationCodes).toBe(cradle.invitationCodes);
       expect(cradle.colorDraw).toBe(cradle.colorDraw);
       expect(cradle.invitationService).toBe(cradle.invitationService);
+      expect(cradle.lobbyService).toBe(cradle.lobbyService);
       expect(await cradle.timeoutSettler.settleFor("user")).toBeUndefined();
       expect(cradle.passwordResetService).toBe(cradle.passwordResetService);
       const nativeUpdate = vi.fn(async () => 1);

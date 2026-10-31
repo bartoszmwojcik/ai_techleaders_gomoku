@@ -21,6 +21,7 @@ import {
   type GameParticipant,
 } from "./game-service";
 import { closeStaleSlotsOfUser } from "./lazy-closing";
+import { deleteSeekersSql } from "./lobby-seeker-sql";
 import type { TimeoutSettler } from "./timeout-settler";
 
 type Deps = {
@@ -306,6 +307,8 @@ export class RematchService {
         "run",
       );
     }
+    // Both accounts are in a game now: neither stays on the lobby list (#25 Q5).
+    if (userIds.length > 0) await tx.execute(deleteSeekersSql(userIds.length), userIds, "run");
     await tx.execute(MARK_ACCEPTED_SQL, [newGameId, gameId], "run");
     return this.#result(newGameId, me, guestToken);
   }

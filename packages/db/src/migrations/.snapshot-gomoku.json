@@ -162,6 +162,1130 @@
       "comment": null
     },
     {
+      "name": "game_players",
+      "schema": "public",
+      "columns": {
+        "game_id": {
+          "name": "game_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": true,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
+        "guest_token_hash": {
+          "name": "guest_token_hash",
+          "type": "char(64)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": true,
+          "length": 64,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "character"
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": true,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "gen_random_uuid()",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "false",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "boolean"
+        },
+        "joined_at": {
+          "name": "joined_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": "now()",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "kind": {
+          "name": "kind",
+          "type": "varchar(16)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 16,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "nickname": {
+          "name": "nickname",
+          "type": "varchar(24)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 24,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "seat": {
+          "name": "seat",
+          "type": "smallint",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "smallint"
+        },
+        "seen_at": {
+          "name": "seen_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": true,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        }
+      },
+      "indexes": [
+        {
+          "columnNames": [
+            "game_id",
+            "seat"
+          ],
+          "composite": true,
+          "constraint": true,
+          "keyName": "game_players_game_id_seat_unique",
+          "primary": false,
+          "unique": true
+        },
+        {
+          "columnNames": [
+            "game_id",
+            "user_id"
+          ],
+          "composite": true,
+          "constraint": true,
+          "keyName": "game_players_game_id_user_id_unique",
+          "primary": false,
+          "unique": true
+        },
+        {
+          "columnNames": [
+            "guest_token_hash"
+          ],
+          "composite": false,
+          "constraint": true,
+          "keyName": "game_players_guest_token_hash_unique",
+          "primary": false,
+          "unique": true
+        },
+        {
+          "columnNames": [
+            "id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "keyName": "game_players_pkey",
+          "primary": true,
+          "unique": true
+        },
+        {
+          "columnNames": [
+            "user_id"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "game_players_user_id_active_unique",
+          "primary": false,
+          "unique": true,
+          "where": "is_active"
+        },
+        {
+          "columnNames": [
+            "user_id"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "game_players_user_id_index",
+          "primary": false,
+          "unique": false
+        }
+      ],
+      "checks": [
+        {
+          "name": "game_players_guest_no_user_check",
+          "expression": "kind <> 'guest' or user_id is null",
+          "definition": "check (kind <> 'guest' or user_id is null)"
+        },
+        {
+          "name": "game_players_kind_check",
+          "expression": "kind in ('account', 'guest')",
+          "definition": "check (kind in ('account', 'guest'))"
+        },
+        {
+          "name": "game_players_nickname_not_empty_check",
+          "expression": "nickname is null or char_length(nickname) >= 1",
+          "definition": "check (nickname is null or char_length(nickname) >= 1)"
+        },
+        {
+          "name": "game_players_nickname_only_guest_check",
+          "expression": "kind = 'guest' or nickname is null",
+          "definition": "check (kind = 'guest' or nickname is null)"
+        },
+        {
+          "name": "game_players_seat_check",
+          "expression": "seat in (1, 2)",
+          "definition": "check (seat in (1, 2))"
+        },
+        {
+          "name": "game_players_token_only_guest_check",
+          "expression": "kind = 'guest' or guest_token_hash is null",
+          "definition": "check (kind = 'guest' or guest_token_hash is null)"
+        }
+      ],
+      "triggers": [],
+      "foreignKeys": {
+        "game_players_game_id_foreign": {
+          "columnNames": [
+            "game_id"
+          ],
+          "constraintName": "game_players_game_id_foreign",
+          "localTableName": "public.game_players",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "referencedTableName": "public.games",
+          "deleteRule": "cascade"
+        },
+        "game_players_user_id_foreign": {
+          "columnNames": [
+            "user_id"
+          ],
+          "constraintName": "game_players_user_id_foreign",
+          "localTableName": "public.game_players",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "referencedTableName": "public.users",
+          "deleteRule": "set null"
+        }
+      },
+      "comment": null
+    },
+    {
+      "name": "games",
+      "schema": "public",
+      "columns": {
+        "black_seat": {
+          "name": "black_seat",
+          "type": "smallint",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "smallint"
+        },
+        "clock_ms_1": {
+          "name": "clock_ms_1",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "600000",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "integer"
+        },
+        "clock_ms_2": {
+          "name": "clock_ms_2",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "600000",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "integer"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": "now()",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "end_reason": {
+          "name": "end_reason",
+          "type": "varchar(16)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 16,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "finished_at": {
+          "name": "finished_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": true,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "gen_random_uuid()",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
+        "move_count": {
+          "name": "move_count",
+          "type": "smallint",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "0",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "smallint"
+        },
+        "moves": {
+          "name": "moves",
+          "type": "bytea",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "''",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "blob"
+        },
+        "origin": {
+          "name": "origin",
+          "type": "varchar(16)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 16,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "rematch_expires_at": {
+          "name": "rematch_expires_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "rematch_game_id": {
+          "name": "rematch_game_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
+        "rematch_offered_by_seat": {
+          "name": "rematch_offered_by_seat",
+          "type": "smallint",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "smallint"
+        },
+        "rematch_state": {
+          "name": "rematch_state",
+          "type": "varchar(16)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 16,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar(16)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 16,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "stones_black": {
+          "name": "stones_black",
+          "type": "bit(225)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "(repeat('0', 225))::bit(225)",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "unknown"
+        },
+        "stones_white": {
+          "name": "stones_white",
+          "type": "bit(225)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "(repeat('0', 225))::bit(225)",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "unknown"
+        },
+        "turn_started_at": {
+          "name": "turn_started_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "winner_seat": {
+          "name": "winner_seat",
+          "type": "smallint",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "smallint"
+        }
+      },
+      "indexes": [
+        {
+          "columnNames": [
+            "id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "keyName": "games_pkey",
+          "primary": true,
+          "unique": true
+        },
+        {
+          "columnNames": [
+            "status",
+            "created_at"
+          ],
+          "composite": true,
+          "constraint": false,
+          "keyName": "games_status_created_at_index",
+          "primary": false,
+          "unique": false
+        }
+      ],
+      "checks": [
+        {
+          "name": "games_active_black_seat_check",
+          "expression": "status not in ('active', 'finished') or black_seat is not null",
+          "definition": "check (status not in ('active', 'finished') or black_seat is not null)"
+        },
+        {
+          "name": "games_alternation_check",
+          "expression": "bit_count(stones_black) - bit_count(stones_white) in (0, 1)",
+          "definition": "check (bit_count(stones_black) - bit_count(stones_white) in (0, 1))"
+        },
+        {
+          "name": "games_black_seat_check",
+          "expression": "black_seat in (1, 2)",
+          "definition": "check (black_seat in (1, 2))"
+        },
+        {
+          "name": "games_board_disjoint_check",
+          "expression": "(stones_black & stones_white) = (repeat('0', 225))::bit(225)",
+          "definition": "check ((stones_black & stones_white) = (repeat('0', 225))::bit(225))"
+        },
+        {
+          "name": "games_clock_ms_check",
+          "expression": "clock_ms_1 between 0 and 600000 and clock_ms_2 between 0 and 600000",
+          "definition": "check (clock_ms_1 between 0 and 600000 and clock_ms_2 between 0 and 600000)"
+        },
+        {
+          "name": "games_draw_no_winner_check",
+          "expression": "end_reason is distinct from 'draw' or winner_seat is null",
+          "definition": "check (end_reason is distinct from 'draw' or winner_seat is null)"
+        },
+        {
+          "name": "games_end_reason_check",
+          "expression": "end_reason in ('five_in_row', 'draw', 'timeout', 'resignation')",
+          "definition": "check (end_reason in ('five_in_row', 'draw', 'timeout', 'resignation'))"
+        },
+        {
+          "name": "games_finished_at_check",
+          "expression": "status <> 'finished' or finished_at is not null",
+          "definition": "check (status <> 'finished' or finished_at is not null)"
+        },
+        {
+          "name": "games_finished_end_reason_check",
+          "expression": "(status = 'finished') = (end_reason is not null)",
+          "definition": "check ((status = 'finished') = (end_reason is not null))"
+        },
+        {
+          "name": "games_move_count_check",
+          "expression": "move_count between 0 and 225",
+          "definition": "check (move_count between 0 and 225)"
+        },
+        {
+          "name": "games_moves_length_check",
+          "expression": "octet_length(moves) = move_count",
+          "definition": "check (octet_length(moves) = move_count)"
+        },
+        {
+          "name": "games_origin_check",
+          "expression": "origin in ('invite', 'lobby', 'rematch')",
+          "definition": "check (origin in ('invite', 'lobby', 'rematch'))"
+        },
+        {
+          "name": "games_rematch_offered_by_seat_check",
+          "expression": "rematch_offered_by_seat in (1, 2)",
+          "definition": "check (rematch_offered_by_seat in (1, 2))"
+        },
+        {
+          "name": "games_rematch_only_finished_check",
+          "expression": "rematch_state is null or status = 'finished'",
+          "definition": "check (rematch_state is null or status = 'finished')"
+        },
+        {
+          "name": "games_rematch_pending_check",
+          "expression": "rematch_state is distinct from 'pending' or (rematch_offered_by_seat is not null and rematch_expires_at is not null)",
+          "definition": "check (rematch_state is distinct from 'pending' or (rematch_offered_by_seat is not null and rematch_expires_at is not null))"
+        },
+        {
+          "name": "games_rematch_state_check",
+          "expression": "rematch_state in ('pending', 'accepted', 'declined')",
+          "definition": "check (rematch_state in ('pending', 'accepted', 'declined'))"
+        },
+        {
+          "name": "games_started_at_check",
+          "expression": "status not in ('active', 'finished') or started_at is not null",
+          "definition": "check (status not in ('active', 'finished') or started_at is not null)"
+        },
+        {
+          "name": "games_status_check",
+          "expression": "status in ('waiting', 'active', 'finished', 'cancelled')",
+          "definition": "check (status in ('waiting', 'active', 'finished', 'cancelled'))"
+        },
+        {
+          "name": "games_stone_count_check",
+          "expression": "bit_count(stones_black) + bit_count(stones_white) = move_count",
+          "definition": "check (bit_count(stones_black) + bit_count(stones_white) = move_count)"
+        },
+        {
+          "name": "games_winner_required_check",
+          "expression": "end_reason is null or end_reason = 'draw' or winner_seat is not null",
+          "definition": "check (end_reason is null or end_reason = 'draw' or winner_seat is not null)"
+        },
+        {
+          "name": "games_winner_seat_check",
+          "expression": "winner_seat in (1, 2)",
+          "definition": "check (winner_seat in (1, 2))"
+        }
+      ],
+      "triggers": [],
+      "foreignKeys": {
+        "games_rematch_game_id_foreign": {
+          "columnNames": [
+            "rematch_game_id"
+          ],
+          "constraintName": "games_rematch_game_id_foreign",
+          "localTableName": "public.games",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "referencedTableName": "public.games",
+          "deleteRule": "set null"
+        }
+      },
+      "comment": null
+    },
+    {
+      "name": "invitations",
+      "schema": "public",
+      "columns": {
+        "code": {
+          "name": "code",
+          "type": "varchar(8)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": true,
+          "length": 8,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "string"
+        },
+        "consumed_at": {
+          "name": "consumed_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "consumed_by_id": {
+          "name": "consumed_by_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": "now()",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "game_id": {
+          "name": "game_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": true,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": true,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "gen_random_uuid()",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        }
+      },
+      "indexes": [
+        {
+          "columnNames": [
+            "code"
+          ],
+          "composite": false,
+          "constraint": true,
+          "keyName": "invitations_code_unique",
+          "primary": false,
+          "unique": true
+        },
+        {
+          "columnNames": [
+            "expires_at"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "invitations_expires_at_index",
+          "primary": false,
+          "unique": false
+        },
+        {
+          "columnNames": [
+            "game_id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "keyName": "invitations_game_id_unique",
+          "primary": false,
+          "unique": true
+        },
+        {
+          "columnNames": [
+            "id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "keyName": "invitations_pkey",
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [
+        {
+          "name": "invitations_code_check",
+          "expression": "code ~ '^[2-9A-HJKMNP-Z]{8}$'",
+          "definition": "check (code ~ '^[2-9A-HJKMNP-Z]{8}$')"
+        }
+      ],
+      "triggers": [],
+      "foreignKeys": {
+        "invitations_consumed_by_id_foreign": {
+          "columnNames": [
+            "consumed_by_id"
+          ],
+          "constraintName": "invitations_consumed_by_id_foreign",
+          "localTableName": "public.invitations",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "referencedTableName": "public.game_players",
+          "deleteRule": "set null"
+        },
+        "invitations_game_id_foreign": {
+          "columnNames": [
+            "game_id"
+          ],
+          "constraintName": "invitations_game_id_foreign",
+          "localTableName": "public.invitations",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "referencedTableName": "public.games",
+          "deleteRule": "cascade"
+        }
+      },
+      "comment": null
+    },
+    {
+      "name": "lobby_seekers",
+      "schema": "public",
+      "columns": {
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": "now()",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": true,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "gen_random_uuid()",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": true,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        }
+      },
+      "indexes": [
+        {
+          "columnNames": [
+            "expires_at"
+          ],
+          "composite": false,
+          "constraint": false,
+          "keyName": "lobby_seekers_expires_at_index",
+          "primary": false,
+          "unique": false
+        },
+        {
+          "columnNames": [
+            "id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "keyName": "lobby_seekers_pkey",
+          "primary": true,
+          "unique": true
+        },
+        {
+          "columnNames": [
+            "user_id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "keyName": "lobby_seekers_user_id_unique",
+          "primary": false,
+          "unique": true
+        }
+      ],
+      "checks": [
+        {
+          "name": "lobby_seekers_expiry_check",
+          "expression": "expires_at > created_at",
+          "definition": "check (expires_at > created_at)"
+        }
+      ],
+      "triggers": [],
+      "foreignKeys": {
+        "lobby_seekers_user_id_foreign": {
+          "columnNames": [
+            "user_id"
+          ],
+          "constraintName": "lobby_seekers_user_id_foreign",
+          "localTableName": "public.lobby_seekers",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "referencedTableName": "public.users",
+          "deleteRule": "cascade"
+        }
+      },
+      "comment": null
+    },
+    {
       "name": "password_reset_tokens",
       "schema": "public",
       "columns": {

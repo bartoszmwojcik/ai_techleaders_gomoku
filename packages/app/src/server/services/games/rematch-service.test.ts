@@ -202,6 +202,10 @@ describe("RematchService.accept", () => {
     ]);
     expect(ran("rematch_state = 'accepted'")[0]!.params).toEqual(["game-2", "game-1"]);
     expect(ran("with expired")).toHaveLength(2);
+    // Both accounts are in a game now: their lobby statuses go, before the offer is marked (#25 Q5).
+    expect(ran("delete from lobby_seekers")[0]!.params).toEqual(["user-1", "user-2"]);
+    expect(order("delete from lobby_seekers")).toBeGreaterThan(order("insert into game_players"));
+    expect(order("delete from lobby_seekers")).toBeLessThan(order("rematch_state = 'accepted'"));
   });
 
   it("answers 404 to a stranger without touching the game", async () => {
@@ -228,6 +232,7 @@ describe("RematchService.accept", () => {
     // No accounts: nothing to lock or check for BR-13.
     expect(ran("from users")).toHaveLength(0);
     expect(ran("select game_id, user_id")).toHaveLength(0);
+    expect(ran("delete from lobby_seekers")).toHaveLength(0);
   });
 
   it("refuses a guest who does not present a token", async () => {

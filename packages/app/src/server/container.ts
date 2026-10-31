@@ -24,6 +24,7 @@ import { RematchService } from "./services/games/rematch-service";
 import { GameService } from "./services/games/game-service";
 import { InvitationCodes } from "./services/games/invitation-codes";
 import { InvitationService } from "./services/games/invitation-service";
+import { LobbyService } from "./services/games/lobby-service";
 import {
   SqlTimeoutSettler,
   type TimeoutSettler,
@@ -68,6 +69,8 @@ export type AppCradle = {
   /** Draws who plays black when the opponent joins (#22 Q1). */
   colorDraw: ColorDraw;
   invitationService: InvitationService;
+  /** The "looking for a game" status and the lobby list (#25). */
+  lobbyService: LobbyService;
   /** No-op until the clock (#23) delivers the real settlement of timed-out games. */
   timeoutSettler: TimeoutSettler;
   rateLimiter: RateLimiter;
@@ -145,6 +148,7 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     invitationCodes: asClass(InvitationCodes).singleton(),
     colorDraw: asClass(ColorDraw).singleton(),
     invitationService: asClass(InvitationService).scoped(),
+    lobbyService: asClass(LobbyService).scoped(),
     timeoutSettler: asClass(SqlTimeoutSettler).scoped(),
     rateLimiter: asClass(RateLimiter).scoped(),
     emailVerificationService: asClass(EmailVerificationService).scoped(),
