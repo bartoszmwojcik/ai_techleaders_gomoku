@@ -75,4 +75,24 @@ describe("LobbyList and LobbyRow", () => {
     expect(button.disabled).toBe(true);
     expect(button.getAttribute("aria-busy")).toBe("true");
   });
+
+  it("locks the button of a row while another row is being picked, without a busy state", () => {
+    render(
+      <LobbyList label="Gracze">
+        <LobbyRow
+          name="Alicja_99"
+          expiresLabel="wygasa za"
+          expiresInMs={100_000}
+          selectLabel="Zagraj"
+          selectAriaLabel="Zagraj z Alicja_99"
+          selectDisabled
+          onSelect={() => undefined}
+        />
+      </LobbyList>,
+    );
+
+    const button = screen.getByRole("button", { name: "Zagraj z Alicja_99" }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute("aria-busy")).toBeNull();
+  });
 });

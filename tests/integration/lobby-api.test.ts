@@ -1,4 +1,4 @@
-// The lobby over HTTP (E03-S01, #25 and #31) against the built app and a real PostgreSQL: marking,
+// The lobby over HTTP (E03-S01, #25 and #31; picking an opponent, E03-S02, #26) against the built app and a real PostgreSQL: marking,
 // the list of the others (names only), the 5-minute expiry at its boundary, withdrawing, BR-13,
 // the status ending with a game / logout / account deletion, and the races that mock-based
 // tests cannot see (parallel marks, marking against creating a game).
@@ -377,6 +377,221 @@ describe("limits", () => {
     for (let i = 0; i < 30; i++) expect((await mark(who)).status, `mark ${i + 1}`).toBe(200);
 
     const refused = await mark(who);
+
+    expect(refused.status).toBe(429);
+    expect(Number(refused.headers.get("retry-after"))).toBeGreaterThan(0);
+  });
+});
+
+// Picking an opponent (E03-S02, #26): one game from a status, whoever is faster.
+const pick = (who: Account, seekerId: string, headers: Headers = {}) =>
+  call("POST", `/api/lobby/seekers/${seekerId}/pick`, undefined, { cookie: who.cookie, ...headers });
+const seekerIdOf = async (who: Account) => ((await dataOf(await mark(who))) as { me: { id: string } }).me.id;
+const lobbyGames = async () =>
+  Number((await run(`select count(*)::int as n from games where origin = 'lobby'`))[0]!.n);
+const slotsOf = async (who: Account) =>
+  Number((await run(`select count(*)::int as n from game_players where user_id = ? and is_active`, [who.id]))[0]!.n);
+
+describe("picking an opponent from the lobby (#26)", () => {
+  it("creates one active lobby game for both, removes both statuses and leads both to it", async () => {
+    const [alice, bob] = [await signedUp(), await signedUp()];
+    const aliceStatus = await seekerIdOf(alice);
+    await mark(bob);
+
+    const answer = await pick(bob, aliceStatus);
+
+    expect(answer.status).toBe(200);
+    const answered = await dataOf(answer);
+    const { gameId } = answered;
+    const [game] = await run(`select origin, status, black_seat from games where id = ?`, [gameId]);
+    expect(game).toMatchObject({ origin: "lobby", status: "active" });
+    expect([1, 2]).toContain(game!.black_seat);
+    const players = await run(
+      `select user_id, seat, kind, is_active, seen_at from game_players where game_id = ? order by seat`,
+      [gameId],
+    );
+    expect(players).toEqual([
+      { user_id: bob.id, seat: 1, kind: "account", is_active: true, seen_at: null },
+      { user_id: alice.id, seat: 2, kind: "account", is_active: true, seen_at: null },
+    ]);
+    expect(await seekerRows(alice)).toBe(0);
+    expect(await seekerRows(bob)).toBe(0);
+    // The picked one is led to the game by the next read; the picker holds it too.
+    expect((await lobby(alice)).currentGame).toEqual({ gameId, status: "active" });
+    expect((await lobby(bob)).currentGame).toEqual({ gameId, status: "active" });
+    // The seeker's id reveals no account (BR-14).
+    expect(JSON.stringify(answered)).not.toContain(alice.id);
+  });
+
+  it("lets a user who is not seeking pick (Q2)", async () => {
+    const [alice, bob] = [await signedUp(), await signedUp()];
+    const aliceStatus = await seekerIdOf(alice);
+
+    expect((await pick(bob, aliceStatus)).status).toBe(200);
+    expect(await lobbyGames()).toBeGreaterThanOrEqual(1);
+  });
+
+  it("gives exactly one game when many pick the same seeker at once; the losers get LOBBY_SEEKER_TAKEN and keep their statuses", async () => {
+    const seeker = await signedUp();
+    const pickers = await Promise.all(Array.from({ length: 8 }, signedUp));
+    const seekerId = await seekerIdOf(seeker);
+    for (const picker of pickers) await mark(picker);
+    const gamesBefore = await lobbyGames();
+
+    const answers = await Promise.all(pickers.map((picker) => pick(picker, seekerId)));
+
+    const statuses = answers.map((answer) => answer.status).sort();
+    expect(statuses).toEqual([200, 409, 409, 409, 409, 409, 409, 409]);
+    for (const answer of answers.filter((a) => a.status === 409)) {
+      expect(await errorOf(answer.clone())).toMatchObject({ code: "LOBBY_SEEKER_TAKEN" });
+    }
+    expect((await lobbyGames()) - gamesBefore).toBe(1);
+    expect(await slotsOf(seeker)).toBe(1);
+    const winners = pickers.filter((_, index) => answers[index]!.status === 200);
+    expect(winners).toHaveLength(1);
+    // The losers' own statuses survived the rollback; the winner's went with the game.
+    for (const picker of pickers) expect(await seekerRows(picker)).toBe(picker === winners[0] ? 0 : 1);
+  });
+
+  it("gives exactly one game when A and B pick each other at once", async () => {
+    for (let round = 0; round < 4; round++) {
+      const [alice, bob] = [await signedUp(), await signedUp()];
+      const [aliceStatus, bobStatus] = [await seekerIdOf(alice), await seekerIdOf(bob)];
+      const gamesBefore = await lobbyGames();
+
+      const [fromAlice, fromBob] = await Promise.all([pick(alice, bobStatus), pick(bob, aliceStatus)]);
+
+      expect([fromAlice.status, fromBob.status].sort(), `round ${round}`).toEqual([200, 409]);
+      const loser = fromAlice.status === 409 ? fromAlice : fromBob;
+      expect((await errorOf(loser)).code, `round ${round}`).toBe("LOBBY_SEEKER_TAKEN");
+      expect((await lobbyGames()) - gamesBefore, `round ${round}`).toBe(1);
+      expect(await slotsOf(alice)).toBe(1);
+      expect(await slotsOf(bob)).toBe(1);
+    }
+  });
+
+  it("never leaves two slots when the seeker creates a game at the same moment (picks vs POST /api/games)", async () => {
+    for (let round = 0; round < 4; round++) {
+      const [seeker, picker] = [await signedUp(), await signedUp()];
+      const seekerId = await seekerIdOf(seeker);
+
+      const [picked, created] = await Promise.all([
+        pick(picker, seekerId),
+        call("POST", "/api/games", {}, { cookie: seeker.cookie }),
+      ]);
+
+      expect([picked.status, created.status].sort(), `round ${round}`).toSatisfy(
+        (pair: number[]) => (pair[0] === 200 && pair[1] === 409) || (pair[0] === 201 && pair[1] === 409),
+      );
+      expect(await slotsOf(seeker), `round ${round}`).toBe(1);
+      expect(await slotsOf(picker), `round ${round}`).toBeLessThanOrEqual(1);
+      expect(await seekerRows(seeker), `round ${round}`).toBe(0);
+    }
+  });
+
+  it("answers LOBBY_SEEKER_EXPIRED for a status that ran out, with no game and the picker's status kept", async () => {
+    const [alice, bob] = [await signedUp(), await signedUp()];
+    const aliceStatus = await seekerIdOf(alice);
+    await mark(bob);
+    const gamesBefore = await lobbyGames();
+    // Just before the boundary the pick still works for another pair...
+    await run(`update lobby_seekers set created_at = now() - interval '301 seconds', expires_at = now() - interval '1 second' where user_id = ?`, [alice.id]);
+
+    const answer = await pick(bob, aliceStatus);
+
+    expect(answer.status).toBe(409);
+    expect((await errorOf(answer)).code).toBe("LOBBY_SEEKER_EXPIRED");
+    expect(await lobbyGames()).toBe(gamesBefore);
+    expect(await seekerRows(bob)).toBe(1);
+    expect(await slotsOf(bob)).toBe(0);
+  });
+
+  it("accepts a status with seconds left", async () => {
+    const [alice, bob] = [await signedUp(), await signedUp()];
+    const aliceStatus = await seekerIdOf(alice);
+    await run(`update lobby_seekers set created_at = now() - interval '298 seconds', expires_at = now() + interval '2 seconds' where user_id = ?`, [alice.id]);
+
+    expect((await pick(bob, aliceStatus)).status).toBe(200);
+  });
+
+  it("answers LOBBY_SEEKER_TAKEN when the seeker withdrew or the id is unknown, and 404 for a malformed id", async () => {
+    const [alice, bob] = [await signedUp(), await signedUp()];
+    const aliceStatus = await seekerIdOf(alice);
+    await withdraw(alice);
+
+    // The row is gone: nobody can tell "never existed" from "taken", so both read as taken.
+    for (const id of [aliceStatus, "00000000-0000-4000-8000-000000000000"]) {
+      const gone = await pick(bob, id);
+      expect(gone.status).toBe(409);
+      expect((await errorOf(gone)).code).toBe("LOBBY_SEEKER_TAKEN");
+    }
+    const malformed = await pick(bob, "not-a-uuid");
+    expect(malformed.status).toBe(404);
+    expect((await errorOf(malformed)).code).toBe("NOT_FOUND");
+  });
+
+  it("answers CANNOT_PICK_SELF for one's own status", async () => {
+    const alice = await signedUp();
+    const own = await seekerIdOf(alice);
+
+    const answer = await pick(alice, own);
+
+    expect(answer.status).toBe(409);
+    expect((await errorOf(answer)).code).toBe("CANNOT_PICK_SELF");
+    expect(await seekerRows(alice)).toBe(1);
+  });
+
+  it("refuses a picker who holds a game (BR-13) with the game, and leaves the seeker's status alone", async () => {
+    const [alice, bob] = [await signedUp(), await signedUp()];
+    const { gameId } = await createGame(bob);
+    const aliceStatus = await seekerIdOf(alice);
+
+    const answer = await pick(bob, aliceStatus);
+
+    expect(answer.status).toBe(409);
+    expect(await errorOf(answer)).toMatchObject({ code: "ACTIVE_GAME_EXISTS", data: { gameId } });
+    expect(await seekerRows(alice)).toBe(1);
+    expect(await slotsOf(alice)).toBe(0);
+  });
+
+  it("does not let an expired waiting game of the picker block the pick", async () => {
+    const [alice, bob] = [await signedUp(), await signedUp()];
+    const { gameId } = await createGame(bob);
+    await run(`update invitations set expires_at = now() - interval '1 minute' where game_id = ?`, [gameId]);
+    const aliceStatus = await seekerIdOf(alice);
+
+    expect((await pick(bob, aliceStatus)).status).toBe(200);
+    expect((await run(`select status from games where id = ?`, [gameId]))[0]!.status).toBe("cancelled");
+  });
+
+  it("removes the picked seeker from everybody's list", async () => {
+    const [alice, bob, carol] = [await signedUp(), await signedUp(), await signedUp()];
+    const aliceStatus = await seekerIdOf(alice);
+    await mark(carol);
+    expect(namesOf(await lobby(bob)).sort()).toEqual([alice.name, carol.name].sort());
+
+    await pick(bob, aliceStatus);
+
+    expect(namesOf(await lobby(carol))).toEqual([]);
+    expect(namesOf(await lobby(bob))).toEqual([carol.name]);
+  });
+
+  it("answers 401 without a session and 403 without the CSRF header", async () => {
+    const [alice, bob] = [await signedUp(), await signedUp()];
+    const aliceStatus = await seekerIdOf(alice);
+
+    expect((await call("POST", `/api/lobby/seekers/${aliceStatus}/pick`)).status).toBe(401);
+    expect((await pick(bob, aliceStatus, { "x-gomoku-request": null })).status).toBe(403);
+    expect((await pick(bob, aliceStatus, { origin: "https://evil.example" })).status).toBe(403);
+    expect(await seekerRows(alice)).toBe(1);
+  });
+
+  it("answers 429 with Retry-After after 60 picks in an hour, also when they fail", async () => {
+    const who = await signedUp();
+    const unknown = "00000000-0000-4000-8000-000000000000";
+    for (let i = 0; i < 60; i++) expect((await pick(who, unknown)).status, `pick ${i + 1}`).toBe(409);
+
+    const refused = await pick(who, unknown);
 
     expect(refused.status).toBe(429);
     expect(Number(refused.headers.get("retry-after"))).toBeGreaterThan(0);

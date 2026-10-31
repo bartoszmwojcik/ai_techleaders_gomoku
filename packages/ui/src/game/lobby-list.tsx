@@ -39,6 +39,8 @@ type LobbyRowPick = {
   selectAriaLabel: string;
   /** Picking is in progress: the button is busy and cannot be pressed twice. */
   selecting?: boolean;
+  /** Another row is being picked: this button is locked, but not shown as busy. */
+  selectDisabled?: boolean;
   onSelect: () => void;
 };
 
@@ -47,6 +49,7 @@ type LobbyRowReadOnly = {
   selectLabel?: undefined;
   selectAriaLabel?: undefined;
   selecting?: undefined;
+  selectDisabled?: undefined;
   onSelect?: undefined;
 };
 
@@ -60,6 +63,7 @@ function LobbyRow({
   selectLabel,
   selectAriaLabel,
   selecting = false,
+  selectDisabled = false,
   onSelect,
   className,
 }: LobbyRowProps) {
@@ -73,7 +77,14 @@ function LobbyRow({
         </span>
       </div>
       {onSelect && (
-        <Button variant="secondary" aria-label={selectAriaLabel} loading={selecting} onClick={onSelect}>
+        <Button
+          variant="secondary"
+          className="shrink-0 whitespace-nowrap"
+          aria-label={selectAriaLabel}
+          loading={selecting}
+          disabled={selectDisabled}
+          onClick={onSelect}
+        >
           {selectLabel}
         </Button>
       )}
