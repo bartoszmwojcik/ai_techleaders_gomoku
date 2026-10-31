@@ -115,7 +115,7 @@ Odblokowana (tabele partii, `gameParticipation`, poddanie #87). Jeden PR (`Close
 - [x] 10.6 UI: sekcja „Usuń konto” na `/account`, komunikat na `/` (`notice=account-deleted`), slot `message` w `ConfirmDialog`
 - [x] 10.7 Testy przeglądarkowe (`account-delete-pages.test.ts`), README
 - [x] 10.8 Reguła sprzątania 9.4 (BR-28), osobny commit
-- [ ] 10.9 Punkt integracji z rewanżem (E02-S06, #88, osobny PR): UI rewanżu wobec uczestnika `kind = 'account'` z `user_id NULL` pokazuje tylko „Rewanż niedostępny”, serwer zwraca `409 REMATCH_UNAVAILABLE` (zob. adnotację w specyfikacji)
+- [x] 10.9 Rewanż wobec usuniętego konta (E02-S06): `RematchService.offer` odmawia `409 REMATCH_UNAVAILABLE`, panel rewanżu pokazuje „Rewanż niedostępny” bez przycisku „Rewanż”
 
 ## Faza 11 — Przełącznik motywu jasny/ciemny (dodane 2026-10-28, decyzja właściciela; poza specyfikacjami E01)
 
