@@ -23,6 +23,7 @@ export * from "./games/invitation-code";
 export * from "./games/nickname";
 export * from "./games/types";
 export * from "./games/rematch";
+export * from "./games/lobby";
 export * from "./validators/games/accept-invitation-schema";
 export * from "./validators/games/create-game-schema";
 export * from "./validators/games/game-id-schema";

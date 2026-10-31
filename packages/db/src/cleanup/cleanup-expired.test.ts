@@ -28,6 +28,7 @@ describe("cleanupExpired", () => {
       rateLimitBuckets: 0,
       emailVerificationTokens: 0,
       passwordResetTokens: 0,
+      lobbySeekers: 0,
       waitingGames: 0,
       cancelledGames: 0,
       guestOnlyActiveGames: 0,
@@ -54,6 +55,7 @@ describe("cleanupExpired", () => {
       rate_limit_buckets: NOW.getTime() - 48 * HOUR,
       email_verification_tokens: NOW.getTime() - 24 * HOUR,
       password_reset_tokens: NOW.getTime() - 24 * HOUR,
+      lobby_seekers: NOW.getTime() - HOUR,
     });
     expect(execute.mock.calls[0]).toEqual([expect.stringContaining("expires_at < ?"), [expect.any(Date), 1000], "run"]);
   });
@@ -179,7 +181,7 @@ describe("cleanupExpired", () => {
     const rules: CleanupRule[] = CLEANUP_RULES.map((rule) => ({ ...rule, optional: rule.key === "sessions" }));
     const result = await cleanupExpired({ em, now: NOW, rules });
     expect(result.sessions).toBeNull();
-    expect(result.errors.map((e) => e.rule)).toEqual(["rateLimitBuckets", "emailVerificationTokens", "passwordResetTokens", "waitingGames", "cancelledGames", "guestOnlyActiveGames", "guestOnlyFinishedGames", "guestTokens", "unverifiedUsers"]);
+    expect(result.errors.map((e) => e.rule)).toEqual(["rateLimitBuckets", "emailVerificationTokens", "passwordResetTokens", "lobbySeekers", "waitingGames", "cancelledGames", "guestOnlyActiveGames", "guestOnlyFinishedGames", "guestTokens", "unverifiedUsers"]);
   });
 
   it("keeps the counts of finished rules and of rows deleted before an error", async () => {

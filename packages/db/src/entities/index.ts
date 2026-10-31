@@ -5,6 +5,7 @@ import { User } from "./auth/user";
 import { Game } from "./games/game";
 import { GamePlayer } from "./games/game-player";
 import { Invitation } from "./games/invitation";
+import { LobbySeeker } from "./games/lobby-seeker";
 import { RateLimitBucket } from "./rate-limit/rate-limit-bucket";
 
 // Registry of all MikroORM entities. Entities are defined with `defineEntity`
@@ -19,4 +20,5 @@ export const entities = [
   Game,
   GamePlayer,
   Invitation,
+  LobbySeeker,
 ] as const;

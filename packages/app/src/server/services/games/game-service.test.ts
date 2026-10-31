@@ -144,10 +144,23 @@ describe("GameService.create", () => {
     );
     // The user is locked first (#37), then Q16 and Q21 run inside the transaction, before the
     // new rows are flushed.
-    expect(calls).toEqual(["execute:lock-user", "execute:with expired", "execute:with stale", "flush"]);
+    expect(calls).toEqual([
+      "execute:lock-user",
+      "execute:delete from",
+      "execute:with expired",
+      "execute:with stale",
+      "flush",
+    ]);
     expect(em.execute).toHaveBeenNthCalledWith(1, expect.stringContaining("for no key update"), ["user-1"]);
-    expect(em.execute).toHaveBeenNthCalledWith(2, expect.any(String), [NOW, "user-1"], "run");
-    expect(em.execute).toHaveBeenNthCalledWith(3, expect.any(String), [CUTOFF, "user-1"], "run");
+    // Starting a game ends the "looking for a game" status (#25 Q5), right after the user lock.
+    expect(em.execute).toHaveBeenNthCalledWith(
+      2,
+      "delete from lobby_seekers where user_id in (?)",
+      ["user-1"],
+      "run",
+    );
+    expect(em.execute).toHaveBeenNthCalledWith(3, expect.any(String), [NOW, "user-1"], "run");
+    expect(em.execute).toHaveBeenNthCalledWith(4, expect.any(String), [CUTOFF, "user-1"], "run");
 
     const expiresAt = new Date(NOW.getTime() + INVITATION_TTL_MS);
     expect(created.map(({ entity }) => entity)).toEqual([Game, GamePlayer, Invitation]);

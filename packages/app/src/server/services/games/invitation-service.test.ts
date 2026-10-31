@@ -125,6 +125,7 @@ describe("InvitationService.accept", () => {
       "insert into game_players",
       "set consumed_by",
       "update games set status = 'active'",
+      "delete from lobby_seekers",
     ];
     let cursor = -1;
     for (const part of order) {
@@ -152,6 +153,8 @@ describe("InvitationService.accept", () => {
     ]);
     expect(calls.find(({ sql }) => sql.includes("set consumed_at"))!.params).toEqual([NOW, "ABCDEFGH", NOW]);
     expect(calls.find(({ sql }) => sql.includes("set consumed_by"))!.params).toEqual(["player-2", "inv-1"]);
+    // The joiner stops looking for a game in the same transaction (#25 Q5).
+    expect(calls.find(({ sql }) => sql.includes("delete from lobby_seekers"))!.params).toEqual([USER]);
   });
 
   it.each([1, 2] as const)("draws black for seat %i when the game starts (#22 Q1)", async (blackSeat) => {
@@ -253,6 +256,8 @@ describe("InvitationService.accept", () => {
     const result = await service.accept(CODE, { userId: USER }, AS_USER, GUARD);
     expect(result).toEqual({ gameId: "game-1" });
     expect(sqlsOf(calls).some((sql) => sql.includes("insert into game_players"))).toBe(false);
+    // A mere return to a game is no reason to drop the status (#25 Q5).
+    expect(sqlsOf(calls).some((sql) => sql.includes("lobby_seekers"))).toBe(false);
   });
 
   it("answers 410 for the creator of a cancelled game (link invalid after cancelling, L04)", async () => {
@@ -409,6 +414,8 @@ describe("InvitationService.accept as a guest", () => {
       [NOW, "game-1"],
       [CUTOFF, "game-1"],
     ]);
+    // A guest has no lobby status to remove.
+    expect(calls.some(({ sql }) => sql.includes("lobby_seekers"))).toBe(false);
     expect(rateLimiter.release).toHaveBeenCalledOnce();
   });
 

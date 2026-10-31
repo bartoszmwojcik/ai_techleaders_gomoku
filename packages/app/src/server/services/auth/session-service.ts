@@ -1,6 +1,7 @@
 import { Session, User, type EntityManager } from "@gomoku/db";
 
 import { createOpaqueToken, hashOpaqueToken } from "../../http/opaque-token";
+import { DELETE_SEEKER_OF_SESSION_SQL } from "../games/lobby-seeker-sql";
 
 /** Session lifetime: 30 days from creation, never extended (G5). */
 export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -69,7 +70,11 @@ export class SessionService {
    * deletes nothing and is not an error.
    */
   async revoke(token: string): Promise<void> {
-    await this.#em.nativeDelete(Session, { tokenHash: hashOpaqueToken(token) });
+    const tokenHash = hashOpaqueToken(token);
+    // Whoever logs out stops looking for a game (#25 Q6). Best effort: a failure here must not
+    // keep the session alive, and the status expires on its own in 5 minutes.
+    await this.#em.execute(DELETE_SEEKER_OF_SESSION_SQL, [tokenHash], "run").catch(() => undefined);
+    await this.#em.nativeDelete(Session, { tokenHash });
   }
 
   /**

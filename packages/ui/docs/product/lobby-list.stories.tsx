@@ -44,6 +44,20 @@ export const Playground: Story = {
   ),
 };
 
+export const DoOdczytu: Story = {
+  render: (args) => (
+    <LobbyList {...args}>
+      <LobbyRow name="Alicja_99" since="szuka od 1 min" expiresLabel="wygasa za" expiresInMs={242_000} />
+      <LobbyRow name="czarny_kamień" since="szuka od 3 min" expiresLabel="wygasa za" expiresInMs={130_000} />
+    </LobbyList>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("Alicja_99")).toBeVisible();
+    await expect(canvas.queryByRole("button")).toBeNull();
+  },
+};
+
 export const WybieranieTrwa: Story = {
   render: (args) => (
     <LobbyList {...args}>
