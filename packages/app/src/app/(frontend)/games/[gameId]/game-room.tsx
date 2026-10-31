@@ -18,6 +18,7 @@ import { DismissibleNotice } from "@/components/games/dismissible-notice";
 import { GameGate } from "@/components/games/game-gate";
 import { PlayerLabel } from "@/components/games/player-label";
 import { PlayField } from "@/components/games/play-field";
+import { serverNowMs } from "@/components/games/use-server-now";
 import { usePageVisibility } from "@/components/games/use-page-visibility";
 import { apiCall } from "@/lib/api-client";
 import { mergeState, playerName, playerNameOf } from "@/lib/games/play";
@@ -37,6 +38,16 @@ export const POLL_TIMEOUT_MS = 8000;
 
 /** "Wróciłeś do partii" disappears by itself after this long (A-20 of the prototype), or with the next move. */
 export const RETURN_NOTICE_MS = 8000;
+
+/** A result screen with no offer for this long reads the state less often (an unattended tab left open for days). */
+export const REMATCH_IDLE_AFTER_MS = 3 * 60 * 1000;
+/** The slow pace of an idle result screen; coming back to the tab or any rematch activity returns to 3 s. */
+export const REMATCH_IDLE_POLL_INTERVAL_MS = 12_000;
+/**
+ * A guest's token for a finished game works for an hour (BR-22); the page stops reading it 5 minutes
+ * earlier instead of running into the sudden "Brak dostępu" (the rematch margin of the backend is the same).
+ */
+export const GUEST_RESULT_WINDOW_MS = 55 * 60 * 1000;
 
 const TEN_MINUTES_MS = 10 * 60 * 1000;
 
@@ -80,6 +91,14 @@ const subscribeNothing = () => () => {};
 const canShareNow = () => typeof navigator.share === "function";
 const cannotShareOnServer = () => false;
 
+const rematchAccepted = (game: GameView) => game.status === "finished" && game.rematch?.state === "accepted";
+
+/** A guest's result is out of reach 55 minutes after the end (server time, so the device clock does not matter). */
+function pastGuestWindow(game: GameView): boolean {
+  if (game.you.kind !== "guest" || !game.finishedAt) return false;
+  return serverNowMs(game.clock) >= Date.parse(game.finishedAt) + GUEST_RESULT_WINDOW_MS;
+}
+
 function Shell({ children }: { children: ReactNode }) {
   return (
     <main className="mx-auto flex w-full flex-1 max-w-(--layout-width-dialog) flex-col gap-stack px-panel py-section">
@@ -118,6 +137,17 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
   const readAgain = useRef(false);
   // State alone lags a double click by one render; the ref closes that gap.
   const cancelInFlight = useRef(false);
+  // Counts every state the room takes in, so a read that began before another state arrived can tell (L4).
+  const version = useRef(0);
+  // The read in flight, so accepting a rematch can call it off (L3), and the one that was called off.
+  const readController = useRef<AbortController | null>(null);
+  const calledOff = useRef<AbortController | null>(null);
+  // The rematch is being accepted: nothing is read meanwhile (L3).
+  const accepting = useRef(false);
+  // When the result screen last had something going on; the idle pace starts REMATCH_IDLE_AFTER_MS after it.
+  const quietSince = useRef<number | null>(null);
+  // Restarts the polling timer (after coming back to the tab), set by the polling effect.
+  const reschedule = useRef<(() => void) | null>(null);
 
   const everyoneSeen = game.players.every((player) => player.seen);
   // `waiting` waits for the opponent; `active` waits for the player who has not opened the page yet (Q20).
@@ -127,6 +157,9 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
   // The move just played answers with the new state (`after` = moves known before it).
   const applyState = useCallback((next: GameView, after: number) => {
     const merged = mergeState(latest.current, next, after);
+    version.current += 1;
+    // Any change of the rematch (an offer, an answer) is activity: the 3 s pace is back.
+    if (merged.rematch?.state !== latest.current.rematch?.state) quietSince.current = Date.now();
     latest.current = merged;
     status.current = merged.status;
     // The game is over (or void): there is nobody to welcome back.
@@ -141,11 +174,23 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
 
   const readOnce = useCallback(async () => {
     const startedAt = Date.now();
+    const startedVersion = version.current;
     const after = latest.current.moves.length;
+    // One controller for the timeout and for calling the read off.
+    const controller = new AbortController();
+    AbortSignal.timeout(POLL_TIMEOUT_MS).addEventListener("abort", () => controller.abort(), { once: true });
+    readController.current = controller;
     const result = await apiCall<GameView>(`/api/games/${gameId}?after=${after}`, {
       method: "GET",
-      signal: AbortSignal.timeout(POLL_TIMEOUT_MS),
+      signal: controller.signal,
     });
+    readController.current = null;
+    if (calledOff.current === controller) return;
+    // A state that came meanwhile (the player's own answer) is newer than this read's; one more read follows (L4).
+    if (version.current !== startedVersion && latest.current.status === "finished") {
+      readAgain.current = true;
+      return;
+    }
     if (result.ok) {
       setFails(0);
       // The creator sees "Przeciwnik dołączył" for a moment before the ready state (p03.5).
@@ -170,32 +215,89 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
   }, [gameId, applyState, markGone]);
 
   const poll = useCallback(async () => {
-    if (polling.current) return;
+    // Once the rematch is accepted the old game is not read again: a guest's cookie already points at the new one (L2).
+    if (polling.current || accepting.current || rematchAccepted(latest.current)) return;
     polling.current = true;
     do {
       readAgain.current = false;
       await readOnce();
-    } while (readAgain.current);
+      // An accepted rematch has moved the guest's cookie on to the new game: no more reads of this one (L2).
+    } while (readAgain.current && !rematchAccepted(latest.current) && !accepting.current);
     polling.current = false;
   }, [readOnce]);
 
   // A hidden tab does not poll (#22 UI); coming back reads the state at once (#24 Q5).
   const hidden = usePageVisibility({
     onReturn: ({ longAbsence }) => {
-      if (gone || (status.current !== "waiting" && status.current !== "active")) return;
+      quietSince.current = Date.now();
+      if (gone || rematchAccepted(latest.current) || accepting.current) return;
+      if (status.current !== "waiting" && status.current !== "active" && status.current !== "finished") return;
+      if (pastGuestWindow(latest.current)) return;
+      reschedule.current?.();
       returnedAt.current = longAbsence ? Date.now() : null;
       // A read in flight may predate the return: the one after it is the one that counts.
       if (polling.current) readAgain.current = true;
       else void poll();
     },
   });
-  const needsPolling = !gone && !hidden && (waitingForOpponent || playing);
+  // A finished game is read until the rematch is accepted: the opponent may offer one at any time.
+  const watchingRematch = game.status === "finished" && game.rematch?.state !== "accepted";
+  const needsPolling = !gone && !hidden && (waitingForOpponent || playing || watchingRematch);
+
+  // The pace of the next read, or `null` when none is due any more. A result screen slows down when
+  // nothing happens on it (an offer, an answer, the player's return), and a guest's stops with the token.
+  const nextDelay = useCallback((): number | null => {
+    if (playing) return PLAY_POLL_INTERVAL_MS;
+    if (latest.current.status !== "finished") return POLL_INTERVAL_MS;
+    if (pastGuestWindow(latest.current)) return null;
+    const now = Date.now();
+    if (latest.current.rematch?.state === "pending") quietSince.current = now;
+    quietSince.current ??= now;
+    return now - quietSince.current >= REMATCH_IDLE_AFTER_MS ? REMATCH_IDLE_POLL_INTERVAL_MS : POLL_INTERVAL_MS;
+  }, [playing]);
 
   useEffect(() => {
     if (!needsPolling) return;
-    const timer = setInterval(() => void poll(), playing ? PLAY_POLL_INTERVAL_MS : POLL_INTERVAL_MS);
-    return () => clearInterval(timer);
-  }, [needsPolling, playing, poll]);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = () => {
+      const delay = nextDelay();
+      if (delay === null) return;
+      timer = setTimeout(() => {
+        void poll();
+        schedule();
+      }, delay);
+    };
+    reschedule.current = () => {
+      clearTimeout(timer);
+      schedule();
+    };
+    schedule();
+    return () => {
+      clearTimeout(timer);
+      reschedule.current = null;
+    };
+  }, [needsPolling, nextDelay, poll]);
+
+  // Coming back to the window is activity too: the 3 s pace and a read at once (the tab may not have been hidden).
+  useEffect(() => {
+    if (!needsPolling) return;
+    const onFocus = () => {
+      quietSince.current = Date.now();
+      if (accepting.current || pastGuestWindow(latest.current)) return;
+      void poll();
+      reschedule.current?.();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [needsPolling, poll]);
+
+  // The rematch is being accepted: the read in flight is called off and none starts until the answer is in (L3).
+  const onAccepting = useCallback((active: boolean) => {
+    accepting.current = active;
+    if (!active) return;
+    calledOff.current = readController.current;
+    readController.current?.abort();
+  }, []);
 
   useEffect(() => {
     if (!notice) return;
@@ -424,6 +526,7 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
           returnNotice={notice?.moveCount === game.moveCount ? notice.text : null}
           onState={applyState}
           onRefresh={() => void poll()}
+          onAccepting={onAccepting}
           onGone={markGone}
         />
       </Shell>

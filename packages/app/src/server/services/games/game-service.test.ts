@@ -528,6 +528,41 @@ describe("GameService.getState", () => {
     expect((await service.getState({ playerId: "p1" }, "game-1")).closedReason).toBeUndefined();
   });
 
+  it("has no rematch while nobody offered one", async () => {
+    const { service } = setup({ game: { status: "finished", endReason: "draw" }, players: [creator, guest] });
+    expect("rematch" in (await service.getState({ playerId: "p1" }, "game-1"))).toBe(false);
+  });
+
+  it("marks a game created by a rematch, and only that one", async () => {
+    const made = setup({ game: { status: "active", origin: "rematch" }, players: [creator, guest] });
+    expect((await made.service.getState({ playerId: "p1" }, "game-1")).fromRematch).toBe(true);
+    const plain = setup({ game: { status: "active", origin: "invite" }, players: [creator, guest] });
+    expect("fromRematch" in (await plain.service.getState({ playerId: "p1" }, "game-1"))).toBe(false);
+  });
+
+  it("says when a finished game ended, and only for a finished one", async () => {
+    const finishedAt = new Date(NOW.getTime() - 60_000);
+    const done = setup({ game: { status: "finished", endReason: "draw", finishedAt }, players: [creator, guest] });
+    expect((await done.service.getState({ playerId: "p1" }, "game-1")).finishedAt).toEqual(finishedAt);
+    const open = setup({ game: { status: "active", finishedAt }, players: [creator, guest] });
+    expect("finishedAt" in (await open.service.getState({ playerId: "p1" }, "game-1"))).toBe(false);
+  });
+
+  it("shows a rematch offer: pending, expired by the time of the read, and the accepted game", async () => {
+    const finished = { status: "finished", endReason: "draw", rematchOfferedBySeat: 2 };
+    const expiresAt = new Date(NOW.getTime() + 1000);
+    const pending = setup({ game: { ...finished, rematchState: "pending", rematchExpiresAt: expiresAt }, players: [creator, guest] });
+    expect((await pending.service.getState({ playerId: "p1" }, "game-1")).rematch).toEqual({
+      state: "pending", offeredBySeat: 2, expiresAt, gameId: null,
+    });
+
+    const late = setup({ game: { ...finished, rematchState: "pending", rematchExpiresAt: expiresAt }, players: [creator, guest], now: () => new Date(NOW.getTime() + 2000) });
+    expect((await late.service.getState({ playerId: "p1" }, "game-1")).rematch?.state).toBe("expired");
+
+    const accepted = setup({ game: { ...finished, rematchState: "accepted", rematchExpiresAt: expiresAt, rematchGame: { id: "game-2" } }, players: [creator, guest] });
+    expect((await accepted.service.getState({ playerId: "p1" }, "game-1")).rematch).toMatchObject({ state: "accepted", gameId: "game-2" });
+  });
+
   it("adds the board: moves after `after`, the seat on turn and the result", async () => {
     const { service } = setup({
       gamesMoveCount: 2,

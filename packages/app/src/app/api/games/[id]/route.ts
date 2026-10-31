@@ -3,7 +3,12 @@ import { connection } from "next/server";
 
 import { withRequestScope } from "@/server/container";
 import { apiHandler } from "@/server/http/api-handler";
-import { guestCookieMaxAge, refreshGuestCookie } from "@/server/http/guest-cookie";
+import {
+  guestCookieMaxAge,
+  readGuestToken,
+  refreshGuestCookie,
+  setGuestCookie,
+} from "@/server/http/guest-cookie";
 import { resolveParticipant } from "@/server/http/participant";
 
 type Context = { params: Promise<{ id: string }> };
@@ -12,7 +17,8 @@ type Context = { params: Promise<{ id: string }> };
  * State of a game for its participant (#21): status, seats, who already opened the page and,
  * for the creator of a waiting game, the invitation. Since #22 also the board: `moveCount`,
  * `blackSeat`, `turnSeat`, `result`, and the `moves` after the first `?after=` ones (default
- * all). Everyone else gets `404`; an `after` outside the game is `400`.
+ * all). After a finished game also `rematch` (offer, `expiresAt`, new `gameId` once
+ * accepted). Everyone else gets `404`; an `after` outside the game is `400`.
  */
 const getGame = apiHandler(async (request: Request, { params }: Context) => {
   const { id } = await params;
@@ -27,6 +33,11 @@ const getGame = apiHandler(async (request: Request, { params }: Context) => {
     // A waiting game of a guest creator keeps it until its invitation expired + 1 h (L29).
     if (data.you.kind === "guest") {
       await refreshGuestCookie(cradle.serverConfig, guestCookieMaxAge(data, cradle.clock.now()));
+      // The guest who proposed an accepted rematch has no token for the new game yet: hand it
+      // over while they follow `rematch.gameId` (rematch spec Q5).
+      const token = data.rematch?.state === "accepted" && (await readGuestToken(cradle.serverConfig));
+      const claimed = token && (await cradle.rematchService.claimGuestSeat(participant, gameId, token));
+      if (claimed) await setGuestCookie(cradle.serverConfig, claimed);
     }
     return { data };
   });

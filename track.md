@@ -100,11 +100,11 @@ Ręczny test po fazie: `npm run db:cleanup` na bazie ze starymi rekordami.
 - [x] 9.2 `cleanup-cli.ts`, `db:cleanup`
 - [x] 9.3 Testy integracyjne progów (`tests/integration/cleanup.test.ts`; wykryły i naprawiły błąd `$n` → `?` w `cleanupExpired`), README (cron). **Do wykonania ręcznie na serwerze po wdrożeniu: dodać `/etc/cron.d/gomoku-cleanup`** (treść w README, sekcja „Sprzątanie wygasłych rekordów”)
 - [x] 9.5 Poprawki po code review Fazy 9 (M1 próg liczników ≥ 25 h i poprawa opisu okna 24 h w README/komentarzu/specyfikacji, M2 błąd jednej reguły nie przerywa pozostałych i nie gubi wyniku częściowego, M3 budżet czasu na regułę + flaga `truncated`, L4 42P01 jako `null` tylko dla reguł opcjonalnych, L6 cron z datą i rotacją logu, kruche asercje w testach integracyjnych; L5 indeksy tylko jako adnotacja w specyfikacji)
-- [!] 9.4 Reguła „niepotwierdzone konto bez partii po 14 dniach” — zablokowana do #29 (tabela uczestników partii)
+- [ ] 9.4 Reguła „niepotwierdzone konto bez partii po 14 dniach” — odblokowana (tabele partii z #29 i uczestnicy partii istnieją od E02); reguła ma być opisana w specyfikacji `.ai/specs/2026-10-24-account-deletion.md`, której aktualizacja z 2026-10-30 czeka na zatwierdzenie (#37)
 
 ## Faza 10 — Usunięcie konta (#37)
 
-- [!] Zablokowana: wymaga #29 (tabele partii) i prawdziwego `gameParticipation` (E02). Po E02-S01 kroki 1–5 ze specyfikacji `account-deletion`.
+- [ ] Odblokowana (tabele partii z #29 i prawdziwe `gameParticipation` są od E02; rewanż i poddanie zamknęły E02). Czeka na zatwierdzenie zaktualizowanej specyfikacji #37: `.ai/specs/2026-10-24-account-deletion.md` (kroki 1–5, w tym 9.4); implementacja dopiero po zatwierdzeniu.
 
 ## Faza 11 — Przełącznik motywu jasny/ciemny (dodane 2026-10-28, decyzja właściciela; poza specyfikacjami E01)
 

@@ -7,7 +7,6 @@ import { Button } from "@gomoku/ui/game/button";
 import { ConfirmDialog } from "@gomoku/ui/game/confirm-dialog";
 import { GameResultBanner } from "@gomoku/ui/game/game-result-banner";
 import { TurnStatus } from "@gomoku/ui/game/turn-status";
-import Link from "next/link";
 import { useRef, useState, useSyncExternalStore } from "react";
 
 import { apiCall } from "@/lib/api-client";
@@ -26,6 +25,7 @@ import type { GameView } from "@/server/http/game-view";
 
 import { GameClock } from "./game-clock";
 import { PlayerLabel } from "./player-label";
+import { RematchPanel } from "./rematch-panel";
 import { useGameClock } from "./use-game-clock";
 
 /** Failed polls in a row before the banner appears (L02); the counter lives in the room. */
@@ -57,6 +57,8 @@ type Props = {
   onState: (next: GameView, after: number) => void;
   /** Reads the state now (after a refused move, or on "Sprawdź teraz"). */
   onRefresh: () => void;
+  /** The rematch is being accepted (`true`) or the answer is in (`false`): the room reads nothing meanwhile. */
+  onAccepting: (active: boolean) => void;
   /** The game is gone for this visitor (`404`). */
   onGone: () => void;
 };
@@ -81,7 +83,7 @@ const LOW_TIME_ANNOUNCEMENT = "Zostało mniej niż minuta";
  * the room reads the state at once, because only the server decides that the time is up. Resigning
  * and the rematch (phase 5) go under the board / the result.
  */
-export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onState, onRefresh, onGone }: Props) {
+export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onState, onRefresh, onAccepting, onGone }: Props) {
   const touch = useSyncExternalStore(subscribePointer, isTouch, notTouchOnServer);
   // A selection belongs to the move it was made for: it lapses with the next move or the end of the turn.
   const [pick, setPick] = useState<{ cell: number; moveCount: number } | null>(null);
@@ -95,6 +97,9 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
   const [asking, setAsking] = useState(false);
   const [resigning, setResigning] = useState(false);
   const [resignError, setResignError] = useState<string | null>(null);
+
+  const [tokenNoticeSeen, setTokenNoticeSeen] = useState(false);
+  const guest = game.you.kind === "guest";
 
   const finished = game.status === "finished";
   const mine = game.players.find((player) => player.seat === game.you.seat);
@@ -186,23 +191,41 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
     <>
       <h1 className="m-0 text-section font-strong">{finished ? "Koniec partii" : "Partia w toku"}</h1>
       <div className="flex max-w-(--layout-width-board) flex-col gap-stack">
-        {game.you.kind === "guest" && !finished && (
+        {guest && !finished && (
           // p05.11: permanent for a guest (BR-22) while the game is played.
           <Alert status="warning" title="Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii">
             Stracisz dostęp do partii, a Twój zegar będzie biegł dalej.
           </Alert>
         )}
+        {game.fromRematch && guest && !tokenNoticeSeen && (
+          // p06.15: the guest holds a new token for the rematch, in the same browser (rematch Q5).
+          <Alert status="info" title="Nowa partia ma nowy dostęp w tej przeglądarce" role="status">
+            Wynik poprzedniej partii nie będzie już tu dostępny.{" "}
+            <Button variant="secondary" onClick={() => setTokenNoticeSeen(true)} data-testid="token-notice-dismiss">
+              Rozumiem
+            </Button>
+          </Alert>
+        )}
         {game.moveCount === 0 && !finished && (
           // L15: the draw is announced at the start only; the line under the board stays.
-          <Alert status="info" title={`Wylosowano: Ty grasz ${COLOR_PLAYS[myColor]}.`} role="status" />
+          <Alert
+            status="info"
+            title={
+              game.fromRematch
+                ? `Rewanż: kolory zostały zamienione. Grasz ${COLOR_PLAYS[myColor]}.`
+                : `Wylosowano: Ty grasz ${COLOR_PLAYS[myColor]}.`
+            }
+            role="status"
+          />
         )}
         {returnNotice && !finished && <Alert status="info" title={returnNotice} role="status" />}
-        {pollFails > 0 && pollFails < PLAY_POLL_FAILURES_BEFORE_BANNER && (
+        {/* A finished game is read in the background for an offer: its failed reads are quiet (offline, a sleeping laptop). */}
+        {!finished && pollFails > 0 && pollFails < PLAY_POLL_FAILURES_BEFORE_BANNER && (
           <p role="status" className="m-0 text-meta text-text-secondary">
             Ponawiamy sprawdzanie stanu partii (próba {pollFails} z {PLAY_POLL_FAILURES_BEFORE_BANNER}).
           </p>
         )}
-        {pollFails >= PLAY_POLL_FAILURES_BEFORE_BANNER && (
+        {!finished && pollFails >= PLAY_POLL_FAILURES_BEFORE_BANNER && (
           <Alert status="danger" title="Nie udało się sprawdzić stanu partii. Ponawiamy próby.">
             <Button variant="secondary" onClick={onRefresh}>
               Sprawdź teraz
@@ -216,7 +239,7 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
         ) : (
           <TurnStatus color={colorOfSeat(game.blackSeat, game.turnSeat!)!}>{status}</TurnStatus>
         )}
-        {finished && game.you.kind === "guest" && (
+        {finished && guest && (
           // p06.6: the guest token works for an hour after the end (BR-22).
           <p className="m-0 text-body text-text-secondary" data-testid="guest-until">
             Wynik zobaczysz w tej przeglądarce do 1 godziny po zakończeniu partii.
@@ -323,12 +346,8 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
           </div>
         )}
         {finished && (
-          // D06: the rematch block (phase 5) goes here, next to the way back.
-          <div>
-            <Button asChild variant="secondary">
-              <Link href="/">Wróć do panelu głównego</Link>
-            </Button>
-          </div>
+          // D06: no component for the actions after the end; the block is built from Alert and Button.
+          <RematchPanel gameId={gameId} game={game} reopened={reopened ?? false} onState={onState} onRefresh={onRefresh} onAccepting={onAccepting} onGone={onGone} />
         )}
       </div>
     </>

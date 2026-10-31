@@ -149,6 +149,7 @@ describe("auth services", () => {
       );
       expect(cradle.gameService).toBe(cradle.gameService);
       expect(cradle.gameMoveService).toBe(cradle.gameMoveService);
+      expect(cradle.rematchService).toBe(cradle.rematchService);
       expect(cradle.invitationCodes).toBe(cradle.invitationCodes);
       expect(cradle.colorDraw).toBe(cradle.colorDraw);
       expect(cradle.invitationService).toBe(cradle.invitationService);

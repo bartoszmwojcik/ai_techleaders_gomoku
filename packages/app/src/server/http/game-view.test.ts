@@ -36,6 +36,22 @@ describe("loadGameView", () => {
     });
   });
 
+  it("serializes the expiry of a rematch offer", async () => {
+    const expiresAt = new Date("2026-10-30T10:05:00Z");
+    getState.mockResolvedValue({ ...base, rematch: { state: "pending", offeredBySeat: 2, expiresAt, gameId: null } });
+    expect((await loadGameView("g1"))!.rematch).toEqual({
+      state: "pending",
+      offeredBySeat: 2,
+      expiresAt: "2026-10-30T10:05:00.000Z",
+      gameId: null,
+    });
+  });
+
+  it("serializes when a finished game ended", async () => {
+    getState.mockResolvedValue({ ...base, status: "finished", finishedAt: new Date("2026-10-30T10:00:00Z") });
+    expect((await loadGameView("g1"))!.finishedAt).toBe("2026-10-30T10:00:00.000Z");
+  });
+
   it("carries the closing reason of a cancelled game", async () => {
     getState.mockResolvedValue({ ...base, status: "cancelled", closedReason: "cancelled" });
     expect((await loadGameView("g1"))!.closedReason).toBe("cancelled");

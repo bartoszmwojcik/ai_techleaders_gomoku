@@ -14,6 +14,9 @@ import {
   type ClockView,
   type EndReason,
   formatInvitationCode,
+  rematchView,
+  type RematchState,
+  type RematchView,
   invitationUrl,
   type GameStatus,
   type ParticipantKind,
@@ -161,6 +164,22 @@ export type GameState = BoardView & {
    * because somebody did not open it in 15 minutes (Q21).
    */
   closedReason?: ClosedReason;
+  /**
+   * Only for a finished game with a rematch offer (rematch spec): who offered, until when, and
+   * the new game once accepted. Absent when nobody offered; a pending offer past its time reads
+   * as `expired` (lazy, no cron).
+   */
+  rematch?: RematchView;
+  /**
+   * Only for a finished game: when it ended. A guest's token for it works for an hour from then
+   * (BR-22), so the page knows when to stop reading a result nobody can read any more.
+   */
+  finishedAt?: Date;
+  /**
+   * Only for a game created by an accepted rematch (`origin = 'rematch'`): the page says the
+   * colours were swapped instead of "drawn" (p05, p06.15).
+   */
+  fromRematch?: true;
 };
 
 export type ClosedReason = "cancelled" | "expired" | "not_opened";
@@ -511,6 +530,18 @@ export class GameService {
         expiresAt: invitation.expiresAt,
       };
     }
+    const rematch = rematchView(
+      {
+        state: (game.rematchState ?? null) as RematchState | null,
+        offeredBySeat: (game.rematchOfferedBySeat ?? null) as Seat | null,
+        expiresAt: game.rematchExpiresAt ?? null,
+        gameId: game.rematchGame?.id ?? null,
+      },
+      now,
+    );
+    if (rematch) state.rematch = rematch;
+    if (game.status === "finished" && game.finishedAt) state.finishedAt = game.finishedAt;
+    if (game.origin === "rematch") state.fromRematch = true;
     if (game.status === "cancelled") {
       if (players.length > 1) {
         state.closedReason = "not_opened";

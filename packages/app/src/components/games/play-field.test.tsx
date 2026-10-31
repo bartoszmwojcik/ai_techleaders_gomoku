@@ -7,7 +7,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { apiCall } = vi.hoisted(() => ({ apiCall: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiCall }));
 vi.setConfig({ testTimeout: 20_000 });
-vi.mock("next/link", () => ({ default: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a> }));
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+vi.mock("next/link", () => ({
+  default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  ),
+}));
 
 import type { GameView } from "@/server/http/game-view";
 
@@ -32,8 +40,9 @@ const CENTER = "Kolumna H, rząd 8, puste";
 const onState = vi.fn();
 const onRefresh = vi.fn();
 const onGone = vi.fn();
+const onAccepting = vi.fn();
 const field = (over: Partial<GameView> = {}, pollFails = 0) =>
-  render(<PlayField gameId="g1" game={game(over)} pollFails={pollFails} onState={onState} onRefresh={onRefresh} onGone={onGone} />);
+  render(<PlayField gameId="g1" game={game(over)} pollFails={pollFails} onState={onState} onRefresh={onRefresh} onAccepting={onAccepting} onGone={onGone} />);
 
 function stubPointer(coarse: boolean) {
   const query = { matches: coarse, addEventListener: vi.fn(), removeEventListener: vi.fn() };
@@ -65,7 +74,7 @@ describe("PlayField, on the server", () => {
   it("renders the mouse variant first (the pointer is unknown there) without a confirm button", () => {
     stubPointer(true);
     const html = renderToStaticMarkup(
-      <PlayField gameId="g1" game={game()} pollFails={0} onState={onState} onRefresh={onRefresh} onGone={onGone} />,
+      <PlayField gameId="g1" game={game()} pollFails={0} onState={onState} onRefresh={onRefresh} onAccepting={onAccepting} onGone={onGone} />,
     );
     expect(html).toContain("Twój ruch (czarne)");
     expect(html).not.toContain("Postaw kamień");
@@ -218,7 +227,7 @@ describe("PlayField, a touch screen (p05.4)", () => {
     const { rerender } = field();
     await press(cell(CENTER));
     rerender(
-      <PlayField gameId="g1" game={game({ moveCount: 2, moves: [1, 2] })} pollFails={0} onState={onState} onRefresh={onRefresh} onGone={onGone} />,
+      <PlayField gameId="g1" game={game({ moveCount: 2, moves: [1, 2] })} pollFails={0} onState={onState} onRefresh={onRefresh} onAccepting={onAccepting} onGone={onGone} />,
     );
     expect(screen.getByTestId("selection").textContent).toBe("Dotknij przecięcia, żeby je zaznaczyć.");
   });
@@ -286,7 +295,7 @@ describe("PlayField, finished (p06)", () => {
 
   it("says it is a return when the page was opened on a finished game (p06.5), and not when it ended here", () => {
     const view = finished(1, "five_in_row", [112, 113, 114, 115, 116]);
-    render(<PlayField gameId="g1" game={game(view)} pollFails={0} reopened onState={onState} onRefresh={onRefresh} onGone={onGone} />);
+    render(<PlayField gameId="g1" game={game(view)} pollFails={0} reopened onState={onState} onRefresh={onRefresh} onAccepting={onAccepting} onGone={onGone} />);
     expect(screen.getByTestId("reload-note").textContent).toBe("Powrót do zakończonej partii: wynik jest ten sam, ruch nie jest możliwy.");
     cleanup();
     field(view);
@@ -303,7 +312,7 @@ describe("PlayField, finished (p06)", () => {
   });
 
   it("shows no return notice on a finished board", () => {
-    render(<PlayField gameId="g1" game={game(finished(1, "five_in_row", [112, 113, 114, 115, 116]))} pollFails={0} returnNotice="Wróciłeś do partii. Twój zegar: 9:15." onState={onState} onRefresh={onRefresh} onGone={onGone} />);
+    render(<PlayField gameId="g1" game={game(finished(1, "five_in_row", [112, 113, 114, 115, 116]))} pollFails={0} returnNotice="Wróciłeś do partii. Twój zegar: 9:15." onState={onState} onRefresh={onRefresh} onAccepting={onAccepting} onGone={onGone} />);
     expect(screen.queryByText(/Wróciłeś/)).toBeNull();
   });
 
@@ -359,7 +368,7 @@ describe("PlayField, clocks (#23, p05.1, p05.3, p06.3)", () => {
     await act(async () => void (await vi.advanceTimersByTimeAsync(10)));
     expect(live().textContent).toBe("Zostało mniej niż minuta");
     rerender(
-      <PlayField gameId="g1" game={game({ clock: clock([62_000, 600_000]) })} pollFails={0} onState={onState} onRefresh={onRefresh} onGone={onGone} />,
+      <PlayField gameId="g1" game={game({ clock: clock([62_000, 600_000]) })} pollFails={0} onState={onState} onRefresh={onRefresh} onAccepting={onAccepting} onGone={onGone} />,
     );
     expect(document.querySelectorAll("[data-low]")).toHaveLength(0);
     expect(live().textContent).toBe("Zostało mniej niż minuta");
@@ -513,5 +522,56 @@ describe("PlayField, resigning (p05.13, p05.14)", () => {
     await press(document.querySelector<HTMLElement>("[role=alertdialog] button:last-child")!);
     expect(onGone).toHaveBeenCalledTimes(1);
     expect(dialog()).toBeNull();
+  });
+});
+
+
+describe("PlayField, a game that began as a rematch (p05, p06.15)", () => {
+  it("says the colours were swapped instead of 'drawn'", () => {
+    field({ fromRematch: true, blackSeat: 2 });
+    expect(screen.getByText("Rewanż: kolory zostały zamienione. Grasz białymi.")).toBeTruthy();
+    expect(screen.queryByText(/Wylosowano/)).toBeNull();
+    expect(screen.queryByText("Nowa partia ma nowy dostęp w tej przeglądarce")).toBeNull();
+  });
+
+  it("tells a guest about the new access until they confirm it", async () => {
+    field({ fromRematch: true, you: { seat: 1, kind: "guest" } });
+    expect(screen.getByText("Nowa partia ma nowy dostęp w tej przeglądarce")).toBeTruthy();
+    await press(screen.getByTestId("token-notice-dismiss"));
+    expect(screen.queryByText("Nowa partia ma nowy dostęp w tej przeglądarce")).toBeNull();
+  });
+
+  it("says nothing about a new access to a guest of an ordinary game", () => {
+    field({ you: { seat: 1, kind: "guest" } });
+    expect(screen.queryByText("Nowa partia ma nowy dostęp w tej przeglądarce")).toBeNull();
+  });
+});
+
+describe("PlayField, the rematch under the result", () => {
+  it("shows the rematch block of a finished game, and none in a game in progress", () => {
+    field({ status: "finished", turnSeat: null, result: { winnerSeat: 1, reason: "resignation", winLine: null } });
+    expect(screen.getByTestId("rematch-box")).toBeTruthy();
+    cleanup();
+    field();
+    expect(screen.queryByTestId("rematch-box")).toBeNull();
+  });
+
+  it("hands the page-open flag to the block: a reload on an accepted rematch of a guest reads the game first", async () => {
+    apiCall.mockResolvedValue({ ok: true, data: {} });
+    render(
+      <PlayField
+        gameId="g1"
+        game={game({ status: "finished", turnSeat: null, you: { seat: 1, kind: "guest" }, result: { winnerSeat: 1, reason: "draw", winLine: null }, rematch: { state: "accepted", offeredBySeat: 1, expiresAt: "2999-01-01T00:00:00.000Z", gameId: "g2" } })}
+        pollFails={0}
+        reopened
+        onState={onState}
+        onRefresh={onRefresh}
+        onAccepting={onAccepting}
+        onGone={onGone}
+      />,
+    );
+    await act(async () => void (await vi.advanceTimersByTimeAsync(0)));
+    expect(apiCall).toHaveBeenCalledWith("/api/games/g1", { method: "GET" });
+    expect(push).toHaveBeenCalledWith("/games/g2");
   });
 });
