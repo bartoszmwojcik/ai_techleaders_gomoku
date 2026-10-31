@@ -1,6 +1,6 @@
 # Agent gra partię do końca przez narzędzia MCP `get_state` i `play_move` (E06-S02, #128)
 
-> Status: **szkic autonomiczny (`om-auto-write-spec`), do przeglądu właściciela**. Zbudowana na zatwierdzonych decyzjach Q-09 (`2026-10-31-mcp-agent-identity.md`, D-29, BR-31: token jednej partii, transport `POST /api/mcp`, limity początkowe, `waitSeconds` 0–25, bez nazw graczy w `get_state`, rewanż z agentem niedostępny, bez `resign`, jednolity błąd `play_move`) i na specyfikacji S01 (`2026-10-31-agent-joins-private-game.md`, #127). **Nie zmienia żadnej zatwierdzonej decyzji.** Wiersze `⚠` to wartości początkowe lub wybory szczegółowe, odwracalne.
+> Status: **wdrożona (2026-10-31)** — szkic autonomiczny (`om-auto-write-spec`, PR #142), implementacja w osobnym PR-ze (`Closes #128`). Odstępstwa i dowody: sekcja na końcu. Zbudowana na zatwierdzonych decyzjach Q-09 (`2026-10-31-mcp-agent-identity.md`, D-29, BR-31: token jednej partii, transport `POST /api/mcp`, limity początkowe, `waitSeconds` 0–25, bez nazw graczy w `get_state`, rewanż z agentem niedostępny, bez `resign`, jednolity błąd `play_move`) i na specyfikacji S01 (`2026-10-31-agent-joins-private-game.md`, #127). **Nie zmienia żadnej zatwierdzonej decyzji.** Wiersze `⚠` to wartości początkowe lub wybory szczegółowe, odwracalne.
 >
 > Źródło: zgłoszenie #128 (E06-S02) wraz z komentarzem właściciela (kryterium dodatkowe: jednolity błąd i niezmienność stanu), epik #124, `.ai/specs/product-brief.md` (D-28, BR-30/BR-31, BR-04, BR-06, BR-07, BR-10, D-05, N-10, A-04…A-06, Q-01), kod na `origin/main` (917ef59): `GameMoveService.play`, `GameService.getState/stateOf/findParticipant`, `TimeoutSettler`, `RateLimiter`, `clientKey`, `moveCreateSchema`, `boardView`, `core/src/games/*`.
 
@@ -50,7 +50,7 @@ Zatwierdzone decyzje Q-09 nie są tu ponownie otwierane. Poniżej tylko luki, kt
 3. **Jednolity błąd**: jeden moduł `toToolError(error)` mapuje `AppError`/`ZodError`/limit na `{ code, message, retryable, retryAfterMs? }` + zwięzły tekst; ten sam dla `join`, `get_state`, `play_move`. Komunikaty po polsku, bez echa wejścia i bez danych wewnętrznych.
 4. **Niezmienność stanu** wynika z istniejącej kolejności w `GameMoveService.play` (wszystkie kontrole pod blokadą wiersza przed jedynym zapisem; wyjątek w transakcji ją cofa). Nowa praca to **dowód** (testy na PostgreSQL) i zakaz skutków ubocznych w adapterze.
 
-Uwaga o granicy planszy: `moveCreateSchema` (REST) odrzuca współrzędne spoza planszy jako `400`; dla MCP wejście Zod sprawdza tylko „liczba całkowita”, a granicę planszy rozstrzyga `applyMove` → `ILLEGAL_MOVE` (`reason: "out_of_board"`). Dzięki temu „ruch poza planszą” ma wymagany kod z kryterium #128.
+Uwaga o granicy planszy: `moveCreateSchema` (REST) odrzuca współrzędne spoza planszy jako `400`; dla MCP wejście Zod sprawdza tylko „liczba całkowita”, a granicę 0–14 sprawdza `AgentGameService.playMove` (po tokenie i limicie, przed `GameMoveService.play`) → `ILLEGAL_MOVE` (`reason: "out_of_board"`). Nie można zostawić tego `applyMove`, bo `cellOf(15, 0)` to poprawna komórka w innej kolumnie. Dzięki temu „ruch poza planszą” ma kod wymagany w #128.
 
 ## 📝 Architecture
 
@@ -182,3 +182,23 @@ Każdy krok: testy jednostkowe razem z kodem (100% pokrycia na plik, bez `v8 ign
 1. **`retryAfterMs` 2000 ms w turze przeciwnika i `RETRY_HINT_MS`** (R2): wartość początkowa bez danych; zostawić?
 2. **Plansza jako 15 napisów `.`/`B`/`W`** (R5) vs. wyłącznie lista ruchów: domyślnie obie (plansza + `moves`), bo kontrakt wydany jest trudny do zmiany.
 3. **Wyjątek rozstrzygnięcia czasu przy błędnym `play_move`** — zatwierdzony (R9); brak dalszych pytań.
+
+## Odstępstwa wdrożenia i dowody
+
+Wdrożono jednym PR-em (`Closes #128`) po scaleniu implementacji S01 (#143). Kryteria #128: 1 — `agent-view.test.ts`, `agent-game-service.test.ts`, `agent-play-api.test.ts` („a whole game over MCP”); 2 — te same oraz `play_move` w pętli pełnej partii (zegar stron przełącza się: `runningSide`); 3 — „the errors of play_move” (każdy kod osobno, migawka `games` przed = po); 4 — „the clock of the agent” (przegrana na czasie bez zapytań agenta, spóźniony ruch, wygrana agenta przy upływie czasu człowieka); 5 — `GAME_FINISHED` po końcu, `get_state` nadal zwraca wynik. Kryterium dodatkowe (jednolity błąd): ten sam test wylicza dokładny zestaw pól błędu, brak SQL, uuid i tokenu w treści; współbieżność: „parallel moves” (osiem równoległych wywołań, jeden zapis) i wyścig ruchu wygrywającego z poddaniem człowieka.
+
+| # | Odstępstwo lub doprecyzowanie | Dlaczego |
+|---|---|---|
+| 1 | Granicę planszy (0–14) sprawdza `AgentGameService.playMove`, nie `GameMoveService`; Zod przyjmuje każdą liczbę całkowitą | `cellOf(15, 0)` jest poprawną komórką w następnym wierszu, więc `applyMove` nie wykryłby ruchu poza planszą |
+| 2 | Błąd nieoczekiwany to **wynik narzędzia `INTERNAL`** (`isError`, HTTP 200), także dla `join`; S01 rzucało wyjątek, który SDK zamieniał na błąd protokołu | decyzja 8: jedno kształt błędu dla wszystkich narzędzi; zmieniono `toolErrorOf` i jego testy |
+| 3 | `toolErrorOf` mapuje każdy `NotFoundError` na `INVALID_TOKEN` z jednym komunikatem | partia znikła pod ważnym tokenem (sprzątanie) = ten sam kod co nieznany token (R7) |
+| 4 | Błąd `ILLEGAL_MOVE` ma dodatkowe pole `reason` (`cell_occupied` / `out_of_board`) | #138 wymienia `reason`; pozostałe kody mają dokładnie `code`, `message`, `retryable` (+ `retryAfterMs` przy `RATE_LIMITED`) |
+| 5 | Nieznane pola wejścia `get_state` i `play_move` są ignorowane (jak w `join`, odstępstwo 5 z S01) | luźny schemat wejścia, by każdy zły kształt miał ten sam błąd (lekcja o SDK) |
+| 6 | Pole `null` dla opcjonalnych `waitSeconds` i `afterMove` znaczy „brak” | modele często wysyłają `null` |
+| 7 | `afterMove` większe niż liczba ruchów jest sprawdzane **po** `GameService.getState` (leniwe zapisy już wykonane) | `getState` z `after = 0` zawsze zwraca pełną listę ruchów potrzebną do planszy; błąd wejścia nie dotyczy `play_move`, więc inwariant decyzji 8 nie jest naruszony |
+| 8 | Wynik `play_move` to osobny `GameService.getState` po udanym ruchu (druga transakcja) | `play` zwraca ruchy tylko od `moveNumber - 1`, a widok agenta potrzebuje całej planszy |
+| 9 | Limit tokenu jest konfigurowalny: `MCP_TOKEN_LIMIT` (domyślnie 60 / min; `ServerConfig.mcp.tokenLimit`, `compose.prod.yaml`); `.env.example` nie zaktualizowano (plik niedostępny dla agenta) | wymóg „początkowe i konfigurowalne” |
+| 10 | `waitSeconds` liczy rundy (jedna na sekundę), nie czas zegara | ograniczenie niezależne od zegara; testy bez prawdziwego czasu (lekcja o `AbortSignal.timeout`) |
+| 11 | W teście kontenera DI wydłużono limit czasu pierwszego testu do 30 s | test importuje cały kontener i liczy bcrypt (koszt 12); pod obciążeniem 200 plików przekraczał 5 s (niezwiązane z logiką) |
+
+**Nie sprawdzono:** rzeczywiste wywołania `get_state` / `play_move` z Claude Code lub innego modelu (test używa klienta HTTP JSON-RPC); `waitSeconds` za prawdziwym reverse proxy (limity czasu odczytu); test obciążeniowy puli połączeń przy wielu równoczesnych oczekujących `get_state`; GAME_NOT_ACTIVE osiągalny tylko w wyścigu z zamknięciem partii (pokryty mapowaniem w testach jednostkowych, nie integracyjnie); R8 (`get_state` zwracający `cancelled`) w teście integracyjnym.

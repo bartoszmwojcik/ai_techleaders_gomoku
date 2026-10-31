@@ -107,7 +107,7 @@ describe("tools/list", () => {
   it("offers only join: nothing that creates invitations, enters the lobby or picks from it (BR-30)", async () => {
     const { tools } = await result(await mcp("tools/list"));
 
-    expect((tools as unknown as { name: string }[]).map((tool) => tool.name)).toEqual(["join"]);
+    expect((tools as unknown as { name: string }[]).map((tool) => tool.name)).toEqual(["join", "get_state", "play_move"]);
     const [tool] = tools as unknown as { description: string; inputSchema: Json }[];
     expect(tool!.inputSchema.properties).toMatchObject({ code: { type: "string" }, agentName: { type: "string" } });
     expect(tool!.inputSchema.required).toEqual(["code"]);

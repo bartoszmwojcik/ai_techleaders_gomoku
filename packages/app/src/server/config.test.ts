@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { readServerConfig } from "./config";
 
-const MCP_DEFAULTS = { requestLimit: 300, joinLimit: 10, lookupLimit: 20, lookupGlobalLimit: 300 };
+const MCP_DEFAULTS = { requestLimit: 300, joinLimit: 10, lookupLimit: 20, lookupGlobalLimit: 300, tokenLimit: 60 };
 
 const production = {
   NODE_ENV: "production",
@@ -222,11 +222,12 @@ describe("readServerConfig MCP limits", () => {
         MCP_JOIN_LIMIT: "3",
         MCP_LOOKUP_LIMIT: "7",
         MCP_LOOKUP_GLOBAL_LIMIT: "99",
+        MCP_TOKEN_LIMIT: "12",
       }).mcp,
-    ).toEqual({ requestLimit: 500, joinLimit: 3, lookupLimit: 7, lookupGlobalLimit: 99 });
+    ).toEqual({ requestLimit: 500, joinLimit: 3, lookupLimit: 7, lookupGlobalLimit: 99, tokenLimit: 12 });
   });
 
-  it.each(["MCP_REQUEST_LIMIT", "MCP_JOIN_LIMIT", "MCP_LOOKUP_LIMIT", "MCP_LOOKUP_GLOBAL_LIMIT"])(
+  it.each(["MCP_REQUEST_LIMIT", "MCP_JOIN_LIMIT", "MCP_LOOKUP_LIMIT", "MCP_LOOKUP_GLOBAL_LIMIT", "MCP_TOKEN_LIMIT"])(
     "rejects a bad %s",
     (name) => {
       for (const bad of ["0", "-1", "1.5", "abc", "1000000000"]) {

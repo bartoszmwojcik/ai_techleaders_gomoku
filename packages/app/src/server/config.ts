@@ -3,6 +3,7 @@ import {
   AGENT_LOOKUP_LIMIT,
   MCP_JOIN_LIMIT,
   MCP_REQUEST_LIMIT,
+  MCP_TOKEN_LIMIT,
 } from "@gomoku/core";
 
 export const CLIENT_IP_HEADERS = [
@@ -22,6 +23,8 @@ export type McpLimits = {
   lookupLimit: number;
   /** The same for all agents together, when the address cannot be trusted. */
   lookupGlobalLimit: number;
+  /** Requests per agent token per minute (E06-S02). */
+  tokenLimit: number;
 };
 
 export type ServerConfig = {
@@ -209,6 +212,7 @@ export function readServerConfig(
         env.MCP_LOOKUP_GLOBAL_LIMIT,
         AGENT_LOOKUP_GLOBAL_LIMIT,
       ),
+      tokenLimit: parsePositiveLimit("MCP_TOKEN_LIMIT", env.MCP_TOKEN_LIMIT, MCP_TOKEN_LIMIT),
     },
   };
 }

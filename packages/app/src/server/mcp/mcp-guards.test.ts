@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { hashOpaqueToken } from "../http/opaque-token";
 import { agentJoinGuard, limitRequests } from "./mcp-guards";
 
-const mcp = { requestLimit: 300, joinLimit: 10, lookupLimit: 20, lookupGlobalLimit: 300 };
+const mcp = { requestLimit: 300, joinLimit: 10, lookupLimit: 20, lookupGlobalLimit: 300, tokenLimit: 60 };
 const config = { production: true, trustProxyHops: 1, clientIpHeader: "x-forwarded-for", mcp } as const;
 const known = new Headers({ "x-forwarded-for": "2.2.2.2" });
 const hashed = hashOpaqueToken("2.2.2.2");
