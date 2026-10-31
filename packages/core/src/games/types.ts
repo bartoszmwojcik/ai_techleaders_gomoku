@@ -6,9 +6,16 @@ export type GameStatus = (typeof GAME_STATUSES)[number];
 export const GAME_ORIGINS = ["invite", "lobby", "rematch"] as const;
 export type GameOrigin = (typeof GAME_ORIGINS)[number];
 
-/** Account holder or a guest identified by a one-game token (BR-22). */
-export const PARTICIPANT_KINDS = ["account", "guest"] as const;
+/**
+ * Account holder, a guest identified by a one-game token (BR-22) or an agent that joined over MCP
+ * with its own one-game token (BR-31, E06-S01).
+ */
+export const PARTICIPANT_KINDS = ["account", "guest", "agent"] as const;
 export type ParticipantKind = (typeof PARTICIPANT_KINDS)[number];
+
+/** How a participant came into the game: the web page, or the MCP endpoint (`agent` only). */
+export const PARTICIPANT_JOIN_CHANNELS = ["web", "mcp"] as const;
+export type ParticipantJoinChannel = (typeof PARTICIPANT_JOIN_CHANNELS)[number];
 
 /** Seat 1 is the creator, seat 2 the joining player (#21 Q14). */
 export const SEATS = [1, 2] as const;
@@ -31,3 +38,6 @@ export type EndReason = (typeof END_REASONS)[number];
 
 /** Outcome of a finished game; `winnerSeat` is `null` only for a draw. */
 export type GameResult = { winnerSeat: Seat | null; reason: EndReason };
+
+/** Who can create a game and so sit in seat 1: an agent never does (BR-30). */
+export type CreatorKind = Exclude<ParticipantKind, "agent">;

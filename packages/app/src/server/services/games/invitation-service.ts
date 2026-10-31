@@ -2,14 +2,13 @@ import {
   ConflictError,
   GUEST_TOKEN_GRACE_MS,
   GoneError,
-  INVITATION_LOOKUP_WINDOW_MS,
   READY_DEADLINE_MS,
   UnauthorizedError,
   ValidationError,
   defaultNickname,
   normalizeInvitationCode,
   type AcceptInvitationInput,
-  type ParticipantKind,
+  type CreatorKind,
 } from "@gomoku/core";
 import type { EntityManager } from "@gomoku/db";
 
@@ -28,7 +27,18 @@ import {
   EXPIRE_WAITING_OF_GUEST,
   closeStaleSlotsOfUser,
 } from "./lazy-closing";
-import { GUEST_TOKEN_VALID_SQL } from "./guest-token";
+import { PARTICIPANT_TOKEN_VALID_SQL } from "./participant-token";
+import {
+  INVALID_INVITATION_MESSAGE,
+  READ_INVITATION_SQL,
+  SEAT_CONSTRAINT,
+  invalidInvitation,
+  lockForJoin,
+  seatSecondPlayer,
+  withLookupAttempt,
+  type InvitationRow,
+  type LookupGuard,
+} from "./join-core";
 import { deleteSeekersSql } from "./lobby-seeker-sql";
 import type { ColorDraw } from "./color-draw";
 import type { TimeoutSettler } from "./timeout-settler";
@@ -41,7 +51,7 @@ type Deps = {
   colorDraw: ColorDraw;
 };
 
-export const INVALID_INVITATION_MESSAGE = "To zaproszenie jest już nieważne.";
+export { INVALID_INVITATION_MESSAGE };
 export const OWN_INVITATION_MESSAGE =
   "To Twoje własne zaproszenie — przeciwnik musi być kimś innym.";
 export const OWN_WAITING_GAME_MESSAGE =
@@ -53,14 +63,7 @@ export const NICKNAME_GUEST_ONLY_MESSAGE = "Nick podaje tylko gość.";
 export const GUEST_WARNING_MESSAGE =
   "Potwierdź, że rozumiesz ograniczenia gry bez konta.";
 
-/** Name of the unique index `(game_id, seat)`: the last line of defence against a third player. */
-const SEAT_CONSTRAINT = "game_players_game_id_seat_unique";
-
-/**
- * Which pool counts the failed code lookups: the client address (20 per 15 minutes) or, when
- * the address is not trustworthy, one global pool (300 per 15 minutes) (#21 Q13).
- */
-export type LookupGuard = { key: string; limit: number };
+export type { LookupGuard };
 
 /**
  * Who opens the invitation: the signed-in account (it wins) and/or the hash of the guest
@@ -87,7 +90,7 @@ export type InvitationPreview = {
    */
   creatorName: string | null;
   /** Whether the creator plays with an account or as a guest (E02-S08). */
-  creatorKind: ParticipantKind;
+  creatorKind: CreatorKind;
   state:
     /** Free to join (a guest option may still apply to the anonymous visitor). */
     | "joinable"
@@ -103,31 +106,8 @@ export type InvitationPreview = {
   gameId?: string;
 };
 
-type InvitationRow = {
-  id: string;
-  game_id: string;
-  /** Only compared with null: raw `em.execute` returns timestamps as strings, not `Date`s. */
-  consumed_at: string | null;
-  /** Computed in SQL: raw `em.execute` returns timestamps as strings, not `Date`s. */
-  expired: boolean;
-  status: string;
-  creator_id: string | null;
-  creator_name: string | null;
-  creator_kind: string;
-  creator_nickname: string | null;
-};
 type MemberRow = { seat: number };
 type SlotRow = { game_id: string; status: string; seat: number };
-
-const READ_INVITATION_SQL = `
-  select i.id, i.game_id, i.consumed_at, i.expires_at <= ? as expired, g.status,
-    c.user_id as creator_id, u.display_name as creator_name,
-    c.kind as creator_kind, c.nickname as creator_nickname
-  from invitations i
-  join games g on g.id = i.game_id
-  join game_players c on c.game_id = g.id and c.seat = 1
-  left join users u on u.id = c.user_id
-  where i.code = ?`;
 
 const READ_MEMBER_SQL = `select seat from game_players where game_id = ? and user_id = ?`;
 
@@ -139,19 +119,12 @@ const READ_SLOT_SQL = `
 // A guest's whole browser is one identity (Q7): the slot a token holds is looked up by its hash.
 const READ_GUEST_MEMBER_SQL = `
   select p.seat from game_players p join games g on g.id = p.game_id
-  where p.game_id = ? and p.guest_token_hash = ? and ${GUEST_TOKEN_VALID_SQL}`;
+  where p.game_id = ? and p.guest_token_hash = ? and ${PARTICIPANT_TOKEN_VALID_SQL}`;
 
 const READ_GUEST_SLOT_SQL = `
   select p.game_id, g.status, p.seat
   from game_players p join games g on g.id = p.game_id
   where p.guest_token_hash = ? and p.is_active`;
-
-// The conditional updates below are what makes the join atomic: of two concurrent accepts,
-// one consumes the invitation, the other sees 0 rows.
-const CONSUME_INVITATION_SQL = `
-  update invitations set consumed_at = ?
-  where code = ? and consumed_at is null and expires_at > ?
-  returning id`;
 
 const INSERT_PLAYER_SQL = `
   insert into game_players (game_id, seat, kind, user_id, is_active, joined_at, seen_at)
@@ -163,34 +136,13 @@ const INSERT_GUEST_SQL = `
   values (?, 2, 'guest', ?, ?, true, ?, ?)
   returning id`;
 
-const SET_CONSUMED_BY_SQL = `update invitations set consumed_by_id = ? where id = ?`;
-
-const START_GAME_SQL = `
-  update games set status = 'active', started_at = ?, black_seat = ?
-  where id = ? and status = 'waiting'
-  returning id`;
-
 const RELEASE_SLOTS_SQL = `update game_players set is_active = false where game_id = ? and is_active`;
-
-const placeholders = (count: number) => Array.from({ length: count }, () => "?").join(", ");
-
-// Row locks in a fixed order (users by id, then games by id) so concurrent joins, cancels and
-// the account deletion (#37) cannot deadlock. `for no key update` does not block the foreign
-// key checks of unrelated inserts (sessions, game_players) that reference the same user.
-const lockUsersSql = (count: number) =>
-  `select id from users where id in (${placeholders(count)}) order by id for no key update`;
-const lockGamesSql = (count: number) =>
-  `select id from games where id in (${placeholders(count)}) order by id for update`;
 
 /** Name of the creator for the invite page: an account's name, a guest's nickname or default. */
 function creatorNameOf(invitation: InvitationRow): string | null {
   return invitation.creator_kind === "guest"
     ? (invitation.creator_nickname ?? defaultNickname(1))
     : invitation.creator_name;
-}
-
-function invalidInvitation(): GoneError {
-  return new GoneError(INVALID_INVITATION_MESSAGE, { code: "INVALID_INVITATION" });
 }
 
 function constraintOf(error: unknown): string | undefined {
@@ -238,7 +190,7 @@ export class InvitationService {
     if (invitation && member) {
       const known = (state: InvitationPreview["state"]): InvitationPreview => ({
         creatorName: creatorNameOf(invitation),
-        creatorKind: invitation.creator_kind as ParticipantKind,
+        creatorKind: invitation.creator_kind as CreatorKind,
         state,
         gameId: invitation.game_id,
       });
@@ -261,7 +213,7 @@ export class InvitationService {
     const slot = await this.#slotOf(this.#em, viewer);
     const creator = {
       creatorName: creatorNameOf(invitation),
-      creatorKind: invitation.creator_kind as ParticipantKind,
+      creatorKind: invitation.creator_kind as CreatorKind,
     };
     if (!slot) return { ...creator, state: "joinable" };
     return {
@@ -368,9 +320,8 @@ export class InvitationService {
 
     const userIds = [...new Set([userId, peek.creator_id].filter((id) => id != null))].sort();
     // Nobody to lock when a guest joins a guest's game (E02-S08).
-    if (userIds.length > 0) await tx.execute(lockUsersSql(userIds.length), userIds, "run");
     const gameIds = [...new Set([gameId, extraGame].filter((id) => id !== undefined))].sort();
-    await tx.execute(lockGamesSql(gameIds.length), gameIds, "run");
+    await lockForJoin(tx, userIds, gameIds);
 
     // Q16, Q21: slots of expired or never-opened games are released before they are judged.
     const now = this.#clock.now();
@@ -429,27 +380,17 @@ export class InvitationService {
     }
 
     // (4) Consume the invitation, seat the player, start the game; each step is conditional.
-    // The joiner has just opened the page (seen_at), so only the creator's visit is awaited (Q20).
-    const consumed = await tx.execute<{ id: string }[]>(CONSUME_INVITATION_SQL, [
-      now,
-      code,
-      now,
-    ]);
-    if (consumed.length === 0) throw invalidInvitation();
     // The nickname goes in with the very statement that creates the guest's row.
-    const [player] = await tx.execute<{ id: string }[]>(
-      guestToken ? INSERT_GUEST_SQL : INSERT_PLAYER_SQL,
-      guestToken
-        ? [gameId, hashOpaqueToken(guestToken), input.nickname ?? null, now, now]
-        : [gameId, userId, now, now],
-    );
-    await tx.execute(SET_CONSUMED_BY_SQL, [player!.id, invitation.id], "run");
-    const started = await tx.execute<{ id: string }[]>(START_GAME_SQL, [
-      now,
-      this.#colorDraw.drawBlackSeat(),
+    await seatSecondPlayer(tx, {
+      code,
+      invitationId: invitation.id,
       gameId,
-    ]);
-    if (started.length === 0) throw invalidInvitation();
+      now,
+      insert: guestToken
+        ? { sql: INSERT_GUEST_SQL, params: [gameId, hashOpaqueToken(guestToken), input.nickname ?? null, now, now] }
+        : { sql: INSERT_PLAYER_SQL, params: [gameId, userId, now, now] },
+      drawBlackSeat: () => this.#colorDraw.drawBlackSeat(),
+    });
     // The joiner is in a game now: their "looking for a game" status goes with the same commit (#25 Q5).
     if (userId) await tx.execute(deleteSeekersSql(1), [userId], "run");
     return { game: { gameId }, joined: true };
@@ -518,30 +459,7 @@ export class InvitationService {
     )[0];
   }
 
-  /**
-   * Q13, race-free: one attempt is reserved in the pool BEFORE the lookup (an atomic upsert in
-   * its own committed transaction, so concurrent guesses cannot all read "below the limit").
-   * It is given back unless the lookup failed with the uniform `INVALID_INVITATION`, so the
-   * pool only counts failures; once spent, even a correct code gets 429 (no oracle).
-   * Giving the attempt back is best-effort: a failing `release` must neither turn a finished
-   * lookup into a 500 nor mask the original error (fail-closed: the counter just stays high).
-   * A release after the window rolled over lowers the NEW window's counter: one free attempt
-   * per window boundary, accepted.
-   */
   async #withAttempt<T>(guard: LookupGuard, lookup: () => Promise<T>): Promise<T> {
-    await this.#rateLimiter.hit(guard.key, guard.limit, INVITATION_LOOKUP_WINDOW_MS);
-    let result: T;
-    try {
-      result = await lookup();
-    } catch (error) {
-      if (!(error instanceof GoneError)) await this.#release(guard);
-      throw error;
-    }
-    await this.#release(guard);
-    return result;
-  }
-
-  async #release(guard: LookupGuard): Promise<void> {
-    await this.#rateLimiter.release(guard.key, INVITATION_LOOKUP_WINDOW_MS).catch(() => undefined);
+    return withLookupAttempt(this.#rateLimiter, guard, lookup);
   }
 }
