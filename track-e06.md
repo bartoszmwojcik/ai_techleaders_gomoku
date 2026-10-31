@@ -1,6 +1,6 @@
 # Śledzenie implementacji Epiku 06 (gra z własnym agentem LLM przez MCP)
 
-- Start: 2026-10-31. Źródła: zgłoszenia #124 (epik), #125, #126, #127 (E06-S01); specyfikacje: `.ai/specs/implemented/2026-10-31-agent-joins-private-game.md` (S01) i `.ai/specs/implemented/2026-10-31-mcp-agent-identity.md` (decyzja D-29, BR-31). Eksperyment właściciela (D-28), bez dowodu popytu (A-04, A-06).
+- Start: 2026-10-31. Źródła: zgłoszenia #124 (epik), #125, #126, #127 (E06-S01), #128 (E06-S02); specyfikacje: `.ai/specs/implemented/2026-10-31-agent-joins-private-game.md` (S01), `.ai/specs/implemented/2026-10-31-agent-plays-game-mcp.md` (S02) i `.ai/specs/implemented/2026-10-31-mcp-agent-identity.md` (decyzja D-29, BR-31). Eksperyment właściciela (D-28), bez dowodu popytu (A-04, A-06).
 - Zasady pracy: jedna funkcja = jeden PR (kod + testy 100% + scenariusz integracyjny + dokumentacja). Legenda: `[ ]` do zrobienia, `[x]` wykonane.
 
 ## Faza 1 — Agent dołącza do partii prywatnej (E06-S01, #127; #125 i #126)
@@ -20,8 +20,9 @@
 
 ## Faza 2 — Gra do końca przez MCP (E06-S02, #128)
 
-- [ ] 2.1 `get_state` (+ `waitSeconds`, `retryAfterMs`), `play_move` (jednolity błąd, `moveNumber`), limit `mcp-token:*`
-- [ ] 2.2 Scenariusz integracyjny pełnej partii przez klienta MCP; test obciążeniowy puli połączeń
+- [x] 2.1 `get_state` (+ `waitSeconds`, `retryAfterMs`), `play_move` (jednolity błąd, `moveNumber`), limit `mcp-token:*` (`MCP_TOKEN_LIMIT`)
+- [x] 2.2 Scenariusz integracyjny pełnej partii przez klienta MCP, każdy kod błędu ze stanem przed = po, równoległe ruchy, wyścig o ostatni ruch, limit czasu, token cudzej partii, brak wycieku
+- [ ] 2.3 Test obciążeniowy puli połączeń przy wielu oczekujących `get_state` (nie wykonano; patrz „Nie sprawdzono” w specyfikacji)
 
 ## Faza 3 — Licznik wg pary typów (E06-S03, #129) i wskazówka „Jak podłączyć agenta” (E06-S04, #140)
 
@@ -34,3 +35,4 @@
 - Istniejące konto o nazwie „Agent” na produkcji: nie sprawdzono (dev: 0); domyślnie zostaje, rezerwacja działa od teraz.
 - `agentName`: odrzucenie niepoprawnej nazwy (nie obcinanie), alfabet łaciński, bez listy wulgaryzmów — odwracalne.
 - Utracona odpowiedź `join` = nowa partia z nowym kodem (bez ponowienia).
+- S02: ruch po upływie czasu kończy partię przegraną na czasie i zwraca `GAME_FINISHED` (zatwierdzony wyjątek od „błąd nie zmienia stanu”); `retryAfterMs` 2000 ms i format planszy tekstowej to wartości początkowe.
