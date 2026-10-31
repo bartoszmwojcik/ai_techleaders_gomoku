@@ -87,7 +87,8 @@ function setup(options: {
       calls.push("flush");
       if (options.flushError) throw options.flushError;
     }),
-    findOneOrFail: vi.fn(async (entity: unknown, _where?: unknown, _options?: unknown) => {
+    findOneOrFail: vi.fn(async (...args: unknown[]) => {
+      const entity = args[0];
       calls.push("findOneOrFail");
       return entity === Game ? { ...EMPTY_BOARD, ...options.game } : options.invitation;
     }),
