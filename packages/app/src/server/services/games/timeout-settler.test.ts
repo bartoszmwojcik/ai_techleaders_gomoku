@@ -63,8 +63,11 @@ describe("SqlTimeoutSettler.settleGame", () => {
     expect(finish.sql).toContain("end_reason = 'timeout'");
     expect(finish.sql).toContain("clock_ms_1 = 0");
     expect(finish.params).toEqual([2, new Date(NOW.getTime() - 0), "game-1", 0]);
-    expect(calls[2]!.sql).toContain("update game_players set is_active = false");
-    expect(calls[2]!.params).toEqual(["game-1"]);
+    expect(calls[2]!.sql).toContain("insert into game_pair_counters");
+    expect(calls[2]!.params).toEqual(["game-1", "game-1"]);
+    expect(calls[3]!.sql).toContain("update game_players set is_active = false");
+    expect(calls[3]!.params).toEqual(["game-1"]);
+    expect(calls).toHaveLength(4);
   });
 
   it("stamps the end with the moment the time ran out, not the moment it was noticed", async () => {
@@ -122,6 +125,7 @@ describe("SqlTimeoutSettler.settleExpired", () => {
       "select id from",
       "select status, black_seat,",
       "update games set",
+      "insert into game_pair_counters",
       "update game_players set",
     ]);
     expect(calls[1]!.sql).toContain("for update");

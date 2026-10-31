@@ -137,6 +137,7 @@ describe("GameMoveService.play", () => {
       "game-1",
       8,
     ]);
+    expect(calls.filter(({ sql }) => sql.includes("insert into game_pair_counters"))).toHaveLength(1);
     const release = calls.at(-1)!;
     expect(release.sql).toContain("update game_players set is_active = false");
     expect(release.params).toEqual(["game-1"]);
@@ -162,6 +163,7 @@ describe("GameMoveService.play", () => {
 
     const finish = calls.find(({ sql }) => sql.includes("status = 'finished'"))!;
     expect(finish.params.slice(6, 9)).toEqual([null, "draw", NOW]);
+    expect(calls.filter(({ sql }) => sql.includes("insert into game_pair_counters"))).toHaveLength(1);
   });
 
   it("answers a retry of the same move with the state and writes nothing", async () => {
@@ -273,8 +275,9 @@ describe("GameMoveService.play", () => {
   });
 
   it("answers 409 instead of 500 when the conditional update loses a race", async () => {
-    const { service, gameService } = setup({}, { written: [] });
+    const { service, gameService, calls } = setup({}, { written: [] });
     expect(await code(service.play(P, "game-1", move(7, 7, 1)))).toMatchObject({ status: 409, code: "STALE_MOVE" });
+    expect(calls.some(({ sql }) => sql.includes("game_pair_counters"))).toBe(false);
     expect(gameService.stateOf).not.toHaveBeenCalled();
   });
 });
@@ -292,9 +295,11 @@ describe("GameMoveService.resign", () => {
     expect(calls[1]!.sql).toContain("status = 'finished'");
     expect(calls[1]!.sql).toContain("status = 'active'");
     expect(calls[1]!.params).toEqual([2, "resignation", NOW, "game-1"]);
-    expect(calls[2]!.sql).toContain("update game_players set is_active = false");
-    expect(calls[2]!.mode).toBe("run");
-    expect(calls).toHaveLength(3);
+    expect(calls[2]!.sql).toContain("insert into game_pair_counters");
+    expect(calls[2]!.params).toEqual(["game-1", "game-1"]);
+    expect(calls[3]!.sql).toContain("update game_players set is_active = false");
+    expect(calls[3]!.mode).toBe("run");
+    expect(calls).toHaveLength(4);
     expect(gameService.stateOf).toHaveBeenCalledWith(em, P, "game-1", 0, NOW);
   });
 
@@ -350,8 +355,9 @@ describe("GameMoveService.resign", () => {
   });
 
   it("answers 409 instead of 500 when the conditional update loses a race", async () => {
-    const { service, gameService } = setup({}, { written: [] });
+    const { service, gameService, calls } = setup({}, { written: [] });
     expect(await code(service.resign(P, "game-1"))).toMatchObject({ status: 409, code: "GAME_FINISHED" });
+    expect(calls.some(({ sql }) => sql.includes("game_pair_counters"))).toBe(false);
     expect(gameService.stateOf).not.toHaveBeenCalled();
   });
 });

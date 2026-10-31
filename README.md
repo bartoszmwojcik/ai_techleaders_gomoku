@@ -269,7 +269,7 @@ Właściciel może zagrać z własnym agentem LLM (D-28). Człowiek tworzy parti
 
 Błąd narzędzia: `isError` i `structuredContent.error = { code, message, retryable, retryAfterMs? }`; kody: `INVALID_INPUT` (zły kształt albo niepoprawny `agentName` — bez echa wartości, kod zaproszenia pozostaje ważny), `INVALID_INVITATION` (jednolicie: nieznany, zużyty, wygasły, anulowany albo źle zapisany kod), `RATE_LIMITED`; `get_state` i `play_move` dodają `INVALID_TOKEN` (jednolicie: nieznany, wygasły albo obcy token), `ILLEGAL_MOVE` (`reason`: `cell_occupied` / `out_of_board`), `NOT_YOUR_TURN`, `STALE_MOVE`, `GAME_NOT_STARTED`, `GAME_NOT_ACTIVE`, `GAME_FINISHED` i `INTERNAL`. **Błąd `play_move` nie zmienia partii ani zegarów**; jedyny wyjątek to upływ czasu strony na ruchu, który kończy partię przegraną na czasie (`GAME_FINISHED`). Zegar 10 minut biegnie także wtedy, gdy agent nie pyta. Poza narzędziem: `403` (inny `Origin`), `413` (ciało ponad 8 KB), `429` z `Retry-After` (adres), `503` (nieznany adres klienta w produkcji, fail-closed), `405`.
 
-**Limity** (wartości początkowe bez danych, nadpisywane zmiennymi środowiskowymi, `.env.example`): żądania na adres `MCP_REQUEST_LIMIT` = 300 / min; udane dołączenia na adres `MCP_JOIN_LIMIT` = 10 / h; błędne kody agentów **w osobnej puli** `agent-lookup:*` (`MCP_LOOKUP_LIMIT` = 20 / 15 min na adres, `MCP_LOOKUP_GLOBAL_LIMIT` = 300 gdy adres niepewny); żądania na token `MCP_TOKEN_LIMIT` = 60 / min (`mcp-token:*`, liczone po rozpoznaniu tokenu) — nie zużywają puli kodów przeglądarki (`invitation-lookup:*`). Token jest ważny jak token gościa: w trakcie partii i 1 godzinę po jej końcu (`db:cleanup` zeruje skrót); utrata odpowiedzi `join` oznacza dołączenie do nowej partii z nowym kodem. Logi nie zawierają tokenu, kodu ani nazwy modelu.
+**Limity** (wartości początkowe bez danych, nadpisywane zmiennymi środowiskowymi, `.env.example`): żądania na adres `MCP_REQUEST_LIMIT` = 300 / min; udane dołączenia na adres `MCP_JOIN_LIMIT` = 10 / h; błędne kody agentów **w osobnej puli** `agent-lookup:*` (`MCP_LOOKUP_LIMIT` = 20 / 15 min na adres, `MCP_LOOKUP_GLOBAL_LIMIT` = 300 gdy adres niepewny); żądania na token `MCP_TOKEN_LIMIT` = 60 / min (`mcp-token:*`, liczone po rozpoznaniu tokenu) — nie zużywają puli kodów przeglądarki (`invitation-lookup:*`). **Odpytywanie `get_state`:** limit 60 żądań na minutę na token oznacza, że pętla bez `waitSeconds` nie powinna pytać częściej niż co `retryAfterMs` (2000 ms); zalecany odstęp między odczytami to **≥ `retryAfterMs`**, a do czekania na ruch przeciwnika lepiej użyć `waitSeconds` (jedno żądanie na kilkadziesiąt sekund). Szybsze odpytywanie kończy się `RATE_LIMITED`. Token jest ważny jak token gościa: w trakcie partii i 1 godzinę po jej końcu (`db:cleanup` zeruje skrót); utrata odpowiedzi `join` oznacza dołączenie do nowej partii z nowym kodem. Logi nie zawierają tokenu, kodu ani nazwy modelu.
 
 Ręcznie (`npm run dev`, PostgreSQL): utwórz partię i skopiuj kod, potem `curl -s -X POST localhost:3000/api/mcp -H 'content-type: application/json' -H 'accept: application/json, text/event-stream' -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"join","arguments":{"code":"ABCD-EFGH","agentName":"claude opus 5.5"}}}'` — strona partii pokaże „Agent dołączył do partii”. Testy: `agent-seat-service.test.ts`, `server/mcp/*.test.ts`, `tests/integration/agent-seat.test.ts`, `agent-join-api.test.ts`, `game-agent-pages.test.ts` (przeglądarka, 320 px), `game-schema.test.ts`, `cleanup.test.ts`. Specyfikacje: [`.ai/specs/implemented/2026-10-31-agent-joins-private-game.md`](.ai/specs/implemented/2026-10-31-agent-joins-private-game.md), [`.ai/specs/implemented/2026-10-31-mcp-agent-identity.md`](.ai/specs/implemented/2026-10-31-mcp-agent-identity.md). `get_state` i `play_move` to E06-S02 (#128).
 
@@ -378,6 +378,29 @@ Strony gracza (`(frontend)`) mają przełącznik motywu w prawym górnym rogu (w
 
 Ręczne sprawdzenie w dev: `npm run dev`, otwórz `/`, kliknij przełącznik („Ciemny motyw” przełącza na jasny i odwrotnie), odśwież stronę (wybór zostaje), usuń ciasteczko w narzędziach przeglądarki i zmień motyw systemu (lub emulację `prefers-color-scheme` w DevTools), odśwież — motyw podąża za systemem. Logika: `packages/core/src/theme/theme.ts`; scenariusze integracyjne: `tests/integration/theme-switch.test.ts`; przegląd ekranów: `.ai/analysis/2026-10-29-theme-review-e01.md`.
 
+## Licznik zakończonych partii
+
+Właściciel sprawdza, czy ktokolwiek gra z agentami (A-04), poleceniem **tylko do odczytu**; licznik jest trwały, bo `db:cleanup` usuwa partie gość–gość i gość–agent ok. godzinę po zakończeniu, więc zliczanie z `games` po fakcie zaniżałoby wynik. Gdy partia przechodzi w `finished` (pięć w linii, remis, upływ czasu także rozliczony leniwie, poddanie), **w tej samej transakcji** rośnie o 1 wiersz tabeli `game_pair_counters` (doba w `Europe/Warsaw` × para typów uczestników; bez odniesień do partii i kont, bez danych osobowych; błąd cofa partię i licznik razem). Funkcja `recordFinishedGame` (`packages/app/src/server/services/games/finished-game-counter.ts`) stoi we wszystkich ścieżkach; test strażnik `finished-game-counter.guard.test.ts` zawodzi, gdy nowy kod kończy partię bez niej.
+
+```
+npm run -s stats:games                                        # lokalnie, baza z DATABASE_URL
+docker exec gomoku_prod-app-1 npm run -s stats:games          # produkcja (jak db:cleanup)
+docker exec gomoku_prod-app-1 npm run -s stats:games | jq .
+```
+
+Wynik to jedna linia JSON: `timeZone`, `total`, `today`, `last7Days` (dziś i 6 poprzednich dób) oraz `pairs` (zawsze pięć par w stałej kolejności, także z zerem: `account-account`, `account-guest`, `account-agent`, `guest-guest`, `agent-guest`; potem ewentualne nieznane pary). Kod wyjścia `1` i komunikat bez sekretów na stderr, gdy baza nie odpowiada. Odczyt zapewnia `FinishedGameStatsService.finishedByPair()` (ta sama funkcja zasila polecenie i przyszły panel `/backend`, #158).
+
+Jak czytać liczby i czego nie mówią:
+
+- **„Agent” znaczy „dołączył przez MCP”** (`join_channel = 'mcp'`), a nie dowód, że po drugiej stronie jest model językowy. To pomiar kanału, bez oceny i bez progu „ma sens” (Q-06 pozostaje otwarte).
+- **Backfill przy wdrożeniu:** migracja doliczyła zakończone partie obecne w `games`. Dla par z kontem wynik jest dokładny; gość–gość i gość–agent zakończone i sprzątnięte przed wdrożeniem są nieodzyskiwalne, więc te dwie pary są zaniżone do dnia wdrożenia. Partie zakończone starą wersją aplikacji między migracją a startem nowej (sekundy) nie wejdą do żadnej pary.
+- **Partie porzucone** (gościnne, z upłyniętym zegarem, do których nikt nie wrócił w ciągu godziny) usuwa `db:cleanup` bez rozliczenia, więc nigdy nie były `finished` i nie liczą się.
+- Usunięcie konta ani sprzątanie partii nie zmniejszają licznika. Rewanż to osobna partia i liczy się osobno.
+- Cofnięcie migracji (`db:migration:down`) **kasuje** liczniki, których nie da się odtworzyć: przed nim zrób `pg_dump --data-only -t game_pair_counters`.
+- Po wycofaniu aplikacji do starej wersji (z nową tabelą) licznik przestaje rosnąć, bez awarii; ponowne wdrożenie wznawia zliczanie z luką.
+
+Testy: `finished-game-counter*.test.ts`, `finished-game-stats-service.test.ts`, `packages/db/src/stats/*.test.ts`, `packages/core/src/games/finished-stats.test.ts`, integracyjne `finished-game-counter.test.ts` (każda ścieżka × każda para, wyścigi, rollback, cleanup, doba, polecenie) i `game-pair-counters-migration.test.ts` (backfill, up/down). Specyfikacja: [`.ai/specs/implemented/2026-10-31-finished-games-pair-counter.md`](.ai/specs/implemented/2026-10-31-finished-games-pair-counter.md).
+
 ## Sprzątanie wygasłych rekordów
 
 Wygasłe sesje, liczniki limitów i tokeny nie wpływają na poprawność (są filtrowane przy odczycie), ale tabele rosną, więc BR-18 wymaga ich usuwania bez udziału człowieka. Robi to komenda `npm run db:cleanup` (`packages/db/src/cleanup`), uruchamiana z `cron` na serwerze, a nie przez proces aplikacji.
@@ -453,6 +476,7 @@ Uruchamiane z katalogu głównego:
 | `npm run db:migration:up` / `db:migration:down` | Zastosowanie / cofnięcie migracji |
 | `npm run db:migration:list` | Lista wykonanych migracji |
 | `npm run db:status` | Czy baza z `DATABASE_URL` odpowiada i ile migracji czeka (JSON) |
+| `npm run stats:games` | Licznik zakończonych partii wg pary typów uczestników (JSON, **tylko odczyt**; w produkcji przez `docker exec`, zob. [Licznik zakończonych partii](#licznik-zakończonych-partii)) |
 | `npm run db:cleanup` | Usuwa wygasłe sesje, liczniki limitów, tokeny i nieodebrane partie z bazy z `DATABASE_URL` (JSON z liczbami; **kasuje dane**, zob. [Sprzątanie](#sprzątanie-wygasłych-rekordów)) |
 
 ## Testy i CI

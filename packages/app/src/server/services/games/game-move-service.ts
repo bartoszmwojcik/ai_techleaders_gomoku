@@ -23,6 +23,7 @@ import {
   type GameService,
   type GameState,
 } from "./game-service";
+import { recordFinishedGame } from "./finished-game-counter";
 import type { TimeoutSettler } from "./timeout-settler";
 
 type Deps = {
@@ -214,7 +215,10 @@ export class GameMoveService {
           ])
         : await tx.execute<{ id: string }[]>(MOVE_SQL, [...board, ...clocks, gameId, row.move_count]);
       if (written.length === 0) throw staleMove();
-      if (result) await tx.execute(RELEASE_SLOTS_SQL, [gameId], "run");
+      if (result) {
+        await recordFinishedGame(tx, gameId);
+        await tx.execute(RELEASE_SLOTS_SQL, [gameId], "run");
+      }
 
       return this.#gameService.stateOf(tx, participant, gameId, after, now);
     });
@@ -262,6 +266,7 @@ export class GameMoveService {
         gameId,
       ]);
       if (written.length === 0) throw gameFinished();
+      await recordFinishedGame(tx, gameId);
       await tx.execute(RELEASE_SLOTS_SQL, [gameId], "run");
 
       return this.#gameService.stateOf(tx, participant, gameId, 0, now);

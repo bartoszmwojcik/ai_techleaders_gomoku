@@ -68,7 +68,7 @@ Uwagi 2026-10-31: E02-S05…S08 (#87, #88, #94, #95) założono poza `om-backlog
 | E06-S01-T02 | #126 | wdrożone (`Migration20261031175106_agent_participant`, `Closes #126`) | PR #143 |
 | E06-S01 | #127 | wdrożone (`join`, etykieta „Agent”, rewanż niedostępny, `Closes #127`) | PR #143, `.ai/specs/implemented/2026-10-31-agent-joins-private-game.md` |
 | E06-S02 | #128 | wdrożone (`get_state` z `waitSeconds`, `play_move`, jednolity błąd `isError`, limit `mcp-token:*`, `Closes #128`) | `.ai/specs/implemented/2026-10-31-agent-plays-game-mcp.md`, spec PR #142 |
-| E06-S03 | #129 | po S02; licznik nie może czytać partii gość–agent „po fakcie” (znikają po 1 h, R10) | — |
+| E06-S03 | #129 | wdrożone (tabela `game_pair_counters`, `recordFinishedGame` w każdej ścieżce zakończenia, backfill, `npm run stats:games`, `Closes #129`) | `.ai/specs/implemented/2026-10-31-finished-games-pair-counter.md`, spec PR #164 |
 | E06-S04 | #140 | po S02 | — |
 
 ## Zmiany z 2026-10-26: uproszczony start konta

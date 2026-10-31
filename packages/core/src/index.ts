@@ -35,3 +35,4 @@ export * from "./validators/games/game-state-query-schema";
 export * from "./games/history";
 export * from "./games/agent-view";
 export * from "./validators/games/agent-tool-schema";
+export * from "./games/finished-stats";
