@@ -1,6 +1,6 @@
 # Zegar partii: 10 minut na gracza liczone przez serwer i przegrana na czas (E02-S03, #23)
 
-> Status: **szkic do przeglądu** (`om-spec-writing`, tryb interaktywny, 2026-10-26; Q1–Q4 rozstrzygnięte przez właściciela — Bartosz Wójcik). Źródło: zgłoszenie #23, `.ai/specs/product-brief.md` (BR-04, BR-05, BR-06, BR-07, BR-13, D-03), #21 (`seen_at`, Q20, Q21, `timeoutSettler.settleFor`), #22 (model `games`, `moves`, `moveNumber`, Q8, Q9), standardy (`.ai/docs/2026-09-01-engineering-standards.md`), mapa ekranów `lekcja-07/mapa-ekranow-partia.md`.
+> Status: **wdrożona (2026-10-31; zgłoszenie #23 domknięte, dowody w sekcji „Odstępstwa wdrożenia i dowody”)**; wcześniej: **szkic do przeglądu** (`om-spec-writing`, tryb interaktywny, 2026-10-26; Q1–Q4 rozstrzygnięte przez właściciela — Bartosz Wójcik). Źródło: zgłoszenie #23, `.ai/specs/product-brief.md` (BR-04, BR-05, BR-06, BR-07, BR-13, D-03), #21 (`seen_at`, Q20, Q21, `timeoutSettler.settleFor`), #22 (model `games`, `moves`, `moveNumber`, Q8, Q9), standardy (`.ai/docs/2026-09-01-engineering-standards.md`), mapa ekranów `lekcja-07/mapa-ekranow-partia.md`.
 
 ## 📝 TLDR
 
@@ -155,3 +155,20 @@ BR-04, BR-05, BR-06, BR-07, BR-13, D-03 (właściciel: Bartosz Wójcik). Spec pr
 - **`clock.now` (zatwierdzone przez właściciela):** odpowiedź `GET`/`POST` niesie dodatkowo `clock.now` (czas serwera, ms epoki, z chwili obliczenia `remainingMs`). Zmiana addytywna; zastępuje zdanie „Brak pola z czasem serwera: klient odlicza od momentu odbioru”. Klient mierzy offset względem monotonicznego `performance.now()` przy każdej odpowiedzi.
 - **Odpytywanie:** partia `active` jest czytana co 2 s także na własnym ruchu (przegrana na czas bez ruchu); lokalne dojście zegara do 0 wymusza natychmiastowy odczyt.
 - **Wariant „mało czasu”:** opakowanie `.low-clock` w `frontend.css` (LUKA D04, jak w prototypie), `aria-live` jednorazowo i tylko dla własnego zegara.
+
+## 📝 Odstępstwa wdrożenia i dowody (2026-10-31)
+
+Odstępstwa od pierwotnej treści opisują dwie adnotacje powyżej (2026-10-29: gość po terminie i `accept` jako gość; 2026-10-30: `clock.now`, odpytywanie co 2 s, wariant „mało czasu”) oraz przekreślenie „szkic do przeglądu” w statusie (Q1–Q5 rozstrzygnął właściciel). Dowody kryteriów zgłoszenia #23:
+
+| Kryterium #23 | Dowód |
+| --- | --- |
+| Start partii: każdy gracz ma 10:00 (BR-04) | `tests/integration/game-clock-api.test.ts` — „runs only after both players opened the game, and starts exactly once” (`remainingMs` obu = `INITIAL_CLOCK_MS`, `running: null`, `GAME_NOT_STARTED` przed startem, jeden start przy równoległych wejściach); `packages/core/src/games/clock.test.ts` — „gives each player ten minutes”; strona: `game-clock-pages.test.ts` — „ticks for the player on turn only…” (obaj widzą „10:00”); migracja: `game-schema.test.ts` — „applies the clock and status defaults”, „keeps the clocks within 0 and 600000 ms” |
+| W turze maleje tylko zegar gracza na ruchu (BR-05) | „lowers only the clock of the player on turn and charges a move”; `clock.test.ts` — „counts down only the player on turn, to the millisecond”, „charges nothing to a player who is not on turn or before the start”; strona: „ticks for the player on turn only…” |
+| Zegar dochodzi do 0: gracz przegrywa (BR-07) | „is found by the opponent's read, stamped at the deadline, and frees both slots”; „answers a move after the deadline with GAME_FINISHED and records nothing”; „settles at the exact millisecond the time runs out, not before”; „undoes the settlement write when the transaction throws”; wyścigi: „finishes an expired game once when two readers find it at the same time”, „lets exactly one of a late move and the opponent's read decide: the loss on time”, „never answers 500…”; strona: „finds a loss on time by the local countdown on the player's own turn, without waiting for the next poll” |
+| Klient zgłasza inny czas: obowiązuje czas serwera | „lowers only the clock of the player on turn and charges a move” — komentarz „A client-supplied time is ignored (#23 criterion 4)”: ruch z `elapsedMs: 1` obciążony czasem serwera; `clock.now` w odpowiedzi (czas serwera, nie klienta) — test „runs only after both players opened the game…”; schemat ruchu nie ma pola czasu (tylko kod: `move-create-schema.ts`) |
+
+Sprawdzenie ponowione 2026-10-31 na `origin/main` przez czytanie testów i kodu; testy nie były uruchamiane w ramach tego domknięcia (zmiana dokumentacyjna).
+
+### Decyzja CP-3 (zgłoszenie #30, spike transportu) — właściciel, 2026-10-31
+
+MVP używa **odpytywania** `GET /api/games/{id}` co 2–3 s w partii aktywnej (backoff i wstrzymanie w ukrytej karcie dla partii zakończonej); **WebSocket/SSE poza zakresem MVP**. Wymiana transportu nie zmienia kontraktu API (odpowiedź niesie `after`/`moveCount`, `clock.now`). Q-01/CP-3 uznane za rozstrzygnięte. Skutek dla **Q2 (a)**: „przegląd po spike #30” jest zamknięty bez zmiany reguły — do 2 s odpytywania nadal idzie na konto gracza; opóźnienie nie jest rekompensowane w MVP.

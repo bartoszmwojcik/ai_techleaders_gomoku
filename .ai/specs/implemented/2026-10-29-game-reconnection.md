@@ -1,6 +1,6 @@
 # Powrót do partii po rozłączeniu (E02-S04, #24)
 
-> Status: **zatwierdzona do implementacji** (Q1–Q6 rozstrzygnięte) (`om-spec-writing`, tryb interaktywny, 2026-10-29). Źródło: zgłoszenie #24, `.ai/specs/product-brief.md` (BR-06, BR-07, BR-13, BR-22), #21 (`resolveParticipant`, token gościa), #22 (`GET` z `after`, odpytywanie co 2 s, wstrzymanie w ukrytej karcie), #23 (`.ai/specs/2026-10-26-game-clock.md`: serwer jest jedynym źródłem czasu, rozstrzyganie leniwie), mapa `lekcja-07/mapa-ekranow-partia.md` (p05.10, p05.12, p06.5–p06.7, p07.3).
+> Status: **wdrożona (2026-10-31; zgłoszenie #24 domknięte, dowody w sekcji „Odstępstwa wdrożenia i dowody”)**; wcześniej: **zatwierdzona do implementacji** (Q1–Q6 rozstrzygnięte) (`om-spec-writing`, tryb interaktywny, 2026-10-29). Źródło: zgłoszenie #24, `.ai/specs/product-brief.md` (BR-06, BR-07, BR-13, BR-22), #21 (`resolveParticipant`, token gościa), #22 (`GET` z `after`, odpytywanie co 2 s, wstrzymanie w ukrytej karcie), #23 (`.ai/specs/implemented/2026-10-26-game-clock.md`: serwer jest jedynym źródłem czasu, rozstrzyganie leniwie), mapa `lekcja-07/mapa-ekranow-partia.md` (p05.10, p05.12, p06.5–p06.7, p07.3).
 
 ## 📝 TLDR
 
@@ -65,3 +65,15 @@ Jedna faza, jeden krótki PR (`Closes #24`) po #22 i #23.
 3. Komunikat „Wróciłeś do partii” (stan ekranu p05.10 z prototypu, tekst po polsku), znikanie po ruchu i po czasie; testy.
 4. Wejście do zakończonej partii: wynik i tryb tylko do odczytu po powrocie (p06.5, p06.6); testy integracyjne: partia zakończona przez czas w nieobecności, powrót konta z drugiego urządzenia (drugi jar ciasteczek), gość z drugiej przeglądarki `404`, gość po 1 h `404` (czas przez bazę).
 5. Dokumentacja (README), lekcja jeśli przegląd wykaże korektę.
+
+## 📝 Odstępstwa wdrożenia i dowody (2026-10-31)
+
+Odstępstwa od pierwotnej treści: brak wskaźnika „przeciwnik rozłączony” (Q1) i brak komunikatu „Wróciłeś” po odświeżeniu strony (opis w „Proposed Solution”, p. 2); decyzja o układzie komunikatu p05.10 — `track-e02.md`, faza 5A. Dowody kryteriów zgłoszenia #24:
+
+| Kryterium #24 | Dowód |
+| --- | --- |
+| Powrót przed upływem czasu: aktualna plansza i zegar pomniejszony o czas nieobecności | `tests/integration/game-reconnection-pages.test.ts` — „says 'Wróciłeś do partii' after a long absence with the server's time, not after a short one (p05.10)” (komunikat „Twój zegar: 9:xx” z wartością serwera); zegar liczony po stronie serwera podczas nieobecności: `game-clock-api.test.ts` — „lowers only the clock of the player on turn and charges a move”; `packages/core/src/games/return-notice.test.ts` (próg 30 s); `packages/app/src/components/games/use-page-visibility.test.tsx`; odświeżenie strony przywraca stan z serwera (`game-play-pages.test.ts` — „…and a reload in the middle”) |
+| Zegar wyczerpał się w rozłączeniu: partia zakończona przegraną | „shows a game lost on time while the player was away: on return and from a second device (p06.3, p06.5)” (wynik „Przegrałeś — skończył się Twój czas” / „Wygrałeś — przeciwnikowi skończył się czas”, `end_reason = timeout`); `game-clock-api.test.ts` — „is found by the opponent's read, stamped at the deadline, and frees both slots” |
+| Zakończona partia po odświeżeniu lub ponownym wejściu: wynik, brak ruchu | to samo „shows a game lost on time…” (plansza `aria-readonly`, drugie urządzenie konta, konto bez limitu 1 h); gość: „gives a guest the result in their own browser for an hour, the 404 text elsewhere and after the hour (p06.6, p06.7, p07.3)”; serwer odrzuca ruch: `game-moves-api.test.ts` — „plays alternately…” (`GAME_FINISHED` dla późnego ruchu) |
+
+Sprawdzenie ponowione 2026-10-31 na `origin/main` przez czytanie testów i kodu; testy nie były uruchamiane w ramach tego domknięcia (zmiana dokumentacyjna).

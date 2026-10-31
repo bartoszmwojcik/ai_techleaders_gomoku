@@ -1,6 +1,6 @@
 # Ruchy, model planszy i detekcja wygranej w O(1) (E02-S02, #22)
 
-> Status: **zatwierdzona do implementacji** (`om-auto-write-spec`, 2026-10-25; po krytycznym przeglądzie; Q3 rozstrzygnięte przez właściciela — wariant C, rekomendowany: `bit(225)` + `moves bytea`; pozostałe założenia odwracalne). Źródło: issue #22, `.ai/specs/product-brief.md` (BR-01, BR-10, BR-13, BR-22, D-08), specyfikacja #21 (`.ai/specs/2026-10-24-game-invitations.md`: `resolveParticipant`, `game_players.is_active`, `timeoutSettler`, Q14), standardy (`.ai/docs/2026-09-01-engineering-standards.md`, §Architecture, §Engineering Principles). Polecenie właściciela: model danych planszy i algorytm wygranej mają być **optymalne pamięciowo, a złożoność — najlepiej O(1)**.
+> Status: **wdrożona (2026-10-31; zgłoszenie #22 domknięte, dowody w sekcji „Odstępstwa wdrożenia i dowody”)**; wcześniej: **zatwierdzona do implementacji** (`om-auto-write-spec`, 2026-10-25; po krytycznym przeglądzie; Q3 rozstrzygnięte przez właściciela — wariant C, rekomendowany: `bit(225)` + `moves bytea`; pozostałe założenia odwracalne). Źródło: issue #22, `.ai/specs/product-brief.md` (BR-01, BR-10, BR-13, BR-22, D-08), specyfikacja #21 (`.ai/specs/implemented/2026-10-24-game-invitations.md`: `resolveParticipant`, `game_players.is_active`, `timeoutSettler`, Q14), standardy (`.ai/docs/2026-09-01-engineering-standards.md`, §Architecture, §Engineering Principles). Polecenie właściciela: model danych planszy i algorytm wygranej mają być **optymalne pamięciowo, a złożoność — najlepiej O(1)**.
 
 ## 📝 TLDR
 
@@ -209,3 +209,23 @@ Opiera się na: **BR-01** (dwóch graczy), **BR-10 / D-08** (swobodne gomoku 15�
 13. **`/games/[gameId]`:** stan `active`/`finished`, odpytywanie co 2 s z `after`, wstrzymanie w ukrytej karcie, zatrzymanie po `finished`, ponowienie tego samego ruchu po błędzie sieci. Testy: zatrzymanie odpytywania, `STALE_MOVE`.
 14. **Scenariusz agent-browser (telefon 360 px):** twórca i gość grają do wygranej pięcioma kamieniami; widoczne baner i podświetlona linia; odświeżenie w trakcie partii zachowuje planszę.
 15. **Dokumentacja i weryfikacja:** README (rozgrywka), `npm run check`; ocena kryteriów akceptacji z issue #22; lekcja w `.ai/lessons/`, jeśli przegląd wykaże korektę.
+
+## 📝 Odstępstwa wdrożenia i dowody (2026-10-31)
+
+Odstępstwa od pierwotnej treści opisują adnotacje w tekście powyżej (m.in. „Adnotacja 2026-10-29” przy rozmiarze stanu; poddanie, które #22 miało poza zakresem, dodała osobna specyfikacja `2026-10-29-game-resignation.md`). Dowody kryteriów zgłoszenia #22:
+
+| Kryterium #22 | Dowód |
+| --- | --- |
+| Ruch na wolne pole: przeciwnik widzi ruch, tura przechodzi | `tests/integration/game-moves-api.test.ts` — „plays alternately, serves new moves with `after`, ends with the winning line and is idempotent after the end” (`turnSeat`, `moves`, odczyt z `after`); `packages/core/src/games/apply-move.test.ts` — „places black first, then white, and counts moves”; strona: `game-play-pages.test.ts` — „plays a game to five in a row in two browsers, with a move out of turn refused and a reload in the middle” |
+| Ruch poza turą lub na zajęte pole odrzucony, stan bez zmian | „answers the documented codes and changes nothing” (`NOT_YOUR_TURN`, `CELL_OCCUPIED`, `STALE_MOVE`; `move_count` i `moves` bez zmian); „the database refuses a stone on an occupied cell even if the code were wrong”; wyścigi: „accepts exactly one of two different parallel moves by the same player”, „serializes both players moving at once…”; `apply-move.test.ts` — „rejects an occupied cell of either colour and cells off the board” |
+| Pięć w linii (poziomo, pionowo, ukośnie) kończy wygraną, bez ograniczeń renju (BR-10) | `game-moves-api.test.ts` — „wins on a %s line” (pionowa, dwie przekątne) i test poziomej piątki w „plays alternately…”; `rules.test.ts` — „finds five on the %s axis from any of its stones”, „wins with six or more and returns the whole run”, „joins two groups (XX_XX)”; `win-equivalence.test.ts` — zgodność z naiwnym skanem na 2000 partii |
+| Pełna plansza bez piątki: remis | „ends in a draw when the 225th stone completes no five”; „a five with the 225th stone wins instead of a draw”; `apply-move.test.ts` — „declares a draw when the board fills without a five” |
+| Klient wysyła zmieniony stan planszy: rozstrzyga serwer | **Tylko kod:** `moveCreateSchema` (`packages/core/src/validators/games/move-create-schema.ts`) przyjmuje wyłącznie `x`, `y`, `moveNumber`; plansza, miejsce i kolor pochodzą z bazy (zob. `MOVE_SQL` w `GameMoveService`). Pokrewne: `game-clock-api.test.ts` — dodatkowe pole `elapsedMs` w ruchu jest ignorowane |
+
+Pomiar rozmiaru stanu: test „runs the same statements for move 1 and move 100, and the whole game stays in one small row” pilnuje progu `pg_column_size(games.*)` < 500 B (adnotacja z 2026-10-29 podaje < 450 B; faktyczny próg w teście to 500 B, pomiar po pełnej partii: 402 B).
+
+Sprawdzenie ponowione 2026-10-31 na `origin/main` przez czytanie testów i kodu; testy nie były uruchamiane w ramach tego domknięcia (zmiana dokumentacyjna).
+
+### Decyzja CP-3 (zgłoszenie #30, spike transportu) — właściciel, 2026-10-31
+
+Rozstrzyga **Q5**: MVP używa **odpytywania** `GET /api/games/{id}?after={moveCount}` co 2–3 s w partii aktywnej (w kodzie 2 s na ruchach, 3 s w `waiting`), z backoffem i wstrzymaniem w ukrytej karcie dla partii zakończonej. **WebSocket/SSE poza zakresem MVP.** Wymiana transportu nie zmienia kontraktu API (odpowiedź niesie `after`/`moveCount` oraz `clock.now`). Q-01/CP-3 uznane za rozstrzygnięte; zapis „odwracalne” przy Q5 staje się decyzją.
