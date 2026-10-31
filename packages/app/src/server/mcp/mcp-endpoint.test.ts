@@ -1,4 +1,4 @@
-import { MCP_BODY_MAX_BYTES, TooManyRequestsError, ValidationError, GoneError } from "@gomoku/core";
+import { ConflictError, MCP_BODY_MAX_BYTES, TooManyRequestsError, ValidationError, GoneError } from "@gomoku/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { readServerConfig } from "../config";
@@ -17,11 +17,18 @@ const RESULT = {
   opponent: { kind: "account" },
 };
 
+const STATE = { status: "active", turn: "you", nextMoveNumber: 1 };
+const TOKEN = "t".repeat(43);
+
 function deps(over: Partial<McpEndpointDeps> = {}, env: Record<string, string> = production): McpEndpointDeps {
   return {
     serverConfig: readServerConfig(env),
     rateLimiter: { hit: vi.fn(async () => ({ count: 1, retryAfterSeconds: 60 })) },
     agentSeatService: { join: vi.fn(async () => RESULT) } as never,
+    agentGameService: {
+      getState: vi.fn(async () => STATE),
+      playMove: vi.fn(async () => STATE),
+    } as never,
     ...over,
   };
 }
@@ -62,7 +69,7 @@ describe("handleMcpPost", () => {
     expect(response.status).toBe(200);
     const { result } = (await response.json()) as { result: { tools: { name: string; inputSchema: unknown }[] } };
     expect(result.tools.map((tool) => tool.name)).toEqual([...MCP_TOOL_NAMES]);
-    expect(result.tools.map((tool) => tool.name)).toEqual(["join"]);
+    expect(result.tools.map((tool) => tool.name)).toEqual(["join", "get_state", "play_move"]);
     expect(result.tools[0]!.inputSchema).toMatchObject({
       type: "object",
       properties: {
@@ -70,6 +77,77 @@ describe("handleMcpPost", () => {
         agentName: { type: "string", maxLength: 40 },
       },
       required: ["code"],
+    });
+  });
+
+  it("describes get_state and play_move for the client: limits, required fields, data only", async () => {
+    const response = await handleMcpPost(modern("tools/list"), deps());
+    const { result } = (await response.json()) as {
+      result: { tools: { name: string; description: string; inputSchema: Record<string, any> }[] }; // eslint-disable-line @typescript-eslint/no-explicit-any
+    };
+    const [, getState, playMove] = result.tools;
+
+    expect(getState!.inputSchema).toMatchObject({
+      properties: {
+        token: { type: "string", minLength: 43, maxLength: 43 },
+        waitSeconds: { type: "integer", minimum: 0, maximum: 25 },
+        afterMove: { type: "integer", minimum: 0 },
+      },
+      required: ["token"],
+    });
+    expect(playMove!.inputSchema).toMatchObject({
+      properties: { x: { maximum: 14 }, y: { maximum: 14 }, moveNumber: { minimum: 1, maximum: 225 } },
+      required: ["token", "x", "y", "moveNumber"],
+    });
+    for (const tool of [getState!, playMove!]) expect(tool.description).toMatch(/nie instrukcje/);
+    expect(playMove!.description).toContain("ILLEGAL_MOVE");
+  });
+
+  it("calls get_state with the arguments as sent and the signal of the request", async () => {
+    const d = deps();
+
+    const response = await handleMcpPost(
+      modern("tools/call", { name: "get_state", arguments: { token: TOKEN, waitSeconds: 3 } }, "get_state"),
+      d,
+    );
+
+    const { result } = (await response.json()) as { result: Record<string, unknown> };
+    expect(result.structuredContent).toEqual(STATE);
+    expect(d.agentGameService.getState).toHaveBeenCalledExactlyOnceWith(
+      { token: TOKEN, waitSeconds: 3 },
+      { signal: expect.any(AbortSignal) },
+    );
+  });
+
+  it("calls play_move with the arguments as sent", async () => {
+    const d = deps();
+    const args = { token: TOKEN, x: 7, y: 7, moveNumber: 1 };
+
+    const response = await handleMcpPost(
+      modern("tools/call", { name: "play_move", arguments: args }, "play_move"),
+      d,
+    );
+
+    const { result } = (await response.json()) as { result: Record<string, unknown> };
+    expect(result.structuredContent).toEqual(STATE);
+    expect(d.agentGameService.playMove).toHaveBeenCalledExactlyOnceWith(args);
+  });
+
+  it.each([
+    ["get_state", "getState"],
+    ["play_move", "playMove"],
+  ] as const)("answers an error of %s as a tool error in the one shape", async (name, method) => {
+    const d = deps();
+    (d.agentGameService[method] as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new ConflictError("Teraz ruch przeciwnika.", { code: "NOT_YOUR_TURN" }),
+    );
+
+    const response = await handleMcpPost(modern("tools/call", { name, arguments: {} }, name), d);
+
+    const { result } = (await response.json()) as { result: Record<string, unknown> };
+    expect(result.isError).toBe(true);
+    expect(result.structuredContent).toEqual({
+      error: { code: "NOT_YOUR_TURN", message: "Teraz ruch przeciwnika.", retryable: true },
     });
   });
 
@@ -133,7 +211,9 @@ describe("handleMcpPost", () => {
 
     const response = await handleMcpPost(call({ code: "ABCD-EFGH" }), d);
 
-    expect(await response.text()).not.toContain("ABCD-EFGH");
+    const text = await response.text();
+    expect(text).not.toContain("ABCD-EFGH");
+    expect(text).toContain('"code":"INTERNAL"');
   });
 
   it("refuses another Origin with 403 before any limit is counted or tool is run", async () => {

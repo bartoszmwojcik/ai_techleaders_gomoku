@@ -72,7 +72,8 @@ describe("getContainer", () => {
     expect(await first.cradle.passwordHasher.hash("secret123")).toMatch(
       /^\$2[aby]\$12\$/,
     );
-  });
+    // Imports the whole container and hashes with bcrypt cost 12: slow when 200 test files run at once.
+  }, 30_000);
 
   it("reuses the ORM cached on globalThis across module reloads (HMR)", async () => {
     const { orm } = fakeOrm();
@@ -155,6 +156,7 @@ describe("auth services", () => {
       expect(cradle.colorDraw).toBe(cradle.colorDraw);
       expect(cradle.invitationService).toBe(cradle.invitationService);
       expect(cradle.agentSeatService).toBe(cradle.agentSeatService);
+      expect(cradle.agentGameService).toBe(cradle.agentGameService);
       expect(cradle.gameHistoryService).toBe(cradle.gameHistoryService);
       expect(cradle.lobbyService).toBe(cradle.lobbyService);
       expect(await cradle.timeoutSettler.settleFor("user")).toBeUndefined();

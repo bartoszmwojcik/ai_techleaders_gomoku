@@ -2,6 +2,7 @@ import { MCP_BODY_MAX_BYTES } from "@gomoku/core";
 import { createMcpHandler } from "@modelcontextprotocol/server";
 
 import type { ServerConfig } from "../config";
+import type { AgentGameService } from "../services/games/agent-game-service";
 import type { AgentSeatService } from "../services/games/agent-seat-service";
 import type { RateLimiter } from "../services/rate-limit/rate-limiter";
 import { agentJoinGuard, limitRequests } from "./mcp-guards";
@@ -13,6 +14,7 @@ export type McpEndpointDeps = {
   serverConfig: ServerConfig;
   rateLimiter: Pick<RateLimiter, "hit">;
   agentSeatService: Pick<AgentSeatService, "join">;
+  agentGameService: Pick<AgentGameService, "getState" | "playMove">;
 };
 
 /** A JSON-RPC error body for a refusal before the protocol layer; `reason` is the machine-readable code. */
@@ -52,7 +54,7 @@ function originAllowed(request: Request, config: Pick<ServerConfig, "appOrigin">
  * the tools. Nothing here reads a cookie or a session.
  */
 export async function handleMcpPost(request: Request, deps: McpEndpointDeps): Promise<Response> {
-  const { serverConfig, rateLimiter, agentSeatService } = deps;
+  const { serverConfig, rateLimiter, agentSeatService, agentGameService } = deps;
   if (!originAllowed(request, serverConfig)) {
     return jsonRpcError(403, "Żądanie odrzucone.", "FORBIDDEN");
   }
@@ -69,6 +71,7 @@ export async function handleMcpPost(request: Request, deps: McpEndpointDeps): Pr
     () =>
       createGomokuMcpServer({
         agentSeatService,
+        agentGameService,
         guard: () => agentJoinGuard(request.headers, serverConfig),
       }),
     { maxRequestBodySize: MCP_BODY_MAX_BYTES },

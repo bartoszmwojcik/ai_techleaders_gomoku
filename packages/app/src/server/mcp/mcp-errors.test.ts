@@ -1,7 +1,7 @@
-import { GoneError, TooManyRequestsError, ValidationError } from "@gomoku/core";
+import { ConflictError, GoneError, NotFoundError, TooManyRequestsError, ValidationError } from "@gomoku/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { INTERNAL_MESSAGE, toolErrorOf, toolFailure, toolSuccess } from "./mcp-errors";
+import { INTERNAL_MESSAGE, INVALID_TOKEN_MESSAGE, toolErrorOf, toolFailure, toolSuccess } from "./mcp-errors";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -48,18 +48,52 @@ describe("toolErrorOf", () => {
     ).toEqual({ error: { code: "INVALID_INVITATION", message: "Nieważne", retryable: false } });
   });
 
-  it("logs anything else by name and code only and throws a generic error", () => {
+  it.each([
+    ["NOT_YOUR_TURN", true],
+    ["STALE_MOVE", true],
+    ["GAME_NOT_STARTED", true],
+    ["GAME_NOT_ACTIVE", false],
+    ["GAME_FINISHED", false],
+  ])("maps %s from the move service, retryable %s", (code, retryable) => {
+    expect(toolErrorOf(new ConflictError("Tekst", { code })).structuredContent).toEqual({
+      error: { code, message: "Tekst", retryable },
+    });
+  });
+
+  it("maps an occupied cell and a cell off the board to ILLEGAL_MOVE with the reason", () => {
+    expect(toolErrorOf(new ConflictError("Zajęte", { code: "CELL_OCCUPIED" })).structuredContent).toEqual({
+      error: { code: "ILLEGAL_MOVE", message: "Zajęte", retryable: false, reason: "cell_occupied" },
+    });
+    expect(toolErrorOf(new ValidationError("Poza", { code: "ILLEGAL_MOVE" })).structuredContent).toEqual({
+      error: { code: "ILLEGAL_MOVE", message: "Poza", retryable: false, reason: "out_of_board" },
+    });
+  });
+
+  it("maps a missing game to the one INVALID_TOKEN, whatever the message said", () => {
+    expect(toolErrorOf(new NotFoundError("Nie znaleziono partii.")).structuredContent).toEqual({
+      error: { code: "INVALID_TOKEN", message: INVALID_TOKEN_MESSAGE, retryable: false },
+    });
+  });
+
+  it("answers anything else as INTERNAL, logging name and code only", () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const secret = Object.assign(new Error("select ... where code = 'ABCD-EFGH'"), { code: "57P01" });
 
-    expect(() => toolErrorOf(secret)).toThrow(INTERNAL_MESSAGE);
+    const result = toolErrorOf(secret);
 
+    expect(result).toEqual({
+      isError: true,
+      content: [{ type: "text", text: INTERNAL_MESSAGE }],
+      structuredContent: { error: { code: "INTERNAL", message: INTERNAL_MESSAGE, retryable: false } },
+    });
     expect(log).toHaveBeenCalledExactlyOnceWith("Unhandled MCP error", { name: "Error", code: "57P01" });
-    expect(JSON.stringify(log.mock.calls)).not.toContain("ABCD-EFGH");
+    expect(JSON.stringify([log.mock.calls, result])).not.toContain("ABCD-EFGH");
   });
 
   it("does not take another AppError for a tool error", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    expect(() => toolErrorOf(new ValidationError("Inne"))).toThrow(INTERNAL_MESSAGE);
+    expect(toolErrorOf(new ValidationError("Inne")).structuredContent).toMatchObject({
+      error: { code: "INTERNAL" },
+    });
   });
 });

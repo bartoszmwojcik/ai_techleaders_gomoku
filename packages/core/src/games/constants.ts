@@ -60,3 +60,18 @@ export const AGENT_LOOKUP_GLOBAL_LIMIT = INVITATION_LOOKUP_GLOBAL_LIMIT;
 export const MCP_BODY_MAX_BYTES = 8 * 1024;
 /** Longest `code` argument of `join`: a code or a link to the invitation page. */
 export const AGENT_CODE_MAX_LENGTH = 64;
+
+/**
+ * Tools `get_state` and `play_move` (E06-S02, D-29): initial values without data (A-04, A-06).
+ * Requests per agent token per minute; the token is unguessable, so this only paces a runaway loop.
+ */
+export const MCP_TOKEN_LIMIT = 60;
+export const MCP_TOKEN_WINDOW_MS = 60 * 1000;
+/** Longest `waitSeconds` of `get_state`: below the usual limits of reverse proxies. */
+export const MCP_MAX_WAIT_SECONDS = 25;
+/** Pause between the cheap reads of a waiting `get_state`. */
+export const MCP_POLL_INTERVAL_MS = 1000;
+/** `retryAfterMs` hint of `get_state` while the opponent is on turn. */
+export const MCP_RETRY_HINT_MS = 2000;
+/** An agent token is `createOpaqueToken()`: 32 bytes as base64url. */
+export const AGENT_TOKEN_LENGTH = 43;
