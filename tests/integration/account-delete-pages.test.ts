@@ -89,7 +89,8 @@ const SUBMIT = "[data-testid=delete-account-submit]";
 const CONFIRM = "[data-testid=delete-account-confirm]";
 const confirmInDialog = (browser: Browser) => browser.click("[role=alertdialog] button:last-child");
 
-async function openAccount(browser: Browser, width = 360) {
+// $GOMOKU_SHOTS_WIDTH widens the account page for screenshots at desktop size (default 360 px).
+async function openAccount(browser: Browser, width = Number(process.env.GOMOKU_SHOTS_WIDTH ?? 360)) {
   await browser.setViewport(width, 900);
   await browser.open(`${baseUrl}/account`);
   await browser.waitFor("[data-testid=delete-account-panel]");
@@ -287,7 +288,8 @@ describe("a game in progress (BR-21)", () => {
     await shot(first, "s05-12-blokada-360");
 
     // Through the link to the game, resign, come back and refresh the page.
-    await first.run("find", "text", "Przejdź do partii", "click");
+    // `.click()`, not a pointer click: at desktop width the link wraps and its box centre is empty.
+    await first.evaluate("(() => { document.querySelector('[data-testid=delete-account-active-game] a').click(); return true; })()");
     await first.waitForFn(`location.pathname === '/games/${gameId}'`);
     await first.waitFor("[data-testid=resign]");
     await first.click("[data-testid=resign]");
