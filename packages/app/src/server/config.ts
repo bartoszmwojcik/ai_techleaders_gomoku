@@ -1,9 +1,28 @@
+import {
+  AGENT_LOOKUP_GLOBAL_LIMIT,
+  AGENT_LOOKUP_LIMIT,
+  MCP_JOIN_LIMIT,
+  MCP_REQUEST_LIMIT,
+} from "@gomoku/core";
+
 export const CLIENT_IP_HEADERS = [
   "x-forwarded-for",
   "x-real-ip",
   "cf-connecting-ip",
 ] as const;
 export type ClientIpHeader = (typeof CLIENT_IP_HEADERS)[number];
+
+/** Limits of the MCP endpoint for agents (E06-S01); initial values, see `MCP_*` in `.env.example`. */
+export type McpLimits = {
+  /** Requests per client address per minute. */
+  requestLimit: number;
+  /** Successful joins per client address per hour. */
+  joinLimit: number;
+  /** Failed invitation codes per client address per 15 minutes. */
+  lookupLimit: number;
+  /** The same for all agents together, when the address cannot be trusted. */
+  lookupGlobalLimit: number;
+};
 
 export type ServerConfig = {
   production: boolean;
@@ -28,6 +47,7 @@ export type ServerConfig = {
   emailOutboxPath: string;
   /** Global daily send limit (#34 Q10); unset means no limit is enforced. */
   emailDailyLimit?: number;
+  mcp: McpLimits;
 };
 
 export const EMAIL_TRANSPORTS = ["file", "brevo"] as const;
@@ -71,6 +91,18 @@ function parseEmailDailyLimit(raw: string | undefined): number | undefined {
   if (raw === undefined || raw === "") return undefined;
   if (!/^[1-9][0-9]{0,8}$/.test(raw)) {
     throw new Error("EMAIL_DAILY_LIMIT must be a positive integer.");
+  }
+  return Number(raw);
+}
+
+function parsePositiveLimit(
+  name: string,
+  raw: string | undefined,
+  fallback: number,
+): number {
+  if (raw === undefined || raw === "") return fallback;
+  if (!/^[1-9][0-9]{0,8}$/.test(raw)) {
+    throw new Error(`${name} must be a positive integer.`);
   }
   return Number(raw);
 }
@@ -168,5 +200,15 @@ export function readServerConfig(
     emailFromAddress: env.EMAIL_FROM_ADDRESS || undefined,
     emailOutboxPath: env.EMAIL_OUTBOX_PATH || DEFAULT_EMAIL_OUTBOX_PATH,
     emailDailyLimit: parseEmailDailyLimit(env.EMAIL_DAILY_LIMIT),
+    mcp: {
+      requestLimit: parsePositiveLimit("MCP_REQUEST_LIMIT", env.MCP_REQUEST_LIMIT, MCP_REQUEST_LIMIT),
+      joinLimit: parsePositiveLimit("MCP_JOIN_LIMIT", env.MCP_JOIN_LIMIT, MCP_JOIN_LIMIT),
+      lookupLimit: parsePositiveLimit("MCP_LOOKUP_LIMIT", env.MCP_LOOKUP_LIMIT, AGENT_LOOKUP_LIMIT),
+      lookupGlobalLimit: parsePositiveLimit(
+        "MCP_LOOKUP_GLOBAL_LIMIT",
+        env.MCP_LOOKUP_GLOBAL_LIMIT,
+        AGENT_LOOKUP_GLOBAL_LIMIT,
+      ),
+    },
   };
 }

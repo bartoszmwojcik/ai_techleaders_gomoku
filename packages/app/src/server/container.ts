@@ -18,6 +18,7 @@ import {
 } from "./services/auth/session-service";
 import { EmailVerificationService } from "./services/auth/email-verification-service";
 import { GameParticipation } from "./services/auth/game-participation";
+import { AgentSeatService } from "./services/games/agent-seat-service";
 import { ColorDraw } from "./services/games/color-draw";
 import { GameMoveService } from "./services/games/game-move-service";
 import { RematchService } from "./services/games/rematch-service";
@@ -70,6 +71,8 @@ export type AppCradle = {
   /** Draws who plays black when the opponent joins (#22 Q1). */
   colorDraw: ColorDraw;
   invitationService: InvitationService;
+  /** An agent takes the second seat over MCP (E06-S01). */
+  agentSeatService: AgentSeatService;
   /** The finished games of an account (E04-S01). */
   gameHistoryService: GameHistoryService;
   /** The "looking for a game" status and the lobby list (#25). */
@@ -151,6 +154,7 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     invitationCodes: asClass(InvitationCodes).singleton(),
     colorDraw: asClass(ColorDraw).singleton(),
     invitationService: asClass(InvitationService).scoped(),
+    agentSeatService: asClass(AgentSeatService).scoped(),
     gameHistoryService: asClass(GameHistoryService).scoped(),
     lobbyService: asClass(LobbyService).scoped(),
     timeoutSettler: asClass(SqlTimeoutSettler).scoped(),

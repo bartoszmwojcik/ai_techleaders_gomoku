@@ -8,12 +8,13 @@ const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 
 /**
- * Games with no participant of another kind than `guest` (BR-24, BR-29). `kind`, not
- * `user_id IS NULL`: a deleted account (#37) has `user_id = NULL` but stays `kind = 'account'`,
- * so its opponent's history is protected. Static text only.
+ * Games with no participant of another kind than `guest` and `agent` (BR-24, BR-29, BR-31): without
+ * an account nobody has a history of the game, so a guest-agent game goes like a guest-guest one.
+ * `kind`, not `user_id IS NULL`: a deleted account (#37) has `user_id = NULL` but stays
+ * `kind = 'account'`, so its opponent's history is protected. Static text only.
  */
 const GUEST_ONLY_SQL =
-  "not exists (select 1 from game_players p where p.game_id = games.id and p.kind <> 'guest')";
+  "not exists (select 1 from game_players p where p.game_id = games.id and p.kind not in ('guest', 'agent'))";
 
 /**
  * Moment the game's clock runs out, as `deadlineMs`/`seatOnTurn` of `@gomoku/core` compute it
@@ -47,6 +48,7 @@ export type CleanupRule = {
     | "guestOnlyActiveGames"
     | "guestOnlyFinishedGames"
     | "guestTokens"
+    | "agentTokens"
     | "unverifiedUsers";
   readonly table: string;
   readonly primaryKey: string;
@@ -155,6 +157,17 @@ export const CLEANUP_RULES: readonly CleanupRule[] = [
     clearColumn: "guest_token_hash",
     condition:
       "guest_token_hash is not null and game_id in (select id from games where finished_at < ?)",
+    graceMs: HOUR_MS,
+  },
+  {
+    // The same for an agent's token (E06-S01): it stops working 1 h after the game finished, like a
+    // guest's. The row of a game with an account stays (its history), only the hash goes.
+    key: "agentTokens",
+    table: "game_players",
+    primaryKey: "id",
+    clearColumn: "agent_token_hash",
+    condition:
+      "agent_token_hash is not null and game_id in (select id from games where finished_at < ?)",
     graceMs: HOUR_MS,
   },
   {

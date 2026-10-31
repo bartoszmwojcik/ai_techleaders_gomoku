@@ -1,8 +1,9 @@
 import { Alert } from "@gomoku/ui/game/alert";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import type { ReactNode } from "react";
 import { expect, within } from "storybook/test";
 
-import { GameScreen, type GameState } from "./game-screen";
+import { AgentName, GameScreen, type GameState } from "./game-screen";
 import { InviteLanding, JoinPage, type InviteState } from "./invite-screens";
 import { Screen, screenParameters, type Viewer } from "./screen";
 
@@ -28,13 +29,17 @@ export const ZaproszenieNiewazne: Story = invite("invalid", "none");
 export const KodPusty: Story = { render: () => <JoinPage /> };
 export const KodZaKrotki: Story = { render: () => <JoinPage error="Sprawdź kod: ma 8 znaków." /> };
 
-const game = (state: GameState, viewer: Viewer = "player"): Story => ({
+const game = (
+  state: GameState,
+  viewer: Viewer = "player",
+  opponent?: { name: ReactNode; agent?: boolean },
+): Story => ({
   render: () => (
     <Screen viewer={viewer}>
       {viewer === "guest" && (
         <Alert status="warning" title="Grasz bez konta">Nie zmieniaj przeglądarki w trakcie partii.</Alert>
       )}
-      <GameScreen state={state} />
+      <GameScreen state={state} opponent={opponent?.name} agentOpponent={opponent?.agent} />
     </Screen>
   ),
 });
@@ -57,3 +62,36 @@ export const PartiaPrzegrana: Story = game("lost");
 export const PartiaPrzegranaNaCzas: Story = game("lost-on-time");
 export const PartiaRemis: Story = game("draw");
 export const PartiaGoscWTrakcie: Story = game("your-turn", "guest");
+
+// Przeciwnik "Agent" (E06-S01, BR-31): dołączył przez MCP; nazwa modelu jest deklarowana i niezweryfikowana.
+const LONG_MODEL = "qwen2.5-coder-32b-instruct/preview (v2)";
+export const PartiaPrzeciwnikAgent: Story = {
+  ...game("opponent-turn", "player", { name: <AgentName /> }),
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText("Agent")).toBeVisible();
+  },
+};
+export const PartiaPrzeciwnikAgentZNazwaModelu: Story = {
+  ...game("opponent-turn", "player", { name: <AgentName declared="claude opus 5.5" /> }),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("claude opus 5.5")).toBeVisible();
+    await expect(canvas.getByText("(deklarowane)")).toBeVisible();
+  },
+};
+export const PartiaPrzeciwnikAgentDlugaNazwaModelu: Story = {
+  ...game("opponent-turn", "player", { name: <AgentName declared={LONG_MODEL} /> }),
+  parameters: { ...screenParameters, viewport: { defaultViewport: "phone" } },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText("(deklarowane)")).toBeVisible();
+  },
+};
+export const PartiaAgentCzekamyAzOtworzyStrone: Story = game("waiting-for-page-open", "player", { name: <AgentName /> });
+export const PartiaKoniecZAgentem: Story = {
+  ...game("won", "player", { name: <AgentName declared="claude opus 5.5" />, agent: true }),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("Rewanż niedostępny")).toBeVisible();
+    await expect(canvas.queryByRole("button", { name: "Rewanż" })).toBeNull();
+  },
+};

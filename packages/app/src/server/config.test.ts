@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { readServerConfig } from "./config";
 
+const MCP_DEFAULTS = { requestLimit: 300, joinLimit: 10, lookupLimit: 20, lookupGlobalLimit: 300 };
+
 const production = {
   NODE_ENV: "production",
   TRUST_PROXY_HOPS: "1",
@@ -21,6 +23,7 @@ describe("readServerConfig", () => {
       emailFrom: "Gomoku",
       emailOutboxPath: ".email-outbox.jsonl",
       emailDailyLimit: undefined,
+      mcp: MCP_DEFAULTS,
     });
     expect(
       readServerConfig({
@@ -48,6 +51,7 @@ describe("readServerConfig", () => {
       emailFrom: "Gomoku",
       emailOutboxPath: ".email-outbox.jsonl",
       emailDailyLimit: undefined,
+      mcp: MCP_DEFAULTS,
     });
   });
 
@@ -73,6 +77,7 @@ describe("readServerConfig", () => {
       emailFrom: "Gomoku",
       emailOutboxPath: ".email-outbox.jsonl",
       emailDailyLimit: undefined,
+      mcp: MCP_DEFAULTS,
     });
     for (const bad of ["3", "32", "abc", "12.5", "-4", "004", "1e1"]) {
       expect(() => readServerConfig({ PASSWORD_HASH_COST: bad })).toThrow(
@@ -202,4 +207,31 @@ describe("readServerConfig email settings", () => {
       }),
     ).toMatchObject({ emailTransport: "file" });
   });
+});
+
+describe("readServerConfig MCP limits", () => {
+  it("starts from the initial values of decision D-29", () => {
+    expect(readServerConfig({}).mcp).toEqual(MCP_DEFAULTS);
+    expect(readServerConfig({ MCP_REQUEST_LIMIT: "", MCP_JOIN_LIMIT: "" }).mcp).toEqual(MCP_DEFAULTS);
+  });
+
+  it("lets the environment override every limit", () => {
+    expect(
+      readServerConfig({
+        MCP_REQUEST_LIMIT: "500",
+        MCP_JOIN_LIMIT: "3",
+        MCP_LOOKUP_LIMIT: "7",
+        MCP_LOOKUP_GLOBAL_LIMIT: "99",
+      }).mcp,
+    ).toEqual({ requestLimit: 500, joinLimit: 3, lookupLimit: 7, lookupGlobalLimit: 99 });
+  });
+
+  it.each(["MCP_REQUEST_LIMIT", "MCP_JOIN_LIMIT", "MCP_LOOKUP_LIMIT", "MCP_LOOKUP_GLOBAL_LIMIT"])(
+    "rejects a bad %s",
+    (name) => {
+      for (const bad of ["0", "-1", "1.5", "abc", "1000000000"]) {
+        expect(() => readServerConfig({ [name]: bad })).toThrow(new RegExp(name));
+      }
+    },
+  );
 });

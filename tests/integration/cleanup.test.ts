@@ -403,7 +403,7 @@ describe("games rules (E02-S08, #39)", () => {
 });
 
 describe("guest-only games rules (#102, spec 2026-10-30-guest-only-games-cleanup)", () => {
-  type Kind = "guest" | "account" | "deleted-account";
+  type Kind = "guest" | "account" | "deleted-account" | "agent";
   type Spec = {
     kinds?: [Kind, Kind];
     status?: "active" | "finished";
@@ -450,6 +450,11 @@ describe("guest-only games rules (#102, spec 2026-10-30-guest-only-games-cleanup
     for (const [index, kind] of kinds.entries()) {
       if (kind === "guest") {
         await sql(`insert into game_players (game_id, seat, kind, guest_token_hash, is_active) values (?, ?, 'guest', ?, false)`, [id, index + 1, hash()]);
+      } else if (kind === "agent") {
+        await sql(
+          `insert into game_players (game_id, seat, kind, agent_token_hash, agent_name, join_channel, is_active) values (?, ?, 'agent', ?, 'claude opus 5.5', 'mcp', false)`,
+          [id, index + 1, hash()],
+        );
       } else {
         const userId = kind === "account" ? await insertUser() : null;
         await sql(`insert into game_players (game_id, seat, kind, user_id, is_active) values (?, ?, 'account', ?, false)`, [id, index + 1, userId]);
@@ -536,6 +541,49 @@ describe("guest-only games rules (#102, spec 2026-10-30-guest-only-games-cleanup
     expect(await exists(history)).toBe(true);
     // The token of the surviving game's guest is still cleared by its own rule once old enough.
     expect(await rows("game_players", `game_id = '${history}' and guest_token_hash is null and kind = 'guest'`)).toBe("1");
+  });
+
+  it("a game of a guest and an agent goes like one of two guests, a game with an account stays (E06-S01)", async () => {
+    const now = new Date();
+    const dead = { turnStartedAt: expiredAt(now, 5 * HOUR) };
+    const gone = [
+      await insertDuel(now, { ...dead, kinds: ["guest", "agent"] }),
+      await insertDuel(now, { kinds: ["guest", "agent"], status: "finished", finishedAt: ago(now, 5 * HOUR) }),
+    ];
+    const recent = await insertDuel(now, { kinds: ["guest", "agent"], status: "finished", finishedAt: ago(now, HOUR - SECOND) });
+    const kept: string[] = [];
+    for (const pair of [["account", "agent"], ["deleted-account", "agent"]] as [Kind, Kind][]) {
+      kept.push(await insertDuel(now, { ...dead, kinds: pair }));
+      kept.push(await insertDuel(now, { kinds: pair, status: "finished", finishedAt: ago(now, 5 * HOUR) }));
+    }
+
+    await cleanupExpired({ em: orm.em.fork(), now });
+
+    for (const id of gone) {
+      expect(await exists(id), id).toBe(false);
+      expect(await dependents(id)).toBe(0);
+    }
+    expect(await exists(recent)).toBe(true);
+    for (const id of kept) expect(await exists(id), id).toBe(true);
+  });
+
+  it("clears the agent token hash 1 h after the end, and keeps the row with its declared name (E06-S01)", async () => {
+    const now = new Date();
+    const finish = (agoMs: number) => insertDuel(now, { kinds: ["account", "agent"], status: "finished", finishedAt: ago(now, agoMs) });
+    const old = await finish(HOUR + 10 * SECOND);
+    const recent = await finish(HOUR - 10 * SECOND);
+    const agentOf = async (id: string) =>
+      (await orm.em.fork().execute<{ h: string | null; n: string | null }[]>(
+        `select agent_token_hash as h, agent_name as n from game_players where game_id = ? and kind = 'agent'`,
+        [id],
+      ))[0]!;
+
+    const result = await cleanupExpired({ em: orm.em.fork(), now });
+
+    expect(result.agentTokens).toBeGreaterThanOrEqual(1);
+    expect(await agentOf(old)).toEqual({ h: null, n: "claude opus 5.5" });
+    expect((await agentOf(recent)).h).not.toBeNull();
+    expect((await cleanupExpired({ em: orm.em.fork(), now })).agentTokens).toBe(0);
   });
 
   it("a rematch pointer to a removed game is cleared, and a second run removes nothing more", async () => {
@@ -762,6 +810,7 @@ describe("batching and parallel runs", () => {
       guestOnlyActiveGames: 0,
       guestOnlyFinishedGames: 0,
       guestTokens: 0,
+      agentTokens: 0,
       unverifiedUsers: 0,
       errors: [],
       truncated: false,
@@ -831,6 +880,7 @@ describe("db:cleanup command", () => {
     expect(result.sessions).toBeGreaterThanOrEqual(1);
     expect(Object.keys(result).sort()).toEqual(
       [
+        "agentTokens",
         "cancelledGames",
         "emailVerificationTokens",
         "errors",
@@ -862,7 +912,7 @@ describe("db:cleanup command", () => {
     const { stdout, stderr } = failure as { stdout: string; stderr: string };
     expect(stderr).not.toContain("s3cretpw");
     expect(stdout).not.toContain("s3cretpw");
-    expect(JSON.parse(stdout.trim()).errors).toHaveLength(11);
+    expect(JSON.parse(stdout.trim()).errors).toHaveLength(12);
     expect(JSON.parse(stderr.trim().split("\n").at(-1)!)).toMatchObject({ ok: false });
   });
 });
