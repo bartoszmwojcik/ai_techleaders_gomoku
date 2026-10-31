@@ -160,14 +160,17 @@ export class RematchService {
   /**
    * Offers a rematch of a finished game; either participant may, one offer at a time. An
    * expired or declined offer can be replaced. The limit counts per player, not per game.
-   * @throws AppError 404 for a stranger; 409 `GAME_NOT_FINISHED`, `REMATCH_ALREADY_OFFERED`;
-   * 429 `RATE_LIMITED`
+   * @throws AppError 404 for a stranger; 409 `GAME_NOT_FINISHED`, `REMATCH_ALREADY_OFFERED`,
+   * `REMATCH_UNAVAILABLE` (the other player deleted their account); 429 `RATE_LIMITED`
    */
   async offer(participant: GameParticipant, gameId: string): Promise<RematchView> {
-    const me = await this.#me(this.#em, participant, gameId);
+    const players = await this.#players(this.#em, gameId);
+    const me = this.#find(players, participant);
     const now = this.#clock.now();
     const game = await this.#game(this.#em, gameId, now);
     if (game.status !== "finished") throw gameNotFinished();
+    // Nobody to play against: no offer for a game with a deleted account (#37), and no attempt spent.
+    if (players.some((player) => isDeletedAccount(player))) throw rematchUnavailable();
 
     // The attempt is reserved BEFORE the write (so the limit cannot be raced) and given back when
     // the conditional update refuses: a double click or `REMATCH_ALREADY_OFFERED` is no offer.
@@ -274,7 +277,7 @@ export class RematchService {
     // Everybody must still be reachable: an account may be deleted, a guest token may be gone.
     const players = await this.#players(tx, gameId);
     if (players.some((player) => this.#unavailable(player, game))) {
-      throw new ConflictError(REMATCH_UNAVAILABLE_MESSAGE, { code: "REMATCH_UNAVAILABLE" });
+      throw rematchUnavailable();
     }
 
     await this.#assertNoActiveGame(tx, userIds, me, now);
@@ -344,7 +347,7 @@ export class RematchService {
   // that no seat of the new game is left without a way to be claimed.
   #unavailable(player: PlayerRow, game: GameRow): boolean {
     return player.kind === "account"
-      ? player.user_id === null
+      ? isDeletedAccount(player)
       : player.guest_token_hash === null || !game.token_fresh;
   }
 
@@ -394,6 +397,10 @@ export class RematchService {
   }
 }
 
+// A deleted account keeps its row with `user_id NULL` (#37); a guest has `user_id NULL` too.
+const isDeletedAccount = (player: PlayerRow) => player.kind === "account" && player.user_id === null;
+const rematchUnavailable = () =>
+  new ConflictError(REMATCH_UNAVAILABLE_MESSAGE, { code: "REMATCH_UNAVAILABLE" });
 const gameNotFinished = () =>
   new ConflictError(GAME_NOT_FINISHED_MESSAGE, { code: "GAME_NOT_FINISHED" });
 const notOffered = () =>
