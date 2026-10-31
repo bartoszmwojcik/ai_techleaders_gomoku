@@ -6,7 +6,7 @@ Stan: **etapy 0–3 gotowe; zmiana z 2026-10-26 (PR 3 z 3) wprowadzona.**
 
 - Mapa ekranów (zatwierdzona): `lekcja-07/mapa-ekranow.md` (ID ekranów s01–s06, stanów sNN.M, scenariuszy P01–P14, kont A0–A7, luk L01–L26 i D01–D08 są stałe).
 - Szary prototyp: `.ai/prototypes/discovery/account-registration/revision-001/` (najnowsza wersja, brak nowszych). Daje przepływ rejestracji i potwierdzenia, założenia A-01…A-10 i dane demo.
-- Specyfikacja Epiku 01: wybrałem `.ai/specs/2026-10-24-account-registration.md` (#19), z `login-logout.md` (#20) i `email-verification.md` (#34). W katalogu nie ma pliku o nazwie podanej w poleceniu.
+- Specyfikacja Epiku 01: wybrałem `.ai/specs/implemented/2026-10-24-account-registration.md` (#19), z `login-logout.md` (#20) i `email-verification.md` (#34). W katalogu nie ma pliku o nazwie podanej w poleceniu.
 - Design system: `packages/ui/docs/design-system.md`, komponenty `@gomoku/ui/game/*`, tokeny `@gomoku/ui/game-tokens.css`.
 - Silnik przeglądu: `lekcja-07/silnik-przegladu/` (nie edytować `prototype.js`).
 

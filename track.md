@@ -1,9 +1,10 @@
 # Śledzenie implementacji Epiku 01 (konta)
 
 - Start: 2026-10-27. Gałąź robocza: `feat/e01-konta` (z `main`).
-- Źródła: specyfikacje `.ai/specs/2026-10-24-{account-registration,login-logout,email-verification,email-provider,password-reset,password-change,account-deletion,expired-records-cleanup}.md` oraz zmiany z `2026-10-26-account-onboarding-simplification.md` (hasło ≥ 8 znaków, konto aktywne od razu, potwierdzenie e-maila nieblokujące, reset tylko po potwierdzeniu, kasowanie niepotwierdzonych po 14 dniach). Prototyp UI: `prototypes/konta-i-role/`, mapa: `lekcja-07/mapa-ekranow.md`.
+- Źródła: specyfikacje `.ai/specs/implemented/2026-10-24-{account-registration,login-logout,email-verification,email-provider,password-reset,password-change}.md` (wdrożone, przeniesione 2026-10-31), `.ai/specs/2026-10-24-{account-deletion,expired-records-cleanup}.md` (jeszcze aktywne) oraz zmiany z `2026-10-26-account-onboarding-simplification.md` (hasło ≥ 8 znaków, konto aktywne od razu, potwierdzenie e-maila nieblokujące, reset tylko po potwierdzeniu, kasowanie niepotwierdzonych po 14 dniach). Prototyp UI: `prototypes/konta-i-role/`, mapa: `lekcja-07/mapa-ekranow.md`.
 - Zasady pracy: jedno zadanie = jeden subagent = jeden commit (z odhaczeniem w tym pliku). Każde zadanie: testy jednostkowe 100% (`npm test`), `npm run lint`, `npm run typecheck`; zmiany w `packages/db` sprawdzone na prawdziwym PostgreSQL (up/down/up). Po każdej fazie: lista kroków do ręcznego sprawdzenia i zatrzymanie na Twoje „dalej”.
 - Legenda: `[ ]` do zrobienia, `[x]` wykonane, `[!]` zablokowane.
+- Stan na 2026-10-31: Fazy 1–8 i 11 wdrożone (zgłoszenia #19, #20, #28, #34, #35, #36, #38 zamknięte, specyfikacje w `.ai/specs/implemented/`). Faza 9 wdrożona poza krokiem 9.4 (reguła 14 dni, #39 zamknięte bez niej; dochodzi z #37, krok 8 specyfikacji `account-deletion`). Faza 10 (#37) w osobnym PR. Otwarty punkt wdrożeniowy #38: ręczny test wysyłki Brevo na produkcji.
 
 ## Wymagania wstępne (środowisko)
 
@@ -120,4 +121,4 @@ Ręczny test po fazie: przełączenie motywu na `/`, `/register`, `/login`, `/ac
 
 ## Poza zakresem tego przebiegu
 
-- #38 w części decyzji o produkcyjnym dostawcy poczty (spike SMTP) i #30 (adres klienta): produkcja wymaga ich rozstrzygnięcia; lokalnie używamy `FileEmailSender`.
+- #38: dostawca wybrany (Brevo, 2026-10-30, adapter `BrevoEmailSender`), spike SMTP nie dotyczy; zostaje ręczny test wysyłki na produkcji (punkt 4 planu w `.ai/specs/implemented/2026-10-24-email-provider.md`). #30 rozstrzygnięte (odpytywanie, 2026-10-31). Lokalnie i w testach nadal `FileEmailSender`.

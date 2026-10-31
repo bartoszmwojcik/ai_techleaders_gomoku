@@ -6,7 +6,7 @@
 > - Reguła BR-25 zastąpiona przez BR-27 (reset tylko po potwierdzeniu).
 
 
-> Status: **zatwierdzona do implementacji** — odpowiedzi właściciela z 2026-10-24: Q4 = b, Q7 = b, Q8 = a,
+> Status: **wdrożona (2026-10-31; zgłoszenia #19 i #28 domknięte, dowody w sekcji „Odstępstwa wdrożenia i dowody”)**; wcześniej: **zatwierdzona do implementacji** — odpowiedzi właściciela z 2026-10-24: Q4 = b, Q7 = b, Q8 = a,
 > pozostałe zgodnie z rekomendacją. Źródło: issue #19 (`Backlog id: E01-S01`), `.ai/specs/product-brief.md`,
 > `.ai/docs/2026-09-01-engineering-standards.md`. Obejmuje też migrację z #28 (E01-S01-T01).
 
@@ -296,3 +296,19 @@ Q8 = a: Faza 1 = **PR A** (kroki 1–7, `risk-high`, `Refs #19`, `Closes #28`); 
     - test integracyjny przez agent-browser: wypełnienie formularza, przekierowanie, widoczna nazwa i komunikat „Potwierdź e-mail, aby grać”, błąd duplikatu nazwy przy polu, układ na szerokości telefonu;
     - dokumentacja: sekcja 0 standardów (OD-2, OD-3) i doprecyzowanie §1 „Auth error messages” o rejestrację (Q7), README (konta; wdrożenie na mikr.us: `APP_ORIGIN`, `TRUST_PROXY_HOPS`, `CLIENT_IP_HEADER`, nasłuch na IPv6);
     - zamknięcie #28 komentarzem „włączone do #19”.
+
+## 📝 Odstępstwa wdrożenia i dowody (2026-10-31)
+
+Odstępstwa od pierwotnej treści opisuje adnotacja „Zmienione przez `2026-10-26-account-onboarding-simplification.md`” na początku dokumentu: hasło co najmniej 8 znaków i najwyżej 72 bajty (BR-28, zastępuje G3 z 16 znakami), konto aktywne od razu bez bramki potwierdzenia (D-24, BR-26). W zgłoszeniu #19 kryterium BR-15/BR-23 („Potwierdź e-mail, aby grać”) jest przekreślone i **zastąpione** dwoma nowymi kryteriami (konto grające od razu, hasło 8–72); dowody poniżej dotyczą wersji aktualnej. Kryterium „Done when” zgłoszenia #28 dotyczy migracji i encji.
+
+| Kryterium | Dowód |
+| --- | --- |
+| #19 K1: poprawne dane rejestracji: konto powstaje, gość jest zalogowany | `tests/integration/register.test.ts` — „creates the account and answers 201 with the session cookie”; `register-page.test.ts` — „registers, redirects to the home page and shows the player's name”; `user-service.test.ts` — „creates the user and the session in one transaction”, „propagates a session failure so the transaction rolls back the account” |
+| #19 K2: istniejące konto: rejestracja odrzucona, drugie konto nie powstaje | `register.test.ts` — „answers 409 for a taken e-mail without naming a field”, „answers 409 at the displayName field when only the name is taken”, „lets exactly one of two concurrent identical registrations win”; `register-page.test.ts` — „answers a taken e-mail with the uniform message and a login link, no field error” |
+| #19 K3: niepoprawne dane: błąd, konto nie powstaje | `register.test.ts` — „answers 400 with field errors for invalid data”, „answers 400 for a body that is not JSON”; `register-page.test.ts` — „validates in the browser without a request and focuses the first invalid field”; `register-schema.test.ts` — „reports errors per field” |
+| #19 K4 (nowe, BR-26): po rejestracji można grać bez potwierdzenia e-maila; baner zamykalny i nieblokujący | Tylko kod i pośrednio testy: w repozytorium nie ma kodu `EMAIL_NOT_VERIFIED` ani bramki potwierdzenia; testy gry (`game-invitation-pages.test.ts` — „creates a game on the home page, shows the code…”, „lets a signed-in player join with one button…”) używają kont świeżo zarejestrowanych (niepotwierdzonych); `login.test.ts` — „logs in an account with an unconfirmed e-mail (BR-26)”; baner: `verify-email-banner.test.ts` — „shows on / and /account, resends, closes for good and disappears after the confirmation”; `verify-email-banner.test.tsx` — „closes, remembers it and does not come back on the next visit”, „returns after 7 days” |
+| #19 K5 (nowe, BR-28): hasło krótsze niż 8 znaków albo dłuższe niż 72 bajty: błąd przy polu | `register-schema.test.ts` — „passwordSchema: enforces the 7/8 character boundary”, „enforces the 72/73 byte boundary”, „measures the maximum in UTF-8 bytes”; `register.test.ts` — „answers 400 with field errors for invalid data” |
+| #19 K (przekreślone, zastąpione): „Potwierdź e-mail, aby grać” blokuje akcje (BR-15/BR-23) | Zastąpione przez K4 (D-24, BR-26); nie wdrożone i nie ma być wdrożone |
+| #28 „Done when”: migracja w górę i w dół na PostgreSQL; encja w `packages/db/src/entities/index.ts` | Encje: `packages/db/src/entities/index.test.ts` (rejestr `users`, `sessions`, `rate_limit_buckets`); migracja `Migration20261027173339.ts` ma `up` i `down`, a w górę stosuje ją `tests/integration/global-setup.ts` przed każdym przebiegiem. Sprawdzenie up/down/up na PostgreSQL 17: tylko opis PR #67 (nie ma testu automatycznego dla `down`) |
+
+Sprawdzenie 2026-10-31 na `origin/main` przez czytanie testów i kodu; testy nie były uruchamiane w ramach tego domknięcia (zmiana dokumentacyjna).

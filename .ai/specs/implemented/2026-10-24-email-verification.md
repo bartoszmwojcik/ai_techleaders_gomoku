@@ -7,7 +7,7 @@
 > - Q1/Q6/Q13 o dostawcy poczty: brak dostawcy nie wyłącza rejestracji ani gry (BR-26), tylko wysyłkę potwierdzeń i resetu.
 
 
-> Status: **zatwierdzona** (`om-auto-write-spec`, 2026-10-24; założenia potwierdzone przez właściciela — Bartosz Wójcik, „a” — 2026-10-24).
+> Status: **wdrożona (2026-10-31; zgłoszenie #34 domknięte, dowody w sekcji „Odstępstwa wdrożenia i dowody”)**; wcześniej: **zatwierdzona** (`om-auto-write-spec`, 2026-10-24; założenia potwierdzone przez właściciela — Bartosz Wójcik, „a” — 2026-10-24).
 
 ## 📝 TLDR
 
@@ -192,3 +192,19 @@ Potwierdzone przez właściciela — Bartosza Wójcika.
 | Q14 | Konta z `emailVerifiedAt IS NULL` starsze niż 7 dni są usuwane przez #39; baner: „Niepotwierdzone konto zostanie usunięte po 7 dniach”. | **[zastąpione 2026-10-26: BR-28 (14 dni, tylko konta bez partii)]**
 | Q15 | Limity „na adres klienta” działają tylko przy wiarygodnie ustalonym adresie (spike #30); bez niego zostają limity na konto. |
 | Q16 | Plan implementacji dostaje krok: reguła sprzątania `email_verification_tokens` w `packages/db/src/cleanup/rules.ts` (#39). |
+
+## 📝 Odstępstwa wdrożenia i dowody (2026-10-31)
+
+Odstępstwa od pierwotnej treści opisuje adnotacja „Zmienione przez `2026-10-26-account-onboarding-simplification.md`” na początku dokumentu. **Zastąpione kryteria:** w #34/K2 „gra odblokowana” odpada (BR-26: konto gra od rejestracji, potwierdzenie umożliwia tylko reset hasła, BR-27); Q14 (7 dni i baner „zostanie usunięte”) zastąpione przez BR-28 (14 dni, tylko konta bez partii), a **sama reguła kasowania nie jest wdrożona** (zob. `2026-10-24-expired-records-cleanup.md`, krok 9.4 w `track.md`); baner jest zamykalny i wraca po 7 dniach (pamięć w `localStorage`). Odstępstwa wdrożenia z 2026-10-28 (wysyłka w żądaniu rejestracji z limitem 5 s, pule `EMAIL_DAILY_LIMIT`) opisują ustalenia z przesłuchania poniżej oraz `2026-10-24-email-provider.md`.
+
+| Kryterium | Dowód |
+| --- | --- |
+| K1: po rejestracji wychodzi wiadomość z linkiem | `tests/integration/email-verification.test.ts` — „registration mails a link; confirming it sets emailVerifiedAt, once”, „a failing send does not break the registration”; `user-service.test.ts` — „issues the confirmation link after the commit, with the registered address”; `email-verification-message.test.ts` |
+| K2 (wersja po D-24): ważny link: e-mail potwierdzony (reset hasła możliwy); gra niezależna od potwierdzenia | `email-verification.test.ts` — „registration mails a link; confirming it sets emailVerifiedAt, once”, „lets exactly one of parallel confirmations win”, „rolls the token consumption back when setting emailVerifiedAt fails (tx is used)”; `verify-email-page.test.ts` — „opening the link changes nothing; the button confirms once the player clicks”, „confirms without a session…”; niezależność gry: brak bramki w kodzie (zob. #19 K4) |
+| K3: link użyty lub wygasły: brak potwierdzenia, komunikat z możliwością ponownego wysłania | `email-verification.test.ts` — „rejects an expired token and leaves the account unconfirmed”, „rejects an unknown token”; `verify-email-page.test.ts` — „shows the uniform message for a used link, a wrong link and a missing token”, „rejects an expired token”; `email-verification-resend.test.ts` — „a signed-in player with a dead link asks for a new one and confirms with it” |
+| K4: prośba o ponowne wysłanie: nowy link, limit prób | `email-verification-resend.test.ts` — „mails a new link and kills the older one”, „allows 3 resends per account per hour, then 429 with Retry-After”, „allows 10 resends per client address per hour, then 429 for any account”, „answers 409 ALREADY_VERIFIED for a confirmed account and sends nothing”; `email-verification.test.ts` — „a new link invalidates the old one only after a successful send”, „parallel issues never kill each other: the newest link stays valid” |
+| Baner (D-24, nowe) | `verify-email-banner.test.ts` — „shows on / and /account, resends, closes for good and disappears after the confirmation”, „is in the HTML sent by the server…”, „shows the banner when the browser storage cannot be read”, „fits a 360 px screen…”; `verify-email-banner-memory.test.ts` — „stays hidden for 7 days”, „returns after 7 days”, „is visible when the stored time lies in the future” |
+
+Sprawdzenie 2026-10-31 na `origin/main` przez czytanie testów i kodu; testy nie były uruchamiane w ramach tego domknięcia (zmiana dokumentacyjna).
+
+**Nie wdrożone z tej specyfikacji:** kasowanie niepotwierdzonych kont bez partii po 14 dniach (BR-28) — należy do #39 / #37 (krok 8 specyfikacji `account-deletion`), nie do kryteriów #34.

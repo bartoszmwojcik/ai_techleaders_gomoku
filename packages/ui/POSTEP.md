@@ -149,7 +149,7 @@ Plik dla agentów: `packages/ui/docs/design-system.md` (charakter, zasady, tabel
 
 Test robi właściciel w nowej sesji, osobnym promptem, bo z tej rozmowy znam odpowiedzi, których nie ma w plikach. Agent testowy dostaje tylko repozytorium: ma sam znaleźć `packages/ui/docs/design-system.md` (przez `AGENTS.md`) i Storybook.
 
-**Ekran do zbudowania (nie ma go w Storybooku):** strona główna `/` zaraz po usunięciu konta, czyli stan niezalogowanego gościa z komunikatem „Konto zostało usunięte”. Źródło: `.ai/specs/2026-10-24-account-deletion.md` (sekcja UI/UX: „po sukcesie przekierowanie na `/` z komunikatem”) i `.ai/specs/2026-10-24-login-logout.md` (strona `/` dla niezalogowanego).
+**Ekran do zbudowania (nie ma go w Storybooku):** strona główna `/` zaraz po usunięciu konta, czyli stan niezalogowanego gościa z komunikatem „Konto zostało usunięte”. Źródło: `.ai/specs/2026-10-24-account-deletion.md` (sekcja UI/UX: „po sukcesie przekierowanie na `/` z komunikatem”) i `.ai/specs/implemented/2026-10-24-login-logout.md` (strona `/` dla niezalogowanego).
 
 **Wymagania:**
 - ekran jako story w `packages/ui/docs/screens/` w obu motywach, przy 320, 768 i 1440 px;

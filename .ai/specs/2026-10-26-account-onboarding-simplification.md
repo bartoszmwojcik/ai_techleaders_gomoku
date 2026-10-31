@@ -164,3 +164,7 @@ Dostawa jest dokumentacyjna i wyprzedza implementację kodu kont (#20 i dalsze b
 ### Faza 4 — zgłoszenia GitHub (osobna pozycja, nie w PR)
 
 12. **Zgłoszenia.** Edycja albo zamknięcie z odnośnikiem do następców dla #15, #19 (uzgodnić z rzeczywistością), #20, #21, #25, #26, #34–#39 (przez `om-auto-manage-issues` albo ręcznie).
+
+## 📝 Stan realizacji (2026-10-31)
+
+Specyfikacja **zostaje w `.ai/specs/`**: punkty 1–4 i 6 (hasło 8–72, konto aktywne od razu, potwierdzenie asynchroniczne z banerem, reset tylko po potwierdzeniu, wejście z zaproszenia) są wdrożone i opisane dowodami w sekcjach „Odstępstwa wdrożenia i dowody” w `implemented/2026-10-24-{account-registration,login-logout,email-verification,password-reset,password-change}.md` oraz `implemented/2026-10-24-game-invitations.md`; punkt 5 (reguła kasowania niepotwierdzonych kont bez partii po 14 dniach) **nie jest wdrożony** i dojdzie z #37 (krok 8 `2026-10-24-account-deletion.md`, `track.md` 9.4). Po jego wdrożeniu przenieść tę specyfikację do `implemented/`.

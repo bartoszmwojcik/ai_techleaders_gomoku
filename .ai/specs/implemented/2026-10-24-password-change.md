@@ -4,7 +4,7 @@
 > - Nowe hasło: `newPasswordSchema` 8–72 bajty (BR-28), podpowiedź „co najmniej 8 znaków”.
 
 
-> Status: **szkic autonomiczny** (`om-auto-write-spec`, 2026-10-24) — założenia odwracalne, do przeglądu przed merge'em. Źródło: issue #36, `.ai/specs/product-brief.md` (D-18), `.ai/specs/2026-10-24-account-registration.md` (G3, G5), `.ai/specs/2026-10-24-login-logout.md` (`/account`, `requireSession`, `RateLimiter.hit`, `PasswordField`, H1). Zależy od #19 i #20; `newPasswordSchema` współdzielony z #35.
+> Status: **wdrożona (2026-10-31; zgłoszenie #36 domknięte, dowody w sekcji „Odstępstwa wdrożenia i dowody”)**; wcześniej: **szkic autonomiczny** (`om-auto-write-spec`, 2026-10-24) — założenia odwracalne, do przeglądu przed merge'em. Źródło: issue #36, `.ai/specs/product-brief.md` (D-18), `.ai/specs/implemented/2026-10-24-account-registration.md` (G3, G5), `.ai/specs/implemented/2026-10-24-login-logout.md` (`/account`, `requireSession`, `RateLimiter.hit`, `PasswordField`, H1). Zależy od #19 i #20; `newPasswordSchema` współdzielony z #35.
 
 ## 📝 TLDR
 
@@ -85,3 +85,16 @@ Jedna faza, jeden PR (`Closes #36`), po #20; jeśli #35 jeszcze nie wydzielił `
 Potwierdzone przez właściciela — Bartosza Wójcika.
 
 - **Q4 bez wyjątku G5:** sesje innych urządzeń są unieważniane także w trakcie partii (zegar biegnie, BR-06). Formularz „Zmień hasło” pokazuje ostrzeżenie: „Inne urządzenia zostaną wylogowane, także w trakcie partii”.
+
+## 📝 Odstępstwa wdrożenia i dowody (2026-10-31)
+
+Odstępstwa od pierwotnej treści opisuje adnotacja „Zmienione przez `2026-10-26-account-onboarding-simplification.md`” na początku dokumentu: nowe hasło 8–72 bajty (BR-28), nie 16 znaków. Wcześniejszy status „szkic autonomiczny” zastąpiony: założenia Q1–Q4 wdrożono bez zmian (limit 10 prób / 15 min, brak powiadomienia e-mail, odrzucenie hasła równego obecnemu, unieważnienie pozostałych sesji).
+
+| Kryterium | Dowód |
+| --- | --- |
+| K1: aktualne i nowe hasło: hasło się zmienia | `tests/integration/password-change.test.ts` — „changes the password: the old one no longer logs in, the new one does”, „lets only one of two parallel changes with the right current password win”; `change-password-form.test.ts` — „rejects a wrong current password at the field, changes the password and logs in with the new one” |
+| K2: błędne aktualne hasło: odrzucone, próby ograniczone | `password-change.test.ts` — „answers 400 INVALID_CURRENT_PASSWORD for a wrong current password and changes nothing”, „answers 429 after 10 failed attempts, even with the right password”, „gives the attempt back after a successful change” |
+| K3: pozostałe sesje unieważnione, bieżąca zostaje | `password-change.test.ts` — „keeps the current session and ends the other ones”; `user-service.test.ts` — „verifies, hashes, then updates conditionally and revokes others in one transaction” |
+| K4 (nowe, BR-28): nowe hasło < 8 znaków lub > 72 bajty: błąd przy polu | `password-change-schema.test.ts` — „rejects a new password of 7 characters, accepts 8”, „enforces the 72 byte limit including multibyte characters”; `password-change.test.ts` — „answers 400 VALIDATION for a weak new password”; `change-password-form.test.ts` — „validates the form on the client without leaving the page” |
+
+Sprawdzenie 2026-10-31 na `origin/main` przez czytanie testów i kodu; testy nie były uruchamiane w ramach tego domknięcia (zmiana dokumentacyjna).

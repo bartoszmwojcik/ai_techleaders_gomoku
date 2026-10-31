@@ -13,7 +13,7 @@
 > - Po sukcesie `/reset-password` pokazuje komunikat „Hasło zmienione” z linkiem do `/login` (bez przekierowania).
 > - Zalogowany wchodzący na `/forgot-password` jest przekierowany na `/account` (zmiana hasła po zalogowaniu: #36).
 
-> Status: **zatwierdzona** (`om-auto-write-spec`, 2026-10-24; założenia potwierdzone przez właściciela — Bartosz Wójcik, „a” — 2026-10-24).
+> Status: **wdrożona (2026-10-31; zgłoszenie #35 domknięte, dowody w sekcji „Odstępstwa wdrożenia i dowody”)**; wcześniej: **zatwierdzona** (`om-auto-write-spec`, 2026-10-24; założenia potwierdzone przez właściciela — Bartosz Wójcik, „a” — 2026-10-24).
 
 ## 📝 TLDR
 
@@ -126,3 +126,17 @@ Potwierdzone przez właściciela — Bartosza Wójcika.
 | Q9 | Sesje są unieważniane także w trakcie partii (Q6 bez wyjątku G5). |
 | Q10 | Kolejność wdrożenia: #38 → #30 → #34 i #35 razem. Limity „na adres klienta” działają tylko przy wiarygodnie ustalonym adresie (spike #30); limity na konto i e-mail zostają zawsze. |
 | Q11 | Plan implementacji dostaje krok: reguła sprzątania `password_reset_tokens` w `packages/db/src/cleanup/rules.ts` (#39). |
+
+## 📝 Odstępstwa wdrożenia i dowody (2026-10-31)
+
+Odstępstwa od pierwotnej treści opisują dwie adnotacje na początku dokumentu: zmiany z `2026-10-26-account-onboarding-simplification.md` (reset tylko dla potwierdzonego e-maila, BR-27, zastępuje Q1 i BR-25; `confirm` nie ustawia `emailVerifiedAt`; hasło 8–72 bajty) oraz „Odstępstwa wdrożenia (2026-10-28)” (`fieldErrors.newPassword`, limit adresu przed walidacją, `request` połyka błędy wysyłki, brak przekierowania po sukcesie). Zdania w TLDR o „niepotwierdzonym e-mailu staje się potwierdzony” są historią zastąpioną przez BR-27. **Kryterium 5 w zgłoszeniu #35 (konto niepotwierdzone: nic nie jest wysyłane) zastępuje** pierwotne założenie Q1 o resecie dla niepotwierdzonych.
+
+| Kryterium | Dowód |
+| --- | --- |
+| K1: konto z potwierdzonym e-mailem: jednorazowy link | `tests/integration/password-reset.test.ts` — „mails a link to a confirmed account and stores only the hash”; `password-reset-api.test.ts` — „answers identically for confirmed, unconfirmed and unknown accounts and mails only the confirmed one”; `password-reset-service.test.ts` |
+| K2: odpowiedź taka sama niezależnie od istnienia konta | `password-reset-api.test.ts` — „answers identically for confirmed, unconfirmed and unknown accounts…”; `password-reset.test.ts` — „an unconfirmed or unknown address gets nothing and the service answers the same”; `forgot-reset-password-page.test.ts` — „shows the same message and sends nothing for unconfirmed and unknown addresses” |
+| K3: ważny link: stare hasło przestaje działać, sesje unieważnione | `password-reset.test.ts` — „confirm sets the new password, deletes all sessions and uses the token once”; `password-reset-api.test.ts` — „changes the password from the mailed link, kills sessions and rejects reuse”; `forgot-reset-password-page.test.ts` — „resets the password from the login page through the mailed link” |
+| K4: link wykorzystany lub wygasły: hasło się nie zmienia | `password-reset.test.ts` — „rejects unknown and expired tokens and leaves the password”, „lets exactly one of parallel confirmations win”, „does not accept a token once the account's e-mail is no longer confirmed, and leaves it unused”; `password-reset-api.test.ts` — „answers 400 INVALID_TOKEN for an unknown token” |
+| K5 (nowe, BR-27): konto niepotwierdzone: nic nie wysyłane, odpowiedź taka sama | `password-reset.test.ts` — „an unconfirmed or unknown address gets nothing…”; `password-reset-service.test.ts` — „never sets emailVerifiedAt”; `password-reset-api.test.ts` (pierwszy test) |
+
+Sprawdzenie 2026-10-31 na `origin/main` przez czytanie testów i kodu; testy nie były uruchamiane w ramach tego domknięcia (zmiana dokumentacyjna).

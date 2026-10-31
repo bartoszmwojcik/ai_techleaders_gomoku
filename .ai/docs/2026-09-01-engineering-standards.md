@@ -24,7 +24,7 @@ Resolved decisions stay in the table with their outcome.
 | ID | Decision | Why it matters |
 |---|---|---|
 | OD-1 | Real-time transport for games and lobby: WebSocket, SSE or polling. | Brief lists it as the next blocking uncertainty. Determines whether an in-process event emitter is enough (single instance) or a cross-instance fan-out (e.g. Postgres `LISTEN/NOTIFY`) is needed. |
-| OD-2 | Authentication mechanism: own credentials + session cookie/JWT, or an auth library. | **Resolved 2026-10-24** (`.ai/specs/2026-10-24-account-registration.md`, Q1/Q2): own credentials, password hashed with `bcryptjs` (cost 12), session stored in PostgreSQL (`sessions`; random 32-byte token in an `httpOnly` cookie, only its SHA-256 in the database), CSRF through a mandatory `Origin` equal to `APP_ORIGIN` plus the `X-Gomoku-Request` header. No auth library. |
+| OD-2 | Authentication mechanism: own credentials + session cookie/JWT, or an auth library. | **Resolved 2026-10-24** (`.ai/specs/implemented/2026-10-24-account-registration.md`, Q1/Q2): own credentials, password hashed with `bcryptjs` (cost 12), session stored in PostgreSQL (`sessions`; random 32-byte token in an `httpOnly` cookie, only its SHA-256 in the database), CSRF through a mandatory `Origin` equal to `APP_ORIGIN` plus the `X-Gomoku-Request` header. No auth library. |
 | OD-3 | New dependencies: `zod` (shared validation), `pino` (logging), env validation. | **Partly resolved 2026-10-24** (Q3): `zod` is approved and used for the shared schemas in `@gomoku/core`; `bcryptjs` is approved with OD-2. `pino` (logging) and env validation stay open: until approved, "logger" means the shared logging helper. |
 
 ---

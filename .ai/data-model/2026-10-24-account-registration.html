@@ -20,7 +20,7 @@
 </style>
 </head>
 <body>
-<header>Model danych — <code>.ai/specs/2026-10-24-account-registration.md</code>. Przeciągnij, aby przesunąć; kółko myszy przybliża; kliknij encję, aby wyróżnić sąsiadów (kliknij tło, aby wyczyścić). Diagram Mermaid w specyfikacji jest nadrzędny.</header>
+<header>Model danych — <code>.ai/specs/implemented/2026-10-24-account-registration.md</code>. Przeciągnij, aby przesunąć; kółko myszy przybliża; kliknij encję, aby wyróżnić sąsiadów (kliknij tło, aby wyczyścić). Diagram Mermaid w specyfikacji jest nadrzędny.</header>
 <svg id="graph" xmlns="http://www.w3.org/2000/svg"><g id="viewport"></g></svg>
 <script>
 const data = JSON.parse("{\"nodes\":[{\"id\":\"entity_1\",\"label\":\"User (users)\",\"fields\":[\"id uuid\",\"email\",\"displayName\",\"displayNameKey\",\"passwordHash\",\"emailVerifiedAt (null)\",\"createdAt\"],\"kind\":\"new\",\"x\":60,\"y\":60},{\"id\":\"entity_2\",\"label\":\"Session (sessions)\",\"fields\":[\"id uuid\",\"user_id \\u2192 users\",\"tokenHash\",\"createdAt\",\"expiresAt\"],\"kind\":\"new\",\"x\":420,\"y\":60},{\"id\":\"entity_3\",\"label\":\"RateLimitBucket (rate_limit_buckets)\",\"fields\":[\"key\",\"windowStart\",\"count\"],\"kind\":\"new\",\"x\":60,\"y\":300}],\"edges\":[{\"from\":\"entity_1\",\"to\":\"entity_2\",\"label\":\"1-n\"}]}");

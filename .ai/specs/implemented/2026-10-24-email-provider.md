@@ -3,7 +3,7 @@
 > **Zmienione przez `2026-10-26-account-onboarding-simplification.md` (decyzje właściciela 2026-10-26, brief D-24…D-26, BR-26…BR-28).** Dostawca poczty **nie blokuje** rejestracji ani gry (BR-26); potrzebny jest dla potwierdzenia e-maila i resetu hasła (#34 i #35 razem, po #38).
 
 
-> Status: **zatwierdzona** (`om-auto-write-spec`, 2026-10-24; założenia potwierdzone przez właściciela — Bartosz Wójcik, „a” — 2026-10-24).
+> Status: **wdrożona (2026-10-31; zgłoszenie #38 domknięte; **punkt 4 planu otwarty**, dowody w sekcji „Odstępstwa wdrożenia i dowody”)**; wcześniej: **zatwierdzona** (`om-auto-write-spec`, 2026-10-24; założenia potwierdzone przez właściciela — Bartosz Wójcik, „a” — 2026-10-24).
 
 > **Adnotacja 2026-10-30 (decyzja właściciela, zgłoszenie #38; wymaga zatwierdzenia właściciela przy review PR):** dostawca poczty to **Brevo** (plan Free), przez API HTTPS `POST https://api.brevo.com/v3/smtp/email`, z jednego zweryfikowanego adresu nadawcy bez własnej domeny i kluczem API z uprawnieniem tylko do wiadomości transakcyjnych. **Zastępuje Q1 i Q2** (Gmail SMTP + `nodemailer`): adapter `BrevoEmailSender` używa wbudowanego `fetch`, bez nowej zależności; wybór przez istniejące `EMAIL_TRANSPORT=brevo` (+ `BREVO_API_KEY`, `EMAIL_FROM_ADDRESS`, `EMAIL_FROM_NAME`). Spike portów SMTP (Q5) nie dotyczy (HTTPS, port 443). **Q-02 zamknięte.** Kompromis: bez SPF/DKIM na naszej domenie wiadomości mogą trafiać do spamu; limit planu Free ok. 300 wiadomości dziennie (do potwierdzenia w cenniku), a przy sumujących się pulach `EMAIL_DAILY_LIMIT` ≤ 176.
 
@@ -82,3 +82,19 @@ Potwierdzone przez właściciela — Bartosza Wójcika.
 - **Pula limitu:** weryfikacja e-maila zużywa najwyżej 70% `EMAIL_DAILY_LIMIT`, reset hasła całość (wartość limitu z planu dostawcy).
 - **Limit czasu wysyłki (2026-10-28, po code review fazy 6 #34):** wysyłka jest awaitowana w żądaniu rejestracji, więc port `EmailSender.send(message, { signal })` wymaga respektowania `AbortSignal` (rejestracja ustawia `AbortSignal.timeout(5000)`). Adapter SMTP (`SmtpEmailSender`) **musi** przekazać sygnał do klienta i ustawić własne limity `connectionTimeout`/`greetingTimeout`/`socketTimeout` (nodemailer), a po przerwaniu odrzucić obietnicę; test jednostkowy adaptera sprawdza przerwanie sygnałem. Po przekroczeniu czasu nowy token jest usuwany, poprzedni link zostaje ważny, rejestracja zwraca `201`.
 - **Pula weryfikacji przy małym limicie (2026-10-28):** `max(1, floor(EMAIL_DAILY_LIMIT × 0,7))` - przy `EMAIL_DAILY_LIMIT=1` weryfikacja dostaje 1 wysyłkę dziennie, a nie 0.
+
+## 📝 Odstępstwa wdrożenia i dowody (2026-10-31)
+
+Decyzja Brevo (adnotacja 2026-10-30) zastępuje Q1 i Q2 (Gmail SMTP, `nodemailer`); wdrożono `BrevoEmailSender` (`fetch`, bez nowej zależności) i wybór przez `EMAIL_TRANSPORT=brevo`. Status „wdrożona” obejmuje kod, konfigurację i dokumentację; **nie obejmuje weryfikacji na produkcji**. Zgodnie z poprawką z 2026-10-26 dostawca nie blokuje rejestracji ani gry.
+
+**Otwarty punkt wdrożeniowy (nie wykonany):** punkt 4 planu — ręczny test wysyłki na konto zewnętrzne na produkcji (inbox vs spam) z wynikiem w komentarzu #38 oraz zamknięcie Q-02 w `product-brief.md` za zgodą właściciela (brief nadal ma Q-02 jako „open”). Potwierdzenie limitu planu Free (ok. 300 wiadomości dziennie) „do potwierdzenia w cenniku” pozostaje adnotacją, a nie sprawdzonym faktem; w kodzie chroni przed nim `EMAIL_DAILY_LIMIT` ≤ 176.
+
+| Kryterium | Dowód |
+| --- | --- |
+| #38 „Done when”: dostawca wybrany w darmowym planie (D-20) | Decyzja zapisana w adnotacji 2026-10-30 tej specyfikacji; `brevo-email-sender.test.ts` — „posts the message to the Brevo API with the expected shape”, „succeeds on 201 even without a response body”, „maps a network exception to BREVO_NETWORK and drops the cause”, „maps its own timeout to BREVO_TIMEOUT”, „reports a caller cancellation as BREVO_ABORTED, not a timeout”; `create-email-sender.test.ts` — „picks the Brevo sender and wires config and the injected fetch”, „rejects an unknown transport instead of falling back” |
+| #38: limit dostawcy sprawdzony względem liczby rejestracji i resetów | Częściowo: limit z cennika oznaczony „do potwierdzenia”; ochrona w kodzie — `create-email-sender.test.ts` „warns, naming only variables, when brevo runs without EMAIL_DAILY_LIMIT”, pule `EMAIL_DAILY_LIMIT` w `email-verification.test.ts` („stops sending once the verification share of the daily limit is used”) i `password-reset.test.ts` („the daily pool for reset is separate and caps the sends”) |
+| #38: decyzja zapisana w `.ai/specs/` i w briefie (Q-02 zamknięte) | W `.ai/specs/`: tak (ta specyfikacja). W `product-brief.md`: **nie** (Q-02 nadal „open”, wiersze 31, 36–37, 200, 259, 287–289) — wymaga ręcznej aktualizacji przez właściciela |
+| #38: zmienne dostępowe w `.env.example` bez wartości | Tylko kod: `.env.example` — `EMAIL_TRANSPORT`, `BREVO_API_KEY=`, `EMAIL_FROM_ADDRESS=`, `EMAIL_FROM_NAME`, `EMAIL_DAILY_LIMIT` |
+| Plan, punkt 4: test wysyłki na produkcji | **Nie wykonany** — otwarty punkt wdrożeniowy (powyżej) |
+
+Sprawdzenie 2026-10-31 na `origin/main` przez czytanie testów i kodu; testy nie były uruchamiane w ramach tego domknięcia (zmiana dokumentacyjna).
