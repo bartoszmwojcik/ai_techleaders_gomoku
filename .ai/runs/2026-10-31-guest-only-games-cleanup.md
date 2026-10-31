@@ -20,6 +20,8 @@ Reguły kasują dane: błędny warunek `kind` mógłby usunąć partię z kontem
 
 ## Progress
 
+PR: #109
+
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles.
 
 ### Phase 1: Reguły
@@ -36,4 +38,4 @@ Reguły kasują dane: błędny warunek `kind` mógłby usunąć partię z kontem
 ### Phase 3: Dokumentacja i weryfikacja
 
 - [x] 3.1 README, adnotacja w specyfikacji #39, odstępstwa wdrożenia
-- [ ] 3.2 Pełna bramka walidacyjna
+- [x] 3.2 Pełna bramka walidacyjna
