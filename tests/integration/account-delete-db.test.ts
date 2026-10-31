@@ -380,7 +380,7 @@ describe("a rematch against a deleted account (E02-S06 x E01-S06)", () => {
       code: "REMATCH_UNAVAILABLE",
     });
     expect((await run(`select rematch_state from games where id = ?`, [gameId]))[0]).toEqual({ rematch_state: "declined" });
-    expect(await run(`select 1 from games where origin = 'rematch'`)).toHaveLength(0);
+    expect((await run(`select rematch_game_id from games where id = ?`, [gameId]))[0]).toEqual({ rematch_game_id: null });
     await expectNoGhost();
   });
 
