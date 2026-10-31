@@ -2,7 +2,29 @@
 // `expiresAt` column needs a rule here or an entry in `CLEANUP_EXEMPT_TABLES` (guard test).
 // Each new expiring table adds its rule together with its entity.
 
+import { GUEST_TOKEN_GRACE_MS, READY_DEADLINE_MS } from "@gomoku/core";
+
 const HOUR_MS = 60 * 60 * 1000;
+
+/**
+ * Games with no participant of another kind than `guest` (BR-24, BR-29). `kind`, not
+ * `user_id IS NULL`: a deleted account (#37) has `user_id = NULL` but stays `kind = 'account'`,
+ * so its opponent's history is protected. Static text only.
+ */
+const GUEST_ONLY_SQL =
+  "not exists (select 1 from game_players p where p.game_id = games.id and p.kind <> 'guest')";
+
+/**
+ * Moment the game's clock runs out, as `deadlineMs`/`seatOnTurn` of `@gomoku/core` compute it
+ * (black moves at an even `move_count`): `turn_started_at` plus the stored time of the seat on
+ * turn, or, while the clock never started, the ready deadline after `started_at`
+ * (the same term as `CANCEL_NOT_STARTED`). Static text only (the constant is a number).
+ */
+const GAME_DEADLINE_SQL = `coalesce(
+  turn_started_at + (case when (case when move_count % 2 = 0 then black_seat else 3 - black_seat end) = 1
+                          then clock_ms_1 else clock_ms_2 end) * interval '1 millisecond',
+  started_at + ${READY_DEADLINE_MS} * interval '1 millisecond'
+)`;
 
 /**
  * The longest rate-limit window the application uses: the daily e-mail pools
@@ -20,6 +42,8 @@ export type CleanupRule = {
     | "passwordResetTokens"
     | "waitingGames"
     | "cancelledGames"
+    | "guestOnlyActiveGames"
+    | "guestOnlyFinishedGames"
     | "guestTokens";
   readonly table: string;
   readonly primaryKey: string;
@@ -89,6 +113,27 @@ export const CLEANUP_RULES: readonly CleanupRule[] = [
     primaryKey: "id",
     condition: "status = 'cancelled' and created_at < ?",
     graceMs: 25 * HOUR_MS,
+  },
+  {
+    // A dead game of guests only (no account, so no history, BR-24): the clock of the player on
+    // turn ran out (or the clock never started within the ready deadline) more than 1 h ago.
+    // Not settled here (the result stays unwritten, Q4): the 1 h is the guest token window, so a
+    // returning player can still open the game and see the lazy "lost on time". Rows of players
+    // and the invitation go with the game (`on delete cascade`).
+    key: "guestOnlyActiveGames",
+    table: "games",
+    primaryKey: "id",
+    condition: `status = 'active' and ${GUEST_ONLY_SQL} and ${GAME_DEADLINE_SQL} < ?`,
+    graceMs: GUEST_TOKEN_GRACE_MS,
+  },
+  {
+    // A finished game of guests only, 1 h after the end (the token window). Stands before
+    // `guestTokens` only to spare it an `UPDATE` on rows that vanish in the same run.
+    key: "guestOnlyFinishedGames",
+    table: "games",
+    primaryKey: "id",
+    condition: `status = 'finished' and ${GUEST_ONLY_SQL} and finished_at < ?`,
+    graceMs: GUEST_TOKEN_GRACE_MS,
   },
   {
     // A guest token stops working 1 h after the game finished (BR-22); the hash is not needed after that.
