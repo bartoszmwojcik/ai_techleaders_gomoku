@@ -142,6 +142,7 @@ describe("handleMcpPost", () => {
     const response = await handleMcpPost(post({}, { origin: "https://evil.example" }), d);
 
     expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ error: { data: { code: "FORBIDDEN" } } });
     expect(d.rateLimiter.hit).not.toHaveBeenCalled();
     expect(d.agentSeatService.join).not.toHaveBeenCalled();
   });
@@ -194,6 +195,7 @@ describe("handleMcpPost", () => {
 
     expect(response.status).toBe(429);
     expect(response.headers.get("retry-after")).toBe("17");
+    expect(await response.json()).toMatchObject({ error: { data: { code: "RATE_LIMITED" } } });
     expect(d.agentSeatService.join).not.toHaveBeenCalled();
   });
 
@@ -204,6 +206,7 @@ describe("handleMcpPost", () => {
     const response = await handleMcpPost(request, d);
 
     expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ error: { data: { code: "ADDRESS_UNAVAILABLE" } } });
     expect(d.rateLimiter.hit).not.toHaveBeenCalled();
   });
 });
@@ -213,6 +216,9 @@ describe("methodNotAllowed", () => {
     const response = methodNotAllowed();
     expect(response.status).toBe(405);
     expect(response.headers.get("allow")).toBe("POST");
-    expect(await response.json()).toMatchObject({ jsonrpc: "2.0", error: { code: -32000 } });
+    expect(await response.json()).toMatchObject({
+      jsonrpc: "2.0",
+      error: { code: -32000, data: { code: "METHOD_NOT_ALLOWED" } },
+    });
   });
 });

@@ -15,13 +15,22 @@ export type McpEndpointDeps = {
   agentSeatService: Pick<AgentSeatService, "join">;
 };
 
-function jsonRpcError(status: number, code: number, message: string, headers: HeadersInit = {}): Response {
-  return Response.json({ jsonrpc: "2.0", id: null, error: { code, message } }, { status, headers });
+/** A JSON-RPC error body for a refusal before the protocol layer; `reason` is the machine-readable code. */
+function jsonRpcError(
+  status: number,
+  message: string,
+  reason: string,
+  headers: HeadersInit = {},
+): Response {
+  return Response.json(
+    { jsonrpc: "2.0", id: null, error: { code: -32000, message, data: { code: reason } } },
+    { status, headers },
+  );
 }
 
 /** `405` for the methods the endpoint does not serve (`GET` stream, `DELETE` session: stateless). */
 export function methodNotAllowed(): Response {
-  return jsonRpcError(405, -32000, "Metoda niedozwolona. Użyj POST.", { Allow: "POST" });
+  return jsonRpcError(405, "Metoda niedozwolona. Użyj POST.", "METHOD_NOT_ALLOWED", { Allow: "POST" });
 }
 
 /**
@@ -45,14 +54,14 @@ function originAllowed(request: Request, config: Pick<ServerConfig, "appOrigin">
 export async function handleMcpPost(request: Request, deps: McpEndpointDeps): Promise<Response> {
   const { serverConfig, rateLimiter, agentSeatService } = deps;
   if (!originAllowed(request, serverConfig)) {
-    return jsonRpcError(403, -32000, "Żądanie odrzucone.");
+    return jsonRpcError(403, "Żądanie odrzucone.", "FORBIDDEN");
   }
   const refusal = await limitRequests(rateLimiter, request.headers, serverConfig);
   if (refusal?.kind === "address-unavailable") {
-    return jsonRpcError(503, -32000, "Nie można ustalić adresu klienta.");
+    return jsonRpcError(503, "Nie można ustalić adresu klienta.", "ADDRESS_UNAVAILABLE");
   }
   if (refusal?.kind === "rate-limited") {
-    return jsonRpcError(429, -32000, "Zbyt wiele żądań. Spróbuj ponownie później.", {
+    return jsonRpcError(429, "Zbyt wiele żądań. Spróbuj ponownie później.", "RATE_LIMITED", {
       "Retry-After": String(refusal.retryAfterSeconds),
     });
   }
@@ -62,7 +71,7 @@ export async function handleMcpPost(request: Request, deps: McpEndpointDeps): Pr
         agentSeatService,
         guard: () => agentJoinGuard(request.headers, serverConfig),
       }),
-    { maxRequestBodySize: MCP_BODY_MAX_BYTES, responseMode: "json" },
+    { maxRequestBodySize: MCP_BODY_MAX_BYTES },
   );
   // Per request and holding nothing between requests (no sessions), so there is nothing to close.
   return handler.fetch(request);
