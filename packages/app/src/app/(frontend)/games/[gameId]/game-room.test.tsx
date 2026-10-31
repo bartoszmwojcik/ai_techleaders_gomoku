@@ -51,6 +51,13 @@ const guestOpponent = (): GameView => ({
       { seat: 2, kind: "guest", displayName: "Gracz 2", seen: true },
     ],
   });
+const agentOpponent = (agentName: string | null, seen = true): GameView => ({
+  ...active({}, [true, seen]),
+  players: [
+    { seat: 1, kind: "account", displayName: "Ala_7", seen: true },
+    { seat: 2, kind: "agent", displayName: null, agentName, seen },
+  ],
+});
 const finished = (): GameView =>
   active({ status: "finished", turnSeat: null, result: { winnerSeat: 1, reason: "five_in_row", winLine: [0, 1, 2, 3, 4] } });
 const failure = (code: string) => ({ ok: false, error: { code, message: "x" } });
@@ -213,6 +220,24 @@ describe("GameRoom, waiting (p03)", () => {
     expect(screen.getByText("Gracz 2 (gość) dołączył do partii")).toBeTruthy();
   });
 
+  it("names an agent opponent 'Agent', with the declared model name marked as declared (BR-31)", async () => {
+    room(waiting());
+    apiCall.mockResolvedValue({ ok: true, data: agentOpponent(null) });
+    await tick();
+    expect(screen.getByText("Agent dołączył do partii")).toBeTruthy();
+    await tick(JOIN_STEP_MS);
+    expect(screen.getByTestId("player-name").getAttribute("title")).toBe("Agent");
+  });
+
+  it("shows the declared model name of an agent in the join notice and at the clock", async () => {
+    room(waiting());
+    apiCall.mockResolvedValue({ ok: true, data: agentOpponent("claude opus 5.5") });
+    await tick();
+    expect(screen.getByText("Agent · claude opus 5.5 (deklarowane) dołączył do partii")).toBeTruthy();
+    await tick(JOIN_STEP_MS);
+    expect(screen.getByTestId("player-name").getAttribute("title")).toBe("Agent · claude opus 5.5 (deklarowane)");
+  });
+
   it("counts failed polls, shows the banner after three and lets the player retry now (p03.10)", async () => {
     apiCall.mockResolvedValue(failure("network"));
     room(waiting());
@@ -341,6 +366,16 @@ describe("GameRoom, cancelling (p03.6-p03.8)", () => {
 });
 
 describe("GameRoom, active (p04)", () => {
+  it("waits for the creator's page when the opponent is an agent, naming it Agent", () => {
+    room({ ...agentOpponent(null), players: [
+      { seat: 1, kind: "account", displayName: "Ala_7", seen: false },
+      { seat: 2, kind: "agent", displayName: null, agentName: null, seen: true },
+    ] });
+    expect(
+      screen.getByText("Czekamy, aż Agent otworzy partię — zegar ruszy, gdy obaj będziecie na stronie (do 15 min)"),
+    ).toBeTruthy();
+  });
+
   it("waits for the player who has not opened the page, and keeps polling (p04.1)", async () => {
     room(active({ you: { seat: 2, kind: "account" } }, [false, true]));
     expect(screen.getByRole("heading", { name: "Czekamy na otwarcie partii" })).toBeTruthy();

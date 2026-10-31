@@ -1,6 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { agentNameOf } from "@/lib/games/play";
+
 import { PlayerLabel } from "./player-label";
 
 const guest = { nick: "Piotr", guest: true, label: "Piotr (gość)" };
@@ -22,5 +24,28 @@ describe("PlayerLabel", () => {
 
   it("prefixes the viewer's own guest label", () => {
     expect(renderToStaticMarkup(<PlayerLabel name={guest} you />)).toContain("Ty: </span>");
+  });
+
+  it("shows an agent as a bare Agent", () => {
+    const html = renderToStaticMarkup(<PlayerLabel name={agentNameOf(null)} />);
+    expect(html).toContain('title="Agent"');
+    expect(html).toContain('<span class="shrink-0 whitespace-pre">Agent</span>');
+    expect(html).not.toContain("deklarowane");
+  });
+
+  it("shows a declared model name between Agent and the fixed (deklarowane), cut apart from them", () => {
+    const html = renderToStaticMarkup(<PlayerLabel name={agentNameOf("claude opus 5.5")} />);
+    expect(html).toContain('title="Agent · claude opus 5.5 (deklarowane)"');
+    expect(html).toContain('<span class="shrink-0 whitespace-pre">Agent</span>');
+    expect(html).toContain('<span class="min-w-0 truncate">claude opus 5.5</span>');
+    expect(html).toContain('<span class="shrink-0 whitespace-pre"> (deklarowane)</span>');
+  });
+
+  it("escapes a hostile name given directly, past the validation", () => {
+    const hostile = '<img src=x onerror=alert(1)>"&[x](javascript:1)';
+    const html = renderToStaticMarkup(<PlayerLabel name={agentNameOf(hostile)} />);
+    expect(html).not.toContain("<img");
+    expect(html).toContain("&lt;img src=x onerror=alert(1)&gt;&quot;&amp;[x](javascript:1)");
+    expect(html).not.toContain("<a ");
   });
 });
