@@ -517,7 +517,7 @@ describe("guest-only games rules: races with the application (#102)", () => {
     await cleanup.done;
     const response = await reading;
 
-    expect(response.status).toBeLessThan(500);
+    expect(response.status).toBe(404);
     expect(await exists(game.gameId)).toBe(false);
     expect((await call("GET", `/api/games/${game.gameId}`, game.black)).status).toBe(404);
     expect((await call("GET", `/api/games/${game.gameId}`, game.white)).status).toBe(404);
@@ -534,7 +534,7 @@ describe("guest-only games rules: races with the application (#102)", () => {
     cleanup.release();
     await cleanup.done;
 
-    expect((await moving).status).toBeLessThan(500);
+    expect((await moving).status).toBe(404);
     expect(await exists(game.gameId)).toBe(false);
   });
 
