@@ -13,6 +13,7 @@
     "@gomoku/core": "*",
     "@gomoku/db": "*",
     "@gomoku/ui": "*",
+    "@modelcontextprotocol/server": "^2.4.0",
     "@next/env": "16.4.2",
     "bcryptjs": "^3.0.3",
     "next": "16.4.2",
