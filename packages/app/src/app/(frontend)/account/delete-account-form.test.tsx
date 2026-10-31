@@ -41,7 +41,7 @@ beforeEach(() => {
   apiCall.mockReset();
   replace.mockReset();
   assign.mockReset();
-  vi.stubGlobal("location", { assign });
+  vi.stubGlobal("location", { assign, origin: "https://gomoku.example" });
 });
 afterEach(() => {
   cleanup();
@@ -177,7 +177,7 @@ describe("DeleteAccountForm: the dialog and the answers", () => {
     renderForm();
     const user = await openDialog();
     await user.click(confirmButton());
-    await waitFor(() => expect(assign).toHaveBeenCalledExactlyOnceWith("/?notice=account-deleted"));
+    await waitFor(() => expect(assign).toHaveBeenCalledExactlyOnceWith("https://gomoku.example/?notice=account-deleted"));
   });
 
   it("sends once for a double click (a ref, not state)", async () => {
