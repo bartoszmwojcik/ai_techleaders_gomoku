@@ -148,7 +148,7 @@ describe("BrevoEmailSender", () => {
     }
   });
 
-  it("rejects when the caller's signal aborts", async () => {
+  it("reports a caller cancellation as BREVO_ABORTED, not a timeout", async () => {
     const controller = new AbortController();
     const fetchMock = vi.fn(
       (_url: string, init: RequestInit) =>
@@ -163,7 +163,7 @@ describe("BrevoEmailSender", () => {
     );
     controller.abort();
 
-    expect((await pending).code).toBe("BREVO_TIMEOUT");
+    expect((await pending).code).toBe("BREVO_ABORTED");
   });
 
   it("rejects immediately when the caller's signal is already aborted", async () => {
@@ -177,6 +177,6 @@ describe("BrevoEmailSender", () => {
         signal: AbortSignal.abort(),
       }),
     );
-    expect(error.code).toBe("BREVO_TIMEOUT");
+    expect(error.code).toBe("BREVO_ABORTED");
   });
 });

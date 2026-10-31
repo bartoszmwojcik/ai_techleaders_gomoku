@@ -43,6 +43,11 @@ export function createEmailSender({
         );
         return new UnconfiguredEmailSender();
       }
+      if (!serverConfig.emailDailyLimit) {
+        console.warn(
+          "EMAIL_TRANSPORT=brevo without EMAIL_DAILY_LIMIT: sending is not limited by the app; set it below the Brevo plan limit (README).",
+        );
+      }
       return new BrevoEmailSender({
         apiKey: brevoApiKey,
         fromAddress: emailFromAddress,
