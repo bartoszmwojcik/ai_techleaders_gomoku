@@ -2,6 +2,7 @@
 # om-prepare-test-env: generated entrypoint (contract v2)
 # regenerate with: om-prepare-test-env --regenerate
 # history:
+#   2026-10-31 port_free uses node (dash has no /dev/tcp)
 #   2026-10-31 jget trims spaces; one credential per descriptor line (greedy sed picked the last user -> login probe 401 -> never reused)
 #   2026-10-31 fingerprint/freshness ignore .snapshot-*.json (migration:up rewrites it; caused needless rebuild)
 #   2026-10-31 generated (disposable postgres:17 container + migrations + `next start`, build cache, demo accounts via API)
@@ -58,7 +59,7 @@ free_port() {
     node -e 's=require("net").createServer();s.listen(0,"127.0.0.1",()=>{console.log(s.address().port);s.close()})'
   fi
 }
-port_free() { ! (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
+port_free() { node -e 's=require("net").createServer();s.on("error",()=>process.exit(1));s.listen(+process.argv[1],"127.0.0.1",()=>s.close())' "$1"; }
 jget() { sed -n "s/.*\"$1\": *\"\{0,1\}\([^\", }]*\)\"\{0,1\}.*/\1/p" "$2" | head -n 1; }
 http_code() { curl -s -o /dev/null -m 8 -w '%{http_code}' "$@" 2>/dev/null || echo 000; }
 
