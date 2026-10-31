@@ -1,8 +1,8 @@
 # Wybór przeciwnika z lobby i partia z lobby (E03-S02, #26)
 
-> Status: **szkic autonomiczny** (`om-auto-write-spec` + `om-spec-writing --autonomous`, 2026-10-31) — założenia odwracalne, do przeglądu i zatwierdzenia przed implementacją. Źródło: zgłoszenie #26 (E03-S02), epik #17, `.ai/specs/product-brief.md` (BR-09, BR-12, BR-13, BR-26, BR-29, D-07, D-21, D-23), specyfikacje wdrożone: `implemented/2026-10-24-game-invitations.md` (#21: slot BR-13, `is_active`, leniwe zamykanie, kolejność blokad), `implemented/2026-10-29-game-rematch.md` (wzór tworzenia partii poza zaproszeniem w jednej transakcji), `implemented/2026-10-24-account-deletion.md` (kolejność blokad), `implemented/2026-10-26-game-clock.md`.
+> Status: **wdrożona** (2026-10-31; specyfikacja zatwierdzona przez właściciela w #118, szkic autonomiczny `om-auto-write-spec`). Odstępstwa i dowody: sekcja „Odstępstwa wdrożenia i dowody” na końcu. Źródło: zgłoszenie #26 (E03-S02), epik #17, `.ai/specs/product-brief.md` (BR-09, BR-12, BR-13, BR-26, BR-29, D-07, D-21, D-23), specyfikacje wdrożone: `implemented/2026-10-24-game-invitations.md` (#21: slot BR-13, `is_active`, leniwe zamykanie, kolejność blokad), `implemented/2026-10-29-game-rematch.md` (wzór tworzenia partii poza zaproszeniem w jednej transakcji), `implemented/2026-10-24-account-deletion.md` (kolejność blokad), `implemented/2026-10-26-game-clock.md`.
 >
-> **Zależność od #25 (PR #117, niescalony).** Ta specyfikacja buduje na `.ai/specs/2026-10-31-lobby-seeking-status.md` z gałęzi `spec/lobby-seeking-status` (tabela `lobby_seekers`, `LobbyService`, `GET /api/lobby`, `PUT`/`DELETE /api/lobby/seeking`, sekcja „Interfejs dla #26”). **Implementacja #26 idzie dopiero po wdrożeniu #25**; ta specyfikacja nie powinna być scalona przed #117 ani rozjechać się z nim — zmiana kontraktów w #117 wymaga przeglądu tutaj.
+> Zależność od #25 (wdrożona w #117/#119): tabela `lobby_seekers`, `LobbyService`, `GET /api/lobby`, `PUT`/`DELETE /api/lobby/seeking`.
 
 ## 📝 TLDR
 
@@ -124,15 +124,36 @@ Jedna faza, jeden PR implementacyjny (`Refs #26`; zamknięcie zgłoszenia przez 
 
 ## 📝 Acceptance criteria (mapowanie)
 
-- [ ] Użytkownik widzi aktualnych szukających, bez siebie i bez wygasłych (#25 + odświeżenie po wyborze).
-- [ ] Potwierdzony wybór tworzy jedną partię `origin = 'lobby'`, a obaj znikają z lobby.
-- [ ] Równoczesny wybór tego samego szukającego → dokładnie jedna partia, pozostali `LOBBY_SEEKER_TAKEN` z komunikatem (test na PostgreSQL).
-- [ ] Status wygasły przed potwierdzeniem → brak partii (`LOBBY_SEEKER_EXPIRED`).
-- [ ] Brak kodu zależnego od `emailVerifiedAt` (BR-26); gość bez dostępu (BR-29).
-- [ ] 100% pokrycia per plik; `npm run check` zielone.
+- [x] Użytkownik widzi aktualnych szukających, bez siebie i bez wygasłych (#25 + odświeżenie po wyborze).
+- [x] Potwierdzony wybór tworzy jedną partię `origin = 'lobby'`, a obaj znikają z lobby.
+- [x] Równoczesny wybór tego samego szukającego → dokładnie jedna partia, pozostali `LOBBY_SEEKER_TAKEN` z komunikatem (test na PostgreSQL).
+- [x] Status wygasły przed potwierdzeniem → brak partii (`LOBBY_SEEKER_EXPIRED`).
+- [x] Brak kodu zależnego od `emailVerifiedAt` (BR-26); gość bez dostępu (BR-29).
+- [x] 100% pokrycia per plik; `npm run check` zielone.
 
-## ⚠️ Pytania do człowieka (nie blokują przeglądu szkicu)
+## ⚠️ Pytania do człowieka (zamknięte przy zatwierdzeniu specyfikacji)
 
 1. Q1: czy #117 (#25) zostaje w obecnym kształcie — ta specyfikacja od niego zależy (⚠).
 2. Q3: czy partia ma powstawać od razu po wyborze, bez potwierdzenia przez wybranego?
 3. Q2: czy wybierać może także ktoś, kto sam nie jest szukającym?
+
+## 📝 Odstępstwa wdrożenia i dowody (2026-10-31)
+
+Założenia Q1–Q10 zastosowane bez zmian, poza punktami 1–2 poniżej. Pozostają decyzjami produktowymi do potwierdzenia przy odbiorze: Q3 (partia od razu, bez potwierdzenia przez wybranego) i Q2 (wybierać może także nieszukający).
+
+### Odstępstwa od treści specyfikacji
+
+1. **Brak wiersza statusu to `409 LOBBY_SEEKER_TAKEN`, nie `404`.** Tabela API przewidywała `404` dla nieistniejącego `id`. Po wygranej jednego z wybierających wiersz znika, więc przegrany, którego żądanie dotarło później niż commit zwycięzcy, nie odróżniłby „nigdy nie było” od „zajęty” — a kryterium 3 wymaga, by **wszyscy** pozostali dostali komunikat „zagrał już z kimś innym” (test z 8 równoległymi żądaniami byłby niestabilny przy `404`). `404` zostaje wyłącznie dla `id`, które nie jest uuid (sprawdza route, przed bazą). Skutek: ten sam komunikat przy wycofaniu statusu i przy posprzątanym wierszu.
+2. **Przycisk blokowany w pozostałych wierszach.** `LobbyRow` dostał opcjonalny prop `selectDisabled` (DS, test i dokumentacja), żeby podczas wyboru jednego wiersza przyciski pozostałych były zablokowane, bez wyglądu „zajęty”; prototyp tego nie miał. Przycisk „Zagraj” ma `shrink-0 whitespace-nowrap` (przy 320 px nazwa gracza łamie się, nie etykieta; wykryte na zrzucie).
+3. **`closeStaleSlotsOfUser` poza transakcją** (na `em`, nie `tx`), przed odczytem właściciela statusu, jak `InvitationService.#closeStaleSlots`: zamknięcie przeterminowanej oczekującej partii jest idempotentne i ma przetrwać odrzucenie `409`, a wszystkie odrzucenia po bramce wyścigu rzucają w transakcji (rollback przywraca statusy).
+4. **SQL wstawiania partii nie został wydzielony** do wspólnego modułu: lobby wstawia tylko dwa wiersze kont (stała liczba kolumn) i duplikacja z `RematchService` nie przekracza progu ~15 linii z planu, więc rewanż pozostał nietknięty.
+5. **Stały układ miejsc:** wybierający ma miejsce 1, wybrany 2; losowany jest tylko kolor (`black_seat`) przez `ColorDraw`.
+6. **Przekierowanie wybranego** wykonuje `LobbyPanel`, gdy odczyt zwraca `currentGame`, którego strona wcześniej nie znała (`knowsGame`); kto otworzył `/lobby` z już trwającą partią, nadal widzi „Masz już partię” z linkiem zamiast przekierowania.
+7. **Brak wpisu w `.ai/specs/backlog.md`:** tabela backlogu nie ma kolumny statusu, więc plan z kroku 8 ograniczył się do `track-e03.md` (Faza 2 odhaczona).
+
+### Dowody
+
+- Testy jednostkowe: `npm test` z progiem 100% per plik (statements, branches, functions, lines), w tym `LobbyService.pick` (limit, brak wiersza, self, `TAKEN`, `EXPIRED`, slot wybierającego, slot wybranego, usunięte konto, kolejność SQL), route, `LobbyPanel` (wybór, podwójne kliknięcie dwoma `click()` w jednym `act`, odmowy, przekierowanie wybranego), `LobbyRow`.
+- Testy integracyjne na PostgreSQL (`lobby-api.test.ts`): 8 równoległych wybierających jednego szukającego daje dokładnie jedną partię `lobby` i siedem `LOBBY_SEEKER_TAKEN` (statusy przegranych zostają); wzajemny wybór A↔B (4 rundy) — jedna partia; wybór kontra `POST /api/games` szukającego — nigdy dwa sloty; `LOBBY_SEEKER_EXPIRED` i wybór na 2 s przed końcem statusu; `CANNOT_PICK_SELF`; `ACTIVE_GAME_EXISTS` (BR-13); przeterminowana oczekująca partia wybierającego nie blokuje; `401`/`403`; `429` po 60 wyborach z `Retry-After`; partia `origin = 'lobby'`, `status = 'active'`, `seen_at` puste, oba statusy usunięte.
+- Przeglądarka (`lobby-pages.test.ts`, dwie sesje `agent-browser`): B wybiera A → B na `/games/{id}`, A przekierowany odpytywaniem na tę samą partię; nieaktualna lista (karta ukryta) → „Ten gracz zagrał już z kimś innym…” i „Status tego gracza wygasł.” bez opuszczania `/lobby`. Zrzuty obejrzane w obu motywach przy 320 px, 360 px i 1280 px (lista z „Zagraj”, komunikaty), bez poziomego przewijania.
+- Nie sprawdzono: obciążenia powyżej 8 równoległych wybierających; zachowania na VPS z 2 GB RAM; testów Storybooka (`test:stories`) dla zmiany `LobbyRow`.

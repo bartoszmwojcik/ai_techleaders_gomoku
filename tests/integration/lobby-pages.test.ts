@@ -1,6 +1,7 @@
 // The lobby in two real browsers (E03-S01, #25): a visitor is sent to the login; user A marks
 // themselves and user B sees A on the list without a reload; A withdraws and disappears; a
-// status that ran out brings the button back with a notice; a user with a game sees "Masz już
+// status that ran out brings the button back with a notice; B picks A and both land in the same
+// game (A by polling); a stale pick says "zagrał już z kimś innym" / "status wygasł"; a user with a game sees "Masz już
 // partię"; the home page links to the lobby. Screenshots go to $GOMOKU_SHOTS_DIR in the theme
 // $GOMOKU_SHOTS_THEME (default light) when the directory is set.
 import { createOrm, type Orm } from "@gomoku/db";
@@ -111,10 +112,10 @@ describe("the lobby page", () => {
     await shot(first, "lobby-szukam-320");
     expect(await first.count("[data-testid=lobby-mark]")).toBe(0);
 
-    // B finds A by polling, no reload; the row is read-only (no pick button until #26).
+    // B finds A by polling, no reload; the row has a pick button (#26).
     await bodyHas(second, alice.name);
     expect(await rowCount(second)).toBe(1);
-    expect(await second.count("ul[aria-label='Gracze szukający gry'] button")).toBe(0);
+    expect(await second.count("ul[aria-label='Gracze szukający gry'] button")).toBe(1);
     await shot(second, "lobby-lista-320");
     expect(await horizontalOverflow(second)).toBe(false);
     expect(await horizontalOverflow(first)).toBe(false);
@@ -172,5 +173,82 @@ describe("the lobby page", () => {
     await first.click("[data-testid=lobby-seeking] button");
     await first.waitFor("[data-testid=lobby-mark] button");
     expect(await run(`select 1 from lobby_seekers where user_id = ?`, [alice.id])).toHaveLength(0);
+  });
+
+  it("lets B pick A: B goes to the game at once, A is taken there by the next read, and the lobby holds neither", async () => {
+    const [alice, bob] = [await signedUp(first), await signedUp(second)];
+    for (const browser of [first, second]) await browser.setViewport(1280, 800);
+    await first.open(`${baseUrl}/lobby`);
+    await first.click("[data-testid=lobby-mark] button");
+    await first.waitFor("[data-testid=lobby-seeking]");
+    await second.open(`${baseUrl}/lobby`);
+    await bodyHas(second, alice.name);
+    await shot(second, "lobby-wybor-1280");
+
+    await second.click(`button[aria-label='Zagraj z ${alice.name}']`);
+
+    await second.waitForFn("location.pathname.startsWith('/games/')");
+    const secondPath = new URL(await second.url()).pathname;
+    // A never clicked anything: the polling sends A to the same game.
+    await first.waitForFn("location.pathname.startsWith('/games/')");
+    expect(new URL(await first.url()).pathname).toBe(secondPath);
+    const [game] = await run(`select origin, status from games where id = ?`, [secondPath.split("/")[2]]);
+    expect(game).toEqual({ origin: "lobby", status: "active" });
+    expect(await run(`select 1 from lobby_seekers where user_id in (?, ?)`, [alice.id, bob.id])).toHaveLength(0);
+    await second.waitFor("[role=grid]");
+  });
+
+  it("tells B that A was taken by somebody else, when B's list was stale, and keeps B on the lobby", async () => {
+    const [alice, bob] = [await signedUp(first), await signedUp(second)];
+    const carol = await (async () => {
+      const n = `${Date.now().toString(36)}${++counter}`;
+      const response = await api("POST", "/api/auth/register", {
+        email: `lobbypage-${n}@example.com`,
+        displayName: `Lp_${n}`,
+        password: "secret123",
+      });
+      return { cookie: (response.headers.get("set-cookie") ?? "").split(";")[0]! };
+    })();
+    for (const browser of [first, second]) await browser.setViewport(320, 800);
+    await first.open(`${baseUrl}/lobby`);
+    await first.click("[data-testid=lobby-mark] button");
+    await first.waitFor("[data-testid=lobby-seeking]");
+    await second.open(`${baseUrl}/lobby`);
+    await bodyHas(second, alice.name);
+    // B's page stops polling (hidden tab), so its list stays as it is while C takes A.
+    await second.evaluate(
+      "(Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' }), document.dispatchEvent(new Event('visibilitychange')), true)",
+    );
+    const [seeker] = await run(`select id from lobby_seekers where user_id = ?`, [alice.id]);
+    expect((await api("POST", `/api/lobby/seekers/${seeker!.id}/pick`, undefined, carol.cookie)).status).toBe(200);
+
+    await second.click(`button[aria-label='Zagraj z ${alice.name}']`);
+
+    await bodyHas(second, "Ten gracz zagrał już z kimś innym. Wybierz kogoś innego z listy.");
+    expect(new URL(await second.url()).pathname).toBe("/lobby");
+    await shot(second, "lobby-zajety-320");
+    expect(await horizontalOverflow(second)).toBe(false);
+    expect(bob.id).not.toBe(alice.id);
+  });
+
+  it("tells B that A's status ran out, when B's list was stale", async () => {
+    const [alice] = [await signedUp(first), await signedUp(second)];
+    for (const browser of [first, second]) await browser.setViewport(360, 800);
+    await first.open(`${baseUrl}/lobby`);
+    await first.click("[data-testid=lobby-mark] button");
+    await first.waitFor("[data-testid=lobby-seeking]");
+    await second.open(`${baseUrl}/lobby`);
+    await bodyHas(second, alice.name);
+    await second.evaluate(
+      "(Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' }), document.dispatchEvent(new Event('visibilitychange')), true)",
+    );
+    await run(`update lobby_seekers set created_at = now() - interval '301 seconds', expires_at = now() - interval '1 second' where user_id = ?`, [alice.id]);
+
+    await second.click(`button[aria-label='Zagraj z ${alice.name}']`);
+
+    await bodyHas(second, "Status tego gracza wygasł.");
+    expect(new URL(await second.url()).pathname).toBe("/lobby");
+    await shot(second, "lobby-wygasl-wybor-360");
+    expect(await run(`select 1 from games where origin = 'lobby' and id in (select game_id from game_players where user_id = ?)`, [alice.id])).toHaveLength(0);
   });
 });

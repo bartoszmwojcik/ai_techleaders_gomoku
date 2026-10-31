@@ -3,6 +3,8 @@ import {
   LOBBY_LIST_LIMIT,
   LOBBY_MARK_LIMIT,
   LOBBY_MARK_WINDOW_MS,
+  LOBBY_PICK_LIMIT,
+  LOBBY_PICK_WINDOW_MS,
   SEEKING_TTL_MS,
   TooManyRequestsError,
 } from "@gomoku/core";
@@ -53,6 +55,7 @@ function setup(
     rateLimiter: rateLimiter as never,
     timeoutSettler: timeoutSettler as never,
     gameParticipation: gameParticipation as never,
+    colorDraw: { drawBlackSeat: () => 2 } as never,
   });
   return { service, em, calls, rateLimiter, timeoutSettler, gameParticipation };
 }
@@ -185,5 +188,207 @@ describe("LobbyService.view", () => {
     const { service } = setup({ me: [] });
 
     expect(await service.view(USER)).toEqual({ me: null, currentGame: null, seekers: [] });
+  });
+});
+
+const PICKER = "user-a";
+const OWNER = "user-b";
+const SEEKER = "seeker-9";
+
+/** Scripted answers for the pick; `pairSlots` is what `game_players` holds for the two accounts. */
+function setupPick(
+  options: {
+    owner?: Row[];
+    locked?: Row[];
+    taken?: Row[];
+    left?: Row[];
+    pairSlots?: Row[];
+    hit?: Error;
+  } = {},
+) {
+  const base = setup({ hit: options.hit });
+  const calls: { sql: string; params: unknown[]; mode?: string }[] = [];
+  const execute = vi.fn(async (sql: string, params: unknown[] = [], mode?: string) => {
+    calls.push({ sql: sql.trim().replace(/\s+/g, " "), params, mode });
+    if (sql.includes("select user_id from lobby_seekers where id")) {
+      return options.owner ?? [{ user_id: OWNER }];
+    }
+    if (sql.includes("for no key update")) return options.locked ?? [{ id: PICKER }, { id: OWNER }];
+    if (sql.includes("delete from lobby_seekers where id")) return options.taken ?? [{ id: SEEKER }];
+    if (sql.includes("expires_at <= ? as expired")) return options.left ?? [];
+    if (sql.includes("from game_players where user_id in")) return options.pairSlots ?? [];
+    if (sql.includes("insert into games")) return [{ id: "game-new" }];
+    return [];
+  });
+  const em = {
+    execute,
+    transactional: vi.fn(async (fn: (tx: unknown) => unknown) => fn(em)),
+  };
+  const service = new LobbyService({
+    em: em as unknown as EntityManager,
+    clock: { now: () => NOW },
+    rateLimiter: base.rateLimiter as never,
+    timeoutSettler: base.timeoutSettler as never,
+    gameParticipation: base.gameParticipation as never,
+    colorDraw: { drawBlackSeat: () => 2 } as never,
+  });
+  return { service, calls, em, rateLimiter: base.rateLimiter, timeoutSettler: base.timeoutSettler };
+}
+
+const wrote = (calls: { sql: string }[], part: string) => calls.some(({ sql }) => sql.includes(part));
+
+describe("LobbyService.pick", () => {
+  it("limits, settles, locks both accounts by id, takes the seeker, then creates the game with both slots", async () => {
+    const { service, calls, rateLimiter, timeoutSettler, em } = setupPick();
+
+    const result = await service.pick(PICKER, SEEKER);
+
+    expect(result).toEqual({ gameId: "game-new" });
+    expect(rateLimiter.hit).toHaveBeenCalledExactlyOnceWith(
+      `lobby-pick:${PICKER}`,
+      LOBBY_PICK_LIMIT,
+      LOBBY_PICK_WINDOW_MS,
+    );
+    expect(timeoutSettler.settleFor).toHaveBeenCalledExactlyOnceWith(PICKER);
+    expect(em.transactional).toHaveBeenCalledOnce();
+    const order = [
+      "select user_id from lobby_seekers where id",
+      "for no key update",
+      "delete from lobby_seekers where id",
+      "from game_players where user_id in",
+      "delete from lobby_seekers where user_id in (?)",
+      "insert into games",
+      "insert into game_players",
+      "insert into game_players",
+    ];
+    let cursor = -1;
+    for (const part of order) {
+      const index = calls.findIndex(({ sql }, i) => i > cursor && sql.includes(part));
+      expect(index, part).toBeGreaterThan(cursor);
+      cursor = index;
+    }
+    expect(calls.find(({ sql }) => sql.includes("for no key update"))).toMatchObject({
+      sql: expect.stringContaining("order by id"),
+      params: [PICKER, OWNER],
+    });
+    expect(calls.find(({ sql }) => sql.includes("delete from lobby_seekers where id"))!.params).toEqual([
+      SEEKER,
+      OWNER,
+      NOW,
+    ]);
+    expect(calls.find(({ sql }) => sql.includes("delete from lobby_seekers where id"))!.sql).toContain(
+      "expires_at > ?",
+    );
+    expect(calls.find(({ sql }) => sql.includes("delete from lobby_seekers where user_id in"))).toMatchObject({
+      params: [PICKER],
+      mode: "run",
+    });
+    const game = calls.find(({ sql }) => sql.includes("insert into games"))!;
+    expect(game.sql).toContain("'lobby', 'active'");
+    expect(game.params).toEqual([NOW, NOW, 2]);
+    const players = calls.filter(({ sql }) => sql.includes("insert into game_players"));
+    expect(players.map(({ params }) => params)).toEqual([
+      ["game-new", 1, PICKER, NOW],
+      ["game-new", 2, OWNER, NOW],
+    ]);
+    expect(players[0]!.sql).toContain("true");
+    expect(players[0]!.sql).not.toContain("seen_at");
+  });
+
+  it("closes the stale slots of the picker before looking at anything", async () => {
+    const { service, calls } = setupPick();
+
+    await service.pick(PICKER, SEEKER);
+
+    expect(calls[0]!.sql).toContain("with expired");
+  });
+
+  it("answers LOBBY_SEEKER_TAKEN for a seeker with no row (taken, withdrawn or cleaned up), writing nothing", async () => {
+    const { service, em } = setupPick({ owner: [] });
+
+    const error = await errorOf(service.pick(PICKER, SEEKER));
+
+    expect(error.status).toBe(409);
+    expect(error.code).toBe("LOBBY_SEEKER_TAKEN");
+    expect(em.transactional).not.toHaveBeenCalled();
+  });
+
+  it("refuses to pick oneself with 409 CANNOT_PICK_SELF", async () => {
+    const { service, em } = setupPick({ owner: [{ user_id: PICKER }] });
+
+    const error = await errorOf(service.pick(PICKER, SEEKER));
+
+    expect(error.status).toBe(409);
+    expect(error.code).toBe("CANNOT_PICK_SELF");
+    expect(em.transactional).not.toHaveBeenCalled();
+  });
+
+  it("answers 401 when the picker was deleted meanwhile", async () => {
+    const { service, calls } = setupPick({ locked: [{ id: OWNER }] });
+
+    expect((await errorOf(service.pick(PICKER, SEEKER))).status).toBe(401);
+    expect(wrote(calls, "delete from lobby_seekers where id")).toBe(false);
+  });
+
+  it("answers LOBBY_SEEKER_TAKEN when the owner account is gone", async () => {
+    const { service, calls } = setupPick({ locked: [{ id: PICKER }] });
+
+    const error = await errorOf(service.pick(PICKER, SEEKER));
+
+    expect(error.code).toBe("LOBBY_SEEKER_TAKEN");
+    expect(wrote(calls, "delete from lobby_seekers where id")).toBe(false);
+  });
+
+  it("answers LOBBY_SEEKER_TAKEN when somebody else took the seeker (the row is gone)", async () => {
+    const { service, calls } = setupPick({ taken: [], left: [] });
+
+    const error = await errorOf(service.pick(PICKER, SEEKER));
+
+    expect(error.status).toBe(409);
+    expect(error.code).toBe("LOBBY_SEEKER_TAKEN");
+    expect(wrote(calls, "insert into games")).toBe(false);
+    expect(wrote(calls, "delete from lobby_seekers where user_id in")).toBe(false);
+  });
+
+  it("answers LOBBY_SEEKER_EXPIRED when the status ran out before the pick", async () => {
+    const { service, calls } = setupPick({ taken: [], left: [{ expired: true }] });
+
+    const error = await errorOf(service.pick(PICKER, SEEKER));
+
+    expect(error.status).toBe(409);
+    expect(error.code).toBe("LOBBY_SEEKER_EXPIRED");
+    expect(calls.find(({ sql }) => sql.includes("as expired"))!.params).toEqual([NOW, SEEKER]);
+    expect(wrote(calls, "insert into games")).toBe(false);
+  });
+
+  it("refuses a picker who holds a slot with ACTIVE_GAME_EXISTS and the game (BR-13)", async () => {
+    const { service, calls } = setupPick({ pairSlots: [{ game_id: "game-7", user_id: PICKER }] });
+
+    const error = await errorOf(service.pick(PICKER, SEEKER));
+
+    expect(error.status).toBe(409);
+    expect(error.code).toBe("ACTIVE_GAME_EXISTS");
+    expect(error.data).toEqual({ gameId: "game-7" });
+    expect(wrote(calls, "insert into games")).toBe(false);
+  });
+
+  it("treats a seeker who holds a slot as taken, without revealing their game", async () => {
+    const { service, calls } = setupPick({ pairSlots: [{ game_id: "game-8", user_id: OWNER }] });
+
+    const error = await errorOf(service.pick(PICKER, SEEKER));
+
+    expect(error.code).toBe("LOBBY_SEEKER_TAKEN");
+    expect(error.data).toBeUndefined();
+    expect(wrote(calls, "insert into games")).toBe(false);
+  });
+
+  it("does nothing when the limit is spent", async () => {
+    const { service, timeoutSettler, em } = setupPick({
+      hit: new TooManyRequestsError("Za dużo prób.", { retryAfterSeconds: 30 }),
+    });
+
+    expect((await errorOf(service.pick(PICKER, SEEKER))).status).toBe(429);
+    expect(timeoutSettler.settleFor).not.toHaveBeenCalled();
+    expect(em.transactional).not.toHaveBeenCalled();
   });
 });

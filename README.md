@@ -232,7 +232,7 @@ Specyfikacja: [`.ai/specs/implemented/2026-10-25-game-moves-win-detection.md`](.
 
 #### Lobby: status „szukam gry” (E03-S01, #25 i migracja #31)
 
-Zalogowany użytkownik bez partii otwiera `/lobby` (link „Lobby” na stronie głównej; gość jest przekierowany na `/login?next=%2Flobby`), klika „Szukam przeciwnika” i przez **5 minut** (BR-12, `SEEKING_TTL_MS`) figuruje na liście innych szukających. Czas liczony od oznaczenia, **bez odnawiania**; ponowne kliknięcie w trakcie zwraca ten sam status. Lista pokazuje publiczną nazwę gracza, „szuka od …” i czas do wygaśnięcia, bez własnego wiersza i bez adresów e-mail; w tym wydaniu jest **tylko do odczytu** (wybór przeciwnika to #26). Status trzyma tabela `lobby_seekers` (jeden wiersz na konto, `ON DELETE CASCADE`); wygasanie jest leniwe (odczyt filtruje `expires_at > now`), a martwe wiersze sprząta `npm run db:cleanup` (klucz `lobbySeekers`).
+Zalogowany użytkownik bez partii otwiera `/lobby` (link „Lobby” na stronie głównej; gość jest przekierowany na `/login?next=%2Flobby`), klika „Szukam przeciwnika” i przez **5 minut** (BR-12, `SEEKING_TTL_MS`) figuruje na liście innych szukających. Czas liczony od oznaczenia, **bez odnawiania**; ponowne kliknięcie w trakcie zwraca ten sam status. Lista pokazuje publiczną nazwę gracza, „szuka od …” i czas do wygaśnięcia, bez własnego wiersza i bez adresów e-mail; Status trzyma tabela `lobby_seekers` (jeden wiersz na konto, `ON DELETE CASCADE`); wygasanie jest leniwe (odczyt filtruje `expires_at > now`), a martwe wiersze sprząta `npm run db:cleanup` (klucz `lobbySeekers`).
 
 | Metoda i ścieżka | Wynik | Błędy |
 | --- | --- | --- |
@@ -242,6 +242,16 @@ Zalogowany użytkownik bez partii otwiera `/lobby` (link „Lobby” na stronie 
 
 Status znika też, gdy użytkownik tworzy partię, przyjmuje zaproszenie lub rewanż (oba konta rewanżu) oraz przy wylogowaniu (w tej samej transakcji, co wejście do partii). Strona odpytuje `GET /api/lobby` co 3 s, tylko gdy karta jest widoczna, i odlicza czas lokalnie zegarem monotonicznym; po wygaśnięciu własnego statusu wraca przycisk i pojawia się „Status wygasł”. Ręcznie: `npm run dev`, dwie przeglądarki (lub okno prywatne) z dwoma kontami: A klika „Szukam przeciwnika”, B widzi A bez przeładowania; A „Wycofaj” — znika. Testy: `tests/integration/lobby-api.test.ts`, `lobby-pages.test.ts`, `cleanup.test.ts`. Specyfikacja: [`.ai/specs/implemented/2026-10-31-lobby-seeking-status.md`](.ai/specs/implemented/2026-10-31-lobby-seeking-status.md).
 
+
+#### Lobby: wybór przeciwnika (E03-S02, #26)
+
+Przy każdym wierszu listy jest przycisk „Zagraj” (potwierdzenie to jedno kliknięcie). `POST /api/lobby/seekers/{id}/pick` (`id` = `lobby_seekers.id`, bez ciała, nagłówki CSRF) w **jednej transakcji** blokuje oba konta (`users` rosnąco po `id`), usuwa status wybranego (`DELETE … WHERE expires_at > now RETURNING` to bramka wyścigu), usuwa własny status wybierającego i tworzy partię `origin = 'lobby'` (status `active`, wybierający na miejscu 1, kolor losowany, `seen_at` puste — zegar rusza, gdy obaj otworzą partię). Wybierający przechodzi na `/games/{id}`, wybrany dostaje przekierowanie z odpytywania `GET /api/lobby` (`currentGame` pojawia się po tym, jak strona go nie znała). Kilku wybierających tego samego szukającego daje dokładnie jedną partię.
+
+| Endpoint | Sukces | Błędy |
+| --- | --- | --- |
+| `POST /api/lobby/seekers/{id}/pick` | `200` `{ gameId }` | `401`, `403`, `404` (`id` nie jest uuid), `409 ACTIVE_GAME_EXISTS` (BR-13, `data.gameId`), `409 LOBBY_SEEKER_TAKEN` (ktoś był szybszy, wycofał się albo wiersza już nie ma), `409 LOBBY_SEEKER_EXPIRED`, `409 CANNOT_PICK_SELF`, `429` (60 wyborów na godzinę, liczone także przy błędach) |
+
+Testy: `tests/integration/lobby-api.test.ts` (wyścigi N wybierających, A↔B, wybór kontra `POST /api/games`, wygaśnięcie, BR-13, limit), `lobby-pages.test.ts` (przeglądarka). Specyfikacja: [`.ai/specs/implemented/2026-10-31-lobby-opponent-selection.md`](.ai/specs/implemented/2026-10-31-lobby-opponent-selection.md).
 ### `@gomoku/core` — części wielokrotnego użytku
 
 Czysty TypeScript bez zależności od frameworków:

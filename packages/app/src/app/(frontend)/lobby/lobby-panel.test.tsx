@@ -3,7 +3,9 @@ import { act, cleanup, fireEvent, render, screen, within } from "@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { apiCall } = vi.hoisted(() => ({ apiCall: vi.fn() }));
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiCall }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 
 import type { LobbyData } from "@/lib/games/lobby";
 
@@ -43,6 +45,7 @@ function setVisibility(state: "hidden" | "visible") {
 beforeEach(() => {
   vi.useFakeTimers();
   apiCall.mockReset().mockResolvedValue(ok(lobby()));
+  push.mockReset();
 });
 afterEach(() => {
   cleanup();
@@ -51,7 +54,7 @@ afterEach(() => {
 });
 
 describe("LobbyPanel: what is shown", () => {
-  it("shows the others read-only: names, since and time left, and no pick button", () => {
+  it("shows the others: names, since, time left and a pick button each", () => {
     render(<LobbyPanel initial={lobby()} />);
 
     expect(screen.getByRole("heading", { name: "Lobby" })).toBeTruthy();
@@ -62,7 +65,10 @@ describe("LobbyPanel: what is shown", () => {
     expect(within(list).getByText("szuka od 1 min")).toBeTruthy();
     expect(within(list).getByText("4:00")).toBeTruthy();
     expect(within(list).getByText("szuka od 3 min")).toBeTruthy();
-    expect(within(list).queryByRole("button")).toBeNull();
+    expect(within(list).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual([
+      "Zagraj z Alicja_99",
+      "Zagraj z czarny_kamień",
+    ]);
     // The own status is not set: the way to set it is one button.
     expect(mark()).toBeTruthy();
     expect(screen.queryByText("Szukasz gry")).toBeNull();
@@ -368,5 +374,122 @@ describe("LobbyPanel: withdrawing", () => {
     await click(screen.getByRole("button", { name: "Wycofaj" }));
 
     expect(screen.getByText("Sesja wygasła")).toBeTruthy();
+  });
+});
+
+describe("LobbyPanel: picking an opponent (#26)", () => {
+  const pickButton = (name: string) => screen.getByRole("button", { name: `Zagraj z ${name}` }) as HTMLButtonElement;
+  const pickPath = "/api/lobby/seekers/id-Alicja_99/pick";
+
+  it("picks the seeker with one POST and goes to the new game", async () => {
+    apiCall.mockImplementation(async (path: string) =>
+      path === pickPath ? ok({ gameId: "g1" }) : ok(lobby()),
+    );
+    render(<LobbyPanel initial={lobby()} />);
+
+    await click(pickButton("Alicja_99"));
+
+    expect(apiCall).toHaveBeenCalledWith(pickPath, { method: "POST" });
+    expect(push).toHaveBeenCalledExactlyOnceWith("/games/g1");
+  });
+
+  it("sends one request for a double click, shows the row busy and locks the other rows", async () => {
+    let finish!: (value: unknown) => void;
+    apiCall.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+    render(<LobbyPanel initial={lobby()} />);
+    const button = pickButton("Alicja_99");
+
+    await act(async () => {
+      button.click();
+      button.click();
+    });
+
+    expect(apiCall).toHaveBeenCalledTimes(1);
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute("aria-busy")).toBe("true");
+    expect(pickButton("czarny_kamień").disabled).toBe(true);
+    expect(pickButton("czarny_kamień").getAttribute("aria-busy")).toBeNull();
+    await act(async () => finish(ok({ gameId: "g1" })));
+    // The page is being left: nothing can be picked meanwhile.
+    expect(pickButton("czarny_kamień").disabled).toBe(true);
+  });
+
+  it.each(["LOBBY_SEEKER_TAKEN", "CANNOT_PICK_SELF"])(
+    "says the player was taken (%s), refreshes the list at once and unlocks the buttons",
+    async (code) => {
+      apiCall.mockImplementation(async (path: string) =>
+        path === pickPath ? fail(code) : ok(lobby({ seekers: [seeker("czarny_kamień")] })),
+      );
+      render(<LobbyPanel initial={lobby()} />);
+
+      await click(pickButton("Alicja_99"));
+
+      expect(screen.getByRole("alert").textContent).toContain("Ten gracz zagrał już z kimś innym. Wybierz kogoś innego z listy.");
+      expect(push).not.toHaveBeenCalled();
+      expect(apiCall).toHaveBeenLastCalledWith("/api/lobby", expect.objectContaining({ method: "GET" }));
+      expect(screen.queryByText("Alicja_99")).toBeNull();
+      expect(pickButton("czarny_kamień").disabled).toBe(false);
+    },
+  );
+
+  it("says the status of the player ran out, as a status", async () => {
+    apiCall.mockImplementation(async (path: string) =>
+      path === pickPath ? fail("LOBBY_SEEKER_EXPIRED") : ok(lobby({ seekers: [seeker("czarny_kamień")] })),
+    );
+    render(<LobbyPanel initial={lobby()} />);
+
+    await click(pickButton("Alicja_99"));
+
+    expect(screen.getByRole("status").textContent).toContain("Status tego gracza wygasł.");
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("switches to 'you already have a game' when the picker holds one (BR-13)", async () => {
+    apiCall.mockImplementation(async (path: string) =>
+      path === pickPath ? fail("ACTIVE_GAME_EXISTS", { data: { gameId: "g9" } }) : ok(lobby()),
+    );
+    render(<LobbyPanel initial={lobby()} />);
+
+    await click(pickButton("Alicja_99"));
+
+    expect(screen.getByText("Masz już partię")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Wróć do swojej partii" }).getAttribute("href")).toBe("/games/g9");
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [fail("RATE_LIMITED", { retryAfterSeconds: 90 }), "Zbyt wiele prób"],
+    [fail("UNAUTHORIZED"), "Sesja wygasła"],
+    [fail("network"), "Nie udało się rozpocząć partii"],
+    [fail("INTERNAL"), "Nie udało się rozpocząć partii"],
+    [fail("ACTIVE_GAME_EXISTS"), "Nie udało się rozpocząć partii"],
+  ])("explains another refusal (%#) and lets the player pick again", async (answer, title) => {
+    apiCall.mockImplementation(async (path: string) => (path === pickPath ? answer : ok(lobby())));
+    render(<LobbyPanel initial={lobby()} />);
+
+    await click(pickButton("Alicja_99"));
+
+    expect(screen.getByRole("alert").textContent).toContain(title);
+    expect(pickButton("Alicja_99").disabled).toBe(false);
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("sends the player picked by somebody else to the game when a read finds it", async () => {
+    render(<LobbyPanel initial={lobby({ me: { id: "me", expiresInMs: 200_000 } })} />);
+    apiCall.mockResolvedValue(ok(lobby({ me: null, currentGame: { gameId: "g7", status: "active" } })));
+
+    await advance(LOBBY_POLL_INTERVAL_MS);
+    await advance(LOBBY_POLL_INTERVAL_MS);
+
+    expect(push).toHaveBeenCalledExactlyOnceWith("/games/g7");
+  });
+
+  it("does not redirect a player who opened the page with a game already", async () => {
+    render(<LobbyPanel initial={lobby({ currentGame: { gameId: "g7", status: "active" } })} />);
+    apiCall.mockResolvedValue(ok(lobby({ currentGame: { gameId: "g7", status: "active" } })));
+
+    await advance(LOBBY_POLL_INTERVAL_MS);
+
+    expect(push).not.toHaveBeenCalled();
   });
 });

@@ -9,6 +9,7 @@ import { Panel } from "@gomoku/ui/game/panel";
 import { SeekingStatus } from "@gomoku/ui/game/seeking-status";
 import { Skeleton, SkeletonRegion } from "@gomoku/ui/game/skeleton";
 import { TextLink } from "@gomoku/ui/game/text-link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { rateLimitedError } from "@/components/feedback/rate-limited-error";
@@ -29,7 +30,7 @@ type Rest = Pick<LobbyData, "currentGame" | "seekers">;
 // relative times (`expiresInMs`, `sinceMs`) are counted down from that moment, never from the device clock.
 type Stamped<T> = { value: T; at: number };
 
-type Problem = "limit" | "signed-out" | "server" | "network" | "withdraw";
+type Problem = "limit" | "signed-out" | "server" | "network" | "withdraw" | "taken" | "seeker-expired" | "pick-failed";
 
 function problemOf(code: string): Problem {
   if (code === "RATE_LIMITED") return "limit";
@@ -38,8 +39,17 @@ function problemOf(code: string): Problem {
   return "server";
 }
 
+// What a refused pick says (#26): the two 409s of the race and the rest.
+function pickProblemOf(code: string): Problem {
+  if (code === "LOBBY_SEEKER_TAKEN" || code === "CANNOT_PICK_SELF") return "taken";
+  if (code === "LOBBY_SEEKER_EXPIRED") return "seeker-expired";
+  if (code === "RATE_LIMITED" || code === "UNAUTHORIZED") return problemOf(code);
+  return "pick-failed";
+}
+
 /** `/lobby` (E03-S01): the own "looking for a game" status and the read-only list of the others. */
 export function LobbyPanel({ initial }: { initial: LobbyData }) {
+  const router = useRouter();
   // When the server's answer reached this page. Only read once mounted (`now` is `null` before), so the
   // server and the first client render agree although this value differs between them.
   const [origin] = useState(() => performance.now());
@@ -53,6 +63,8 @@ export function LobbyPanel({ initial }: { initial: LobbyData }) {
   const [failures, setFailures] = useState(0);
   const [reloading, setReloading] = useState(false);
   const [busy, setBusy] = useState<"mark" | null>(null);
+  // The seeker whose pick is in flight; the buttons of the others are locked meanwhile.
+  const [picking, setPicking] = useState<string | null>(null);
   const [problem, setProblem] = useState<{ kind: Problem; retryAfterSeconds?: number } | null>(null);
   const [expired, setExpired] = useState(false);
 
@@ -61,6 +73,9 @@ export function LobbyPanel({ initial }: { initial: LobbyData }) {
   const version = useRef(0);
   const marking = useRef(false);
   const withdrawing = useRef(false);
+  const pickingRef = useRef(false);
+  // Whether the page already knows of a game; a game that appears later (somebody picked us) sends us there.
+  const knowsGame = useRef(initial.currentGame !== null);
   // The own status as the latest answer left it. Set together with the state, so a read that follows an
   // action at once does not see the status from before it.
   const latestMine = useRef(mine);
@@ -90,10 +105,15 @@ export function LobbyPanel({ initial }: { initial: LobbyData }) {
     // read above): it ran out, and the countdown and the read can race, or the tab was frozen. Say so.
     if (latestMine.current.value && result.data.me === null) setExpired(true);
     setFailures(0);
+    if (result.data.currentGame && !knowsGame.current) {
+      // Somebody picked us (#26): the game exists, go there.
+      knowsGame.current = true;
+      router.push(`/games/${result.data.currentGame.gameId}`);
+    }
     setNow(at);
     setMine({ value: result.data.me, at });
     setRest({ value: { currentGame: result.data.currentGame, seekers: result.data.seekers }, at });
-  }, [setMine]);
+  }, [setMine, router]);
 
   const hidden = usePageVisibility({ onReturn: () => void read() });
 
@@ -149,10 +169,37 @@ export function LobbyPanel({ initial }: { initial: LobbyData }) {
     const { code, data, retryAfterSeconds } = result.error;
     if (code === "ACTIVE_GAME_EXISTS" && typeof data?.gameId === "string") {
       // BR-13: the page switches to "you already have a game" with the way back.
+      knowsGame.current = true;
       setRest(({ value }) => ({ value: { ...value, currentGame: { gameId: data.gameId as string, status: "active" } }, at: performance.now() }));
       return;
     }
     setProblem({ kind: problemOf(code), retryAfterSeconds });
+  }
+
+  async function onPick(seekerId: string) {
+    if (pickingRef.current) return;
+    pickingRef.current = true;
+    setPicking(seekerId);
+    setProblem(null);
+    const result = await apiCall<{ gameId: string }>(`/api/lobby/seekers/${seekerId}/pick`, { method: "POST" });
+    version.current += 1;
+    if (result.ok) {
+      // The page is left: the guard stays on, so nothing can be picked while the navigation runs.
+      knowsGame.current = true;
+      router.push(`/games/${result.data.gameId}`);
+      return;
+    }
+    pickingRef.current = false;
+    setPicking(null);
+    const { code, data, retryAfterSeconds } = result.error;
+    if (code === "ACTIVE_GAME_EXISTS" && typeof data?.gameId === "string") {
+      knowsGame.current = true;
+      setRest(({ value }) => ({ value: { ...value, currentGame: { gameId: data.gameId as string, status: "active" } }, at: performance.now() }));
+      return;
+    }
+    setProblem({ kind: pickProblemOf(code), retryAfterSeconds });
+    // The list is stale (the seeker is gone or someone is faster): show the truth at once.
+    void read();
   }
 
   async function onWithdraw() {
@@ -215,6 +262,21 @@ export function LobbyPanel({ initial }: { initial: LobbyData }) {
               Nie udało się połączyć z serwerem. Spróbuj ponownie.
             </Alert>
           )}
+          {problem?.kind === "taken" && (
+            <Alert status="warning" title="Gracz niedostępny" role="alert">
+              Ten gracz zagrał już z kimś innym. Wybierz kogoś innego z listy.
+            </Alert>
+          )}
+          {problem?.kind === "seeker-expired" && (
+            <Alert status="info" title="Status wygasł" role="status">
+              Status tego gracza wygasł. Wybierz kogoś innego z listy.
+            </Alert>
+          )}
+          {problem?.kind === "pick-failed" && (
+            <Alert status="danger" title="Nie udało się rozpocząć partii" role="alert">
+              Spróbuj ponownie. Lista graczy się nie zmieniła.
+            </Alert>
+          )}
           {problem?.kind === "withdraw" && (
             <Alert status="danger" title="Nie udało się wycofać" role="alert">
               Spróbuj ponownie. Status i tak wygaśnie sam po upływie czasu.
@@ -274,6 +336,11 @@ export function LobbyPanel({ initial }: { initial: LobbyData }) {
                     since={sinceLabel(seeker.sinceMs)}
                     expiresLabel="wygasa za"
                     expiresInMs={seeker.expiresInMs}
+                    selectLabel="Zagraj"
+                    selectAriaLabel={`Zagraj z ${seeker.displayName}`}
+                    selecting={picking === seeker.id}
+                    selectDisabled={picking !== null && picking !== seeker.id}
+                    onSelect={() => void onPick(seeker.id)}
                   />
                 ))}
               </LobbyList>

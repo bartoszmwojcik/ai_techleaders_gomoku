@@ -7,6 +7,10 @@ export const SEEKING_TTL_MS = 5 * 60 * 1000;
 export const LOBBY_MARK_LIMIT = 30;
 export const LOBBY_MARK_WINDOW_MS = 60 * 60 * 1000;
 
+/** Picking an opponent from the list is limited per user, also when it fails (#26 Q7). */
+export const LOBBY_PICK_LIMIT = 60;
+export const LOBBY_PICK_WINDOW_MS = 60 * 60 * 1000;
+
 /** The list of other seekers shows the oldest statuses first, up to this many (#25). */
 export const LOBBY_LIST_LIMIT = 50;
 
@@ -20,7 +24,7 @@ export type LobbyMeView = {
 
 /** Another seeker, as the list shows them: no e-mail and no account id (BR-14). */
 export type LobbySeekerView = {
-  /** Id of the `lobby_seekers` row, the handle a pick (#26) will use. */
+  /** Id of the `lobby_seekers` row, the handle a pick (#26) uses. */
   id: string;
   displayName: string;
   /** How long they have been looking. */
@@ -34,3 +38,6 @@ export type LobbyView = {
   currentGame: { gameId: string; status: "waiting" | "active" } | null;
   seekers: LobbySeekerView[];
 };
+
+/** What a successful pick answers: the game that now holds both slots. */
+export type LobbyPickView = { gameId: string };

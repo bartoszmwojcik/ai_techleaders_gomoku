@@ -69,7 +69,7 @@ Wiersz zachowuje przycisk po prawej i zawija nazwę; długie nazwy bez spacji za
 
 <ArgTypes of={LobbyList} />
 
-`LobbyRow` przyjmuje: `name`, `since`, `expiresLabel`, `expiresInMs`, `className` oraz razem (albo wcale) `selectLabel`, `selectAriaLabel`, `selecting`, `onSelect`. Bez `onSelect` wiersz nie ma przycisku.
+`LobbyRow` przyjmuje: `name`, `since`, `expiresLabel`, `expiresInMs`, `className` oraz razem (albo wcale) `selectLabel`, `selectAriaLabel`, `selecting`, `onSelect` (opcjonalnie `selectDisabled` — blokada przycisków pozostałych wierszy, gdy trwa wybór jednego). Bez `onSelect` wiersz nie ma przycisku.
 
 ## 11. Kod
 
@@ -87,6 +87,7 @@ import { LobbyList, LobbyRow } from "@gomoku/ui/game/lobby-list";
       selectLabel="Zagraj"
       selectAriaLabel={`Zagraj z ${seeker.name}`}
       selecting={selectingId === seeker.id}
+      selectDisabled={selectingId !== null && selectingId !== seeker.id}
       onSelect={() => select(seeker.id)}
     />
   ))}
