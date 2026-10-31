@@ -16,6 +16,7 @@ import { GameService } from "../../packages/app/src/server/services/games/game-s
 import { InvitationCodes } from "../../packages/app/src/server/services/games/invitation-codes";
 import { InvitationService } from "../../packages/app/src/server/services/games/invitation-service";
 import { SqlTimeoutSettler } from "../../packages/app/src/server/services/games/timeout-settler";
+import { RematchService } from "../../packages/app/src/server/services/games/rematch-service";
 import { RateLimiter } from "../../packages/app/src/server/services/rate-limit/rate-limiter";
 
 const PASSWORD = "secret123";
@@ -62,6 +63,7 @@ function scope(overrides: { passwordHasher?: Pick<PasswordHasher, "verify"> } = 
       timeoutSettler,
       colorDraw: new ColorDraw(),
     }),
+    rematches: new RematchService({ em, clock: systemClock, rateLimiter, timeoutSettler }),
     games: new GameService({
       em,
       clock: systemClock,
@@ -356,6 +358,51 @@ describe("AccountService.delete on PostgreSQL", () => {
       await admin.query(`drop trigger ${name} on users`);
       await admin.query(`drop function ${name}()`);
     }
+  });
+});
+
+describe("a rematch against a deleted account (E02-S06 x E01-S06)", () => {
+  const playerOf = async (gameId: string, userId: string) =>
+    (await run(`select id from game_players where game_id = ? and user_id = ?`, [gameId, userId]))[0]!.id as string;
+
+  it("closes the pending offer of the deleted account, and the opponent can neither accept nor offer again", async () => {
+    const me = await user();
+    const opponent = await user();
+    const gameId = await finishedGame(me.id, opponent.id, { pendingRematch: true });
+    const opponentPlayer = await playerOf(gameId, opponent.id);
+
+    await scope().accounts.delete(me.id, PASSWORD);
+
+    expect((await run(`select rematch_state from games where id = ?`, [gameId]))[0]).toEqual({ rematch_state: "declined" });
+    await expect(scope().rematches.accept({ playerId: opponentPlayer }, gameId)).rejects.toMatchObject({ status: 409, code: "REMATCH_NOT_OFFERED" });
+    await expect(scope().rematches.offer({ playerId: opponentPlayer }, gameId)).rejects.toMatchObject({
+      status: 409,
+      code: "REMATCH_UNAVAILABLE",
+    });
+    expect((await run(`select rematch_state from games where id = ?`, [gameId]))[0]).toEqual({ rematch_state: "declined" });
+    expect(await run(`select 1 from games where origin = 'rematch'`)).toHaveLength(0);
+    await expectNoGhost();
+  });
+
+  it("refuses a first offer after the deletion and spends no attempt", async () => {
+    const me = await user();
+    const opponent = await user();
+    const gameId = await finishedGame(me.id, opponent.id);
+    const opponentPlayer = await playerOf(gameId, opponent.id);
+    await scope().accounts.delete(me.id, PASSWORD);
+
+    await expect(scope().rematches.offer({ playerId: opponentPlayer }, gameId)).rejects.toMatchObject({
+      status: 409,
+      code: "REMATCH_UNAVAILABLE",
+    });
+    expect((await run(`select rematch_state from games where id = ?`, [gameId]))[0]).toEqual({ rematch_state: null });
+  });
+
+  it("still lets two living accounts offer (the check looks only at deleted accounts)", async () => {
+    const a = await user();
+    const b = await user();
+    const gameId = await finishedGame(a.id, b.id);
+    await expect(scope().rematches.offer({ playerId: await playerOf(gameId, a.id) }, gameId)).resolves.toMatchObject({ state: "pending" });
   });
 });
 

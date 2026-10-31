@@ -308,6 +308,8 @@ describe("a game in progress (BR-21)", () => {
     await bodyHas(second, "Koniec partii");
     await second.open(`${baseUrl}/games/${gameId}`);
     await bodyHas(second, "Usunięty gracz");
+    await bodyHas(second, "Rewanż niedostępny");
+    expect(await second.count("[data-testid=rematch-offer]")).toBe(0);
     expect(await horizontalOverflow(second)).toBe(false);
     await shot(second, "s08-przeciwnik-360");
     expect(await exists(joiner.id)).toBe(true);
@@ -358,5 +360,32 @@ describe("a game in progress (BR-21)", () => {
     await second.setViewport(360, 900);
     await second.open(`${baseUrl}/invite/${created.data.invitation.code}`);
     await bodyHas(second, "nieważne");
+  });
+});
+
+describe("the opponent of a deleted account (s08)", () => {
+  it("sees the deleted player and \"Rewanż niedostępny\" without an offer button or a refusal alert, in both themes", async () => {
+    const { creator, joiner, gameId } = await playingGame();
+    // The game ends by the joiner's resignation, the creator proposes a rematch, then deletes the account.
+    expect((await api("POST", `/api/games/${gameId}/resign`, undefined, joiner.cookie)).status).toBe(200);
+    expect((await api("POST", `/api/games/${gameId}/rematch`, undefined, creator.cookie)).status).toBe(200);
+    expect((await api("POST", "/api/account/delete", { password: PASSWORD, confirm: true }, creator.cookie)).status).toBe(200);
+    expect((await run(`select rematch_state from games where id = ?`, [gameId]))[0]).toEqual({ rematch_state: "declined" });
+
+    await second.setViewport(360, 900);
+    for (const theme of ["dark", "light"] as const) {
+      await giveCookie(second, joiner.cookie, theme);
+      await second.open(`${baseUrl}/games/${gameId}`);
+      await bodyHas(second, "Usunięty gracz");
+      await bodyHas(second, "Rewanż niedostępny");
+      expect(await second.evaluate<string>("document.documentElement.dataset.theme")).toBe(theme);
+      expect(await second.text("[data-testid=rematch-box]")).toContain("Ten gracz nie ma już konta, więc nie możesz zaproponować rewanżu.");
+      expect(await second.count("[data-testid=rematch-offer]")).toBe(0);
+      expect(await second.count("[data-testid=rematch-accept]")).toBe(0);
+      expect(await second.evaluate<boolean>("document.body.innerText.includes('Zaproszenie do rewanżu odrzucone')")).toBe(false);
+      expect(await horizontalOverflow(second)).toBe(false);
+      await second.evaluate("(() => { document.querySelector('[data-testid=rematch-box]')?.scrollIntoView({ block: 'center' }); return true; })()");
+      if (shotsDir) await second.run("screenshot", `${shotsDir}/s08-rewanz-niedostepny-${theme}.png`);
+    }
   });
 });
