@@ -1,7 +1,7 @@
 # Śledzenie implementacji Epiku 02 (partia z zaproszenia)
 
 - Start: 2026-10-29. Plan zatwierdzony przez właściciela 2026-10-29 (wersja z fazą projektową D0–D3 równolegle do fundamentu bez ekranów).
-- Źródła: `.ai/specs/2026-10-24-game-invitations.md` (#21), `2026-10-25-game-moves-win-detection.md` (#22), `2026-10-26-game-clock.md` (#23), mapa ekranów `lekcja-07/mapa-ekranow-partia.md`, design system `packages/ui/docs/epics/partia.mdx`. Specyfikacje #24 (powrót po rozłączeniu), poddania i rewanżu **jeszcze nie istnieją** (faza D0).
+- Źródła: `.ai/specs/implemented/2026-10-24-game-invitations.md` (#21), `.ai/specs/implemented/2026-10-25-game-moves-win-detection.md` (#22), `.ai/specs/implemented/2026-10-26-game-clock.md` (#23), mapa ekranów `lekcja-07/mapa-ekranow-partia.md`, design system `packages/ui/docs/epics/partia.mdx`. Specyfikacje #24 (powrót po rozłączeniu), poddania i rewanżu **jeszcze nie istnieją** (faza D0).
 - Zasady pracy jak w `track.md` (E01): jedno zadanie = jeden subagent = jeden commit z odhaczeniem; testy 100%, lint, typecheck; zmiany w `packages/db` sprawdzone na prawdziwym PostgreSQL (nigdy `down`/`drop` na bazie dev `gomoku` — lekcja `2026-10-28-migration-down-on-dev-database`); po każdej fazie lista kroków do ręcznego testu i PR; po fazie code review agentem bez kontekstu; **ekrany powstają dopiero po zatwierdzeniu prototypu (D3)**, a każda faza z UI kończy się porównaniem z prototypem i testem w przeglądarce w obu motywach (360 i 1280 px).
 - Przerwane lub puste raporty subagentów weryfikuj w repozytorium (`git log`, `git status`), nie z raportu.
 - Legenda: `[ ]` do zrobienia, `[x]` wykonane, `[!]` zablokowane.
@@ -112,7 +112,7 @@ Ręczny test po fazie: start zegara po otwarciu strony przez obu, malejący zega
 9. Oba motywy, szerokości 320, 360 i 1280 px: bez poziomego przewijania, wariant „mało czasu” czytelny w obu motywach.
 
 ### Faza 5 — Powrót po rozłączeniu (#24), poddanie (#87), rewanż (#88)
-Specyfikacje (zatwierdzone): `.ai/specs/2026-10-29-game-reconnection.md`, `…-game-resignation.md`, `…-game-rematch.md`. Prototyp: p05.10, p05.13–14, p06.5–p06.15. Każda podfaza = backend przed UI; UI po porównaniu z prototypem w obu motywach (360 i 1280 px). Kolejność: 5A → 5B → 5C (5B i 5C dotykają `GameView` i `game-room.tsx`: PR-y po kolei, każdy po rebase na `main`).
+Specyfikacje (zatwierdzone): `.ai/specs/implemented/2026-10-29-game-reconnection.md`, `…-game-resignation.md`, `…-game-rematch.md`. Prototyp: p05.10, p05.13–14, p06.5–p06.15. Każda podfaza = backend przed UI; UI po porównaniu z prototypem w obu motywach (360 i 1280 px). Kolejność: 5A → 5B → 5C (5B i 5C dotykają `GameView` i `game-room.tsx`: PR-y po kolei, każdy po rebase na `main`).
 Ręczny test po fazie: powrót do trwającej i zakończonej partii z drugiego urządzenia, poddanie (obie strony), rewanż z odwróconymi kolorami (konto–konto, konto–gość), wygaśnięcie i odrzucenie propozycji.
 
 #### 5A — Powrót po rozłączeniu (#24, jeden krótki PR)
@@ -162,3 +162,4 @@ Specyfikacje: `.ai/specs/2026-10-30-participant-nickname.md`, `.ai/specs/2026-10
 
 ## Poza zakresem tego przebiegu
 - Lobby (E03), historia (E04), spike #30 (transport czasu rzeczywistego — na MVP odpytywanie co 2–3 s), produkcyjny dostawca poczty (#38).
+  - Spike #30 rozstrzygnięty (decyzja właściciela, 2026-10-31, CP-3): MVP zostaje przy odpytywaniu `GET /api/games/{id}` co 2–3 s (backoff i wstrzymanie w tle dla partii zakończonej); WebSocket/SSE poza zakresem MVP, wymiana transportu nie zmienia kontraktu API (`after`/`moveCount`, `clock.now`). Zapis: `.ai/specs/implemented/2026-10-25-game-moves-win-detection.md` (Q5). Zgłoszenia #21–#24, #29, #30 domknięte 2026-10-31 (dowody w sekcjach „Odstępstwa wdrożenia i dowody” tych specyfikacji).
