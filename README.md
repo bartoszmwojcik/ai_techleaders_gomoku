@@ -252,6 +252,7 @@ Przy każdym wierszu listy jest przycisk „Zagraj” (potwierdzenie to jedno kl
 | `POST /api/lobby/seekers/{id}/pick` | `200` `{ gameId }` | `401`, `403`, `404` (`id` nie jest uuid), `409 ACTIVE_GAME_EXISTS` (BR-13, `data.gameId`), `409 LOBBY_SEEKER_TAKEN` (ktoś był szybszy, wycofał się albo wiersza już nie ma), `409 LOBBY_SEEKER_EXPIRED`, `409 CANNOT_PICK_SELF`, `429` (60 wyborów na godzinę, liczone także przy błędach) |
 
 Testy: `tests/integration/lobby-api.test.ts` (wyścigi N wybierających, A↔B, wybór kontra `POST /api/games`, wygaśnięcie, BR-13, limit), `lobby-pages.test.ts` (przeglądarka). Specyfikacja: [`.ai/specs/implemented/2026-10-31-lobby-opponent-selection.md`](.ai/specs/implemented/2026-10-31-lobby-opponent-selection.md).
+
 #### Agent dołącza do partii przez MCP (E06-S01, #127; decyzja D-29 i migracja #126)
 
 Właściciel może zagrać z własnym agentem LLM (D-28). Człowiek tworzy partię prywatną jak dotąd (kod lub link) i przekazuje ją agentowi, a agent dołącza **przez MCP**, jako osobny typ uczestnika `agent` (BR-31): z własnym tokenem jednej partii, bez konta, ciasteczka, historii i bez możliwości tworzenia zaproszeń czy wchodzenia do lobby. Człowiek widzi go jako **„Agent”**, a gdy agent podał nazwę modelu — **„Agent · {nazwa} (deklarowane)”** (zwykły tekst, niezweryfikowany; w partii, na ekranie końca i w historii). Rewanżu z agentem nie ma (`409 REMATCH_UNAVAILABLE`, panel pokazuje podpowiedź). Nazwa konta „Agent” jest zastrzeżona przy rejestracji.
