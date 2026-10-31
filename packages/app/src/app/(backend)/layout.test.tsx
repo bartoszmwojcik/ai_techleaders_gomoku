@@ -1,9 +1,25 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("next/navigation", () => ({
+  notFound: () => {
+    throw new Error("NEXT_NOT_FOUND");
+  },
+}));
 
 import BackendLayout, { metadata } from "./layout";
 
+afterEach(() => vi.unstubAllEnvs());
+
 describe("BackendLayout", () => {
+  it("answers 404 in production, without rendering the panel", () => {
+    vi.stubEnv("NODE_ENV", "production");
+
+    expect(() => renderToStaticMarkup(<BackendLayout><p>panel content</p></BackendLayout>)).toThrow(
+      "NEXT_NOT_FOUND",
+    );
+  });
+
   it("renders a Polish document around the panel page", () => {
     const html = renderToStaticMarkup(
       <BackendLayout>
