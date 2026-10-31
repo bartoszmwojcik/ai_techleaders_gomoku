@@ -7,6 +7,7 @@ import { Session } from "./auth/session";
 import { Game } from "./games/game";
 import { GamePlayer } from "./games/game-player";
 import { Invitation } from "./games/invitation";
+import { LobbySeeker } from "./games/lobby-seeker";
 
 describe("entities registry", () => {
   it("lists the account entities with their tables", () => {
@@ -20,6 +21,7 @@ describe("entities registry", () => {
       "games",
       "game_players",
       "invitations",
+      "lobby_seekers",
     ]);
   });
 
@@ -88,6 +90,17 @@ describe("game entities", () => {
   });
 });
 
+describe("lobby seekers", () => {
+  it("keeps one status per user and a CHECK on the expiry", () => {
+    const { user, expiresAt } = LobbySeeker.meta.properties;
+    expect(user.unique).toBe(true);
+    expect(expiresAt.nullable).toBeFalsy();
+    expect(LobbySeeker.meta.checks.map((check) => check.name)).toEqual([
+      "lobby_seekers_expiry_check",
+    ]);
+  });
+});
+
 describe("entity discovery", () => {
   it("is accepted by MikroORM and maps the session to its user", async () => {
     const { createOrm } = await import("../orm");
@@ -101,6 +114,8 @@ describe("entity discovery", () => {
       expect(playerMeta.properties.game?.deleteRule).toBe("cascade");
       expect(playerMeta.properties.user?.deleteRule).toBe("set null");
       expect(playerMeta.properties.guestTokenHash?.columnTypes[0]).toBe("char(64)");
+      const seekerMeta = orm.getMetadata().get(LobbySeeker.class);
+      expect(seekerMeta.properties.user?.deleteRule).toBe("cascade");
       const sessionMeta = orm.getMetadata().get(Session.class);
       expect(sessionMeta.properties.user?.deleteRule).toBe("cascade");
       expect(sessionMeta.properties.tokenHash?.columnTypes[0]).toBe("char(64)");

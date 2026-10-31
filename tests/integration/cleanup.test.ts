@@ -134,6 +134,31 @@ describe("cleanup thresholds on PostgreSQL", () => {
     expect(await rows(table, `user_id = '${userId}'`)).toBe("5");
   });
 
+  it("lobby_seekers: statuses expired more than 1 h ago go, the rest stays (#25)", async () => {
+    const now = new Date();
+    const seeker = async (expiresAt: Date) => {
+      const userId = await insertUser();
+      await sql(`insert into lobby_seekers (user_id, created_at, expires_at) values (?, ?, ?)`, [
+        userId,
+        new Date(expiresAt.getTime() - 5 * 60_000),
+        expiresAt,
+      ]);
+      return userId;
+    };
+    const gone = await seeker(ago(now, HOUR + SECOND));
+    const onEdge = await seeker(ago(now, HOUR)); // exactly on the cutoff: kept (strict <)
+    const expiredInMargin = await seeker(ago(now, HOUR - SECOND));
+    const valid = await seeker(new Date(now.getTime() + 60_000));
+
+    const result = await cleanupExpired({ em: orm.em.fork(), now });
+
+    expect(result.lobbySeekers).toBeGreaterThanOrEqual(1);
+    expect(await rows("lobby_seekers", `user_id = '${gone}'`)).toBe("0");
+    for (const kept of [onEdge, expiredInMargin, valid]) {
+      expect(await rows("lobby_seekers", `user_id = '${kept}'`)).toBe("1");
+    }
+  });
+
   it("never deletes a confirmed account, however old (BR-28 concerns unconfirmed ones only)", async () => {
     const now = new Date();
     const userId = await insertUser();
@@ -731,6 +756,7 @@ describe("batching and parallel runs", () => {
       rateLimitBuckets: 0,
       emailVerificationTokens: 0,
       passwordResetTokens: 0,
+      lobbySeekers: 0,
       waitingGames: 0,
       cancelledGames: 0,
       guestOnlyActiveGames: 0,
@@ -811,6 +837,7 @@ describe("db:cleanup command", () => {
         "guestOnlyActiveGames",
         "guestOnlyFinishedGames",
         "guestTokens",
+        "lobbySeekers",
         "passwordResetTokens",
         "rateLimitBuckets",
         "sessions",
@@ -835,7 +862,7 @@ describe("db:cleanup command", () => {
     const { stdout, stderr } = failure as { stdout: string; stderr: string };
     expect(stderr).not.toContain("s3cretpw");
     expect(stdout).not.toContain("s3cretpw");
-    expect(JSON.parse(stdout.trim()).errors).toHaveLength(10);
+    expect(JSON.parse(stdout.trim()).errors).toHaveLength(11);
     expect(JSON.parse(stderr.trim().split("\n").at(-1)!)).toMatchObject({ ok: false });
   });
 });

@@ -19,7 +19,7 @@ function LobbyList({ label, children, className }: LobbyListProps) {
   );
 }
 
-type LobbyRowProps = {
+type LobbyRowBase = {
   /** Public name of the player looking for a game (required). */
   name: ReactNode;
   /** How long they have been looking, e.g. "szuka od 3 min". */
@@ -28,15 +28,29 @@ type LobbyRowProps = {
   expiresLabel: ReactNode;
   /** Time left before their status expires. */
   expiresInMs: number;
-  /** Label of the pick button (required), e.g. "Zagraj". */
+  className?: string;
+};
+
+/** A row with a pick button: its three props go together (E03-S02). */
+type LobbyRowPick = {
+  /** Label of the pick button, e.g. "Zagraj". */
   selectLabel: string;
-  /** Full name of the pick button for screen readers (required), e.g. "Zagraj z Alicja_99". */
+  /** Full name of the pick button for screen readers, e.g. "Zagraj z Alicja_99". */
   selectAriaLabel: string;
   /** Picking is in progress: the button is busy and cannot be pressed twice. */
   selecting?: boolean;
   onSelect: () => void;
-  className?: string;
 };
+
+/** A read-only row (E03-S01): no pick button until picking exists. */
+type LobbyRowReadOnly = {
+  selectLabel?: undefined;
+  selectAriaLabel?: undefined;
+  selecting?: undefined;
+  onSelect?: undefined;
+};
+
+type LobbyRowProps = LobbyRowBase & (LobbyRowPick | LobbyRowReadOnly);
 
 function LobbyRow({
   name,
@@ -58,9 +72,11 @@ function LobbyRow({
           {expiresLabel} <span className="tabular-nums">{formatClock(expiresInMs)}</span>
         </span>
       </div>
-      <Button variant="secondary" aria-label={selectAriaLabel} loading={selecting} onClick={onSelect}>
-        {selectLabel}
-      </Button>
+      {onSelect && (
+        <Button variant="secondary" aria-label={selectAriaLabel} loading={selecting} onClick={onSelect}>
+          {selectLabel}
+        </Button>
+      )}
     </li>
   );
 }

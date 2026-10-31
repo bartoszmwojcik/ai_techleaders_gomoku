@@ -107,6 +107,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               />
               <div className="flex flex-wrap items-center justify-center gap-group md:justify-start">
                 <Button asChild variant="secondary">
+                  <a href="/lobby">Lobby</a>
+                </Button>
+                <Button asChild variant="secondary">
                   <a href="/account">Konto</a>
                 </Button>
                 <LogoutButton hasActiveGame={hasActiveGame} />

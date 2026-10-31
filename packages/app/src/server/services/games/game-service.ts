@@ -45,6 +45,7 @@ import {
   EXPIRE_WAITING_OF_GUEST,
   closeStaleSlotsOfUser,
 } from "./lazy-closing";
+import { deleteSeekersSql } from "./lobby-seeker-sql";
 import type { TimeoutSettler } from "./timeout-settler";
 
 type Deps = {
@@ -243,6 +244,8 @@ export class GameService {
         const locked = await tx.execute<{ id: string }[]>(LOCK_USER_SQL, [userId]);
         // The account was deleted between the session check and now (#37).
         if (locked.length === 0) throw new UnauthorizedError(SESSION_REQUIRED_MESSAGE);
+        // Whoever starts a game stops looking for one (#25 Q5); right after the user lock (lock order).
+        await tx.execute(deleteSeekersSql(1), [userId], "run");
         await closeStaleSlotsOfUser(tx, userId, now);
         return this.#insertGame(tx, draft, now, { kind: "account", userId });
       });

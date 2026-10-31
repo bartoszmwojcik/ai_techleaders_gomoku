@@ -1,6 +1,6 @@
 # Status „szukający gry” i widok lobby (E03-S01 #25, E03-S01-T01 #31)
 
-> Status: **szkic autonomiczny** (`om-auto-write-spec`, 2026-10-31) — założenia odwracalne, do przeglądu i zatwierdzenia przed implementacją. Źródło: zgłoszenia #25 (E03-S01), #31 (E03-S01-T01, migracja), epik #17, `.ai/specs/product-brief.md` (BR-09, BR-12, BR-13, BR-20, BR-26, D-07, D-09, D-21, D-23), specyfikacje wdrożone: `implemented/2026-10-24-game-invitations.md` (#21: slot BR-13, `is_active`, leniwe zamykanie, kolejność blokad), `implemented/2026-10-26-game-clock.md`, `implemented/2026-10-29-game-reconnection.md` (odpytywanie, `visibilitychange`), `implemented/2026-10-29-game-rematch.md` (wzór tworzenia partii poza zaproszeniem), `implemented/2026-10-24-expired-records-cleanup.md` (rejestr reguł sprzątania), `implemented/2026-10-24-account-deletion.md` (#37, kolejność blokad). Standardy: `.ai/docs/2026-09-01-engineering-standards.md`. Wybór przeciwnika z listy i powstanie partii to **#26 (E03-S02)** — poza tą specyfikacją, jej kontrakty zostawiamy otwarte (sekcja „Interfejs dla #26”).
+> Status: **wdrożona** (2026-10-31; zatwierdzona przez właściciela, scalona w #117; szkic autonomiczny `om-auto-write-spec`). Odstępstwa i dowody: sekcja „Odstępstwa wdrożenia i dowody” na końcu. Źródło: zgłoszenia #25 (E03-S01), #31 (E03-S01-T01, migracja), epik #17, `.ai/specs/product-brief.md` (BR-09, BR-12, BR-13, BR-20, BR-26, D-07, D-09, D-21, D-23), specyfikacje wdrożone: `implemented/2026-10-24-game-invitations.md` (#21: slot BR-13, `is_active`, leniwe zamykanie, kolejność blokad), `implemented/2026-10-26-game-clock.md`, `implemented/2026-10-29-game-reconnection.md` (odpytywanie, `visibilitychange`), `implemented/2026-10-29-game-rematch.md` (wzór tworzenia partii poza zaproszeniem), `implemented/2026-10-24-expired-records-cleanup.md` (rejestr reguł sprzątania), `implemented/2026-10-24-account-deletion.md` (#37, kolejność blokad). Standardy: `.ai/docs/2026-09-01-engineering-standards.md`. Wybór przeciwnika z listy i powstanie partii to **#26 (E03-S02)** — poza tą specyfikacją, jej kontrakty zostawiamy otwarte (sekcja „Interfejs dla #26”).
 
 ## 📝 TLDR
 
@@ -123,13 +123,13 @@ Jedna faza, jeden PR implementacyjny (`Refs #25`, `Refs #31`; zamknięcie zgłos
 
 ## 📝 Acceptance criteria (mapowanie)
 
-- [ ] Zalogowany bez partii oznacza się i inny zalogowany widzi go w `/lobby` (testy integracyjne + przeglądarkowy).
-- [ ] Po 5 minutach status wygasa i użytkownik znika z listy (test granicy: tuż przed/po).
-- [ ] Szukający wycofuje status i znika z listy innych.
-- [ ] Użytkownik z partią `waiting`/`active` dostaje `409` i widzi „Masz już partię”.
-- [ ] Brak kodu zależnego od `emailVerifiedAt` (BR-26).
-- [ ] Migracja przechodzi w górę i w dół na PostgreSQL (#31).
-- [ ] 100% pokrycia per plik; `npm run check` zielone.
+- [x] Zalogowany bez partii oznacza się i inny zalogowany widzi go w `/lobby` (testy integracyjne + przeglądarkowy).
+- [x] Po 5 minutach status wygasa i użytkownik znika z listy (test granicy: tuż przed/po).
+- [x] Szukający wycofuje status i znika z listy innych.
+- [x] Użytkownik z partią `waiting`/`active` dostaje `409` i widzi „Masz już partię”.
+- [x] Brak kodu zależnego od `emailVerifiedAt` (BR-26).
+- [x] Migracja przechodzi w górę i w dół na PostgreSQL (#31).
+- [x] 100% pokrycia per plik; `npm run check` zielone.
 
 ## ⚠️ Open Questions (do decyzji człowieka; żadne nie blokuje zatwierdzenia szkicu)
 
@@ -137,3 +137,38 @@ Jedna faza, jeden PR implementacyjny (`Refs #25`, `Refs #31`; zamknięcie zgłos
 2. **Kasowanie statusu przy starcie partii i wylogowaniu (Q5, Q6)** dotyka trzech wdrożonych serwisów i ścieżki wylogowania — czy akceptujesz to zamiast samego filtrowania przy odczycie?
 3. **Odpytywanie 3 s (Q8)** zamiast transportu z #30 — potwierdzenie, że na MVP wystarcza.
 4. **Czy własny status ma być widoczny dla innych dłużej niż 5 min po „odświeżeniu”?** Domyślnie nie: brak odnawiania (Q3); jeśli produktowo chcesz „jeszcze 5 minut”, to osobna decyzja z konsekwencjami dla BR-12.
+
+## 📝 Odstępstwa wdrożenia i dowody (2026-10-31)
+
+Odpowiedzi na pytania otwarte zostały zastosowane tak, jak proponował szkic (osobne PR-y #25 i #26, kasowanie statusu przy starcie partii i wylogowaniu, odpytywanie co 3 s, brak odnawiania statusu); **żadnego z tych czterech punktów właściciel nie zmienił w tym PR-ze**, ale pozostają one decyzjami produktowymi do potwierdzenia przy odbiorze.
+
+### Odstępstwa od treści specyfikacji
+
+1. **`LobbyService` ma piątą zależność, `gameParticipation`.** `view` bierze `currentGame` z `GameParticipation.currentGame` (zamyka też przeterminowane sloty), więc nie powtarza zapytania; szkic wymieniał `{ em, clock, rateLimiter, timeoutSettler }`.
+2. **Rewanż usuwa statusy obu kont, nie tylko przyjmującego** (Q5 mówiło „przez konto”). Po zakończonej partii przeciwnik też mógł się oznaczyć; obaj wchodzą do nowej partii, więc oba statusy znikają w tej samej transakcji (`deleteSeekersSql(userIds.length)`, po wstawieniu uczestników, przed `MARK_ACCEPTED_SQL`).
+3. **Miejsce `DELETE` w `InvitationService.accept`:** po udanym `START_GAME_SQL`, a nie zaraz po blokadzie użytkownika. Ścieżka „wrócił do własnej partii” (`joined: false`) też zatwierdza transakcję i nie może kasować statusu kogoś, kto tylko otworzył stary link. W `GameService.create` `DELETE` stoi zaraz po blokadzie `users` (kolejność blokad: `users` → `lobby_seekers` → `games`).
+4. **Wylogowanie:** `DELETE` jest w `SessionService.revoke` (podzapytanie po `sessions.token_hash`, przed usunięciem sesji), nie w route. Błąd usunięcia jest połykany (`.catch`), więc nie blokuje wylogowania; wylogowanie którejkolwiek sesji konta kasuje jego status (konto może być zalogowane na innym urządzeniu i oznaczyć się ponownie, a nieaktualny status po „wyloguj” byłby gorszy).
+5. **`markSeeking`:** `INSERT … ON CONFLICT … WHERE expires_at <= :now` bez `RETURNING`, a potem osobny odczyt statusu z czasem względnym liczonym w SQL (jedna ścieżka dla „nowy” i „istniejący”, bez rozgałęzienia na brak zwróconego wiersza).
+6. **Lista widoczna dla użytkownika z partią:** `GET /api/lobby` zwraca także listę (bez filtrowania po `currentGame`); to strona (`LobbyPanel`) przy `currentGame` pokazuje tylko „Masz już partię” i link, zgodnie z historią `has-active-game` w Storybooku.
+7. **Wyścig odliczania z odczytem:** gdy odczyt przychodzi z `me: null`, a strona miała jeszcze własny status (i gracz nie wykonał własnej akcji, która unieważnia odczyt), strona pokazuje „Status wygasł” tak samo jak po odliczeniu do zera. Powód: odliczenie lokalne i odczyt mogą się ścigać (albo karta była zamrożona), a cichy powrót przycisku wyglądałby jak błąd. Skutek uboczny: status wycofany w innej karcie też pokaże „Status wygasł” (komunikat jest neutralny: „Możesz oznaczyć się ponownie”). Wykryte jako niestabilność testu przeglądarkowego (około 1 na 6 przebiegów, gdy odczyt wyprzedzał odliczenie).
+8. **Stan „ładowanie” (`Skeleton`)** pokazuje się tylko po „Spróbuj ponownie” (pierwszy render dostaje dane z serwera); stan błędu po 2 nieudanych odczytach z rzędu (`LOBBY_FAILURES_BEFORE_ERROR`), nie po pierwszym.
+9. **Odpowiedź `409` z `gameId` bez statusu partii:** strona wstawia `status: "active"` jako zastępczy (tekst „Masz już partię” go nie używa); następny odczyt (3 s) podaje prawdziwy.
+10. **Migracja i snapshot:** zatwierdzony `.snapshot-gomoku.json` był nieaktualny (18 KB, bez tabel `games`), więc generator dopisał do migracji niezwiązane `alter column … set default` dla `games`; usunąłem je z pliku migracji (zostaje wyłącznie `lobby_seekers`), a snapshot został odświeżony w całości (jego rozrost to nie zmiana schematu). Migracja przeszła up/down/up na PostgreSQL 17.
+11. **Reguła sprzątania `lobbySeekers`** stoi po `passwordResetTokens` (przed grami; `unverifiedUsers` nadal ostatnia). Najgorszy przebieg `db:cleanup`: 11 reguł × 15 s = 165 s (komentarz w `cleanup-expired.ts`, README), mieści się w godzinnym odstępie `cron`.
+12. **Brak wpisu `track.md` dla Epiku 03:** istniejące `track.md` (E01) i `track-e02.md` dotyczą innych epików, więc dla tego PR-a powstał `track-e03.md` z odhaczoną Fazą 1 (#25/#31) i otwartą Fazą 2 (#26).
+13. **Prywatność w teście:** odpowiedź listy zawiera `id` wiersza, `displayName`, `sinceMs`, `expiresInMs`; test integracyjny sprawdza, że nie ma w niej `user_id` ani adresu e-mail.
+
+### Dowody kryteriów
+
+| Kryterium | Dowód |
+| --- | --- |
+| Zalogowany bez partii oznacza się i inny zalogowany widzi go w `/lobby` | `tests/integration/lobby-api.test.ts` — „marks for 5 minutes and shows the user to others by public name only, never to themselves”, „lists the oldest statuses first”, „keeps one row when the same account marks in parallel (two tabs)”, „shows at most 50 seekers”; `lobby-pages.test.ts` — „marks A, shows A to B without a reload, and drops A from the list after the withdrawal”; jednostkowo `lobby-service.test.ts`, `lobby-panel.test.tsx` |
+| Po 5 minutach status wygasa i użytkownik znika (BR-12), granica tuż przed/po | `lobby-api.test.ts` — „shows a status until the second it expires, then drops the user from the list and from their own view”, „starts a fresh 5 minutes when marking after the old status ran out”; `lobby-pages.test.ts` — „brings the button back with a notice when the own status runs out…”; `lobby-panel.test.tsx` — sekcja „countdowns” |
+| Szukający wycofuje status | `lobby-api.test.ts` — „removes the user from the list, and again is still 200”; `lobby-pages.test.ts` (wycofanie i „shows the marked status again after a reload”) |
+| Użytkownik z partią `waiting`/`active` dostaje `409` i widzi „Masz już partię” | `lobby-api.test.ts` — „refuses a user with a waiting game…”, „refuses a user whose game is in progress”, „does not let an expired waiting game block the lobby…”, „never leaves a user both seeking and holding a slot, whichever of two parallel requests wins”; `lobby-pages.test.ts` — „tells a user who already has a game that they have one…” |
+| Status znika przy starcie partii, wylogowaniu, usunięciu konta | `lobby-api.test.ts` — „removes the status when the user creates a game”, „…of the joiner when they accept an invitation…”, „keeps the status of a user who only looks at an invitation”, „removes the statuses of both players when a rematch is accepted”, „removes the status on logout”, „is removed with the account (cascade)” |
+| Brak kodu zależnego od `emailVerifiedAt` (BR-26) | `LobbyService` i route’y nie odwołują się do `emailVerifiedAt` (przegląd kodu; strona używa `getCurrentUserWith` bez tego pola) |
+| Migracja w górę i w dół na PostgreSQL (#31) | `migration:up` → `down` → `up` na `postgres:17` (2026-10-31): tabela, `UNIQUE (user_id)`, indeks `expires_at`, `ON DELETE CASCADE`, `CHECK`; `down` usuwa tabelę; ponowne `migration:create` nie wykrywa już różnic schematu `lobby_seekers` |
+| Sprzątanie (#39) | `cleanup.test.ts` — „lobby_seekers: statuses expired more than 1 h ago go, the rest stays”; `cleanup-expired.test.ts` (test-strażnik „has a rule or an explicit exemption…”) |
+| 100% pokrycia per plik; `npm run check` zielone | wynik w opisie PR-a (kody wyjścia) |
+| Ekran w obu motywach i na 320 px | zrzuty `lobby-*-320-{light,dark}.png` z `lobby-pages.test.ts` (`GOMOKU_SHOTS_DIR`), brak poziomego przewijania sprawdzony w teście |

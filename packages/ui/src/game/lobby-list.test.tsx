@@ -44,6 +44,18 @@ describe("LobbyList and LobbyRow", () => {
     expect(onSelect).toHaveBeenCalledTimes(1);
   });
 
+  it("shows a read-only row without a pick button (E03-S01)", () => {
+    render(
+      <LobbyList label="Gracze szukający gry">
+        <LobbyRow name="Alicja_99" since="szuka od 1 min" expiresLabel="wygasa za" expiresInMs={242_000} />
+      </LobbyList>,
+    );
+
+    expect(screen.getByText("Alicja_99")).toBeTruthy();
+    expect(screen.getByText("4:02")).toBeTruthy();
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
   it("blocks a second pick while choosing", () => {
     render(
       <LobbyList label="Gracze">

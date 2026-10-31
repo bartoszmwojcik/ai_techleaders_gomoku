@@ -14,6 +14,7 @@ function setup(found: unknown = null, activeGame = false) {
     flush: vi.fn(async () => undefined),
     findOne: vi.fn(async () => found),
     nativeDelete: vi.fn(async () => 0),
+    execute: vi.fn(async () => [] as unknown[]),
   };
   const hasActiveGame = vi.fn(async () => activeGame);
   const service = new SessionService({
@@ -104,9 +105,15 @@ describe("SessionService.findValid", () => {
 });
 
 describe("SessionService.revoke", () => {
-  it("deletes only the session with the token hash", async () => {
+  it("deletes only the session with the token hash, and the owner's lobby status first (#25 Q6)", async () => {
     const { em, service } = setup();
     await service.revoke("tok");
+    expect(em.execute).toHaveBeenCalledExactlyOnceWith(
+      expect.stringContaining("delete from lobby_seekers"),
+      [hashOpaqueToken("tok")],
+      "run",
+    );
+    expect(em.execute.mock.invocationCallOrder[0]).toBeLessThan(em.nativeDelete.mock.invocationCallOrder[0]!);
     expect(em.nativeDelete).toHaveBeenCalledExactlyOnceWith(Session, {
       tokenHash: hashOpaqueToken("tok"),
     });
@@ -118,6 +125,15 @@ describe("SessionService.revoke", () => {
     await expect(service.revoke("tok")).resolves.toBeUndefined();
     await expect(service.revoke("tok")).resolves.toBeUndefined();
     expect(em.nativeDelete).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("SessionService.revoke when the status cannot be removed", () => {
+  it("still ends the session", async () => {
+    const { em, service } = setup();
+    em.execute.mockRejectedValue(new Error("db hiccup"));
+    await expect(service.revoke("tok")).resolves.toBeUndefined();
+    expect(em.nativeDelete).toHaveBeenCalledOnce();
   });
 });
 
