@@ -41,3 +41,4 @@ Indeks lekcji. Jedna linia na wpis: `- [Tytuł](lessons/YYYY-MM-DD-slug.md) — 
 - [Prawdziwy timer = niedeterministyczne pokrycie](lessons/2026-10-31-real-timer-in-coverage.md) — `AbortSignal.timeout` nie podlega fałszywym timerom; jego listener pokrywaj testem z wstrzykniętym sygnałem, nie czasem trwania pliku testowego.
 - [Dodany element wypchnął przycisk poza viewport testów](lessons/2026-10-31-integration-click-needs-scroll-into-view.md) — test, który po zmianie układu „nic nie klika”, sprawdź pod kątem pozycji względem viewportu (577 px); `Browser.click` przewija element do widoku.
 - [2026-10-31 kursor: kształt to nie poprawność](lessons/2026-10-31-kursor-ksztalt-to-nie-poprawnosc.md) — walidować semantycznie wartości rzutowane w SQL (400, nie 500)
+- [2026-10-31 numer #NNN w komentarzu tsx/css wywala job tokens](lessons/2026-10-31-issue-number-in-tsx-comment-trips-tokens-job.md)

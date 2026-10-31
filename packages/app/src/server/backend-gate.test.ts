@@ -64,7 +64,9 @@ describe("the (backend) route group", () => {
   it.each(guarded.map((file) => [relative(root, file), file]))(
     "%s calls assertBackendEnabled() (404 in production, #152)",
     (_name, file) => {
-      expect(readFileSync(file, "utf8")).toMatch(/\bassertBackendEnabled\(\)/);
+      // Comments are stripped so a mention of the call does not count as the call.
+      const code = readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+      expect(code).toMatch(/\bassertBackendEnabled\(\)/);
     },
   );
 });

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default function BackendLayout({ children }: Readonly<{ children: ReactNode }>) {
-  // Interim production gate (#152); pages, route handlers and actions repeat it (a layout does not cover them).
+  // Interim production gate (issue 152, see backend-gate.ts); pages, route handlers and actions repeat it (a layout does not cover them).
   assertBackendEnabled();
 
   return (
