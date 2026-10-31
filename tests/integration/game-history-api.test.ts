@@ -110,7 +110,10 @@ describe("access", () => {
 
   it("answers 400 to a cursor that is not ours, also one built to look like SQL", async () => {
     const who = await signedUp();
-    for (const cursor of ["garbage", btoa("2026-10-31T10:00:00.000000Z|1; drop table games"), "a".repeat(201)]) {
+    for (const cursor of ["garbage", btoa("2026-10-31T10:00:00.000000Z|1; drop table games"),
+      // right shape, no such instant: PostgreSQL would refuse it, which must not become a 500
+      btoa("2026-99-99T99:99:99.000000Z|0b9a6c52-7e3b-4a61-9f0e-2d3c4b5a6978"),
+      "a".repeat(201)]) {
       const response = await history(who, `?cursor=${encodeURIComponent(cursor)}`);
       expect(response.status).toBe(400);
     }

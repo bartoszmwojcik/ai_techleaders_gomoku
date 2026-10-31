@@ -51,7 +51,20 @@ export type HistoryCursor = { finishedAt: string; id: string };
 // them and the next page would repeat or skip a row), so its shape is checked, not parsed.
 const CURSOR_FINISHED_AT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/;
 const CURSOR_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const CURSOR_PARTS = z.tuple([z.string().regex(CURSOR_FINISHED_AT), z.string().regex(CURSOR_ID)]);
+
+// The shape alone lets "2026-99-99T99:99:99.000000Z" through, and PostgreSQL would answer it with an
+// error (a 500). A real calendar instant survives the round trip through a date (millisecond part
+// is enough: the microseconds are only digits); PostgreSQL has no year 0000, JavaScript has.
+function isRealInstant(finishedAt: string): boolean {
+  const millis = `${finishedAt.slice(0, 23)}Z`;
+  const date = new Date(millis);
+  return !finishedAt.startsWith("0000-") && !Number.isNaN(date.getTime()) && date.toISOString() === millis;
+}
+
+const CURSOR_PARTS = z.tuple([
+  z.string().regex(CURSOR_FINISHED_AT).refine(isRealInstant),
+  z.string().regex(CURSOR_ID),
+]);
 
 export const HISTORY_CURSOR_INVALID_MESSAGE = "Nieprawidłowy parametr cursor.";
 

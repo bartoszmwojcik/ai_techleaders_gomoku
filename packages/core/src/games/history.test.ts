@@ -37,6 +37,10 @@ describe("history cursor", () => {
     ["no separator", encodeRaw("2026-10-31T15:04:05.123456Z")],
     ["extra part", encodeRaw(`${CURSOR.finishedAt}|${CURSOR.id}|x`)],
     ["a date with no microseconds", encodeRaw(`2026-10-31T15:04:05Z|${CURSOR.id}`)],
+    ["a month that does not exist", encodeRaw(`2026-99-31T15:04:05.123456Z|${CURSOR.id}`)],
+    ["a 30th of February", encodeRaw(`2026-02-30T15:04:05.123456Z|${CURSOR.id}`)],
+    ["an hour that does not exist", encodeRaw(`2026-10-31T25:04:05.123456Z|${CURSOR.id}`)],
+    ["a year PostgreSQL does not have", encodeRaw(`0000-10-31T15:04:05.123456Z|${CURSOR.id}`)],
     ["a free text date", encodeRaw(`yesterday|${CURSOR.id}`)],
     ["an id that is not a uuid", encodeRaw(`${CURSOR.finishedAt}|1; drop table games`)],
   ])("rejects %s", (_name, cursor) => {
