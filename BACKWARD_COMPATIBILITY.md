@@ -36,7 +36,7 @@ Pakiety są prywatne (`"private": true`) i nie są publikowane — wszyscy konsu
 
 ### 3. Adresy URL stron
 
-`/` (strona graczy), `/backend` (panel), a w przyszłości linki zaproszeń (BR-09, BR-11) i adresy partii.
+`/` (strona graczy), `/backend` (panel; w produkcji celowo `404` do czasu roli administratora, #152), a w przyszłości linki zaproszeń (BR-09, BR-11) i adresy partii.
 
 **Łamiące:** zmiana lub usunięcie ścieżki, zmiana formatu linku zaproszenia lub kodu.
 **Ścieżka:** po pierwszym wdrożeniu stary adres przekierowuje (`redirects` w `next.config.ts` lub strona przejściowa) na nowy. Linki zaproszeń są wysyłane poza aplikację — ich format musi być akceptowany do końca ważności wszystkich wydanych zaproszeń.

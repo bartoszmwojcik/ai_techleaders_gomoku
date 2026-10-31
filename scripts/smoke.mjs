@@ -10,7 +10,8 @@ const READY_TIMEOUT_MS = 30_000;
 
 const checks = [
   { path: "/", status: 200, contains: "Gomoku" },
-  { path: "/backend", status: 200, contains: "Panel administracyjny" },
+  // The panel is closed in production until the administrator role exists (#152).
+  { path: "/backend", status: 404 },
   { path: "/api/health", status: 200, json: (body) => body.status === "ok" },
   { path: "/this-route-does-not-exist", status: 404 },
 ];

@@ -24,13 +24,15 @@ describe("player pages", () => {
   });
 });
 
-describe("admin panel", () => {
-  it("is connected to the database and shows the game rules", async () => {
-    await browser.open(`${baseUrl}/backend`);
+describe("admin panel (closed in production until the administrator role, #152)", () => {
+  it("answers 404 without a session and does not leak the panel", async () => {
+    for (const path of ["/backend", "/backend/anything"]) {
+      const response = await fetch(`${baseUrl}${path}`);
+      const body = await response.text();
 
-    expect(await browser.title()).toBe("Przegląd — Panel Gomoku");
-    expect(await browser.text("h1")).toBe("Panel administracyjny");
-    expect(await browser.text("[data-slot=badge]")).toBe("Połączono");
-    expect(await browser.text("table")).toMatch(/Rozmiar planszy\s*15×15/);
+      expect(response.status).toBe(404);
+      expect(body).not.toContain("Panel administracyjny");
+      expect(body).not.toContain("Baza danych");
+    }
   });
 });

@@ -12,13 +12,17 @@ import {
   TableRow,
 } from "@gomoku/ui/components/table";
 
+import { assertBackendEnabled } from "@/server/backend-gate";
 import { withRequestScope } from "@/server/container";
 
 export const metadata = { title: "Przegląd" };
 
 export default async function BackendHomePage() {
+  assertBackendEnabled();
   await connection();
   const health = await withRequestScope(({ cradle }) => cradle.healthService.check());
+  // The raw reason (hosts, ports) goes to the server log only, never to the browser.
+  if (!health.database.ok) console.error("Backend panel: database check failed", health.database.reason);
 
   return (
     <main className="mx-auto max-w-4xl space-y-6 p-8">
@@ -36,7 +40,7 @@ export default async function BackendHomePage() {
             ) : (
               <>
                 <Badge variant="destructive">Brak połączenia</Badge>
-                <p className="text-sm text-muted-foreground">{health.database.reason}</p>
+                <p className="text-sm text-muted-foreground">Sprawdź logi serwera.</p>
               </>
             )}
           </CardContent>
