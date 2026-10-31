@@ -93,6 +93,14 @@ describe("handleMcpPost", () => {
     expect(d.agentSeatService.join).toHaveBeenCalledWith(5, { x: 1 }, expect.anything());
   });
 
+  it("passes a call without any arguments to the service too, instead of a protocol-level refusal", async () => {
+    const d = deps();
+    await handleMcpPost(modern("tools/call", { name: "join" }, "join"), d);
+    expect(d.agentSeatService.join).toHaveBeenCalledWith(undefined, undefined, expect.anything());
+    await handleMcpPost(call({}), d);
+    expect(d.agentSeatService.join).toHaveBeenLastCalledWith(undefined, undefined, expect.anything());
+  });
+
   it("serves a client of the 2025 stateless form too", async () => {
     const response = await handleMcpPost(
       post({ jsonrpc: "2.0", id: 7, method: "tools/call", params: { name: "join", arguments: { code: "ABCD-EFGH" } } }),
