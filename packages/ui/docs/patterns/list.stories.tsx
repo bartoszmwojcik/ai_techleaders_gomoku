@@ -49,7 +49,7 @@ function historyRows(count: number, longNames = false, partial = false) {
       {Array.from({ length: count }, (_, index) => (
         <HistoryRow
           key={index}
-          opponent={index % 4 === 3 ? "Usunięty gracz" : index % 4 === 2 ? "Zaproszony przez link" : longNames ? `Ala_Kowalska_Mistrzyni_Gomoku_2026_${index + 1}` : `Gracz_${index + 1}`}
+          opponent={index % 4 === 3 ? "Usunięty gracz" : index % 4 === 2 ? "Kasia (gość)" : longNames ? `Ala_Kowalska_Mistrzyni_Gomoku_2026_${index + 1}` : `Gracz_${index + 1}`}
           result={(["win", "loss", "draw"] as const)[index % 3] as "win" | "loss" | "draw"}
           resultLabel={["Wygrana", "Porażka", "Remis"][index % 3]}
           date={`${25 - index}.10.2026`}

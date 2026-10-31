@@ -21,7 +21,7 @@ export const Playground: Story = {
     <Panel title="Historia partii">
       <HistoryList {...args}>
         <HistoryRow opponent="Alicja_99" result="win" resultLabel="Wygrana" date="24.10.2026" reason="5 w linii" />
-        <HistoryRow opponent="Zaproszony przez link" result="loss" resultLabel="Porażka" date="23.10.2026" reason="Koniec czasu" />
+        <HistoryRow opponent="Kasia (gość)" result="loss" resultLabel="Porażka" date="23.10.2026" reason="Koniec czasu" />
         <HistoryRow opponent="Usunięty gracz" result="draw" resultLabel="Remis" date="20.10.2026" reason="Plansza pełna" />
       </HistoryList>
     </Panel>
@@ -50,7 +50,7 @@ export const DlugaNazwaNaWaskimEkranie: Story = {
     <Narrow>
       <HistoryList {...args}>
         <HistoryRow opponent="Ala_Kowalska_Mistrzyni_Gomoku_2026" result="win" resultLabel="Wygrana" date="24.10.2026" reason="5 w linii" />
-        <HistoryRow opponent="Zaproszony przez link" result="loss" resultLabel="Porażka" date="23.10.2026" />
+        <HistoryRow opponent="Kasia (gość)" result="loss" resultLabel="Porażka" date="23.10.2026" />
       </HistoryList>
     </Narrow>
   ),

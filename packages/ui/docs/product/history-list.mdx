@@ -28,7 +28,7 @@ Pokazuje graczowi jego zakończone partie: z kim, jak się skończyły i kiedy.
 
 `HistoryList` to lista z nazwą dla czytnika. `HistoryRow`:
 
-1. **Przeciwnik** (nazwa, „Usunięty gracz” albo „Zaproszony przez link”).
+1. **Przeciwnik** (nazwa, „Usunięty gracz” albo „{nick} (gość)”).
 2. **Data** i **sposób zakończenia** w drugiej linii.
 3. **Wynik** jako [Znacznik statusu](?path=/docs/prymitywy-znacznik-statusu--docs) (słowo i ikona).
 
@@ -46,7 +46,7 @@ Zwykła lista, dużo partii, długie nazwy. Stany całej listy (ładowanie, pust
 
 - **Lista:** `<ul>` z nazwą (`aria-label`), wiersze to `<li>`.
 - **Wynik nie opiera się na kolorze:** słowo, ikona i kolor (WCAG 1.4.1).
-- **Anonimizacja:** przeciwnik, który usunął konto, to „Usunięty gracz” (BR-17); gość to „Zaproszony przez link” (BR-24).
+- **Anonimizacja:** przeciwnik, który usunął konto, to „Usunięty gracz” (BR-17); gość to „{nick} (gość)” (BR-24, BR-29).
 - **Kontrast:** tekst pomocniczy (data, powód) ma co najmniej 4,5:1.
 
 ## 8. Treść

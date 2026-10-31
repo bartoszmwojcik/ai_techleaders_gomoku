@@ -22,7 +22,7 @@ function HistoryList({ label, children, className }: HistoryListProps) {
 const STATUS_BY_RESULT = { win: "success", loss: "danger", draw: "info" } as const;
 
 type HistoryRowProps = {
-  /** The opponent: a name, "Usunięty gracz" (BR-17) or "Zaproszony przez link" (BR-24) (required). */
+  /** The opponent: a name, "Usunięty gracz" (BR-17) or "{nick} (gość)" (BR-24, BR-29) (required). */
   opponent: ReactNode;
   result: GameResult;
   /** The result in a word, e.g. "Wygrana" (required). */

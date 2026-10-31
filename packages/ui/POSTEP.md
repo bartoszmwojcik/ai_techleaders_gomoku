@@ -107,7 +107,7 @@ Komponenty produktu według epików (wszystkie w `src/game/`, nazwy robocze):
 - **E01 Konta:** Pole hasła (Pole formularza + pole + „Pokaż hasło”), Baner potwierdzenia e-maila (Alert + „Wyślij ponownie”: wysyłanie, wysłano, limit, błąd).
 - **E02 Partia:** Plansza (siatka 15×15, kamienie, ostatni ruch, linia wygrywająca, tylko do odczytu, dwa kroki na ekranie dotykowym), Zegar gracza, Status tury, Karta kodu zaproszenia (link, kod, kopiuj, udostępnij, „ważne do”, anuluj), Baner wyniku, Ostrzeżenie dla gościa (Alert), Komunikat ponownego połączenia (Alert).
 - **E03 Lobby:** Status „szukam gry” (odliczanie do wygaśnięcia, wycofanie), Lista i wiersz lobby.
-- **E04 Historia:** Lista i wiersz historii partii (przeciwnik, w tym „Usunięty gracz” i „Zaproszony przez link”, wynik, data, sposób zakończenia).
+- **E04 Historia:** Lista i wiersz historii partii (przeciwnik, w tym „Usunięty gracz” i „{nick} (gość)”, wynik, data, sposób zakończenia).
 
 Wzorce, każdy ze wszystkimi stanami jako osobne stories: Formularz (symulowane API przez MSW: sukces, oczekiwanie, błąd pola, błąd serwera, brak sieci; fokus na pierwszym błędzie; blokada podwójnego wysłania), Lista (lobby i historia: ładowanie, pusto, błąd, częściowe dane, dużo danych, długie teksty), Widok szczegółów (partia: ładowanie, „nie istnieje albo brak dostępu”), Potwierdzenie usunięcia (konto, anulowanie własnej partii, wylogowanie w trakcie partii), Zaproszenie przez link lub kod, Stan zależny od uprawnień (niezalogowany, e-mail niepotwierdzony, gość).
 

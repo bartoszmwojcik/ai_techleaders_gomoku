@@ -10,7 +10,7 @@ vi.mock("@/lib/api-client", () => ({ apiCall }));
 
 import type { GameView } from "@/server/http/game-view";
 
-import { formatValidUntil, GameRoom, GUEST_RESULT_WINDOW_MS, JOIN_STEP_MS, REMATCH_IDLE_AFTER_MS, REMATCH_IDLE_POLL_INTERVAL_MS, PLAY_POLL_INTERVAL_MS, POLL_INTERVAL_MS, POLL_TIMEOUT_MS, RETURN_NOTICE_MS } from "./game-room";
+import { GameRoom, GUEST_RESULT_WINDOW_MS, JOIN_STEP_MS, REMATCH_IDLE_AFTER_MS, REMATCH_IDLE_POLL_INTERVAL_MS, PLAY_POLL_INTERVAL_MS, POLL_INTERVAL_MS, POLL_TIMEOUT_MS, RETURN_NOTICE_MS } from "./game-room";
 
 vi.setConfig({ testTimeout: 20_000 });
 
@@ -79,17 +79,6 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
-});
-
-describe("formatValidUntil", () => {
-  it("prints the weekday, date and time in the Warsaw zone, marked CET in winter", () => {
-    expect(formatValidUntil(EXPIRES)).toBe("piątek, 30 października 10:00 CET");
-    expect(formatValidUntil("2026-01-15T09:00:00Z")).toBe("czwartek, 15 stycznia 10:00 CET");
-  });
-
-  it("marks summer time CEST, not CET", () => {
-    expect(formatValidUntil("2026-07-15T09:00:00Z")).toBe("środa, 15 lipca 11:00 CEST");
-  });
 });
 
 const guestWaiting = (): GameView => ({

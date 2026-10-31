@@ -42,6 +42,8 @@ Backlog: `.ai/specs/backlog.md` (źródło: brief). Zadania techniczne (migracje
 | nagłówek ekranu partii bez pasków | zdecydowano: zwykły nagłówek (etap 3) | Nagłówek strony |
 | filtry i wyszukiwanie list | backlog ich nie ma | lista bez filtrów |
 | odtwarzanie partii ruch po ruchu | poza zakresem (#27) | |
+| paginacja („Pokaż starsze”) | historia ładuje strony po 20 wierszy; osobny wzorzec nie jest potrzebny (E04-S01) | Przycisk drugorzędny pod listą, stan ładowania w przycisku, błąd w Alercie |
+| obcięcie długiej nazwy w wierszu listy | Wiersz historii łamie tekst (`wrap-anywhere`), nie obcina; nick gościa z „(gość)” obcina opakowanie w aplikacji (`PlayerLabel`, L30) | opakowanie z `truncate` i stałym „(gość)”; do rozstrzygnięcia, czy reguła wejdzie do systemu |
 | tabela z kolumnami | na telefonie się nie mieści | lista |
 | tłumaczenia (polski i angielski, kolejne języki) | osobny temat; komponenty mają teksty przez propsy (Q3) | |
 | ruch planszy (stawianie kamienia, reakcja na ruch przeciwnika) | brak referencji | bez animacji |
