@@ -49,6 +49,7 @@ describe("HistoryView: the list", () => {
             entry({ gameId: "a", result: "loss", reason: "timeout", opponent: { kind: "guest", name: "Kasia" } }),
             entry({ gameId: "b", result: "draw", reason: "draw", opponent: { kind: "account", name: null } }),
             entry({ gameId: "c", reason: "resignation", opponent: { kind: "agent", name: null } }),
+            entry({ gameId: "d", opponent: { kind: "agent", name: "claude opus 5.5" } }),
           ],
           nextCursor: null,
         }}
@@ -64,6 +65,8 @@ describe("HistoryView: the list", () => {
     expect(rows[1]).toContain("Plansza pełna");
     expect(rows[2]).toContain("Agent");
     expect(rows[2]).toContain("Poddanie");
+    expect(rows[2]).not.toContain("deklarowane");
+    expect(rows[3]).toContain("Agent · claude opus 5.5 (deklarowane)");
   });
 
   it("keeps the whole name of a guest with a 24-character nickname in the title", () => {

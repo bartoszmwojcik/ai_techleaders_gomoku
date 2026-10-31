@@ -7,7 +7,7 @@ import {
   type EndReason,
   type HistoryEntry,
   type HistoryPage,
-  type OpponentKind,
+  type ParticipantKind,
   type Seat,
 } from "@gomoku/core";
 import type { EntityManager } from "@gomoku/db";
@@ -23,10 +23,11 @@ type Row = {
   end_reason: EndReason;
   winner_seat: Seat | null;
   my_seat: Seat;
-  opponent_kind: OpponentKind;
+  opponent_kind: ParticipantKind;
   opponent_seat: Seat;
   opponent_nickname: string | null;
   opponent_name: string | null;
+  opponent_agent_name: string | null;
 };
 
 // The history is a read model over finished games (engineering standards): one query from the
@@ -39,7 +40,7 @@ export const historySql = (afterCursor: boolean) => `
     to_char(g.finished_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as finished_at,
     g.end_reason, g.winner_seat, me.seat as my_seat,
     op.kind as opponent_kind, op.seat as opponent_seat, op.nickname as opponent_nickname,
-    u.display_name as opponent_name
+    op.agent_name as opponent_agent_name, u.display_name as opponent_name
   from game_players me
   join games g on g.id = me.game_id and g.status = 'finished'
   join game_players op on op.game_id = g.id and op.seat <> me.seat
@@ -56,7 +57,8 @@ function opponentNameOf(row: Row): string | null {
     case "guest":
       return row.opponent_nickname ?? defaultNickname(row.opponent_seat);
     case "agent":
-      return null;
+      // The model name the agent declared, if any (BR-31): unverified text.
+      return row.opponent_agent_name;
   }
 }
 

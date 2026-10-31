@@ -13,12 +13,14 @@
     "@gomoku/core": "*",
     "@gomoku/db": "*",
     "@gomoku/ui": "*",
+    "@modelcontextprotocol/server": "^2.4.0",
     "@next/env": "16.4.2",
     "bcryptjs": "^3.0.3",
     "next": "16.4.2",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "server-only": "^0.0.1"
+    "server-only": "^0.0.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",

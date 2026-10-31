@@ -52,6 +52,19 @@ Uwagi 2026-10-31 (E07): czat w partii to eksperyment właściciela (D-30), bez d
 
 Uwagi 2026-10-31: E02-S05…S08 (#87, #88, #94, #95) założono poza `om-backlog` (bez linii `Backlog source:`/`Backlog id:`); ich zależności nie zostały odtworzone, kolumna „Depends on” zawiera „—”. E06 to eksperyment właściciela (D-28), bez dowodu popytu (A-04, A-06); `SDLC.md` nie ma Definition of Ready. E06-S01-T01 (Q-09) blokuje E06-S01, E06-S01-T02 i E06-S02. Pozycje „Później” (CLI dla agenta, agent w lobby, przeciwnik hostowany przez nas) dopisano do E05 (#33).
 
+## Stan wdrożenia E06 (2026-10-31)
+
+Źródło: `track-e06.md`. Specyfikacje S01 i decyzja D-29 leżą w `.ai/specs/implemented/`.
+
+| Id | Issue | Stan | Dowód |
+|---|---|---|---|
+| E06-S01-T01 | #125 | decyzja zatwierdzona i wdrożona w S01 (token, transport, limity początkowe, `agentName`) | `.ai/specs/implemented/2026-10-31-mcp-agent-identity.md`, PR #138, wdrożenie w PR #143 |
+| E06-S01-T02 | #126 | wdrożone (`Migration20261031175106_agent_participant`, `Closes #126`) | PR #143 |
+| E06-S01 | #127 | wdrożone (`join`, etykieta „Agent”, rewanż niedostępny, `Closes #127`) | PR #143, `.ai/specs/implemented/2026-10-31-agent-joins-private-game.md` |
+| E06-S02 | #128 | następne: `get_state`, `play_move`, limit `mcp-token:*` | — |
+| E06-S03 | #129 | po S02; licznik nie może czytać partii gość–agent „po fakcie” (znikają po 1 h, R10) | — |
+| E06-S04 | #140 | po S02 | — |
+
 ## Zmiany z 2026-10-26: uproszczony start konta
 
 Źródło: `.ai/specs/implemented/2026-10-26-account-onboarding-simplification.md` (decyzje D-24…D-26, BR-26…BR-28; osąd właściciela, nie wynik badania). Tabela wyżej odpowiada jeszcze tytułom zgłoszeń sprzed zmiany; edycje zgłoszeń to osobna pozycja (Faza 4) i **muszą być zakończone przed rozpoczęciem implementacji #20, #21 i dalszych**.

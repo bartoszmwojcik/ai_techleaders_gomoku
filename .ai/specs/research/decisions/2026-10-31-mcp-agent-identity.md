@@ -1,7 +1,7 @@
 # Decyzje: tożsamość, token i limity klienta MCP (Q-09), 2026-10-31
 
 - **Właściciel:** Bartosz Wójcik. **Charakter:** osąd właściciela, **nie wynik badania**; wartości limitów są początkowe i nie mają oparcia w danych (A-04, A-06).
-- **Źródła:** specyfikacja decyzyjna `.ai/specs/2026-10-31-mcp-agent-identity.md` (PR #138, zgłoszenie #125), specyfikacja S01 `.ai/specs/2026-10-31-agent-joins-private-game.md` (PR #139, zgłoszenie #127), `research/decisions/2026-10-31-agent-opponent.md` (D-28, BR-30), odpowiedzi właściciela z 2026-10-31.
+- **Źródła:** specyfikacja decyzyjna `.ai/specs/implemented/2026-10-31-mcp-agent-identity.md` (PR #138, zgłoszenie #125), specyfikacja S01 `.ai/specs/implemented/2026-10-31-agent-joins-private-game.md` (PR #139, zgłoszenie #127), `research/decisions/2026-10-31-agent-opponent.md` (D-28, BR-30), odpowiedzi właściciela z 2026-10-31.
 - **Decyzje w briefie:** D-29 (nowa), BR-31 (nadpisuje BR-30), Q-09 → closed.
 
 ## Pytania i odpowiedzi

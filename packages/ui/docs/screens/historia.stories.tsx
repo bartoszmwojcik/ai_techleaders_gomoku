@@ -7,6 +7,7 @@ import { Skeleton, SkeletonRegion } from "@gomoku/ui/game/skeleton";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
 
+import { AgentName } from "./game-screen";
 import { Screen, screenParameters } from "./screen";
 
 const meta = {
@@ -18,7 +19,7 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-type HistoryState = "ready" | "many" | "loading" | "empty" | "error" | "long-guest";
+type HistoryState = "ready" | "many" | "loading" | "empty" | "error" | "long-guest" | "agents";
 
 const noop = () => undefined;
 
@@ -71,6 +72,13 @@ function History({ state }: { state: HistoryState }) {
             </div>
           </>
         )}
+        {state === "agents" && (
+          <HistoryList label="Zakończone partie">
+            <HistoryRow opponent={<AgentName />} result="win" resultLabel="Wygrana" date="31 października 2026, 17:20 CET" reason="5 w linii" />
+            <HistoryRow opponent={<AgentName declared="claude opus 5.5" />} result="loss" resultLabel="Porażka" date="31 października 2026, 16:40 CET" reason="Koniec czasu" />
+            <HistoryRow opponent="Kasia (gość)" result="win" resultLabel="Wygrana" date="30 października 2026, 12:10 CET" reason="Poddanie" />
+          </HistoryList>
+        )}
         {state === "many" && (
           <HistoryList label="Zakończone partie">
             {Array.from({ length: 25 }, (_, index) => (
@@ -112,3 +120,13 @@ export const HistoriaDuzoPartii: Story = history("many");
 export const HistoriaLadowanie: Story = history("loading");
 export const HistoriaPusta: Story = history("empty");
 export const HistoriaBladWczytania: Story = history("error");
+// Przeciwnik "Agent" (E06-S01, BR-31): bez nazwy i z deklarowaną nazwą modelu, obok gościa.
+export const HistoriaZAgentem: Story = {
+  ...history("agents"),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("claude opus 5.5")).toBeVisible();
+    await expect(canvas.getAllByText("Agent")).toHaveLength(2);
+    await expect(canvas.getByText("Kasia (gość)")).toBeVisible();
+  },
+};

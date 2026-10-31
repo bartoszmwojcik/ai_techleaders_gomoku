@@ -52,14 +52,39 @@ export function cellName(cell: number): string {
   return `Kolumna ${String.fromCharCode(65 + x)}, rząd ${y + 1}`;
 }
 
-/** How a participant is named on screen: the nickname or account name, and whether "(gość)" follows (E02-S07, L30). */
-export type PlayerName = { nick: string; guest: boolean; label: string };
+/**
+ * How a participant is named on screen: the nickname or account name, and whether "(gość)" follows
+ * (E02-S07, L30). `agent` marks an agent (BR-31): `nick` is then "Agent" and `declared` the model
+ * name it gave about itself (unverified), shown as "Agent · {declared} (deklarowane)".
+ */
+export type PlayerName = {
+  nick: string;
+  guest: boolean;
+  label: string;
+  agent?: { declared: string | null };
+};
+
+export const AGENT_LABEL = "Agent";
+export const DECLARED_LABEL = "(deklarowane)";
+
+/** The name of an agent opponent; `declared` is plain text, never markup (BR-31, decision 7 of #138). */
+export function agentNameOf(declared: string | null | undefined): PlayerName {
+  const name = declared ?? null;
+  return {
+    nick: AGENT_LABEL,
+    guest: false,
+    label: name === null ? AGENT_LABEL : `${AGENT_LABEL} · ${name} ${DECLARED_LABEL}`,
+    agent: { declared: name },
+  };
+}
 
 /**
  * `displayName` is the nickname (never empty for a guest: the server fills in "Gracz N") or the
- * account name (`null` for a deleted account). The "(gość)" suffix comes from `kind`, here in the UI layer.
+ * account name (`null` for a deleted account). The "(gość)" suffix comes from `kind`, here in the UI layer;
+ * an agent has no `displayName` and is named by `kind` and its declared `agentName`.
  */
 export function playerNameOf(player: GameView["players"][number] | undefined): PlayerName {
+  if (player?.kind === "agent") return agentNameOf(player.agentName);
   const guest = player?.kind === "guest";
   const nick = player?.displayName ?? "Usunięty gracz";
   return { nick, guest, label: guest ? `${nick} (gość)` : nick };
