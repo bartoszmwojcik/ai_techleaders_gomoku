@@ -242,7 +242,7 @@ Jeden PR implementacji (`Closes #21`, decyzja właściciela 2026-10-24) po #19, 
 
 ## 📝 Odstępstwa wdrożenia i dowody (2026-10-31)
 
-Odstępstwa od pierwotnej treści opisują adnotacje w tekście powyżej (przekreślenia BR-15/BR-23 i Q15 z 2026-10-26, Q19 po zmianie na `409 GUEST_NOT_ALLOWED`) oraz późniejsze specyfikacje E02-S07/E02-S08 (nick uczestnika, gość tworzy partię — `.ai/specs/2026-10-30-participant-nickname.md`, `.ai/specs/2026-10-30-guest-creates-game.md`). Poniżej dowody kryteriów akceptacji zgłoszenia #21 i zadania #29 (ścieżki względem korzenia repozytorium; „tylko kod” = bez testu, zachowanie sprawdzone w kodzie).
+Odstępstwa od pierwotnej treści opisują adnotacje w tekście powyżej (przekreślenia BR-15/BR-23 i Q15 z 2026-10-26, Q19 po zmianie na `409 GUEST_NOT_ALLOWED`) oraz późniejsze specyfikacje E02-S07/E02-S08 (nick uczestnika, gość tworzy partię — `.ai/specs/implemented/2026-10-30-participant-nickname.md`, `.ai/specs/implemented/2026-10-30-guest-creates-game.md`). Poniżej dowody kryteriów akceptacji zgłoszenia #21 i zadania #29 (ścieżki względem korzenia repozytorium; „tylko kod” = bez testu, zachowanie sprawdzone w kodzie).
 
 | Kryterium #21 | Dowód |
 | --- | --- |
