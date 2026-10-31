@@ -24,7 +24,7 @@ Reguły kasują dane: błędny warunek `kind` mógłby usunąć partię z kontem
 
 ### Phase 1: Reguły
 
-- [x] 1.1 Reguły guestOnlyActiveGames i guestOnlyFinishedGames, typy, wynik, komentarz budżetu, testy jednostkowe
+- [x] 1.1 Reguły guestOnlyActiveGames i guestOnlyFinishedGames, typy, wynik, komentarz budżetu, testy jednostkowe — feceb5b
 
 ### Phase 2: Testy na PostgreSQL
 
