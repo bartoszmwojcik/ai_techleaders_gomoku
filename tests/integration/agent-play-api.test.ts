@@ -362,8 +362,8 @@ describe("parallel moves and the race for the last move", () => {
     expect(after.moves).toBe(`${before.moves}${(7 * 15 + 7).toString(16).padStart(2, "0")}`);
     expect(after.status).toBe("active");
     expect(after.winner_seat).toBeNull();
-    const stones = `${after.black}${after.white}`.split("1").length - 1;
-    expect(stones).toBe(1);
+    const stonesOf = (row: Json) => `${row.black}${row.white}`.split("1").length - 1;
+    expect(stonesOf(after)).toBe(stonesOf(before) + 1);
     // The clock moved exactly once: the human's turn runs now.
     expect((await getState(game.token)).structuredContent).toMatchObject({ turn: "opponent", nextMoveNumber: number + 1 });
   });
