@@ -704,6 +704,19 @@ describe("GameRoom, play (p05, p06)", () => {
       timeout.mockRestore();
     });
 
+    it("calls the read off when its timeout fires (the timer is injected, not the real 8 s)", async () => {
+      const expiry = new AbortController();
+      const timeout = vi.spyOn(AbortSignal, "timeout").mockReturnValue(expiry.signal);
+      room(theirTurn([112]));
+      apiCall.mockReturnValue(new Promise(() => {}));
+      await tick(PLAY_POLL_INTERVAL_MS);
+      const signal = (apiCall.mock.calls[0]![1] as { signal: AbortSignal }).signal;
+      expect(signal.aborted).toBe(false);
+      expiry.abort();
+      expect(signal.aborted).toBe(true);
+      timeout.mockRestore();
+    });
+
     it("is not shown while still waiting for the opponent to open the page", async () => {
       room(active({}, [true, false]));
       await away(45_000);
