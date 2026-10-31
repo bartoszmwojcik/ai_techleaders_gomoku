@@ -10,11 +10,16 @@ type SourceFile = { path: string; content: string };
 
 // `update games set ... status = 'finished'` (the `where` clause may mention the status too).
 const FINISHES_A_GAME = /update\s+games\s+set(?:(?!\bwhere\b)[^`;])*?status\s*=\s*'finished'/is;
-const RECORDS_IT = /\brecordFinishedGame\(/;
+const RECORDS_IT = /\brecordFinishedGame\(/g;
 
+const countOf = (pattern: RegExp, content: string) =>
+  content.match(new RegExp(pattern.source, `${pattern.flags.replace("g", "")}g`))?.length ?? 0;
+
+// A file needs a `recordFinishedGame(` call for every finishing statement: a second statement
+// added next to a recorded one is caught too (a single call per file would hide it).
 export function findUnrecordedFinishers(files: readonly SourceFile[]): string[] {
   return files
-    .filter(({ content }) => FINISHES_A_GAME.test(content) && !RECORDS_IT.test(content))
+    .filter(({ content }) => countOf(FINISHES_A_GAME, content) > countOf(RECORDS_IT, content))
     .map(({ path }) => path);
 }
 
@@ -37,6 +42,14 @@ describe("finished-game counter guard", () => {
     expect(
       findUnrecordedFinishers([{ path: "b.ts", content: `${sql}; await recordFinishedGame(tx, id);` }]),
     ).toEqual([]);
+  });
+
+  it("flags a file with more finishing statements than recordings", () => {
+    const sql = "`update games set status = 'finished' where id = ? and status = 'active'`";
+    const record = "await recordFinishedGame(tx, id);";
+    const content = `${sql}; ${record}\n${sql.replace("games set", "games set winner_seat = 1,")}; ${record}`;
+    expect(findUnrecordedFinishers([{ path: "d.ts", content }])).toEqual([]);
+    expect(findUnrecordedFinishers([{ path: "d.ts", content: `${content}\n${sql}` }])).toEqual(["d.ts"]);
   });
 
   it("does not flag reads and updates of other columns of a finished game", () => {
