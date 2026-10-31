@@ -106,6 +106,24 @@ describe("RematchService.offer", () => {
     expect(rateLimiter.hit).not.toHaveBeenCalled();
   });
 
+  it("refuses an offer to a deleted account without spending an attempt or writing (#37)", async () => {
+    for (const players of [[account(1), account(2, null)], [account(1, null), account(2)]]) {
+      const { service, rateLimiter, ran } = setup({ players });
+      await expect(service.offer(me("p1"), "game-1")).rejects.toMatchObject({
+        status: 409,
+        code: "REMATCH_UNAVAILABLE",
+        message: "Przeciwnik nie jest już dostępny, rewanż jest niemożliwy.",
+      });
+      expect(rateLimiter.hit).not.toHaveBeenCalled();
+      expect(ran("set rematch_state = 'pending'")).toHaveLength(0);
+    }
+  });
+
+  it("does not take a guest (user_id NULL) for a deleted account", async () => {
+    const { service } = setup({ players: [account(1), guest(2)] });
+    await expect(service.offer(me("p1"), "game-1")).resolves.toMatchObject({ state: "pending" });
+  });
+
   it("refuses a second offer while one is open or accepted", async () => {
     const { service } = setup({ rows: { "set rematch_state = 'pending'": [] } });
     await expect(service.offer(me("p1"), "game-1")).rejects.toMatchObject({ status: 409, code: "REMATCH_ALREADY_OFFERED" });

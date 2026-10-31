@@ -33,6 +33,11 @@ export const GamePlayer = defineEntity({
     // NULL for an account (its name is `users.display_name`).
     nickname: p.string().length(24).nullable(),
   },
+  indexes: [
+    // Lookups by account: the `set null` action of `DELETE FROM users` (#37), the cleanup rule of
+    // unverified accounts (9.4) and the history (#27) would otherwise scan the whole table.
+    { name: "game_players_user_id_index", properties: ["user"] },
+  ],
   uniques: [
     { name: "game_players_game_id_seat_unique", properties: ["game", "seat"] },
     // NULL user ids (guests, deleted accounts) never collide.

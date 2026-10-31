@@ -101,11 +101,21 @@ Ręczny test po fazie: `npm run db:cleanup` na bazie ze starymi rekordami.
 - [x] 9.2 `cleanup-cli.ts`, `db:cleanup`
 - [x] 9.3 Testy integracyjne progów (`tests/integration/cleanup.test.ts`; wykryły i naprawiły błąd `$n` → `?` w `cleanupExpired`), README (cron). **Do wykonania ręcznie na serwerze po wdrożeniu: dodać `/etc/cron.d/gomoku-cleanup`** (treść w README, sekcja „Sprzątanie wygasłych rekordów”)
 - [x] 9.5 Poprawki po code review Fazy 9 (M1 próg liczników ≥ 25 h i poprawa opisu okna 24 h w README/komentarzu/specyfikacji, M2 błąd jednej reguły nie przerywa pozostałych i nie gubi wyniku częściowego, M3 budżet czasu na regułę + flaga `truncated`, L4 42P01 jako `null` tylko dla reguł opcjonalnych, L6 cron z datą i rotacją logu, kruche asercje w testach integracyjnych; L5 indeksy tylko jako adnotacja w specyfikacji)
-- [ ] 9.4 Reguła „niepotwierdzone konto bez partii po 14 dniach” — odblokowana (tabele partii z #29 i uczestnicy partii istnieją od E02); reguła ma być opisana w specyfikacji `.ai/specs/2026-10-24-account-deletion.md`, której aktualizacja z 2026-10-30 czeka na zatwierdzenie (#37)
+- [x] 9.4 Reguła „niepotwierdzone konto bez partii po 14 dniach” (BR-28) — odblokowana tabelą `game_players`, wdrożona razem z usunięciem konta (#37, krok 8 specyfikacji `account-deletion`)
 
 ## Faza 10 — Usunięcie konta (#37)
 
-- [ ] Odblokowana (tabele partii z #29 i prawdziwe `gameParticipation` są od E02; rewanż i poddanie zamknęły E02). Czeka na zatwierdzenie zaktualizowanej specyfikacji #37: `.ai/specs/2026-10-24-account-deletion.md` (kroki 1–5, w tym 9.4); implementacja dopiero po zatwierdzeniu.
+Odblokowana (tabele partii, `gameParticipation`, poddanie #87). Jeden PR (`Closes #37`), kroki 1–8 ze specyfikacji [`account-deletion`](.ai/specs/implemented/2026-10-24-account-deletion.md):
+
+- [x] 10.1 `accountDeleteSchema` w `core`
+- [x] 10.2 Migracja: indeks `game_players(user_id)` (w górę i w dół sprawdzone na jednorazowym PostgreSQL)
+- [x] 10.3 `AccountService.delete`, blokada użytkownika w `GameService.create`, rejestracja w `container.ts`
+- [x] 10.4 Testy PostgreSQL (`account-delete-db.test.ts`): test-strażnik FK, kaskady, rollback przez `tx`, wyścigi na dwóch połączeniach
+- [x] 10.5 `POST /api/account/delete` z limitem 10 prób na konto, testy HTTP (`account-delete-api.test.ts`)
+- [x] 10.6 UI: sekcja „Usuń konto” na `/account`, komunikat na `/` (`notice=account-deleted`), slot `message` w `ConfirmDialog`
+- [x] 10.7 Testy przeglądarkowe (`account-delete-pages.test.ts`), README
+- [x] 10.8 Reguła sprzątania 9.4 (BR-28), osobny commit
+- [x] 10.9 Rewanż wobec usuniętego konta (E02-S06): `RematchService.offer` odmawia `409 REMATCH_UNAVAILABLE`, panel rewanżu pokazuje „Rewanż niedostępny” bez przycisku „Rewanż”
 
 ## Faza 11 — Przełącznik motywu jasny/ciemny (dodane 2026-10-28, decyzja właściciela; poza specyfikacjami E01)
 

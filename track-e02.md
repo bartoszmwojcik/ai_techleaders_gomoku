@@ -51,7 +51,7 @@ Ręczny test po fazie: `curl` — utworzenie partii, kod `ABCD-EFGH`, dołączen
     - [x] L6: po `STATE_CHANGED` bardzo dyskretny komunikat „Coś się zmieniło, odświeżyliśmy stronę” (mały, stonowany, `role="status"`, znika przy kolejnej akcji lub gdy nowy stan zastąpi komponent).
   - Poza zakresem (faza 3): p05–p06 (plansza, wynik, rewanż, powrót po rozłączeniu), p07.3 dla gościa w trakcie partii (bez zegara nie ma co ukrywać).
 - [x] 2.5 Dokumentacja (README: sekcja „Partia z zaproszenia” z API, odstępstwami i ręcznym testem; lekcje w `.ai/lessons/`)
-- [ ] Faza 10 z `track.md` (usunięcie konta, #37) po zadaniu 1.3 i 2.2 — **odblokowana po 2.2** (`GameService.cancel`, `occupiesSlot`, kolejność blokad users → games i `game_players.user_id ON DELETE SET NULL` są gotowe); nie wykonana w fazie 2
+- [x] Faza 10 z `track.md` (usunięcie konta, #37) po zadaniu 1.3 i 2.2 — **odblokowana po 2.2** (`GameService.cancel`, `occupiesSlot`, kolejność blokad users → games i `game_players.user_id ON DELETE SET NULL` są gotowe); wykonana w PR „Usunięcie konta” (kroki 1–8, z regułą sprzątania 9.4); punkt integracji z rewanżem (`REMATCH_UNAVAILABLE`) zostaje przy #88 (track.md 10.9)
 
 #### Ręczny test po fazie 2 (krok po kroku)
 

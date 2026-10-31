@@ -18,6 +18,7 @@ const execFileAsync = promisify(execFile);
 const repoRoot = resolve(import.meta.dirname, "../..");
 const HOUR = 3_600_000;
 const SECOND = 1_000;
+const DAY = 24 * HOUR;
 
 let orm: Orm;
 let counter = 0;
@@ -133,16 +134,16 @@ describe("cleanup thresholds on PostgreSQL", () => {
     expect(await rows(table, `user_id = '${userId}'`)).toBe("5");
   });
 
-  it("never deletes users; unverifiedUsers stays null (BR-28 needs the games tables)", async () => {
+  it("never deletes a confirmed account, however old (BR-28 concerns unconfirmed ones only)", async () => {
     const now = new Date();
     const userId = await insertUser();
+    await sql(`update users set email_verified_at = ?, created_at = ? where id = ?`, [ago(now, 40 * DAY), ago(now, 60 * DAY), userId]);
     await insertSession(userId, ago(now, 10 * HOUR));
     await insertToken("email_verification_tokens", userId, ago(now, 48 * HOUR), null);
     await insertToken("password_reset_tokens", userId, ago(now, 48 * HOUR), null);
 
     const result = await cleanupExpired({ em: orm.em.fork(), now });
 
-    expect(result.unverifiedUsers).toBeNull();
     expect(result.sessions).toBeGreaterThanOrEqual(1);
     expect(result.emailVerificationTokens).toBeGreaterThanOrEqual(1);
     expect(result.passwordResetTokens).toBeGreaterThanOrEqual(1);
@@ -160,6 +161,108 @@ describe("cleanup thresholds on PostgreSQL", () => {
 
     expect(result.errors).toEqual([]);
     expect(await rows("sessions", `user_id = '${userId}'`)).toBe("0");
+  });
+});
+
+describe("unconfirmed accounts without a game (BR-28, E01-S06 step 8)", () => {
+  /** An account created `createdAgo` ms ago; `verified` confirms its e-mail. */
+  async function account(now: Date, createdAgo: number, verified = false) {
+    const userId = await insertUser();
+    await sql(`update users set created_at = ?, email_verified_at = ? where id = ?`, [
+      ago(now, createdAgo),
+      verified ? ago(now, createdAgo) : null,
+      userId,
+    ]);
+    return userId;
+  }
+  /** A game the account took part in, with the given status (a creator row is enough for the rule). */
+  async function game(userId: string, status: "waiting" | "cancelled" | "finished") {
+    const [row] = await orm.em.fork().execute<{ id: string }[]>(
+      status === "finished"
+        ? `insert into games (origin, status, started_at, finished_at, black_seat, winner_seat, end_reason)
+           values ('invite', 'finished', now(), now(), 1, 1, 'timeout') returning id`
+        : `insert into games (origin, status) values ('invite', ?) returning id`,
+      status === "finished" ? [] : [status],
+    );
+    await sql(`insert into game_players (game_id, seat, kind, user_id, is_active) values (?, 1, 'account', ?, false)`, [
+      row!.id,
+      userId,
+    ]);
+    return row!.id;
+  }
+  const userExists = async (id: string) => (await rows("users", `id = '${id}'`)) === "1";
+
+  it("deletes an unconfirmed account older than 14 days with its sessions and tokens, and only past the threshold", async () => {
+    const now = new Date();
+    const old = await account(now, 14 * DAY + SECOND);
+    const onTheEdge = await account(now, 14 * DAY);
+    const young = await account(now, 14 * DAY - SECOND);
+    for (const id of [old, young]) {
+      await insertSession(id, new Date(now.getTime() + DAY));
+      await insertToken("email_verification_tokens", id, new Date(now.getTime() + DAY), null);
+      await insertToken("password_reset_tokens", id, new Date(now.getTime() + DAY), null);
+    }
+
+    const result = await cleanupExpired({ em: orm.em.fork(), now });
+
+    expect(result.errors).toEqual([]);
+    expect(result.unverifiedUsers).toBeGreaterThanOrEqual(1);
+    expect(await userExists(old)).toBe(false);
+    for (const table of ["sessions", "email_verification_tokens", "password_reset_tokens"]) {
+      expect(await rows(table, `user_id = '${old}'`)).toBe("0");
+    }
+    expect(await userExists(onTheEdge)).toBe(true);
+    expect(await userExists(young)).toBe(true);
+    expect(await rows("sessions", `user_id = '${young}'`)).toBe("1");
+  });
+
+  it("keeps a confirmed account of any age", async () => {
+    const now = new Date();
+    const confirmed = await account(now, 30 * DAY, true);
+    await cleanupExpired({ em: orm.em.fork(), now });
+    expect(await userExists(confirmed)).toBe(true);
+  });
+
+  it("keeps an account that has a game participant row, whatever the game's status", async () => {
+    const now = new Date();
+    const withWaiting = await account(now, 30 * DAY);
+    const withCancelled = await account(now, 30 * DAY);
+    const withFinished = await account(now, 30 * DAY);
+    await game(withWaiting, "waiting");
+    // A cancelled game is younger than 24 h, so the games rules do not delete it in this run.
+    await game(withCancelled, "cancelled");
+    await game(withFinished, "finished");
+
+    await cleanupExpired({ em: orm.em.fork(), now });
+
+    expect(await userExists(withWaiting)).toBe(true);
+    expect(await userExists(withCancelled)).toBe(true);
+    expect(await userExists(withFinished)).toBe(true);
+  });
+
+  it("deletes the account in the same run that sweeps its last, old cancelled game (rules run in order)", async () => {
+    const now = new Date();
+    const userId = await account(now, 30 * DAY);
+    const gameId = await game(userId, "cancelled");
+    await sql(`update games set created_at = ? where id = ?`, [ago(now, 26 * HOUR), gameId]);
+
+    const result = await cleanupExpired({ em: orm.em.fork(), now });
+
+    expect(result.cancelledGames).toBeGreaterThanOrEqual(1);
+    expect(await rows("games", `id = '${gameId}'`)).toBe("0");
+    expect(await userExists(userId)).toBe(false);
+  });
+
+  it("an account whose game belonged to a deleted account stays unaffected (user_id NULL rows are not its own)", async () => {
+    const now = new Date();
+    const orphanGame = await game(await account(now, DAY, true), "finished");
+    await sql(`update game_players set user_id = null where game_id = ?`, [orphanGame]);
+    const stranger = await account(now, 30 * DAY);
+
+    await cleanupExpired({ em: orm.em.fork(), now });
+
+    expect(await userExists(stranger)).toBe(false);
+    expect(await rows("games", `id = '${orphanGame}'`)).toBe("1");
   });
 });
 
@@ -633,7 +736,7 @@ describe("batching and parallel runs", () => {
       guestOnlyActiveGames: 0,
       guestOnlyFinishedGames: 0,
       guestTokens: 0,
-      unverifiedUsers: null,
+      unverifiedUsers: 0,
       errors: [],
       truncated: false,
     });
@@ -686,7 +789,7 @@ describe("db:cleanup command", () => {
     expect(err).toBe("");
     const result = JSON.parse(out) as CleanupResult;
     expect(result.sessions).toBeGreaterThanOrEqual(1);
-    expect(result.unverifiedUsers).toBeNull();
+    expect(result.unverifiedUsers).toEqual(expect.any(Number));
     expect(await rows("sessions", `user_id = '${userId}'`)).toBe("1");
   });
 
@@ -732,7 +835,7 @@ describe("db:cleanup command", () => {
     const { stdout, stderr } = failure as { stdout: string; stderr: string };
     expect(stderr).not.toContain("s3cretpw");
     expect(stdout).not.toContain("s3cretpw");
-    expect(JSON.parse(stdout.trim()).errors).toHaveLength(9);
+    expect(JSON.parse(stdout.trim()).errors).toHaveLength(10);
     expect(JSON.parse(stderr.trim().split("\n").at(-1)!)).toMatchObject({ ok: false });
   });
 });

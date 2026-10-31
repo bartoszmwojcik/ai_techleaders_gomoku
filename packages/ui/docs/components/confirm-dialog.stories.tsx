@@ -29,6 +29,14 @@ export const UsuniecieKonta: Story = { args: { defaultOpen: true, trigger: undef
 
 export const Ladowanie: Story = { args: { defaultOpen: true, trigger: undefined, confirming: true } };
 
+export const Blad: Story = {
+  args: {
+    defaultOpen: true,
+    trigger: undefined,
+    message: "Nie udało się usunąć konta. Nic nie zostało zmienione. Spróbuj ponownie.",
+  },
+};
+
 export const PytanieZGlownymPrzyciskiem: Story = {
   args: {
     defaultOpen: true,

@@ -106,6 +106,44 @@ describe("RematchPanel, on the server", () => {
   });
 });
 
+describe("RematchPanel, the opponent deleted their account (#37, s08.2)", () => {
+  const deletedOpponent = (rematch?: Rematch) =>
+    finished({
+      players: [
+        { seat: 1, kind: "account", displayName: "Ala_7", seen: true },
+        { seat: 2, kind: "account", displayName: null, seen: true },
+      ],
+      ...(rematch ? { rematch } : {}),
+    });
+
+  it.each([
+    ["no offer", undefined],
+    ["an offer closed silently as declined", offer({ state: "declined" })],
+    ["an expired offer", offer({ state: "expired" })],
+  ])("says the rematch is unavailable and offers only the way back (%s)", (_name, rematch) => {
+    panel(deletedOpponent(rematch));
+    expect(screen.getByText("Rewanż niedostępny")).toBeTruthy();
+    expect(screen.getByTestId("rematch-unavailable").textContent).toBe("Ten gracz nie ma już konta, więc nie możesz zaproponować rewanżu.");
+    expect(screen.queryByTestId("rematch-offer")).toBeNull();
+    expect(screen.queryByText(/Zaproszenie do rewanżu odrzucone/)).toBeNull();
+    expect(link("Wróć do panelu głównego").getAttribute("href")).toBe("/");
+    expect(apiCall).not.toHaveBeenCalled();
+  });
+
+  it("still moves on to an accepted rematch game", async () => {
+    panel(deletedOpponent(offer({ state: "accepted", gameId: "g2" })));
+    await tick(0);
+    expect(push).toHaveBeenCalledWith("/games/g2");
+    expect(screen.queryByText("Rewanż niedostępny")).toBeNull();
+  });
+
+  it("does not treat a guest opponent as deleted", () => {
+    panel(guestMe());
+    expect(screen.queryByText("Rewanż niedostępny")).toBeNull();
+    expect(screen.getByTestId("rematch-offer")).toBeTruthy();
+  });
+});
+
 describe("RematchPanel, no offer yet (p06.10)", () => {
   it("says the colours swap and offers the rematch and the way back", () => {
     panel(finished());

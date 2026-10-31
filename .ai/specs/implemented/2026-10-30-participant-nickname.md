@@ -76,7 +76,7 @@ Dane osobowe: nick to wolny tekst podany przez gościa, widoczny tylko dla uczes
 - **Znaki z wielu pism:** `\p{M}` dozwolone, ZWNJ/ZWJ zachowane; pozostałe znaki formatujące (bidi override) usuwane.
 
 ## 📝 Decisions in play
-- **Zastępuje:** klauzulę „nie ma nazwy” z BR-22 i etykietę gościa z BR-24 / adnotacji L14 w #21 (etykieta „{nick} (gość)”, Q3); realizuje nową regułę BR-29 i decyzję D-27 (dodane do briefu razem z tą specyfikacją); zatwierdził właściciel 2026-10-30. Do przeredagowania w dokumentach: `product-brief.md` (BR-22, BR-24), #21, `.ai/specs/2026-10-24-account-deletion.md` (dwa miejsca z „Zaproszony przez link”), #87, #88.
+- **Zastępuje:** klauzulę „nie ma nazwy” z BR-22 i etykietę gościa z BR-24 / adnotacji L14 w #21 (etykieta „{nick} (gość)”, Q3); realizuje nową regułę BR-29 i decyzję D-27 (dodane do briefu razem z tą specyfikacją); zatwierdził właściciel 2026-10-30. Do przeredagowania w dokumentach: `product-brief.md` (BR-22, BR-24), #21, `.ai/specs/implemented/2026-10-24-account-deletion.md` (dwa miejsca z „Zaproszony przez link”), #87, #88.
 - **Opiera się na:** BR-11, BR-13, #21 Q10/Q11.
 
 ## 📋 Phasing

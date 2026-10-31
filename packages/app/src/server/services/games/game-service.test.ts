@@ -59,6 +59,7 @@ function setup(options: {
   flushError?: unknown;
   player?: Record<string, unknown>;
   now?: () => Date;
+  userMissing?: boolean;
 } = {}) {
   const calls: Calls = [];
   const rows = [...(options.executeRows ?? [])];
@@ -69,6 +70,10 @@ function setup(options: {
       if (sql.includes("select g.move_count")) {
         calls.push("member");
         return options.member === false ? [] : [{ move_count: options.gamesMoveCount ?? 0 }];
+      }
+      if (sql.includes("from users where id")) {
+        calls.push("execute:lock-user");
+        return options.userMissing ? [] : [{ id: "user-1" }];
       }
       calls.push(`execute:${sql.includes("returning id") && sql.includes("update games set") ? "cancel" : sql.trim().split(/\s+/).slice(0, 2).join(" ")}`);
       return rows.shift() ?? [];
@@ -137,10 +142,12 @@ describe("GameService.create", () => {
     expect(timeoutSettler.settleFor.mock.invocationCallOrder[0]).toBeLessThan(
       em.transactional.mock.invocationCallOrder[0]!,
     );
-    // Q16 and Q21 run inside the transaction, before the new rows are flushed.
-    expect(calls).toEqual(["execute:with expired", "execute:with stale", "flush"]);
-    expect(em.execute).toHaveBeenNthCalledWith(1, expect.any(String), [NOW, "user-1"], "run");
-    expect(em.execute).toHaveBeenNthCalledWith(2, expect.any(String), [CUTOFF, "user-1"], "run");
+    // The user is locked first (#37), then Q16 and Q21 run inside the transaction, before the
+    // new rows are flushed.
+    expect(calls).toEqual(["execute:lock-user", "execute:with expired", "execute:with stale", "flush"]);
+    expect(em.execute).toHaveBeenNthCalledWith(1, expect.stringContaining("for no key update"), ["user-1"]);
+    expect(em.execute).toHaveBeenNthCalledWith(2, expect.any(String), [NOW, "user-1"], "run");
+    expect(em.execute).toHaveBeenNthCalledWith(3, expect.any(String), [CUTOFF, "user-1"], "run");
 
     const expiresAt = new Date(NOW.getTime() + INVITATION_TTL_MS);
     expect(created.map(({ entity }) => entity)).toEqual([Game, GamePlayer, Invitation]);
@@ -162,6 +169,16 @@ describe("GameService.create", () => {
         expiresAt,
       },
     });
+  });
+
+  it("answers 401 and creates nothing when the account was deleted meanwhile (#37)", async () => {
+    const { service, created, calls } = setup({ userMissing: true });
+    await expect(service.create({ kind: "account", userId: "user-1" })).rejects.toMatchObject({
+      status: 401,
+      code: "UNAUTHORIZED",
+    });
+    expect(created).toEqual([]);
+    expect(calls).toEqual(["execute:lock-user"]);
   });
 
   it("falls back to the development origin when APP_ORIGIN is unset", async () => {

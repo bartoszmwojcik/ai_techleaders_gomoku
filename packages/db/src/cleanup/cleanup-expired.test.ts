@@ -33,7 +33,7 @@ describe("cleanupExpired", () => {
       guestOnlyActiveGames: 0,
       guestOnlyFinishedGames: 0,
       guestTokens: 0,
-      unverifiedUsers: null,
+      unverifiedUsers: 0,
       errors: [],
       truncated: false,
     });
@@ -49,6 +49,7 @@ describe("cleanupExpired", () => {
       "games:guestActive": NOW.getTime() - HOUR,
       "games:guestFinished": NOW.getTime() - HOUR,
       "game_players:clear": NOW.getTime() - HOUR,
+      users: NOW.getTime() - 14 * 24 * HOUR,
       sessions: NOW.getTime() - HOUR,
       rate_limit_buckets: NOW.getTime() - 48 * HOUR,
       email_verification_tokens: NOW.getTime() - 24 * HOUR,
@@ -100,10 +101,24 @@ describe("cleanupExpired", () => {
 
   it("registers the guest-only rules before the token rule", () => {
     const keys = CLEANUP_RULES.map((rule) => rule.key);
-    expect(keys.slice(-3)).toEqual(["guestOnlyActiveGames", "guestOnlyFinishedGames", "guestTokens"]);
+    // `unverifiedUsers` is last (BR-28): by then the games of the same run are swept.
+    expect(keys.slice(-4)).toEqual(["guestOnlyActiveGames", "guestOnlyFinishedGames", "guestTokens", "unverifiedUsers"]);
     for (const rule of CLEANUP_RULES.filter((r) => r.key.startsWith("guestOnly"))) {
       expect(rule.graceMs).toBe(GUEST_TOKEN_GRACE_MS);
     }
+  });
+
+  it("deletes unconfirmed accounts only when they have no game participant row at all (BR-28)", async () => {
+    const { em, execute } = fakeEm(() => 0);
+    await cleanupExpired({ em, now: NOW });
+    const sql = execute.mock.calls.map(([text]) => text).find((text) => text.startsWith("delete from users"))!;
+    expect(sql).toContain("email_verified_at is null and created_at < ?");
+    expect(sql).toContain("not exists (select 1 from game_players gp where gp.user_id = users.id)");
+    // Games are swept by earlier rules of the same run, so an account whose last game was just
+    // removed is already eligible; the rule is the last one.
+    expect(CLEANUP_RULES.at(-1)!.key).toBe("unverifiedUsers");
+    const call = execute.mock.calls.find(([text]) => text === sql)!;
+    expect(call[1]).toEqual([new Date(NOW.getTime() - 14 * 24 * HOUR), 1000]);
   });
 
   it("repeats full batches until a short one", async () => {
@@ -164,7 +179,7 @@ describe("cleanupExpired", () => {
     const rules: CleanupRule[] = CLEANUP_RULES.map((rule) => ({ ...rule, optional: rule.key === "sessions" }));
     const result = await cleanupExpired({ em, now: NOW, rules });
     expect(result.sessions).toBeNull();
-    expect(result.errors.map((e) => e.rule)).toEqual(["rateLimitBuckets", "emailVerificationTokens", "passwordResetTokens", "waitingGames", "cancelledGames", "guestOnlyActiveGames", "guestOnlyFinishedGames", "guestTokens"]);
+    expect(result.errors.map((e) => e.rule)).toEqual(["rateLimitBuckets", "emailVerificationTokens", "passwordResetTokens", "waitingGames", "cancelledGames", "guestOnlyActiveGames", "guestOnlyFinishedGames", "guestTokens", "unverifiedUsers"]);
   });
 
   it("keeps the counts of finished rules and of rows deleted before an error", async () => {

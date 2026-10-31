@@ -28,8 +28,9 @@ Zatrzymuje gracza tuż przed akcją, której nie da się cofnąć, nazywa jej sk
 
 1. **Tytuł z nazwą obiektu** (wymagany): pytanie.
 2. **Opis skutku** (opcjonalny): jedno zdanie.
-3. **Przycisk rezygnacji** (wymagany), po lewej i pierwszy w kolejności fokusu.
-4. **Przycisk potwierdzenia** (wymagany), opisany czasownikiem.
+3. **Komunikat** (`message`, opcjonalny): wynik ostatniej próby, np. błąd serwera. Czytnik ogłasza go od razu (`role="alert"`).
+4. **Przycisk rezygnacji** (wymagany), po lewej i pierwszy w kolejności fokusu.
+5. **Przycisk potwierdzenia** (wymagany), opisany czasownikiem.
 
 ## 5. Warianty
 
@@ -45,6 +46,10 @@ Zatrzymuje gracza tuż przed akcją, której nie da się cofnąć, nazywa jej sk
 Zamknięty, otwarty i ładowanie (potwierdzenie wysłane, czekamy na serwer). Najechanie, fokus i wciśnięcie dotyczą przycisków w środku. Zablokowanego dialogu nie ma.
 
 <Canvas of={Stories.Ladowanie} />
+
+- **Błąd:** po nieudanej próbie rodzic ustawia `message`; dialog zostaje otwarty, a gracz może ponowić albo zrezygnować. Komunikat mówi, czy coś się zmieniło: „Nic nie zostało zmienione.”
+
+<Canvas of={Stories.Blad} />
 
 - **Ładowanie:** przycisk potwierdzenia jest zajęty (`confirming`): spinner, `aria-busy`, blokada drugiego kliknięcia. Dialog zostaje otwarty, dopóki rodzic go nie zamknie po odpowiedzi serwera; „sukces dopiero po potwierdzeniu z serwera”.
 

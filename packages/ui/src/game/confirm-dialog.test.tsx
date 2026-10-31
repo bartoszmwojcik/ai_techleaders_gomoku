@@ -34,6 +34,20 @@ describe("ConfirmDialog", () => {
     expect(screen.getByRole("button", { name: "Usuń konto na zawsze" }).className).toContain("bg-action-danger-bg");
   });
 
+  it("shows a message about the last attempt as an alert, outside the description", () => {
+    renderOpen({ message: "Nie udało się usunąć konta. Nic nie zostało zmienione. Spróbuj ponownie." });
+
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toBe("Nie udało się usunąć konta. Nic nie zostało zmienione. Spróbuj ponownie.");
+    expect(alert.className).toContain("text-status-danger");
+    expect(screen.getByRole("alertdialog").contains(alert)).toBe(true);
+  });
+
+  it("has no alert without a message", () => {
+    renderOpen();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("runs onConfirm and leaves closing to the parent", async () => {
     const user = userEvent.setup();
     const onConfirm = renderOpen();
