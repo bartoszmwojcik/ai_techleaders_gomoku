@@ -59,6 +59,8 @@ describe("normalizeChatMessage - shape and length", () => {
     // A no-break space and an ideographic space become ASCII spaces and are trimmed.
     expect(normalizeChatMessage(" hej　", limits)).toEqual(ok("hej"));
     expect(chatMessageLength("ﬁ")).toBe(2);
+    // The counter ignores the edge spaces the server trims.
+    expect(chatMessageLength("  ab  ")).toBe(2);
   });
 });
 
@@ -131,6 +133,7 @@ describe("normalizeChatMessage - addresses", () => {
     "file:///etc/passwd",
     "www.example",
     "zobacz WWW.example",
+    "EXAMPLE.COM",
     "10.0.0.1",
     "ip to 192.168.1.10 ok",
     "example.com",
@@ -144,7 +147,7 @@ describe("normalizeChatMessage - addresses", () => {
     expect(normalizeChatMessage(raw, limits)).toEqual(refused("url"));
   });
 
-  it.each(["Dobra.Gramy", "1.5", "wersja 1.2.3", "ok... gramy", "tak.nie", "a.b", "3.14159", "co.", "e-mail"])(
+  it.each(["Dobra.Gramy", "1.5", "wersja 1.2.3", "ok... gramy", "tak.nie", "a.b", "3.14159", "co.", "e-mail", "Cześć.Co tam", "Jaka data: dziś", "Cześć.Top", "mailto: wyślę", "Example.Com"])(
     "lets %j through",
     (raw) => {
       expect(normalizeChatMessage(raw, limits).ok).toBe(true);
