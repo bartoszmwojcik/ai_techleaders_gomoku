@@ -126,7 +126,24 @@ export const PartiaCzatRozmowa: Story = {
 export const PartiaCzatWylaczonyPrzezRozmowce: Story = {
   ...chatScreen("your-turn", "disabled-by-opponent"),
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByLabelText("Wiadomość")).toBeDisabled();
+    const canvas = within(canvasElement);
+    await expect(canvas.getByLabelText("Wiadomość")).toBeDisabled();
+    await expect(canvas.getByRole("button", { name: "Wyłącz czat" })).toBeEnabled();
+  },
+};
+export const PartiaCzatWylaczonyPrzezCiebie: Story = {
+  ...chatScreen("your-turn", "disabled-by-you"),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("button", { name: "Włącz czat" })).toBeVisible();
+    await expect(canvas.getByText(/^Wyłączyłeś czat\./)).toBeVisible();
+    await expect(canvas.queryByLabelText("Wiadomość")).toBeNull();
+  },
+};
+export const PartiaCzatBladPrzelaczenia: Story = {
+  ...chatScreen("your-turn", "switch-error"),
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText("Nie udało się wyłączyć czatu. Spróbuj ponownie.")).toBeVisible();
   },
 };
 export const PartiaCzatBladWysylki: Story = {
@@ -138,6 +155,10 @@ export const PartiaCzatBladWysylki: Story = {
 export const PartiaCzatPrzedDolaczeniemPrzeciwnika: Story = chatScreen("waiting-for-opponent", "waiting");
 export const PartiaWynikZCzatem: Story = chatScreen("won", "conversation");
 export const PartiaCzatZamkniety: Story = chatScreen("won", "closed");
+export const PartiaCzatWylaczonyPrzezCiebie320: Story = {
+  ...chatScreen("your-turn", "disabled-by-you"),
+  parameters: phone,
+};
 export const PartiaCzat320: Story = {
   ...chatScreen("opponent-turn", "conversation", { name: <AgentName declared={LONG_MODEL} /> }),
   parameters: phone,

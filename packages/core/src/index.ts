@@ -42,4 +42,5 @@ export * from "./chat/types";
 export * from "./chat/message";
 export * from "./validators/chat/chat-send-schema";
 export * from "./validators/chat/chat-read-query-schema";
+export * from "./validators/chat/chat-settings-schema";
 export * from "./chat/state";

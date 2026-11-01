@@ -42,3 +42,6 @@ export type ChatSendData = {
   /** How long until this participant may send again. */
   retryAfterMs: number;
 };
+
+/** `data` of `PUT /api/games/{id}/chat/settings`: the chat as the asker sees it after the change. */
+export type ChatSettingsData = { state: ChatState };
