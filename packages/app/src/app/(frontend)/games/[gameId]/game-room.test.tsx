@@ -7,6 +7,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { replace, push, apiCall } = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn(), apiCall: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace, push }) }));
 vi.mock("@/lib/api-client", () => ({ apiCall }));
+// The chat has its own tests; here only where it is placed matters.
+vi.mock("@/components/chat/chat-panel", () => ({
+  ChatPanel: ({ game, gameId }: { game: { status: string }; gameId: string }) => (
+    <div data-testid="chat-panel-stub" data-status={game.status} data-game={gameId} />
+  ),
+}));
 
 import type { GameView } from "@/server/http/game-view";
 
@@ -1079,5 +1085,21 @@ describe("GameRoom, the reads of a result screen (M2, L2-L4)", () => {
       expect(screen.getByTestId("rematch-status").textContent).toContain("Zaproponowano rewanż");
       expect(reads()).toBe(1);
     });
+  });
+});
+
+describe("GameRoom, the chat (E07-S01)", () => {
+  it("shows the chat panel while the game waits, in a game in progress and on the result, not in a cancelled game", () => {
+    room(waiting());
+    expect(screen.getByTestId("chat-panel-stub").getAttribute("data-status")).toBe("waiting");
+    cleanup();
+    room(active());
+    expect(screen.getByTestId("chat-panel-stub").getAttribute("data-status")).toBe("active");
+    cleanup();
+    room(finished());
+    expect(screen.getByTestId("chat-panel-stub").getAttribute("data-status")).toBe("finished");
+    cleanup();
+    room({ ...waiting(), status: "cancelled", closedReason: "expired", invitation: undefined });
+    expect(screen.queryByTestId("chat-panel-stub")).toBeNull();
   });
 });

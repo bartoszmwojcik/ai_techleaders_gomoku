@@ -1,4 +1,9 @@
 import {
+  CHAT_HARD_MAX_LENGTH,
+  CHAT_MAX_LENGTH,
+  CHAT_MAX_MESSAGES_PER_GAME,
+  CHAT_MIN_INTERVAL_MS,
+  type ChatLimits,
   AGENT_LOOKUP_GLOBAL_LIMIT,
   AGENT_LOOKUP_LIMIT,
   MCP_JOIN_LIMIT,
@@ -27,6 +32,14 @@ export type McpLimits = {
   tokenLimit: number;
 };
 
+/** Limits of the game chat (E07-S01): one set for people, one for agents, the same initial values (R5). */
+export type ChatConfig = {
+  human: ChatLimits;
+  agent: ChatLimits;
+  /** Messages in one game before `CHAT_FULL` (R6). */
+  maxMessagesPerGame: number;
+};
+
 export type ServerConfig = {
   production: boolean;
   /** Number of our own proxies in front of the app (>= 1); unset only outside production. */
@@ -51,6 +64,7 @@ export type ServerConfig = {
   /** Global daily send limit (#34 Q10); unset means no limit is enforced. */
   emailDailyLimit?: number;
   mcp: McpLimits;
+  chat: ChatConfig;
 };
 
 export const EMAIL_TRANSPORTS = ["file", "brevo"] as const;
@@ -108,6 +122,45 @@ function parsePositiveLimit(
     throw new Error(`${name} must be a positive integer.`);
   }
   return Number(raw);
+}
+
+function parseIntInRange(
+  name: string,
+  raw: string | undefined,
+  fallback: number,
+  min: number,
+  max: number,
+): number {
+  if (raw === undefined || raw === "") return fallback;
+  const value = /^[0-9]{1,9}$/.test(raw) ? Number(raw) : NaN;
+  if (!(value >= min && value <= max)) {
+    throw new Error(`${name} must be an integer from ${min} to ${max}.`);
+  }
+  return value;
+}
+
+function readChatConfig(env: Record<string, string | undefined>): ChatConfig {
+  const limits = (prefix: string): ChatLimits => ({
+    maxLength: parseIntInRange(`${prefix}MAX_LENGTH`, env[`${prefix}MAX_LENGTH`], CHAT_MAX_LENGTH, 1, CHAT_HARD_MAX_LENGTH),
+    minIntervalMs: parseIntInRange(
+      `${prefix}MIN_INTERVAL_MS`,
+      env[`${prefix}MIN_INTERVAL_MS`],
+      CHAT_MIN_INTERVAL_MS,
+      0,
+      3_600_000,
+    ),
+  });
+  return {
+    human: limits("CHAT_"),
+    agent: limits("CHAT_AGENT_"),
+    maxMessagesPerGame: parseIntInRange(
+      "CHAT_MAX_MESSAGES_PER_GAME",
+      env.CHAT_MAX_MESSAGES_PER_GAME,
+      CHAT_MAX_MESSAGES_PER_GAME,
+      1,
+      100_000,
+    ),
+  };
 }
 
 function parseTrustProxyHops(
@@ -214,5 +267,6 @@ export function readServerConfig(
       ),
       tokenLimit: parsePositiveLimit("MCP_TOKEN_LIMIT", env.MCP_TOKEN_LIMIT, MCP_TOKEN_LIMIT),
     },
+    chat: readChatConfig(env),
   };
 }

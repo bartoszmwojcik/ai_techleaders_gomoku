@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
+import { ChatPanel } from "@/components/chat/chat-panel";
 import { CreateGameButton } from "@/components/games/create-game-button";
 import { DismissibleNotice } from "@/components/games/dismissible-notice";
 import { GameGate } from "@/components/games/game-gate";
@@ -508,6 +509,7 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
           // for a warning under the code card; a plain Alert.
           <Alert status="warning" title="Nie zmieniaj przeglądarki, bo stracisz dostęp do partii." />
         )}
+        <ChatPanel gameId={gameId} game={game} onGone={markGone} />
         <ConfirmDialog
           open={asking}
           onOpenChange={(open) => !open && !cancelling && setAsking(false)}

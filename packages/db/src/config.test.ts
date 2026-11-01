@@ -33,6 +33,15 @@ describe("createOrmConfig", () => {
     });
   });
 
+  it("refuses query logging in production, where it would print the text of chat messages", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("DATABASE_DEBUG", "true");
+    expect(() => createOrmConfig()).toThrow("DATABASE_DEBUG=true is not allowed in production");
+
+    vi.stubEnv("DATABASE_DEBUG", "false");
+    expect(createOrmConfig()).toMatchObject({ debug: false });
+  });
+
   it("rejects a pool size that is not an integer", () => {
     vi.stubEnv("DATABASE_POOL_MAX", "many");
 

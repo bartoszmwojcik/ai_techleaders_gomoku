@@ -4,6 +4,12 @@ import { readServerConfig } from "./config";
 
 const MCP_DEFAULTS = { requestLimit: 300, joinLimit: 10, lookupLimit: 20, lookupGlobalLimit: 300, tokenLimit: 60 };
 
+const CHAT_DEFAULTS = {
+  human: { maxLength: 200, minIntervalMs: 2000 },
+  agent: { maxLength: 200, minIntervalMs: 2000 },
+  maxMessagesPerGame: 500,
+};
+
 const production = {
   NODE_ENV: "production",
   TRUST_PROXY_HOPS: "1",
@@ -24,6 +30,7 @@ describe("readServerConfig", () => {
       emailOutboxPath: ".email-outbox.jsonl",
       emailDailyLimit: undefined,
       mcp: MCP_DEFAULTS,
+      chat: CHAT_DEFAULTS,
     });
     expect(
       readServerConfig({
@@ -52,6 +59,7 @@ describe("readServerConfig", () => {
       emailOutboxPath: ".email-outbox.jsonl",
       emailDailyLimit: undefined,
       mcp: MCP_DEFAULTS,
+      chat: CHAT_DEFAULTS,
     });
   });
 
@@ -78,6 +86,7 @@ describe("readServerConfig", () => {
       emailOutboxPath: ".email-outbox.jsonl",
       emailDailyLimit: undefined,
       mcp: MCP_DEFAULTS,
+      chat: CHAT_DEFAULTS,
     });
     for (const bad of ["3", "32", "abc", "12.5", "-4", "004", "1e1"]) {
       expect(() => readServerConfig({ PASSWORD_HASH_COST: bad })).toThrow(
@@ -235,4 +244,34 @@ describe("readServerConfig MCP limits", () => {
       }
     },
   );
+
+  it("reads the chat limits: defaults, empty values, overrides for people and agents", () => {
+    expect(readServerConfig({}).chat).toEqual(CHAT_DEFAULTS);
+    expect(readServerConfig({ CHAT_MAX_LENGTH: "", CHAT_MIN_INTERVAL_MS: "" }).chat).toEqual(CHAT_DEFAULTS);
+    expect(
+      readServerConfig({
+        CHAT_MAX_LENGTH: "100",
+        CHAT_MIN_INTERVAL_MS: "0",
+        CHAT_AGENT_MAX_LENGTH: "1000",
+        CHAT_AGENT_MIN_INTERVAL_MS: "5000",
+        CHAT_MAX_MESSAGES_PER_GAME: "10",
+      }).chat,
+    ).toEqual({
+      human: { maxLength: 100, minIntervalMs: 0 },
+      agent: { maxLength: 1000, minIntervalMs: 5000 },
+      maxMessagesPerGame: 10,
+    });
+  });
+
+  it.each([
+    ["CHAT_MAX_LENGTH", ["0", "1001", "-1", "1.5", "abc"]],
+    ["CHAT_AGENT_MAX_LENGTH", ["0", "1001", "x"]],
+    ["CHAT_MIN_INTERVAL_MS", ["-1", "3600001", "1.5", "abc"]],
+    ["CHAT_AGENT_MIN_INTERVAL_MS", ["-1", "x"]],
+    ["CHAT_MAX_MESSAGES_PER_GAME", ["0", "100001", "abc", "1000000000"]],
+  ])("rejects a bad %s", (name, bad) => {
+    for (const value of bad) {
+      expect(() => readServerConfig({ [name]: value })).toThrow(new RegExp(name));
+    }
+  });
 });
