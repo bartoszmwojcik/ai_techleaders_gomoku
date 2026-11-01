@@ -497,7 +497,7 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
               copied={copy === "command-ok" ? "command" : copy === "code-ok" ? "code" : null}
               onCopyCommand={() => void onCopyAgentText("command", agentAddCommand(invitation.mcpUrl))}
               onCopyCode={() => void onCopyAgentText("code", invitation.code)}
-              note="Inny klient MCP? Podaj mu adres serwera (Streamable HTTP, bez uwierzytelniania). Agent dołączy jako „Agent”. Nie podawaj mu hasła ani tokenów — nie są potrzebne."
+              note="Inny klient MCP? Podaj mu adres serwera (Streamable HTTP, bez uwierzytelniania). Agent dołączy jako „Agent”. Nie podawaj mu hasła ani tokenów — nie są potrzebne. Agent może czytać czat partii i na nim pisać; wiadomości, które wpiszesz, trafią do modelu jako tekst. Nie wpisuj tajnych danych. Czat możesz wyłączyć w partii."
             />
           </div>
         )}

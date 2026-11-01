@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { readServerConfig } from "./config";
 
-const MCP_DEFAULTS = { requestLimit: 300, joinLimit: 10, lookupLimit: 20, lookupGlobalLimit: 300, tokenLimit: 60 };
+const MCP_DEFAULTS = { requestLimit: 300, joinLimit: 10, lookupLimit: 20, lookupGlobalLimit: 300, tokenLimit: 60, chatLimit: 30 };
 
 const CHAT_DEFAULTS = {
   human: { maxLength: 200, minIntervalMs: 2000 },
@@ -232,11 +232,12 @@ describe("readServerConfig MCP limits", () => {
         MCP_LOOKUP_LIMIT: "7",
         MCP_LOOKUP_GLOBAL_LIMIT: "99",
         MCP_TOKEN_LIMIT: "12",
+        MCP_CHAT_LIMIT: "5",
       }).mcp,
-    ).toEqual({ requestLimit: 500, joinLimit: 3, lookupLimit: 7, lookupGlobalLimit: 99, tokenLimit: 12 });
+    ).toEqual({ requestLimit: 500, joinLimit: 3, lookupLimit: 7, lookupGlobalLimit: 99, tokenLimit: 12, chatLimit: 5 });
   });
 
-  it.each(["MCP_REQUEST_LIMIT", "MCP_JOIN_LIMIT", "MCP_LOOKUP_LIMIT", "MCP_LOOKUP_GLOBAL_LIMIT", "MCP_TOKEN_LIMIT"])(
+  it.each(["MCP_REQUEST_LIMIT", "MCP_JOIN_LIMIT", "MCP_LOOKUP_LIMIT", "MCP_LOOKUP_GLOBAL_LIMIT", "MCP_TOKEN_LIMIT", "MCP_CHAT_LIMIT"])(
     "rejects a bad %s",
     (name) => {
       for (const bad of ["0", "-1", "1.5", "abc", "1000000000"]) {

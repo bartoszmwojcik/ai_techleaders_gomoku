@@ -1,4 +1,4 @@
-import { AppError, NotFoundError, TooManyRequestsError } from "@gomoku/core";
+import { AppError, NotFoundError, TooManyRequestsError, type ChatRejection } from "@gomoku/core";
 import type { CallToolResult } from "@modelcontextprotocol/server";
 
 import { describeError } from "../http/describe-error";
@@ -14,6 +14,9 @@ export type McpErrorCode =
   | "GAME_NOT_STARTED"
   | "GAME_NOT_ACTIVE"
   | "GAME_FINISHED"
+  | "CHAT_DISABLED"
+  | "CHAT_UNAVAILABLE"
+  | "CHAT_FULL"
   | "RATE_LIMITED"
   | "INTERNAL";
 
@@ -23,13 +26,16 @@ export const INVALID_TOKEN_MESSAGE = "Nieprawidłowy lub wygasły token.";
 /** Why a move is illegal (`ILLEGAL_MOVE` only). */
 export type IllegalMoveReason = "cell_occupied" | "out_of_board";
 
+/** Why a chat message is refused (`INVALID_INPUT` of `send_message` only); `secret` is the token guard. */
+export type ChatErrorReason = ChatRejection | "secret";
+
 export type McpToolError = {
   code: McpErrorCode;
   message: string;
   /** Whether the same call may succeed later without changes. */
   retryable: boolean;
   retryAfterMs?: number;
-  reason?: IllegalMoveReason;
+  reason?: IllegalMoveReason | ChatErrorReason;
 };
 
 /** A failed tool call: `isError` with the one shape `structuredContent.error` for every code. */
@@ -57,6 +63,9 @@ const RETRYABLE: Partial<Record<string, boolean>> = {
   GAME_NOT_STARTED: true,
   GAME_NOT_ACTIVE: false,
   GAME_FINISHED: false,
+  CHAT_DISABLED: false,
+  CHAT_UNAVAILABLE: false,
+  CHAT_FULL: false,
 };
 
 /**
@@ -68,17 +77,30 @@ const RETRYABLE: Partial<Record<string, boolean>> = {
  */
 export function toolErrorOf(error: unknown): CallToolResult {
   if (error instanceof TooManyRequestsError) {
+    // The chat's exact wait (`data.retryAfterMs`) wins over the whole seconds of the HTTP header.
+    const exact = error.data?.retryAfterMs;
+    const retryAfterMs =
+      typeof exact === "number" ? exact : error.retryAfterSeconds === undefined ? undefined : error.retryAfterSeconds * 1000;
     return toolFailure({
       code: "RATE_LIMITED",
       message: error.message,
       retryable: true,
-      ...(error.retryAfterSeconds !== undefined && { retryAfterMs: error.retryAfterSeconds * 1000 }),
+      ...(retryAfterMs !== undefined && { retryAfterMs }),
     });
   }
   if (error instanceof NotFoundError) {
     return toolFailure({ code: "INVALID_TOKEN", message: INVALID_TOKEN_MESSAGE, retryable: false });
   }
   if (error instanceof AppError) {
+    if (error.code === "VALIDATION") {
+      const reason = error.data?.reason;
+      return toolFailure({
+        code: "INVALID_INPUT",
+        message: error.message,
+        retryable: false,
+        ...(typeof reason === "string" && { reason: reason as ChatErrorReason }),
+      });
+    }
     if (error.code in RETRYABLE) {
       return toolFailure({
         code: error.code as McpErrorCode,
