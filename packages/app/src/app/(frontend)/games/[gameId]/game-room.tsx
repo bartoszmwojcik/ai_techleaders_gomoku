@@ -88,7 +88,7 @@ function pastGuestWindow(game: GameView): boolean {
   return serverNowMs(game.clock) >= Date.parse(game.finishedAt) + GUEST_RESULT_WINDOW_MS;
 }
 
-/** `compact`: the board screen on a phone has tighter margins, so the board and its button fit the first screen (#181). */
+/** `compact`: the board screen on a phone has tighter margins, so the board and its button fit the first screen (issue 181). */
 function Shell({ children, compact = false }: { children: ReactNode; compact?: boolean }) {
   return (
     <main

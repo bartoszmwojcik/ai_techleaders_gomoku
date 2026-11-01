@@ -16,7 +16,7 @@ describe("PlayerClock", () => {
     expect(html).not.toContain("aria-current");
   });
 
-  it("is compact on a narrow screen and roomy from `sm` (#181)", () => {
+  it("is compact on a narrow screen and roomy from `sm` (issue 181)", () => {
     const html = renderToStaticMarkup(<PlayerClock name="Ala_7" remainingMs={581_000} />);
 
     expect(html).toMatch(/class="[^"]*\bpx-3 py-2\b[^"]*\bsm:p-4\b/);

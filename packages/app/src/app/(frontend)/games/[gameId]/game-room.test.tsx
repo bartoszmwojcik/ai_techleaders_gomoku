@@ -109,7 +109,7 @@ describe("GameRoom, waiting (p03)", () => {
     expect(screen.getAllByText("ABCD-EFGH")[0]).toBeTruthy();
     expect(screen.getByText("Ważne do piątek, 30 października 10:00 CET")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Udostępnij" })).toBeNull();
-    // Only the board screen lets the theme switch float over the corner (#181).
+    // Only the board screen lets the theme switch float over the corner (issue 181).
     expect(document.querySelector("main")!.hasAttribute("data-theme-overlay")).toBe(false);
   });
 

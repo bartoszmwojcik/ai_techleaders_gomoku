@@ -177,7 +177,7 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
   }
 
   function onCellSelect(cell: number) {
-    // A mouse places the stone at once. On touch only "Postaw kamień" sends a move (#181): a tap selects or moves
+    // A mouse places the stone at once. On touch only "Postaw kamień" sends a move (issue 181): a tap selects or moves
     // the selection, and tapping the selected intersection again changes nothing.
     if (!touch) void submit({ cell, moveNumber: game.moveCount + 1 });
     else {
@@ -289,7 +289,7 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
         )}
         {guest && !finished && (
           // p05.11: permanent for a guest (BR-22) while the game is played. Under the action block, not above the board,
-          // so it does not push "Postaw kamień" out of the first screen on a phone (#181).
+          // so it does not push "Postaw kamień" out of the first screen on a phone (issue 181).
           <Alert status="warning" title="Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii">
             Stracisz dostęp do partii, a Twój zegar będzie biegł dalej.
           </Alert>

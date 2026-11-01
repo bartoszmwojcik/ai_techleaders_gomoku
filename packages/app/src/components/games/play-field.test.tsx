@@ -222,7 +222,7 @@ describe("PlayField, a touch screen (p05.4)", () => {
     expect(apiCall).toHaveBeenCalledWith("/api/games/g1/moves", { body: { x: 0, y: 0, moveNumber: 1 } });
   });
 
-  it("sends nothing on the second touch of the same intersection and keeps it selected (#181)", async () => {
+  it("sends nothing on the second touch of the same intersection and keeps it selected (issue 181)", async () => {
     field();
     await press(cell(CENTER));
     await press(cell(CENTER));
@@ -241,7 +241,7 @@ describe("PlayField, a touch screen (p05.4)", () => {
     expect(apiCall).toHaveBeenCalledWith("/api/games/g1/moves", { body: { x: 7, y: 7, moveNumber: 1 } });
   });
 
-  it("puts the button right under the board, before the player's own clock (#181)", () => {
+  it("puts the button right under the board, before the player's own clock (issue 181)", () => {
     field();
     const order = [grid(), byText("Postaw kamień"), screen.getByTestId("my-color")];
     expect(order[0]!.compareDocumentPosition(order[1]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

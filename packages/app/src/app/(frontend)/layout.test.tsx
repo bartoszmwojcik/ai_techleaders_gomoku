@@ -62,7 +62,7 @@ describe("FrontendLayout", () => {
     expect(unset).toMatch(/<div class="flex justify-end[^"]*"><button[^>]*><svg[^>]*lucide-moon/);
   });
 
-  it("lets the switch float over the corner below sm only for a page that marks its main (#181)", async () => {
+  it("lets the switch float over the corner below sm only for a page that marks its main (issue 181)", async () => {
     const html = await render("dark");
 
     expect(html).toMatch(/<body class="group\/body /);
