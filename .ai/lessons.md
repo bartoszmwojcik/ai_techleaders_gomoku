@@ -48,3 +48,4 @@ Indeks lekcji. Jedna linia na wpis: `- [Tytuł](lessons/YYYY-MM-DD-slug.md) — 
 - [Test z importem całego kontenera](lessons/2026-10-31-test-that-imports-whole-container-needs-a-timeout.md) — ciężki import + bcrypt dostaje jawny limit czasu; test zielony samotnie i czerwony w pełnym biegu to obciążenie.
 - [Pokrycie: oba miejsca i martwe `??`](lessons/2026-10-31-coverage-needs-both-sides-of-a-seat-branch.md) — funkcje zależne od `seat` testuj dla miejsc 1 i 2; nie dodawaj `??` dla argumentów zawsze podanych.
 - [Strażnik liczy instrukcje, nie pliki](lessons/2026-10-31-guard-counts-statements-not-files.md) — „każde miejsce musi wywołać X” porównuje liczbę instrukcji z liczbą wywołań; test negatywny dodaje drugą instrukcję w obsłużonym pliku
+- [`role="log"` nie na `<ol>`](lessons/2026-11-01-aria-log-not-allowed-on-ol.md) — rolę `log` nadawaj blokowi wokół listy (`div role="log"` + `ol`), przewijany blok z `tabIndex=0`; axe w test:stories to wyłapuje.

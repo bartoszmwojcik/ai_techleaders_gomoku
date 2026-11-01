@@ -5,11 +5,12 @@ export { User } from "./entities/auth/user";
 export { EmailVerificationToken } from "./entities/auth/email-verification-token";
 export { PasswordResetToken } from "./entities/auth/password-reset-token";
 export { Session } from "./entities/auth/session";
+export { ChatMessage } from "./entities/chat/chat-message";
 export { Game } from "./entities/games/game";
 export { GamePlayer } from "./entities/games/game-player";
 export { Invitation } from "./entities/games/invitation";
 export { RateLimitBucket } from "./entities/rate-limit/rate-limit-bucket";
-export { UniqueConstraintViolationException } from "@mikro-orm/core";
+export { ForeignKeyConstraintViolationException, UniqueConstraintViolationException } from "@mikro-orm/core";
 export {
   cleanupExpired,
   type CleanupError,

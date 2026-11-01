@@ -45,6 +45,7 @@ Backlog: `.ai/specs/backlog.md` (źródło: brief). Zadania techniczne (migracje
 | odtwarzanie partii ruch po ruchu | poza zakresem (#27) | |
 | paginacja („Pokaż starsze”) | historia ładuje strony po 20 wierszy; osobny wzorzec nie jest potrzebny (E04-S01) | Przycisk drugorzędny pod listą, stan ładowania w przycisku, błąd w Alercie |
 | obcięcie długiej nazwy w wierszu listy | Wiersz historii łamie tekst (`wrap-anywhere`), nie obcina; nick gościa z „(gość)” obcina opakowanie w aplikacji (`PlayerLabel`, L30) | opakowanie z `truncate` i stałym „(gość)”; do rozstrzygnięcia, czy reguła wejdzie do systemu |
+| komponent czatu (dziennik komunikatów), licznik znaków | czat w partii (E07-S01) jest złożony z Panelu, Pola formularza, Pola tekstowego, Przycisku, Alertu i Pustego stanu w aplikacji (`packages/app/src/components/chat`); osobny komponent wymaga zgody właściciela | kompozycja jak na stronie „Ekrany/Partia” (warianty „Czat”) |
 | tabela z kolumnami | na telefonie się nie mieści | lista |
 | tłumaczenia (polski i angielski, kolejne języki) | osobny temat; komponenty mają teksty przez propsy (Q3) | |
 | ruch planszy (stawianie kamienia, reakcja na ruch przeciwnika) | brak referencji | bez animacji |

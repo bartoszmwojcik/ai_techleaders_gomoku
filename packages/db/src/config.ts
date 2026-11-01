@@ -17,6 +17,11 @@ function intFromEnv(name: string, fallback: number): number {
  * Connection and pool settings come from the environment.
  */
 export function createOrmConfig(overrides: Partial<OrmConfig> = {}): OrmConfig {
+  const debug = process.env.DATABASE_DEBUG === "true";
+  // Query logging prints the bound parameters, i.e. the text of every chat message (BR-34): never in production.
+  if (debug && process.env.NODE_ENV === "production") {
+    throw new Error("DATABASE_DEBUG=true is not allowed in production: it logs query parameters.");
+  }
   return defineConfig({
     clientUrl: process.env.DATABASE_URL ?? "postgresql://gomoku:gomoku@localhost:5432/gomoku",
     pool: {
@@ -25,7 +30,7 @@ export function createOrmConfig(overrides: Partial<OrmConfig> = {}): OrmConfig {
     },
     entities: [...entities],
     discovery: { warnWhenNoEntities: false },
-    debug: process.env.DATABASE_DEBUG === "true",
+    debug,
     // MikroORM 7 defaults to true and would run CREATE DATABASE on the first connection
     // when DATABASE_URL names a missing database (a typo gives a new, empty database
     // instead of an error). Databases come from compose.yaml / Testcontainers; note the

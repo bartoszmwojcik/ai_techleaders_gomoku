@@ -287,6 +287,23 @@ Lista ładuje się po 20 wierszy, paginacja kluczem (`finished_at`, `id`) bez du
 
 Odpowiedź nie zawiera e-maila ani identyfikatora konta przeciwnika. Testy: `tests/integration/game-history-api.test.ts` (m.in. `EXPLAIN` na ~10 000 partii jednego konta), `game-history-pages.test.ts` (przeglądarka, 320 px). Specyfikacja: [`.ai/specs/implemented/2026-10-31-game-history.md`](.ai/specs/implemented/2026-10-31-game-history.md).
 
+#### Czat w partii (E07-S01, #146)
+
+Uczestnik partii `active` oraz `finished` (do 1 h po zakończeniu, także na ekranie wyniku) wysyła krótkie wiadomości i czyta wiadomości przeciwnika w panelu „Czat” pod planszą (`packages/app/src/components/chat/`, kompozycja komponentów `@gomoku/ui/game/*`). Partia `waiting` pokazuje tylko zdanie o dostępności po dołączeniu przeciwnika, `cancelled` nie ma panelu. Rewanż to nowa partia z pustym czatem i włączonym ustawieniem.
+
+| Endpoint | Sukces | Błędy |
+| --- | --- | --- |
+| `GET /api/games/{id}/chat?after_id=&limit=` | `200` `{ state: open\|disabled_by_you\|disabled_by_opponent\|unavailable\|closed, messages: [{ id, seat, text, createdAt }], lastId, limits: { maxLength, minIntervalMs }, retryAfterMs? }`; bez `after_id` ostatnie 50 (maks. `limit` 100), z `after_id` tylko nowsze | `400` zły `after_id`/`limit` (także ponad zakres `integer`), `404` nie-uczestnik, nieistniejąca partia i wygasły token (jednolicie) |
+| `POST /api/games/{id}/chat` `{ text, clientId }` | `201` `{ message, retryAfterMs }`; `200` dla powtórki tego samego `clientId` (bez duplikatu i bez zużycia limitu) | `400` z `fieldErrors.text` i `data.reason` (`empty`, `too_long`, `control_char`, `invisible_char`, `combining_run`, `url`, `not_text`; komunikat nie powtarza treści), `403` bez nagłówka CSRF, `404`, `409` `CHAT_UNAVAILABLE` (`waiting`, `cancelled`, po 1 h) / `CHAT_DISABLED` / `CHAT_FULL` (500 wiadomości), `429` `RATE_LIMITED` z `Retry-After` i `data.retryAfterMs` |
+
+Reguły (`ChatService`, jeden serwis dla przeglądarki i, w S04, agenta): `id` wiadomości to jej numer w partii (1, 2, 3…), nadawany pod blokadą doradczą partii, więc kursor `after_id` niczego nie pomija; odstęp i okno 1 h liczy baza (`clock_timestamp()`), nie Node; wiadomość to jedna linia zwykłego tekstu 1–200 znaków **po NFKC** (zapisywana jest wersja znormalizowana), bez znaków sterujących, niewidocznych (bidi, zero-width, wypełniacze) ani adresów URL (heurystyka z krótką listą TLD, `CHAT_BLOCKED_TLDS`; obejść typu „example [kropka] com” nie wykrywa). Odpowiedź zawiera `seat`, nigdy konto, e-mail ani token; `Cache-Control: no-store`. Treść wyświetla się wyłącznie jako węzeł tekstowy Reacta. Gdy rozmówca wyłączył czat, widzisz dotychczasową rozmowę, ale nie możesz pisać (`CHAT_DISABLED`); wyłączający nie widzi rozmowy na czas wyłączenia. Zapis ustawienia dojdzie w S02 (#147), kasowanie wiadomości w S03 (#148), narzędzia agenta w S04 (#149).
+
+Konfiguracja (`.env.example`, puste = wartości początkowe): `CHAT_MAX_LENGTH` (200) i `CHAT_MIN_INTERVAL_MS` (2000) dla ludzi, `CHAT_AGENT_MAX_LENGTH` i `CHAT_AGENT_MIN_INTERVAL_MS` dla agenta, `CHAT_MAX_MESSAGES_PER_GAME` (500). Treść wiadomości nie trafia do logów aplikacji: schematy nie echują wejścia, `apiHandler` loguje samą nazwę błędu, a `createOrmConfig` odmawia `DATABASE_DEBUG=true` w produkcji (debug ORM drukuje parametry zapytań).
+
+**Wdrożenie (R1):** ten PR nie jest gotowy do produkcji bez S03 (kasowanie wiadomości) i crona `db:cleanup` (Q-12); do tego czasu odczyt ukrywa wiadomości po 1 h od końca partii, ale baza trzyma treść dłużej niż obiecuje BR-34. Przed udostępnieniem osobom z zewnątrz sprawdź też Q-11 (DSA, RODO) i uzupełnij stronę o przetwarzaniu danych. Migracja `down` kasuje wiadomości (są tymczasowe). Znane ryzyko A-08: bez zgłaszania i moderacji jedyną ochroną jest wyłączenie czatu, które działa dopiero po pierwszej wiadomości.
+
+Testy: `packages/core/src/chat/*.test.ts` i `validators/chat/*.test.ts` (walidacja tabelaryczna), `chat-service.test.ts`, `chat/route.test.ts`, `components/chat/*.test.tsx`, integracyjne `tests/integration/chat-service.test.ts` (PostgreSQL: współbieżność, kursor, idempotencja, okno 1 h, kaskady) i `chat.test.ts` (dwie przeglądarki, API, log serwera); stories `Ekrany/Partia` (warianty „Czat”).
+
 ### `@gomoku/core` — części wielokrotnego użytku
 
 Czysty TypeScript bez zależności od frameworków:
