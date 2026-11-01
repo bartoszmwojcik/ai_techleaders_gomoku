@@ -1,0 +1,32 @@
+<!doctype html><html lang="pl" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Makieta: wyłączanie czatu</title><style>
+:root{--bg:#fafaf8;--panel:#fff;--text:#1d1b19;--muted:#55504b;--border:#8d867f;--line:#e3dfda;--accent:#b4530a;--accent-text:#fff;--danger:#9b2318;--mine:#f3ece4;--board:#d9b25c}
+:root[data-theme=dark]{--bg:#161412;--panel:#211e1b;--text:#f1ece6;--muted:#b9b1a8;--border:#8d867f;--line:#3a352f;--accent:#e8873a;--accent-text:#1a1208;--danger:#ff8f82;--mine:#2d2822;--board:#a77f33}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,sans-serif;padding:24px 16px}
+main{max-width:432px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1{font-size:28px;margin:0}h2{font-size:20px;margin:0}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 16px;display:flex;justify-content:space-between;font-weight:700}
+.board{height:200px;background:var(--board);border-radius:6px}
+.alert{border:1px solid var(--border);border-radius:6px;padding:12px 16px;font-weight:700}
+.btn{min-height:44px;padding:0 16px;border-radius:6px;border:1px solid var(--border);background:var(--panel);color:var(--text);font:700 16px system-ui}
+.btn.p{background:var(--accent);color:var(--accent-text);border-color:var(--accent)}
+.btn[disabled]{opacity:.55}
+.chat{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.chat header{display:flex;justify-content:space-between;align-items:baseline}
+.meta{font-size:14px;color:var(--muted)}
+.log{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;max-height:240px;overflow:auto}
+.msg{padding:8px 12px;border-radius:6px;border:1px solid var(--line);overflow-wrap:anywhere}
+.msg.me{background:var(--mine)}
+.msg .who{font-size:14px;color:var(--muted);font-weight:700}
+.msg .who time{font-weight:400;margin-left:8px}
+form{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
+label{flex:1 0 100%;font-weight:700;font-size:14px}
+input{flex:1 1 160px;min-height:44px;border:1px solid var(--border);border-radius:6px;padding:0 12px;font:16px system-ui;background:var(--bg);color:var(--text)}
+.hint{flex:1 0 100%;font-size:14px;color:var(--muted);display:flex;justify-content:space-between}
+.err{color:var(--danger);font-weight:700}
+.note{border-left:4px solid var(--border);padding:4px 12px;font-weight:700}
+.tag{position:fixed;top:4px;right:8px;font-size:12px;color:var(--muted)}
+.hd{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}.hd .acts{display:flex;flex-wrap:wrap;gap:8px}.cap{font-size:13px;color:var(--muted);margin:0}
+</style></head><body><div class="tag">Makieta ilustracyjna, nie kod aplikacji</div><main><h1>Wyłączanie czatu</h1><p class="cap">A. Ty: czat włączony, przycisk w nagłówku (zawsze widoczny)</p><section class="chat"><header class="hd"><h2>Czat</h2></header>
+<div class="hd"><span class="meta">z QA_player2</span><div class="acts"><button class="btn" type="button">Wyłącz czat</button><button class="btn" type="button" aria-expanded="true">Zwiń czat</button></div></div><div class="log-wrap"><ol class="log"><li class="msg"><div class="who">QA_player2<time>12:01</time></div>Gramy dalej?</li><li class="msg me"><div class="who">Ty (QA_player1)<time>12:02</time></div>Tak, Twój ruch</li></ol></div><form><label for="t">Wiadomość</label><input id="t" autocomplete="off"><button class="btn p">Wyślij</button><div class="hint"><span>Pozostało 200 znaków</span></div></form></section><p class="cap">B. Ty: wyłączyłeś czat (rozmowa ukryta, pola nie ma)</p><section class="chat"><header class="hd"><h2>Czat</h2></header>
+<div class="hd"><span class="meta">z QA_player2</span><div class="acts"><button class="btn" type="button">Włącz czat</button><button class="btn" type="button" aria-expanded="true">Zwiń czat</button></div></div><p class="note" role="status">Wyłączyłeś czat. Nie widzisz wiadomości rozmówcy i nie możesz pisać. Rozmówca zobaczy, że czat jest wyłączony.</p></section><p class="cap">C. Rozmówca: widzi rozmowę i komunikat, pole zablokowane</p><section class="chat"><header class="hd"><h2>Czat</h2></header>
+<div class="hd"><span class="meta">z QA_player1</span><div class="acts"><button class="btn" type="button">Wyłącz czat</button><button class="btn" type="button" aria-expanded="true">Zwiń czat</button></div></div><p class="note" role="status">Rozmówca wyłączył czat. Nie możesz teraz pisać.</p><div class="log-wrap"><ol class="log"><li class="msg"><div class="who">QA_player2<time>12:01</time></div>Gramy dalej?</li><li class="msg me"><div class="who">Ty (QA_player1)<time>12:02</time></div>Tak, Twój ruch</li></ol></div><form><label for="t2">Wiadomość</label><input id="t2" disabled><button class="btn p" disabled>Wyślij</button><div class="hint"><span>Pisanie jest zablokowane: rozmówca wyłączył czat.</span></div></form></section></main></body></html>
