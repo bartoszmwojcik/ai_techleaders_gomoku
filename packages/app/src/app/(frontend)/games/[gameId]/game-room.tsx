@@ -1,6 +1,6 @@
 "use client";
 
-import { agentAddCommand } from "@gomoku/core/games/agent-connect";
+import { AGENT_CLIENTS, agentClientSetup, DEFAULT_AGENT_CLIENT, isAgentClient, type AgentClient } from "@gomoku/core/games/agent-connect";
 import { isReturnNoticeFresh } from "@gomoku/core/games/return-notice";
 import { AgentConnectCard } from "@gomoku/ui/game/agent-connect-card";
 import { Alert } from "@gomoku/ui/game/alert";
@@ -24,6 +24,7 @@ import { PlayField } from "@/components/games/play-field";
 import { serverNowMs } from "@/components/games/use-server-now";
 import { usePageVisibility } from "@/components/games/use-page-visibility";
 import { apiCall } from "@/lib/api-client";
+import { AGENT_CLIENT_COPY } from "@/lib/games/agent-clients";
 import { formatValidUntil } from "@/lib/format-date-time";
 import { mergeState, playerName, playerNameOf } from "@/lib/games/play";
 import type { GameView } from "@/server/http/game-view";
@@ -62,13 +63,14 @@ type Props = {
   ownWaitingNotice: boolean;
 };
 
-type Copy = "idle" | "ok" | "fail" | "share-fail" | "command-ok" | "code-ok" | "text-fail";
+type Copy = "idle" | "ok" | "fail" | "share-fail" | "command-ok" | "config-ok" | "code-ok" | "text-fail";
 
 const COPY_FEEDBACK: Record<Exclude<Copy, "idle">, string> = {
   ok: "Skopiowano link do schowka.",
   fail: "Nie można skopiować automatycznie. Link jest zaznaczony — skopiuj go ręcznie (Ctrl+C).",
   "share-fail": "Nie udało się otworzyć udostępniania. Skopiuj link ręcznie.",
   "command-ok": "Skopiowano polecenie do schowka.",
+  "config-ok": "Skopiowano konfigurację do schowka.",
   "code-ok": "Skopiowano kod do schowka.",
   "text-fail": "Nie można skopiować automatycznie. Tekst jest zaznaczony — skopiuj go ręcznie (Ctrl+C).",
 };
@@ -107,6 +109,8 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
   const [fails, setFails] = useState(0);
   const [joinStep, setJoinStep] = useState(false);
   const [copy, setCopy] = useState<Copy>("idle");
+  // The agent client is screen state only: not remembered anywhere (E07-S05).
+  const [agentClient, setAgentClient] = useState<AgentClient>(DEFAULT_AGENT_CLIENT);
   const [asking, setAsking] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelProblem, setCancelProblem] = useState<ReactNode>(null);
@@ -327,10 +331,16 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
     }
   }
 
-  async function onCopyAgentText(which: "command" | "code", text: string) {
+  function onAgentClientChange(value: string) {
+    if (!isAgentClient(value)) return;
+    setAgentClient(value);
+    setCopy("idle");
+  }
+
+  async function onCopyAgentText(which: "snippet" | "code", text: string, done: Copy) {
     try {
       await navigator.clipboard.writeText(text);
-      setCopy(which === "command" ? "command-ok" : "code-ok");
+      setCopy(done);
     } catch {
       const range = document.createRange();
       range.selectNodeContents(agentRef.current!.querySelector(`[data-copy="${which}"]`)!);
@@ -440,6 +450,8 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
 
   if (game.status === "waiting") {
     const invitation = game.invitation!;
+    const clientCopy = AGENT_CLIENT_COPY[agentClient];
+    const setup = invitation.mcpUrl ? agentClientSetup(agentClient, invitation.mcpUrl) : null;
     const problem =
       fails >= POLL_FAILURES_BEFORE_BANNER ? (
         <Alert status="danger" title="Nie udało się sprawdzić, czy przeciwnik dołączył. Ponawiamy próby.">
@@ -480,24 +492,28 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
             onCancel={() => setAsking(true)}
           />
         </div>
-        {invitation.mcpUrl && (
+        {setup && (
           <div ref={agentRef}>
             <AgentConnectCard
               summary="Jak podłączyć agenta"
-              commandIntro="W terminalu agenta uruchom polecenie:"
-              command={agentAddCommand(invitation.mcpUrl)}
-              copyCommandLabel="Kopiuj polecenie"
-              checkText="Sprawdź połączenie: w Claude Code wpisz /mcp."
+              clientLabel="Klient"
+              clients={AGENT_CLIENTS.map((value) => ({ value, label: AGENT_CLIENT_COPY[value].label }))}
+              client={agentClient}
+              onClientChange={onAgentClientChange}
+              snippetIntro={clientCopy.intro}
+              snippet={setup.text}
+              copySnippetLabel={clientCopy.copyLabel}
+              checkText={clientCopy.check}
               codeIntro={`Powiedz agentowi: „Dołącz do partii gomoku narzędziem join z kodem ${invitation.code}”.`}
               code={invitation.code}
               copyCodeLabel="Kopiuj kod"
               serverLabel="Adres serwera"
               serverUrl={invitation.mcpUrl}
               copiedLabel="Skopiowano"
-              copied={copy === "command-ok" ? "command" : copy === "code-ok" ? "code" : null}
-              onCopyCommand={() => void onCopyAgentText("command", agentAddCommand(invitation.mcpUrl))}
-              onCopyCode={() => void onCopyAgentText("code", invitation.code)}
-              note="Inny klient MCP? Podaj mu adres serwera (Streamable HTTP, bez uwierzytelniania). Agent dołączy jako „Agent”. Nie podawaj mu hasła ani tokenów — nie są potrzebne. Agent może czytać czat partii i na nim pisać; wiadomości, które wpiszesz, trafią do modelu jako tekst. Nie wpisuj tajnych danych. Czat możesz wyłączyć w partii."
+              copied={copy === "command-ok" || copy === "config-ok" ? "snippet" : copy === "code-ok" ? "code" : null}
+              onCopySnippet={() => void onCopyAgentText("snippet", setup.text, setup.kind === "config" ? "config-ok" : "command-ok")}
+              onCopyCode={() => void onCopyAgentText("code", invitation.code, "code-ok")}
+              note={`Inny klient MCP? Podaj mu adres serwera (Streamable HTTP, bez uwierzytelniania). Agent dołączy jako „Agent”. Nie podawaj mu hasła ani tokenów — nie są potrzebne. Agent może czytać czat partii i na nim pisać; wiadomości, które wpiszesz, trafią do modelu jako tekst. Nie wpisuj tajnych danych. Czat możesz wyłączyć w partii.${clientCopy.note ? ` ${clientCopy.note}` : ""}`}
             />
           </div>
         )}

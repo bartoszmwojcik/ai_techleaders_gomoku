@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -154,7 +154,7 @@ describe("GameRoom, waiting (p03)", () => {
     const { container } = room(waiting());
     expect(container.querySelector("details")!.open).toBe(false);
     expect(screen.getByText("Jak podłączyć agenta")).toBeTruthy();
-    expect(screen.getByText("claude mcp add --transport http gomoku http://localhost:3000/api/mcp")).toBeTruthy();
+    expect(document.querySelector('[data-copy="snippet"]')!.textContent).toBe("claude mcp add --transport http gomoku http://localhost:3000/api/mcp");
     expect(screen.getByText("http://localhost:3000/api/mcp")).toBeTruthy();
     expect(screen.getByText(/Dołącz do partii gomoku narzędziem join z kodem ABCD-EFGH/)).toBeTruthy();
   });
@@ -194,6 +194,69 @@ describe("GameRoom, waiting (p03)", () => {
     expect(window.getSelection()?.toString()).toBe("claude mcp add --transport http gomoku http://localhost:3000/api/mcp");
     await u.click(screen.getByRole("button", { name: "Kopiuj kod" }));
     expect(window.getSelection()?.toString()).toBe("ABCD-EFGH");
+  });
+
+  it("starts with Claude Code and shows only the instruction of the chosen client", async () => {
+    room(waiting());
+    const u = user();
+    await u.click(screen.getByText("Jak podłączyć agenta"));
+    const select = screen.getByRole("combobox", { name: "Klient" }) as HTMLSelectElement;
+    expect(select.value).toBe("claude-code");
+    expect([...select.options].map((option) => option.textContent)).toEqual([
+      "Claude Code",
+      "Codex",
+      "Gemini CLI",
+      "GitHub Copilot CLI",
+      "GitHub Copilot (VS Code)",
+      "Cursor",
+    ]);
+    const url = "http://localhost:3000/api/mcp";
+    const expected = {
+      codex: `codex mcp add gomoku --url ${url}`,
+      "gemini-cli": `gemini mcp add --transport http gomoku ${url}`,
+      "copilot-cli": `copilot mcp add --transport http gomoku ${url}`,
+    };
+    for (const [client, text] of Object.entries(expected)) {
+      await u.selectOptions(select, client);
+      const block = document.querySelector('[data-copy="snippet"]')!;
+      expect(block.textContent).toBe(text);
+      expect(screen.getAllByRole("button", { name: "Kopiuj polecenie" })).toHaveLength(1);
+      expect(screen.queryByText(/claude mcp add/)).toBeNull();
+      expect(screen.queryByText(/dodaj --scope user/) !== null).toBe(client === "gemini-cli");
+    }
+    for (const client of ["copilot-vscode", "cursor"]) {
+      await u.selectOptions(select, client);
+      const block = document.querySelector('[data-copy="snippet"]')!;
+      expect(JSON.parse(block.textContent!)).toBeTruthy();
+      expect(block.textContent).toContain(url);
+      expect(screen.getByRole("button", { name: "Kopiuj konfigurację" })).toBeTruthy();
+    }
+  });
+
+  it("copies exactly the displayed config and clears 'copied' when the client changes", async () => {
+    room(waiting());
+    const u = user();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    await u.click(screen.getByText("Jak podłączyć agenta"));
+    const select = screen.getByRole("combobox", { name: "Klient" });
+    await u.selectOptions(select, "cursor");
+    await u.click(screen.getByRole("button", { name: "Kopiuj konfigurację" }));
+    expect(writeText).toHaveBeenLastCalledWith(document.querySelector('[data-copy="snippet"]')!.textContent);
+    expect(screen.getByTestId("copy-status").textContent).toBe("Skopiowano konfigurację do schowka.");
+    await u.selectOptions(select, "codex");
+    expect(screen.getByTestId("copy-status").textContent).toBe("");
+    expect(screen.getByRole("button", { name: "Kopiuj polecenie" })).toBeTruthy();
+  });
+
+  it("ignores a client value it does not know", () => {
+    room(waiting());
+    const select = screen.getByRole("combobox", { name: "Klient", hidden: true }) as HTMLSelectElement;
+    const option = document.createElement("option");
+    option.value = "windsurf";
+    select.appendChild(option);
+    fireEvent.change(select, { target: { value: "windsurf" } });
+    expect(document.querySelector('[data-copy="snippet"]')!.textContent).toContain("claude mcp add");
   });
 
   it("shares the link where the browser can (Q22)", async () => {

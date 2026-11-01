@@ -24,7 +24,8 @@ Gra planszowa dla dwóch osób online: ciemna strona, drewniana plansza, jeden p
 | Przycisk | `@gomoku/ui/game/button` | wysłanie formularza, „Załóż konto”, „Dołącz do partii”, akcja destrukcyjna (wariant danger) | przejście na inną stronę (Link tekstowy), wybór opcji (Pole wyboru) |
 | Link tekstowy | `@gomoku/ui/game/text-link` | odnośnik w zdaniu, „Nie pamiętasz hasła?”, „Konto” w nagłówku | akcja zmieniająca stan na serwerze (Przycisk) |
 | Przełącznik motywu | `@gomoku/ui/game/theme-switch` | jeden przycisk jasny/ciemny w rogu layoutu strony gracza | wybór spośród wielu opcji, akcja na serwerze (Przycisk) |
-| Pole tekstowe | `@gomoku/ui/game/text-input` | zawsze wewnątrz Pola formularza | samodzielnie bez etykiety; długi tekst; wybór z listy |
+| Pole tekstowe | `@gomoku/ui/game/text-input` | zawsze wewnątrz Pola formularza | samodzielnie bez etykiety; długi tekst; wybór z listy (Lista wyboru) |
+| Lista wyboru | `@gomoku/ui/game/select` | wybór jednej opcji z kilku (klient agenta), zawsze wewnątrz Pola formularza | dwie opcje tak/nie (Pole wyboru); wpisywanie tekstu; długa lista z wyszukiwaniem |
 | Pole formularza | `@gomoku/ui/game/field` | każde pole formularza | pole wyboru (ma własną etykietę); błąd całego formularza (Alert) |
 | Pole wyboru | `@gomoku/ui/game/checkbox` | zgoda przed nieodwracalną akcją, niezależna opcja tak/nie | wybór jednej z wielu opcji, natychmiastowe włączenie czegoś |
 | Alert | `@gomoku/ui/game/alert` | baner e-maila, ostrzeżenie dla gościa, błąd serwera, powodzenie | błąd jednego pola, decyzja tak/nie, chwilowe powiadomienie |
@@ -48,7 +49,7 @@ Gra planszowa dla dwóch osób online: ciemna strona, drewniana plansza, jeden p
 | Lista graczy | `@gomoku/ui/game/lobby-list` | strona lobby | historia partii |
 | Lista partii | `@gomoku/ui/game/history-list` | strona historii | lobby, trwające partie |
 
-Nie ma jeszcze: select, radio, przełącznika, pola wielowierszowego, menu, popovera, podpowiedzi, zakładek, panelu bocznego, awatara, toasta, linku „przejdź do treści”. Użyj zamienników z „Jak wybrać komponent” i wpisz lukę do „Czego brakuje”.
+Nie ma jeszcze: radio, przełącznika, pola wielowierszowego, menu, popovera, podpowiedzi, zakładek, panelu bocznego, awatara, toasta, linku „przejdź do treści”. Użyj zamienników z „Jak wybrać komponent” i wpisz lukę do „Czego brakuje”.
 
 ## Tokeny znaczeniowe
 

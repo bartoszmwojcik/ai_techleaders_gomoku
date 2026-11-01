@@ -1,16 +1,23 @@
 import { Check, ChevronDown, Copy } from "lucide-react";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
 import { Button } from "./button";
 import { cn } from "./cn";
+import { Field } from "./field";
+import { Select, type SelectOption } from "./select";
 
 type AgentConnectCardProps = {
   /** Heading of the collapsible panel (required, passed in). */
   summary: ReactNode;
-  /** Step 1: what to run, then the command itself (a text to copy). */
-  commandIntro: ReactNode;
-  command: string;
-  copyCommandLabel: string;
+  /** Choice of the agent client above step 1; the page keeps the value (no persistence). */
+  clientLabel: string;
+  clients: SelectOption[];
+  client: string;
+  onClientChange: (value: string) => void;
+  /** Step 1: what to run or paste, then the snippet itself (a command or file content, a text to copy). */
+  snippetIntro: ReactNode;
+  snippet: string;
+  copySnippetLabel: string;
   /** Step 2: how to check the connection. */
   checkText: ReactNode;
   /** Step 3: what to tell the agent, then the invitation code (a text to copy). */
@@ -23,8 +30,8 @@ type AgentConnectCardProps = {
   /** Label of a copy button that has just worked; also announced to screen readers. */
   copiedLabel: string;
   /** Which text was copied last. The page does the copying (Clipboard API) and then sets this. */
-  copied?: "command" | "code" | null;
-  onCopyCommand: () => void;
+  copied?: "snippet" | "code" | null;
+  onCopySnippet: () => void;
   onCopyCode: () => void;
   /** Closing remarks, e.g. other clients and what the agent does not need. */
   note?: ReactNode;
@@ -33,15 +40,38 @@ type AgentConnectCardProps = {
   className?: string;
 };
 
-const textBlock = "m-0 rounded-base border border-border-default bg-surface-page p-3 text-meta text-text-primary break-all whitespace-pre-wrap select-all";
+const textBlock = "m-0 rounded-base border border-border-default bg-surface-page p-3 text-meta text-text-primary break-words no-ligatures whitespace-pre-wrap select-all";
+
+// Words that start with "-" (command options) must not break after the hyphens: the line-breaking
+// rules allow a break after a hyphen. The text content stays identical, so copying is unaffected.
+function SnippetText({ text }: { text: string }) {
+  return text.split("\n").map((line, index) => (
+    <Fragment key={index}>
+      {index > 0 && "\n"}
+      {line.split(/(\s+)/).map((part, partIndex) =>
+        part.startsWith("-") ? (
+          <span key={partIndex} className="whitespace-nowrap">
+            {part}
+          </span>
+        ) : (
+          part
+        ),
+      )}
+    </Fragment>
+  ));
+}
 
 // How to connect an LLM agent over MCP (D-28): server address, command and invitation code.
 // Native <details> gives keyboard and screen-reader support without a script.
 function AgentConnectCard({
   summary,
-  commandIntro,
-  command,
-  copyCommandLabel,
+  clientLabel,
+  clients,
+  client,
+  onClientChange,
+  snippetIntro,
+  snippet,
+  copySnippetLabel,
   checkText,
   codeIntro,
   code,
@@ -50,7 +80,7 @@ function AgentConnectCard({
   serverUrl,
   copiedLabel,
   copied = null,
-  onCopyCommand,
+  onCopySnippet,
   onCopyCode,
   note,
   defaultOpen = false,
@@ -69,15 +99,22 @@ function AgentConnectCard({
         <ChevronDown aria-hidden="true" className="size-(--icon-size-md) shrink-0 group-open:rotate-180" />
       </summary>
       <div className="flex flex-col gap-stack px-4 pb-4">
+        <Field label={clientLabel}>
+          {(control) => (
+            <Select options={clients} value={client} onChange={(event) => onClientChange(event.target.value)} {...control} />
+          )}
+        </Field>
         <ol className="m-0 flex list-decimal flex-col gap-stack pl-6 text-body text-text-primary marker:text-text-secondary">
           <li>
             <div className="flex flex-col gap-group">
-              {commandIntro}
-              <p data-copy="command" className={textBlock}>{command}</p>
+              {snippetIntro}
+              <p data-copy="snippet" className={textBlock}>
+                <SnippetText text={snippet} />
+              </p>
               <div>
-                <Button variant="secondary" onClick={onCopyCommand}>
-                  {copied === "command" ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-                  {copied === "command" ? copiedLabel : copyCommandLabel}
+                <Button variant="secondary" onClick={onCopySnippet}>
+                  {copied === "snippet" ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                  {copied === "snippet" ? copiedLabel : copySnippetLabel}
                 </Button>
               </div>
             </div>
@@ -98,7 +135,7 @@ function AgentConnectCard({
         </ol>
         <dl className="m-0 flex flex-col gap-group">
           <dt className="text-meta font-strong text-text-secondary">{serverLabel}</dt>
-          <dd className="m-0 text-meta text-text-primary break-all select-all">{serverUrl}</dd>
+          <dd className="m-0 text-meta text-text-primary break-words select-all">{serverUrl}</dd>
         </dl>
         {note && <p className="m-0 text-meta text-text-secondary">{note}</p>}
         <span role="status" className="sr-only">

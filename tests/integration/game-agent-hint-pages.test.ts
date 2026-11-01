@@ -118,6 +118,70 @@ describe("the agent hint on the waiting screen", () => {
   );
 
   it(
+    "switches the instruction per client with the keyboard and the snippet stays whole",
+    async () => {
+      for (const theme of ["light", "dark"] as const) {
+        await visitor(creator, theme);
+        await createAsGuest(`Cezary_${theme}`);
+        await creator.click("details > summary");
+        await creator.waitForFn("document.querySelector('details').open");
+        const origin = await creator.evaluate<string>("location.origin");
+        const url = `${origin}/api/mcp`;
+        const snippet = () => creator.evaluate<string>("document.querySelector('[data-copy=snippet]').textContent");
+        const choose = async (value: string) => {
+          await creator.evaluate(
+            `(() => { const s = document.querySelector('details select'); s.value = ${JSON.stringify(value)}; s.dispatchEvent(new Event('change', { bubbles: true })); })()`,
+          );
+          await creator.waitForFn(`document.querySelector('details select').value === ${JSON.stringify(value)}`);
+        };
+
+        expect(await creator.evaluate<string>("document.querySelector('details select').value")).toBe("claude-code");
+        expect(await snippet()).toBe(`claude mcp add --transport http gomoku ${url}`);
+
+        // Keyboard: focus the list and press the arrow down; the instruction follows.
+        await creator.run("focus", "details select");
+        await creator.press("ArrowDown");
+        await creator.waitForFn("document.querySelector('details select').value === 'codex'");
+        expect(await snippet()).toBe(`codex mcp add gomoku --url ${url}`);
+
+        const expected: Record<string, (text: string) => void> = {
+          "gemini-cli": (text) => expect(text).toBe(`gemini mcp add --transport http gomoku ${url}`),
+          "copilot-cli": (text) => expect(text).toBe(`copilot mcp add --transport http gomoku ${url}`),
+          "copilot-vscode": (text) => expect(JSON.parse(text)).toEqual({ servers: { gomoku: { type: "http", url } } }),
+          cursor: (text) => expect(JSON.parse(text)).toEqual({ mcpServers: { gomoku: { url } } }),
+        };
+        for (const [client, check] of Object.entries(expected)) {
+          await choose(client);
+          check(await snippet());
+          expect(await creator.evaluate<string>("getComputedStyle(document.querySelector('[data-copy=snippet]')).fontVariantLigatures")).toBe("none");
+          await creator.setViewport(320, 700);
+          expect(await noSideScroll(creator)).toBe(true);
+          await creator.setViewport(1280, 900);
+        }
+      }
+    },
+    LONG,
+  );
+
+  it(
+    "renders --transport on one line, never broken inside the option, at 320 px",
+    async () => {
+      await visitor(creator);
+      await createAsGuest("Dorota");
+      await creator.click("details > summary");
+      await creator.waitForFn("document.querySelector('details').open");
+      await creator.setViewport(320, 700);
+      const lines = await creator.evaluate<number>(
+        `(() => { const span = document.querySelector('[data-copy=snippet] span'); const r = document.createRange(); r.selectNodeContents(span); return new Set([...r.getClientRects()].map((x) => Math.round(x.top))).size; })()`,
+      );
+      expect(lines).toBe(1);
+      expect(await creator.evaluate<string>("document.querySelector('[data-copy=snippet] span').textContent")).toBe("--transport");
+      await creator.setViewport(1280, 900);
+    },
+    LONG,
+  );
+
+  it(
     "serves invitation.mcpUrl in the REST view and drops the panel when an agent joins",
     async () => {
       await visitor(creator);

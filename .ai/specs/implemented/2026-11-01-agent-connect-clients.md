@@ -1,6 +1,6 @@
 # Instrukcje podłączenia agenta dla Codex, Gemini CLI, GitHub Copilot i Cursor (E07-S05, #168)
 
-> Status: **szkic autonomiczny** (`om-auto-write-spec`); właściciel zatwierdza specyfikacje z góry (zlecenie 2026-11-01), więc po przeglądzie można implementować. Epik E07 #144. Rozszerza wdrożoną `implemented/2026-11-01-agent-connect-hint.md` (E06-S04, #140) i **zastępuje jej założenie R4** („bez osobnych poleceń dla Cursora, Codexa itd.”) na życzenie właściciela. Autorytet wymagań: `.ai/specs/product-brief.md` (D-28, BR-31, D-29), zgłoszenie #168. Składnia klientów zweryfikowana w oficjalnej dokumentacji 2026-11-01 (źródła w sekcji „Składnia klientów”).
+> Status: **wdrożona** (E07-S05, #168; PR implementacji `feat/agent-connect-clients`; kroki 1–7, 9 i 10 wykonane, kryteria #168 spełnione). Odstępstwa: patrz „Adnotacje wdrożenia” na końcu. Pierwotnie: szkic autonomiczny (`om-auto-write-spec`); właściciel zatwierdza specyfikacje z góry (zlecenie 2026-11-01). Epik E07 #144. Rozszerza wdrożoną `implemented/2026-11-01-agent-connect-hint.md` (E06-S04, #140) i **zastępuje jej założenie R4** („bez osobnych poleceń dla Cursora, Codexa itd.”) na życzenie właściciela. Autorytet wymagań: `.ai/specs/product-brief.md` (D-28, BR-31, D-29), zgłoszenie #168. Składnia klientów zweryfikowana w oficjalnej dokumentacji 2026-11-01 (źródła w sekcji „Składnia klientów”).
 
 ## 📝 TLDR
 
@@ -80,7 +80,7 @@ Brak zmian: `invitation.mcpUrl` bez zmian, `POST /api/mcp` bez zmian. Zmiana API
 
 ## 📝 UI/UX
 
-Mockup (statyczny, ilustracyjny): `assets/agent-connect-clients/mockup-01-client-select.html` (Claude Code, Cursor i 320 px). Szkic tekstowy rozwiniętego panelu:
+Mockup (statyczny, ilustracyjny): `../assets/agent-connect-clients/mockup-01-client-select.html` (Claude Code, Cursor i 320 px). Szkic tekstowy rozwiniętego panelu:
 
 ```
 [ Jak podłączyć agenta                         v ]
@@ -156,3 +156,10 @@ Jedna historyjka, **jeden PR implementacji** (lekcja „Mało, ale pełnych PR-�
 - Dwa myślniki, brak łamania opcji, kopiowany tekst bez zmian → kroki 2–3, 6, 7.
 - Klawiatura, czytnik ekranu, focus, 320 px, oba motywy → kroki 2, 4, 6, 7.
 - `check:tokens`, `test:stories`, `npm run check` ze 100% pokryciem → kroki 2, 4, 10.
+
+## Adnotacje wdrożenia
+
+- Krok 8 (ręczny test z prawdziwymi klientami) **nie został wykonany**: na maszynie wdrożeniowej nie ma Codexa, Gemini CLI, Copilota ani Cursora. Składnia pochodzi z dokumentacji (tabela „Składnia klientów”); do potwierdzenia: czy Codex nie zażąda OAuth, co dokładnie zapisuje `gemini mcp add`, i komendy sprawdzenia z R10. W panelu sformułowano je ostrożnie dla Gemini CLI, Copilot CLI i Cursora.
+- `AgentClientSetup` i strażnik typu `isAgentClient` są w `core` (`agent-connect.ts`); `onClientChange` komponentu przyjmuje `string`, a strona odrzuca nieznane wartości.
+- Komunikat po skopiowaniu zależy od rodzaju instrukcji: „Skopiowano polecenie do schowka.” albo „Skopiowano konfigurację do schowka.”.
+- Lista wyboru w Storybooku: tytuł „Prymitywy/Lista wyboru”; liczniki komponentów na stronie „Czego brakuje” były już nieaktualne i nie zostały zmienione.
