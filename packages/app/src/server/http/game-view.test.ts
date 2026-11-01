@@ -28,10 +28,11 @@ describe("loadGameView", () => {
 
   it("serializes the expiry of the invitation", async () => {
     const expiresAt = new Date("2026-10-30T10:00:00Z");
-    getState.mockResolvedValue({ ...base, invitation: { code: "ABCD-EFGH", url: "http://x/invite/ABCD-EFGH", expiresAt } });
+    getState.mockResolvedValue({ ...base, invitation: { code: "ABCD-EFGH", url: "http://x/invite/ABCD-EFGH", mcpUrl: "http://x/api/mcp", expiresAt } });
     expect((await loadGameView("g1"))!.invitation).toEqual({
       code: "ABCD-EFGH",
       url: "http://x/invite/ABCD-EFGH",
+      mcpUrl: "http://x/api/mcp",
       expiresAt: "2026-10-30T10:00:00.000Z",
     });
   });

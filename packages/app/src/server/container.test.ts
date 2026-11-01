@@ -150,6 +150,8 @@ describe("auth services", () => {
         expect.objectContaining({ user: "user", isActive: true }),
       );
       expect(cradle.gameService).toBe(cradle.gameService);
+      expect(cradle.chatService).toBe(cradle.chatService);
+      expect(cradle.chatConfig).toBe(cradle.serverConfig.chat);
       expect(cradle.gameMoveService).toBe(cradle.gameMoveService);
       expect(cradle.rematchService).toBe(cradle.rematchService);
       expect(cradle.invitationCodes).toBe(cradle.invitationCodes);
@@ -159,6 +161,7 @@ describe("auth services", () => {
       expect(cradle.agentGameService).toBe(cradle.agentGameService);
       expect(cradle.gameHistoryService).toBe(cradle.gameHistoryService);
       expect(cradle.lobbyService).toBe(cradle.lobbyService);
+      expect(cradle.finishedGameStatsService).toBe(cradle.finishedGameStatsService);
       expect(await cradle.timeoutSettler.settleFor("user")).toBeUndefined();
       expect(cradle.passwordResetService).toBe(cradle.passwordResetService);
       const nativeUpdate = vi.fn(async () => 1);

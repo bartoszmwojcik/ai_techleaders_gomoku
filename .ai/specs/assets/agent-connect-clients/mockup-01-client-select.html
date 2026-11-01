@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mockup: wybór klienta agenta (ilustracyjny)</title>
+<style>
+:root{color-scheme:dark;--page:#1b1612;--raised:#262019;--border:#4a3f33;--control:#8a7a68;--text:#f3ece2;--sec:#cdbfae;--accent:#e8872b;--atext:#1b1612;font:16px ui-sans-serif,system-ui,sans-serif}
+body{margin:0;padding:16px;background:var(--page);color:var(--text)}
+h2{font-size:14px;color:var(--sec);margin:24px 0 8px;font-weight:700}
+.frame{max-width:560px;border:1px solid var(--border);border-radius:6px;background:var(--raised);padding:0 16px 16px;margin-bottom:16px}
+.frame.narrow{max-width:320px}
+summary{min-height:44px;display:flex;align-items:center;justify-content:space-between;font-size:20px;font-weight:700;list-style:none}
+label{display:block;font-size:14px;font-weight:700;color:var(--sec);margin:8px 0}
+.sel{position:relative}
+select{appearance:none;width:100%;box-sizing:border-box;min-height:44px;padding:0 40px 0 12px;border:1px solid var(--control);border-radius:6px;background:var(--page);color:var(--text);font:inherit}
+.sel:after{content:"v";position:absolute;right:14px;top:10px;color:var(--sec);pointer-events:none}
+ol{padding-left:24px;display:flex;flex-direction:column;gap:16px}
+pre{margin:8px 0;white-space:pre-wrap;overflow-wrap:break-word;border:1px solid var(--border);border-radius:6px;background:var(--page);padding:12px;font:14px ui-sans-serif,system-ui,sans-serif;font-variant-ligatures:none}
+.o{white-space:nowrap}
+button{min-height:44px;padding:0 16px;border:1px solid var(--control);border-radius:6px;background:transparent;color:var(--text);font:inherit}
+.code{font-size:20px;font-weight:700;letter-spacing:.1em}
+.meta{font-size:14px;color:var(--sec)}
+</style></head><body>
+<h2>1. Claude Code (domyślnie), szerokość 560 px</h2>
+<div class="frame"><details open><summary>Jak podłączyć agenta <span aria-hidden="true">v</span></summary>
+<label for="c1">Klient</label><div class="sel"><select id="c1"><option>Claude Code</option><option>Codex</option><option>Gemini CLI</option><option>GitHub Copilot CLI</option><option>GitHub Copilot (VS Code)</option><option>Cursor</option></select></div>
+<ol><li>W terminalu agenta uruchom polecenie:<pre>claude mcp add <span class="o">--transport</span> http gomoku https://gomoku.example/api/mcp</pre><button>Kopiuj polecenie</button></li>
+<li>Sprawdź połączenie: w Claude Code wpisz /mcp.</li>
+<li>Powiedz agentowi: „Dołącz do partii gomoku narzędziem join z kodem ABCD-EFGH”.<div class="code">ABCD-EFGH</div><button>Kopiuj kod</button></li></ol>
+<p class="meta">Adres serwera: https://gomoku.example/api/mcp</p></details></div>
+<h2>2. Cursor (plik konfiguracji, wielowierszowy), 560 px</h2>
+<div class="frame"><details open><summary>Jak podłączyć agenta <span aria-hidden="true">v</span></summary>
+<label for="c2">Klient</label><div class="sel"><select id="c2"><option>Cursor</option></select></div>
+<ol><li>Dodaj do pliku ~/.cursor/mcp.json (albo .cursor/mcp.json w projekcie):<pre>{
+  "mcpServers": {
+    "gomoku": {
+      "url": "https://gomoku.example/api/mcp"
+    }
+  }
+}</pre><button>Kopiuj konfigurację</button></li>
+<li>Włącz serwer na liście MCP w ustawieniach Cursora.</li>
+<li>Powiedz agentowi: „Dołącz do partii gomoku narzędziem join z kodem ABCD-EFGH”.</li></ol></details></div>
+<h2>3. Gemini CLI, 320 px</h2>
+<div class="frame narrow"><details open><summary>Jak podłączyć agenta <span aria-hidden="true">v</span></summary>
+<label for="c3">Klient</label><div class="sel"><select id="c3"><option>Gemini CLI</option></select></div>
+<ol><li>W terminalu uruchom polecenie:<pre>gemini mcp add <span class="o">--transport</span> http gomoku https://gomoku.example/api/mcp</pre><button>Kopiuj polecenie</button></li></ol></details></div>
+</body></html>

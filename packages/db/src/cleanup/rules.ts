@@ -2,7 +2,7 @@
 // `expiresAt` column needs a rule here or an entry in `CLEANUP_EXEMPT_TABLES` (guard test).
 // Each new expiring table adds its rule together with its entity.
 
-import { GUEST_TOKEN_GRACE_MS, READY_DEADLINE_MS } from "@gomoku/core";
+import { CHAT_RETENTION_MS, GUEST_TOKEN_GRACE_MS, READY_DEADLINE_MS } from "@gomoku/core";
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
@@ -43,6 +43,7 @@ export type CleanupRule = {
     | "emailVerificationTokens"
     | "passwordResetTokens"
     | "lobbySeekers"
+    | "chatMessages"
     | "waitingGames"
     | "cancelledGames"
     | "guestOnlyActiveGames"
@@ -106,6 +107,23 @@ export const CLEANUP_RULES: readonly CleanupRule[] = [
     primaryKey: "id",
     condition: "expires_at < ?",
     graceMs: HOUR_MS,
+  },
+  {
+    // BR-34: the chat vanishes about 1 h after the game, also when the game stays as an account's
+    // history (the game rules below never touch such a game). `exists` over the small, short-lived
+    // `chat_messages` instead of `game_id in (select ... from games)`: the run scans the messages of
+    // the last hours and probes `games` by primary key, not the ever-growing history. The columns of
+    // `GAME_DEADLINE_SQL` are unqualified and resolve to `g`, the only source holding them. Three `?`
+    // (one per branch, the same cutoff). Stands before every rule deleting from `games`: short
+    // batches here instead of a heavy cascade inside a game batch.
+    key: "chatMessages",
+    table: "chat_messages",
+    primaryKey: "id",
+    condition: `exists (select 1 from games g where g.id = chat_messages.game_id and (
+      (g.status = 'finished' and g.finished_at < ?)
+      or (g.status = 'cancelled' and g.created_at < ?)
+      or (g.status = 'active' and ${GAME_DEADLINE_SQL} < ?)))`,
+    graceMs: CHAT_RETENTION_MS,
   },
   {
     // An unjoined game whose invitation expired: kept for 1 h after the expiry, because the guest

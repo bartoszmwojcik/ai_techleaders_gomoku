@@ -11,6 +11,7 @@ import { TextLink } from "@gomoku/ui/game/text-link";
 import { TurnStatus } from "@gomoku/ui/game/turn-status";
 import type { ReactNode } from "react";
 
+import { ChatPreview, type ChatPreviewState } from "./chat-preview";
 import { cellLabel, MIDGAME, MIDGAME_LAST_MOVE, WIN_LINE, WON_GAME, WON_LAST_MOVE } from "../shared";
 
 // The /games/[id] screen as it looks in each state (game-invitations, game-moves, clock, reconnection).
@@ -62,9 +63,11 @@ type GameScreenProps = {
   opponent?: ReactNode;
   /** Set when the opponent is an agent: no rematch, a hint instead (R7). */
   agentOpponent?: boolean;
+  /** The chat panel under the controls and under the result (E07-S01); absent = no panel. */
+  chat?: ChatPreviewState;
 };
 
-export function GameScreen({ state, opponent = "Alicja_99", agentOpponent = false }: GameScreenProps) {
+export function GameScreen({ state, opponent = "Alicja_99", agentOpponent = false, chat }: GameScreenProps) {
   if (state === "loading") {
     return (
       <SkeletonRegion label="Ładowanie partii" className="max-w-(--layout-width-board) gap-stack">
@@ -162,6 +165,7 @@ export function GameScreen({ state, opponent = "Alicja_99", agentOpponent = fals
           Wynik zapisał się w historii obu graczy.
         </EmptyState>
       )}
+      {chat && <ChatPreview state={chat} opponent={opponent} />}
     </div>
   );
 }

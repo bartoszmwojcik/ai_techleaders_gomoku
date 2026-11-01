@@ -2,7 +2,9 @@ import { EmailVerificationToken } from "./auth/email-verification-token";
 import { PasswordResetToken } from "./auth/password-reset-token";
 import { Session } from "./auth/session";
 import { User } from "./auth/user";
+import { ChatMessage } from "./chat/chat-message";
 import { Game } from "./games/game";
+import { GamePairCounter } from "./games/game-pair-counter";
 import { GamePlayer } from "./games/game-player";
 import { Invitation } from "./games/invitation";
 import { LobbySeeker } from "./games/lobby-seeker";
@@ -21,4 +23,6 @@ export const entities = [
   GamePlayer,
   Invitation,
   LobbySeeker,
+  GamePairCounter,
+  ChatMessage,
 ] as const;

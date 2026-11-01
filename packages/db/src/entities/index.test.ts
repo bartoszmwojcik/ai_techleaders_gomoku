@@ -4,7 +4,9 @@ import { entities } from "./index";
 import { EmailVerificationToken } from "./auth/email-verification-token";
 import { PasswordResetToken } from "./auth/password-reset-token";
 import { Session } from "./auth/session";
+import { ChatMessage } from "./chat/chat-message";
 import { Game } from "./games/game";
+import { GamePairCounter } from "./games/game-pair-counter";
 import { GamePlayer } from "./games/game-player";
 import { Invitation } from "./games/invitation";
 import { LobbySeeker } from "./games/lobby-seeker";
@@ -22,6 +24,8 @@ describe("entities registry", () => {
       "game_players",
       "invitations",
       "lobby_seekers",
+      "game_pair_counters",
+      "chat_messages",
     ]);
   });
 
@@ -98,6 +102,39 @@ describe("lobby seekers", () => {
     expect(LobbySeeker.meta.checks.map((check) => check.name)).toEqual([
       "lobby_seekers_expiry_check",
     ]);
+  });
+});
+
+describe("game pair counters", () => {
+  it("keys a row by day and the two kinds, with CHECKs on their order and the count", () => {
+    const { day, kindA, kindB, finishedCount } = GamePairCounter.meta.properties;
+    expect([day, kindA, kindB].every((property) => property.primary)).toBe(true);
+    expect(finishedCount.primary).toBeFalsy();
+    expect(GamePairCounter.meta.checks.map((check) => check.name)).toEqual([
+      "game_pair_counters_kind_order_check",
+      "game_pair_counters_count_check",
+    ]);
+  });
+});
+
+describe("chat messages", () => {
+  it("belongs to a game and a seat, which it leaves with, and is keyed by game number and by attempt", () => {
+    const { game, sender, seq, clientId } = ChatMessage.meta.properties;
+    expect(game.deleteRule).toBe("cascade");
+    expect(sender.deleteRule).toBe("cascade");
+    expect([seq, clientId].every((property) => !property.nullable)).toBe(true);
+    expect(ChatMessage.meta.uniques.map((unique) => unique.name)).toEqual([
+      "chat_messages_game_id_seq_unique",
+      "chat_messages_sender_id_client_id_unique",
+    ]);
+    expect(ChatMessage.meta.checks.map((check) => check.name)).toEqual([
+      "chat_messages_seq_check",
+      "chat_messages_body_length_check",
+    ]);
+  });
+
+  it("keeps the chat setting per seat, on by default", () => {
+    expect(GamePlayer.meta.properties.chatEnabled.default).toBe(true);
   });
 });
 

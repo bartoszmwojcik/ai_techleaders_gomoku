@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -7,6 +7,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { replace, push, apiCall } = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn(), apiCall: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace, push }) }));
 vi.mock("@/lib/api-client", () => ({ apiCall }));
+// The chat has its own tests; here only where it is placed matters.
+vi.mock("@/components/chat/chat-panel", () => ({
+  ChatPanel: ({ game, gameId }: { game: { status: string }; gameId: string }) => (
+    <div data-testid="chat-panel-stub" data-status={game.status} data-game={gameId} />
+  ),
+}));
 
 import type { GameView } from "@/server/http/game-view";
 
@@ -29,7 +35,7 @@ const waiting = (): GameView => ({
   status: "waiting",
   you: { seat: 1, kind: "account" },
   players: [{ seat: 1, kind: "account", displayName: "Ala_7", seen: true }],
-  invitation: { code: "ABCD-EFGH", url: "http://localhost:3000/invite/ABCD-EFGH", expiresAt: EXPIRES },
+  invitation: { code: "ABCD-EFGH", url: "http://localhost:3000/invite/ABCD-EFGH", mcpUrl: "http://localhost:3000/api/mcp", expiresAt: EXPIRES },
 });
 const active = (over: Partial<GameView> = {}, seen = [true, true]): GameView => ({
   ...NO_BOARD,
@@ -100,14 +106,14 @@ describe("GameRoom, waiting (p03)", () => {
     expect(screen.getByRole("heading", { name: "Partia czeka na przeciwnika" })).toBeTruthy();
     expect(screen.getByText("Czekamy na przeciwnika…")).toBeTruthy();
     expect(screen.getByText("http://localhost:3000/invite/ABCD-EFGH")).toBeTruthy();
-    expect(screen.getByText("ABCD-EFGH")).toBeTruthy();
+    expect(screen.getAllByText("ABCD-EFGH")[0]).toBeTruthy();
     expect(screen.getByText("Ważne do piątek, 30 października 10:00 CET")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Udostępnij" })).toBeNull();
   });
 
   it("shows a guest creator the same card and a permanent warning under it (p03.11, p03.12)", () => {
     room(guestWaiting());
-    expect(screen.getByText("ABCD-EFGH")).toBeTruthy();
+    expect(screen.getAllByText("ABCD-EFGH")[0]).toBeTruthy();
     expect(screen.getByRole("button", { name: "Anuluj zaproszenie" })).toBeTruthy();
     expect(screen.getByText("Nie zmieniaj przeglądarki, bo stracisz dostęp do partii.")).toBeTruthy();
   });
@@ -142,6 +148,115 @@ describe("GameRoom, waiting (p03)", () => {
     await u.click(screen.getByRole("button", { name: "Kopiuj" }));
     expect(screen.getByTestId("copy-status").textContent).toContain("Link jest zaznaczony");
     expect(window.getSelection()?.toString()).toBe("http://localhost:3000/invite/ABCD-EFGH");
+  });
+
+  it("shows a collapsed agent panel with the MCP address and the command", () => {
+    const { container } = room(waiting());
+    expect(container.querySelector("details")!.open).toBe(false);
+    expect(screen.getByText("Jak podłączyć agenta")).toBeTruthy();
+    expect(document.querySelector('[data-copy="snippet"]')!.textContent).toBe("claude mcp add --transport http gomoku http://localhost:3000/api/mcp");
+    expect(screen.getByText("http://localhost:3000/api/mcp")).toBeTruthy();
+    expect(screen.getByText(/Dołącz do partii gomoku narzędziem join z kodem ABCD-EFGH/)).toBeTruthy();
+  });
+
+  it("tells the human that the agent reads and writes the chat and that the text goes to the model", () => {
+    room(waiting());
+    expect(screen.getByText(/Agent może czytać czat partii i na nim pisać; wiadomości, które wpiszesz, trafią do modelu jako tekst\. Nie wpisuj tajnych danych\. Czat możesz wyłączyć w partii\./)).toBeTruthy();
+  });
+
+  it("shows no agent panel when the view has no MCP address", () => {
+    const game = waiting();
+    room({ ...game, invitation: { ...game.invitation!, mcpUrl: undefined as never } });
+    expect(screen.queryByText("Jak podłączyć agenta")).toBeNull();
+  });
+
+  it("copies the command and the code from the agent panel", async () => {
+    room(waiting());
+    const u = user();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    await u.click(screen.getByText("Jak podłączyć agenta"));
+    await u.click(screen.getByRole("button", { name: "Kopiuj polecenie" }));
+    expect(writeText).toHaveBeenLastCalledWith("claude mcp add --transport http gomoku http://localhost:3000/api/mcp");
+    expect(screen.getByTestId("copy-status").textContent).toBe("Skopiowano polecenie do schowka.");
+    await u.click(screen.getByRole("button", { name: "Kopiuj kod" }));
+    expect(writeText).toHaveBeenLastCalledWith("ABCD-EFGH");
+    expect(screen.getByTestId("copy-status").textContent).toBe("Skopiowano kod do schowka.");
+  });
+
+  it("selects the command or the code for copying by hand when the clipboard fails", async () => {
+    room(waiting());
+    const u = user();
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined });
+    await u.click(screen.getByText("Jak podłączyć agenta"));
+    await u.click(screen.getByRole("button", { name: "Kopiuj polecenie" }));
+    expect(screen.getByTestId("copy-status").textContent).toContain("Tekst jest zaznaczony");
+    expect(window.getSelection()?.toString()).toBe("claude mcp add --transport http gomoku http://localhost:3000/api/mcp");
+    await u.click(screen.getByRole("button", { name: "Kopiuj kod" }));
+    expect(window.getSelection()?.toString()).toBe("ABCD-EFGH");
+  });
+
+  it("starts with Claude Code and shows only the instruction of the chosen client", async () => {
+    room(waiting());
+    const u = user();
+    await u.click(screen.getByText("Jak podłączyć agenta"));
+    const select = screen.getByRole("combobox", { name: "Klient" }) as HTMLSelectElement;
+    expect(select.value).toBe("claude-code");
+    expect([...select.options].map((option) => option.textContent)).toEqual([
+      "Claude Code",
+      "Codex",
+      "Gemini CLI",
+      "GitHub Copilot CLI",
+      "GitHub Copilot (VS Code)",
+      "Cursor",
+    ]);
+    const url = "http://localhost:3000/api/mcp";
+    const expected = {
+      codex: `codex mcp add gomoku --url ${url}`,
+      "gemini-cli": `gemini mcp add --transport http gomoku ${url}`,
+      "copilot-cli": `copilot mcp add --transport http gomoku ${url}`,
+    };
+    for (const [client, text] of Object.entries(expected)) {
+      await u.selectOptions(select, client);
+      const block = document.querySelector('[data-copy="snippet"]')!;
+      expect(block.textContent).toBe(text);
+      expect(screen.getAllByRole("button", { name: "Kopiuj polecenie" })).toHaveLength(1);
+      expect(screen.queryByText(/claude mcp add/)).toBeNull();
+      expect(screen.queryByText(/dodaj --scope user/) !== null).toBe(client === "gemini-cli");
+    }
+    for (const client of ["copilot-vscode", "cursor"]) {
+      await u.selectOptions(select, client);
+      const block = document.querySelector('[data-copy="snippet"]')!;
+      expect(JSON.parse(block.textContent!)).toBeTruthy();
+      expect(block.textContent).toContain(url);
+      expect(screen.getByRole("button", { name: "Kopiuj konfigurację" })).toBeTruthy();
+    }
+  });
+
+  it("copies exactly the displayed config and clears 'copied' when the client changes", async () => {
+    room(waiting());
+    const u = user();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    await u.click(screen.getByText("Jak podłączyć agenta"));
+    const select = screen.getByRole("combobox", { name: "Klient" });
+    await u.selectOptions(select, "cursor");
+    await u.click(screen.getByRole("button", { name: "Kopiuj konfigurację" }));
+    expect(writeText).toHaveBeenLastCalledWith(document.querySelector('[data-copy="snippet"]')!.textContent);
+    expect(screen.getByTestId("copy-status").textContent).toBe("Skopiowano konfigurację do schowka.");
+    await u.selectOptions(select, "codex");
+    expect(screen.getByTestId("copy-status").textContent).toBe("");
+    expect(screen.getByRole("button", { name: "Kopiuj polecenie" })).toBeTruthy();
+  });
+
+  it("ignores a client value it does not know", () => {
+    room(waiting());
+    const select = screen.getByRole("combobox", { name: "Klient", hidden: true }) as HTMLSelectElement;
+    const option = document.createElement("option");
+    option.value = "windsurf";
+    select.appendChild(option);
+    fireEvent.change(select, { target: { value: "windsurf" } });
+    expect(document.querySelector('[data-copy="snippet"]')!.textContent).toContain("claude mcp add");
   });
 
   it("shares the link where the browser can (Q22)", async () => {
@@ -1038,5 +1153,21 @@ describe("GameRoom, the reads of a result screen (M2, L2-L4)", () => {
       expect(screen.getByTestId("rematch-status").textContent).toContain("Zaproponowano rewanż");
       expect(reads()).toBe(1);
     });
+  });
+});
+
+describe("GameRoom, the chat (E07-S01)", () => {
+  it("shows the chat panel while the game waits, in a game in progress and on the result, not in a cancelled game", () => {
+    room(waiting());
+    expect(screen.getByTestId("chat-panel-stub").getAttribute("data-status")).toBe("waiting");
+    cleanup();
+    room(active());
+    expect(screen.getByTestId("chat-panel-stub").getAttribute("data-status")).toBe("active");
+    cleanup();
+    room(finished());
+    expect(screen.getByTestId("chat-panel-stub").getAttribute("data-status")).toBe("finished");
+    cleanup();
+    room({ ...waiting(), status: "cancelled", closedReason: "expired", invitation: undefined });
+    expect(screen.queryByTestId("chat-panel-stub")).toBeNull();
   });
 });

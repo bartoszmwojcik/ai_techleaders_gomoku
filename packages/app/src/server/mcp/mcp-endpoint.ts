@@ -14,7 +14,7 @@ export type McpEndpointDeps = {
   serverConfig: ServerConfig;
   rateLimiter: Pick<RateLimiter, "hit">;
   agentSeatService: Pick<AgentSeatService, "join">;
-  agentGameService: Pick<AgentGameService, "getState" | "playMove">;
+  agentGameService: Pick<AgentGameService, "getState" | "playMove" | "sendMessage">;
 };
 
 /** A JSON-RPC error body for a refusal before the protocol layer; `reason` is the machine-readable code. */

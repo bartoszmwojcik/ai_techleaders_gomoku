@@ -37,6 +37,7 @@ const created = {
   invitation: {
     code: "ABCD-EFGH",
     url: "https://gomoku.example/invite/ABCD-EFGH",
+    mcpUrl: "https://gomoku.example/api/mcp",
     expiresAt: new Date("2026-10-31T12:00:00Z"),
   },
 };

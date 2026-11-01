@@ -11,6 +11,7 @@
     "mikro-orm": "mikro-orm",
     "status": "tsx src/cli/status-cli.ts",
     "cleanup": "tsx src/cli/cleanup-cli.ts",
+    "stats:games": "tsx src/cli/stats-cli.ts",
     "migration:create": "mikro-orm migration:create",
     "migration:up": "mikro-orm migration:up",
     "migration:down": "mikro-orm migration:down",

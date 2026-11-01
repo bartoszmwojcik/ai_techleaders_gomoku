@@ -42,6 +42,9 @@ export const GamePlayer = defineEntity({
     // The model name an agent declared on joining (decision 7 of #138): unverified, shown with
     // "(deklarowane)". NULL = no name. Always NULL for anyone but an agent.
     agentName: p.string().length(40).nullable(),
+    // The participant's chat setting (E07-S01): `false` once they turned the chat off (S02 writes
+    // it); a new seat, a rematch included, starts with it on. Read by the chat service only.
+    chatEnabled: p.boolean().default(true),
   },
   indexes: [
     // Lookups by account: the `set null` action of `DELETE FROM users` (#37), the cleanup rule of

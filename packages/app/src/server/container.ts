@@ -9,7 +9,7 @@ import {
 } from "@gomoku/core";
 import { createOrm, entities, type EntityManager, type Orm } from "@gomoku/db";
 
-import { readServerConfig, type ServerConfig } from "./config";
+import { readServerConfig, type ChatConfig, type ServerConfig } from "./config";
 import { AccountService } from "./services/auth/account-service";
 import { PasswordHasher } from "./services/auth/password-hasher";
 import {
@@ -18,11 +18,13 @@ import {
 } from "./services/auth/session-service";
 import { EmailVerificationService } from "./services/auth/email-verification-service";
 import { GameParticipation } from "./services/auth/game-participation";
+import { ChatService } from "./services/chat/chat-service";
 import { AgentGameService } from "./services/games/agent-game-service";
 import { AgentSeatService } from "./services/games/agent-seat-service";
 import { ColorDraw } from "./services/games/color-draw";
 import { GameMoveService } from "./services/games/game-move-service";
 import { RematchService } from "./services/games/rematch-service";
+import { FinishedGameStatsService } from "./services/games/finished-game-stats-service";
 import { GameHistoryService } from "./services/games/game-history-service";
 import { GameService } from "./services/games/game-service";
 import { InvitationCodes } from "./services/games/invitation-codes";
@@ -66,6 +68,10 @@ export type AppCradle = {
   sessionService: SessionService;
   gameParticipation: GameParticipation;
   gameService: GameService;
+  /** The limits of the game chat (E07-S01); read lazily from the environment with the rest of the config. */
+  chatConfig: ChatConfig;
+  /** The chat of a game (E07-S01): the browser's routes now, the agent's tools in S04. */
+  chatService: ChatService;
   gameMoveService: GameMoveService;
   rematchService: RematchService;
   invitationCodes: InvitationCodes;
@@ -78,6 +84,8 @@ export type AppCradle = {
   agentGameService: AgentGameService;
   /** The finished games of an account (E04-S01). */
   gameHistoryService: GameHistoryService;
+  /** Finished games per pair of participant kinds (E06-S03); the admin panel reads the same. */
+  finishedGameStatsService: FinishedGameStatsService;
   /** The "looking for a game" status and the lobby list (#25). */
   lobbyService: LobbyService;
   /** No-op until the clock (#23) delivers the real settlement of timed-out games. */
@@ -152,6 +160,8 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     sessionService: asClass(SessionService).scoped(),
     gameParticipation: asClass(GameParticipation).scoped(),
     gameService: asClass(GameService).scoped(),
+    chatConfig: asFunction(({ serverConfig }: AppCradle) => serverConfig.chat).singleton(),
+    chatService: asClass(ChatService).scoped(),
     gameMoveService: asClass(GameMoveService).scoped(),
     rematchService: asClass(RematchService).scoped(),
     invitationCodes: asClass(InvitationCodes).singleton(),
@@ -160,6 +170,7 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     agentSeatService: asClass(AgentSeatService).scoped(),
     agentGameService: asClass(AgentGameService).scoped(),
     gameHistoryService: asClass(GameHistoryService).scoped(),
+    finishedGameStatsService: asClass(FinishedGameStatsService).scoped(),
     lobbyService: asClass(LobbyService).scoped(),
     timeoutSettler: asClass(SqlTimeoutSettler).scoped(),
     rateLimiter: asClass(RateLimiter).scoped(),

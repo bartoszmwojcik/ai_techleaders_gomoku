@@ -18,6 +18,7 @@ import {
   rematchView,
   type RematchState,
   type RematchView,
+  agentMcpUrl,
   invitationUrl,
   type GameStatus,
   type ParticipantKind,
@@ -149,7 +150,7 @@ export type GuestCreator = {
 
 export type CreatedGame = {
   gameId: string;
-  invitation: { code: string; url: string; expiresAt: Date };
+  invitation: { code: string; url: string; mcpUrl: string; expiresAt: Date };
 };
 
 /** Who is asking: the participant resolved from the session or the guest token. */
@@ -177,7 +178,7 @@ export type GameState = BoardView & {
     seen: boolean;
   }[];
   /** Only for the creator, only while the game waits. */
-  invitation?: { code: string; url: string; expiresAt: Date };
+  invitation?: { code: string; url: string; mcpUrl: string; expiresAt: Date };
   /**
    * Only for a `cancelled` game: cancelled by its creator, expired unjoined (24 h), or closed
    * because somebody did not open it in 15 minutes (Q21).
@@ -398,6 +399,7 @@ export class GameService {
       invitation: {
         code: formatInvitationCode(code),
         url: invitationUrl(this.#origin(), code),
+        mcpUrl: agentMcpUrl(this.#origin()),
         expiresAt,
       },
     };
@@ -574,6 +576,7 @@ export class GameService {
       state.invitation = {
         code: formatInvitationCode(invitation.code),
         url: invitationUrl(this.#origin(), invitation.code),
+        mcpUrl: agentMcpUrl(this.#origin()),
         expiresAt: invitation.expiresAt,
       };
     }

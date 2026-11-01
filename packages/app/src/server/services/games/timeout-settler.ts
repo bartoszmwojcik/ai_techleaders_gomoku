@@ -2,6 +2,7 @@ import { deadlineMs, seatOnTurn, seatOutOfTime, type ClockState, type Seat } fro
 import type { EntityManager } from "@gomoku/db";
 
 import type { Clock } from "../email/email-sender";
+import { recordFinishedGame } from "./finished-game-counter";
 
 /**
  * Lazy "lost on time" settlement of #23 (Q3): nothing runs in the background, a game whose
@@ -133,6 +134,7 @@ export class SqlTimeoutSettler implements TimeoutSettler {
       found.moveCount,
     ]);
     if (written.length === 0) return false;
+    await recordFinishedGame(tx, gameId);
     await tx.execute(RELEASE_SLOTS_SQL, [gameId], "run");
     return true;
   }

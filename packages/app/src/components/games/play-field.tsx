@@ -9,6 +9,7 @@ import { GameResultBanner } from "@gomoku/ui/game/game-result-banner";
 import { TurnStatus } from "@gomoku/ui/game/turn-status";
 import { useRef, useState, useSyncExternalStore } from "react";
 
+import { ChatPanel } from "@/components/chat/chat-panel";
 import { apiCall } from "@/lib/api-client";
 import {
   cellLabel,
@@ -349,6 +350,8 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
           // D06: no component for the actions after the end; the block is built from Alert and Button.
           <RematchPanel gameId={gameId} game={game} reopened={reopened ?? false} onState={onState} onRefresh={onRefresh} onAccepting={onAccepting} onGone={onGone} />
         )}
+        {/* E07-S01: under the controls and, on the result screen, under the rematch block, so it never pushes the main action down. */}
+        <ChatPanel gameId={gameId} game={game} onGone={onGone} />
       </div>
     </>
   );

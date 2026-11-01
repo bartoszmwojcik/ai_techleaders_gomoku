@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { agentGetStateSchema, agentPlayMoveSchema } from "./agent-tool-schema";
+import { agentGetStateSchema, agentPlayMoveSchema, agentSendMessageSchema } from "./agent-tool-schema";
 
 const token = "a".repeat(43);
 
@@ -10,8 +10,8 @@ const fieldOf = (result: { success: boolean; error?: { issues: { message: string
 describe("agentGetStateSchema", () => {
   it("accepts a token alone and with the optional fields", () => {
     expect(agentGetStateSchema.safeParse({ token }).success).toBe(true);
-    expect(agentGetStateSchema.safeParse({ token, waitSeconds: 25, afterMove: 225 }).success).toBe(true);
-    expect(agentGetStateSchema.safeParse({ token, waitSeconds: null, afterMove: null }).success).toBe(true);
+    expect(agentGetStateSchema.safeParse({ token, waitSeconds: 25, afterMove: 225, afterMessage: 2_147_483_647 }).success).toBe(true);
+    expect(agentGetStateSchema.safeParse({ token, waitSeconds: null, afterMove: null, afterMessage: null }).success).toBe(true);
   });
 
   it.each([
@@ -25,6 +25,10 @@ describe("agentGetStateSchema", () => {
     [{ token, waitSeconds: "5" }, "waitSeconds"],
     [{ token, afterMove: -1 }, "afterMove"],
     [{ token, afterMove: 226 }, "afterMove"],
+    [{ token, afterMessage: -1 }, "afterMessage"],
+    [{ token, afterMessage: 2_147_483_648 }, "afterMessage"],
+    [{ token, afterMessage: 1.5 }, "afterMessage"],
+    [{ token, afterMessage: "1" }, "afterMessage"],
   ])("rejects %j naming the field %s and nothing else", (value, field) => {
     const result = agentGetStateSchema.safeParse(value);
 
@@ -53,5 +57,15 @@ describe("agentPlayMoveSchema", () => {
 
     expect(result.success).toBe(false);
     expect(fieldOf(result)).toBe(field);
+  });
+});
+
+describe("agentSendMessageSchema", () => {
+  it("takes any text value (the chat judges it) and needs a token", () => {
+    expect(agentSendMessageSchema.safeParse({ token, text: "hej" }).success).toBe(true);
+    expect(agentSendMessageSchema.safeParse({ token, text: 5 }).success).toBe(true);
+    expect(agentSendMessageSchema.safeParse({ token }).success).toBe(true);
+    expect(fieldOf(agentSendMessageSchema.safeParse({ text: "hej" }))).toBe("token");
+    expect(fieldOf(agentSendMessageSchema.safeParse({ token: "short", text: "hej" }))).toBe("token");
   });
 });

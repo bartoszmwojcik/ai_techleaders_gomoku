@@ -470,7 +470,7 @@ describe("what the agent and the server log never contain", () => {
     for (const secret of [game.name, game.email, game.userId, game.code, "leakprobe", agent!.agent_token_hash as string]) {
       expect(text).not.toContain(secret);
     }
-    expect(text).not.toMatch(/displayName|agentName|nickname|chat/);
+    expect(text).not.toMatch(/displayName|agentName|nickname/);
     const log = readFileSync(SERVER_LOG, "utf8");
     expect(log).not.toContain(game.token);
     expect(log).not.toContain(game.code);

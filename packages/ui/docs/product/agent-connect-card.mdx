@@ -1,0 +1,99 @@
+import { ArgTypes, Canvas, Meta } from "@storybook/addon-docs/blocks";
+import { AgentConnectCard } from "@gomoku/ui/game/agent-connect-card";
+import * as Stories from "./agent-connect-card.stories";
+
+<Meta of={Stories} />
+
+# Karta podłączenia agenta
+
+## 1. Do czego służy
+
+Mówi człowiekowi, który zaprosił własnego agenta LLM do partii prywatnej, jak go podłączyć: adres serwera MCP, lista wyboru klienta (Claude Code, Codex, Gemini CLI, GitHub Copilot CLI i VS Code, Cursor), polecenie albo fragment pliku konfiguracji tylko dla wybranego klienta i kod zaproszenia, z kopiowaniem.
+
+<Canvas of={Stories.Rozwiniety} />
+
+## 2. Kiedy używać
+
+- **Strona oczekującej partii `/games/{id}`**, pod [Kartą kodu zaproszenia](?path=/docs/produkt-partia-karta-kodu-zaproszenia--docs) (E06-S04, D-28).
+
+## 3. Kiedy nie używać
+
+- **W trakcie partii i na ekranie końca:** wskazówka służy podłączeniu, nie pomocy w grze.
+- **Jako ogólny rozwijany panel:** system nie ma takiego komponentu (zob. „Czego brakuje”).
+- **Do pokazywania tokenów agenta:** panel nie zawiera sekretów.
+
+## 4. Anatomia
+
+1. **Podsumowanie** (`summary`) z ikoną strzałki, cel dotyku 44 px.
+2. **Lista wyboru klienta** ([Lista wyboru](?path=/docs/prymitywy-lista-wyboru--docs), stan trzyma strona, bez zapamiętywania).
+3. **Trzy kroki:** polecenie lub fragment pliku z przyciskiem kopiowania, sprawdzenie połączenia, kod z przyciskiem kopiowania.
+4. **Adres serwera** jako linia do zaznaczenia.
+5. **Uwaga** (opcjonalna).
+
+## 5. Warianty
+
+Brak wariantów wyglądu; panel może startować zwinięty (domyślnie) lub rozwinięty (`defaultOpen`).
+
+## 6. Stany
+
+Zwinięty, rozwinięty, Cursor (plik wielowierszowy), skopiowano fragment, skopiowano kod. Ładowania, pustego stanu ani błędu nie ma: błąd schowka obsługuje strona (zaznaczenie tekstu i komunikat).
+
+<Canvas of={Stories.SkopiowanoFragment} />
+
+## 7. Zachowanie i dostępność
+
+- **Natywny `<details>`:** Enter i Spacja na podsumowaniu zwijają i rozwijają, bez JavaScriptu.
+- **Fokus:** podsumowanie i przyciski mają obrys fokusu z tokenu.
+- **Skopiowano:** zmiana ikony i etykiety przycisku (nie tylko kolor) oraz `role="status"`.
+- **Zaznaczanie:** fragment, adres i kod mają `select-all`.
+
+## 8. Treść
+
+Teksty podaje strona. Etykiety przycisków: „Kopiuj polecenie”, „Kopiuj kod”, „Skopiowano”. Komponent nie ma wbudowanych tekstów.
+
+## 9. Responsywność
+
+Blok z poleceniem łamie się na spacjach (`break-words`), opcje zaczynające się od `-` nie są dzielone, a `no-ligatures` pokazuje `--` jako dwa myślniki; brak poziomego przewijania przy 320 px.
+
+<Canvas of={Stories.DlugiAdresNaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={AgentConnectCard} />
+
+## 11. Kod
+
+```tsx
+import { AgentConnectCard } from "@gomoku/ui/game/agent-connect-card";
+
+<AgentConnectCard
+  summary="Jak podłączyć agenta"
+  clientLabel="Klient"
+  clients={clients}
+  client={client}
+  onClientChange={setClient}
+  snippetIntro="W terminalu agenta uruchom polecenie:"
+  snippet={agentClientSetup(client, invitation.mcpUrl).text}
+  copySnippetLabel="Kopiuj polecenie"
+  checkText="Sprawdź połączenie: w Claude Code wpisz /mcp."
+  codeIntro="Powiedz agentowi, żeby dołączył z kodem:"
+  code={invitation.code}
+  copyCodeLabel="Kopiuj kod"
+  serverLabel="Adres serwera"
+  serverUrl={invitation.mcpUrl}
+  copiedLabel="Skopiowano"
+  copied={copied}
+  onCopySnippet={copySnippet}
+  onCopyCode={copyCode}
+/>;
+```
+
+## 12. Dobrze i źle
+
+**Dobrze:** panel zwinięty pod kartą zaproszenia, adres z konfiguracji serwera. **Źle:** adres składany w przeglądarce z `window.location`, token agenta w panelu.
+
+<Canvas of={Stories.RozwijanieIKopiowanie} />
+
+## 13. Powiązane
+
+- **Mylony z:** Kartą kodu zaproszenia (link i kod dla człowieka) i Alertem (komunikat o stanie).

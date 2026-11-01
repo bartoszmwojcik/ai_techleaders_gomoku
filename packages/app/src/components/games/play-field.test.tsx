@@ -7,6 +7,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { apiCall } = vi.hoisted(() => ({ apiCall: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiCall }));
 vi.setConfig({ testTimeout: 20_000 });
+// The chat has its own tests; here only where it is placed matters.
+vi.mock("@/components/chat/chat-panel", () => ({
+  ChatPanel: ({ game, gameId }: { game: { status: string }; gameId: string }) => (
+    <div data-testid="chat-panel-stub" data-status={game.status} data-game={gameId} />
+  ),
+}));
 const { push } = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 vi.mock("next/link", () => ({
@@ -573,5 +579,16 @@ describe("PlayField, the rematch under the result", () => {
     await act(async () => void (await vi.advanceTimersByTimeAsync(0)));
     expect(apiCall).toHaveBeenCalledWith("/api/games/g1", { method: "GET" });
     expect(push).toHaveBeenCalledWith("/games/g2");
+  });
+});
+
+describe("PlayField, the chat (E07-S01)", () => {
+  it("puts the chat panel under the controls of a game in progress and of a finished one", () => {
+    field();
+    expect(screen.getByTestId("chat-panel-stub").getAttribute("data-status")).toBe("active");
+    expect(screen.getByTestId("chat-panel-stub").getAttribute("data-game")).toBe("g1");
+    cleanup();
+    field({ status: "finished", turnSeat: null, result: { winnerSeat: 1, reason: "draw", winLine: null } });
+    expect(screen.getByTestId("chat-panel-stub").getAttribute("data-status")).toBe("finished");
   });
 });

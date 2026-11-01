@@ -24,7 +24,8 @@ Gra planszowa dla dwóch osób online: ciemna strona, drewniana plansza, jeden p
 | Przycisk | `@gomoku/ui/game/button` | wysłanie formularza, „Załóż konto”, „Dołącz do partii”, akcja destrukcyjna (wariant danger) | przejście na inną stronę (Link tekstowy), wybór opcji (Pole wyboru) |
 | Link tekstowy | `@gomoku/ui/game/text-link` | odnośnik w zdaniu, „Nie pamiętasz hasła?”, „Konto” w nagłówku | akcja zmieniająca stan na serwerze (Przycisk) |
 | Przełącznik motywu | `@gomoku/ui/game/theme-switch` | jeden przycisk jasny/ciemny w rogu layoutu strony gracza | wybór spośród wielu opcji, akcja na serwerze (Przycisk) |
-| Pole tekstowe | `@gomoku/ui/game/text-input` | zawsze wewnątrz Pola formularza | samodzielnie bez etykiety; długi tekst; wybór z listy |
+| Pole tekstowe | `@gomoku/ui/game/text-input` | zawsze wewnątrz Pola formularza | samodzielnie bez etykiety; długi tekst; wybór z listy (Lista wyboru) |
+| Lista wyboru | `@gomoku/ui/game/select` | wybór jednej opcji z kilku (klient agenta), zawsze wewnątrz Pola formularza | dwie opcje tak/nie (Pole wyboru); wpisywanie tekstu; długa lista z wyszukiwaniem |
 | Pole formularza | `@gomoku/ui/game/field` | każde pole formularza | pole wyboru (ma własną etykietę); błąd całego formularza (Alert) |
 | Pole wyboru | `@gomoku/ui/game/checkbox` | zgoda przed nieodwracalną akcją, niezależna opcja tak/nie | wybór jednej z wielu opcji, natychmiastowe włączenie czegoś |
 | Alert | `@gomoku/ui/game/alert` | baner e-maila, ostrzeżenie dla gościa, błąd serwera, powodzenie | błąd jednego pola, decyzja tak/nie, chwilowe powiadomienie |
@@ -41,13 +42,14 @@ Gra planszowa dla dwóch osób online: ciemna strona, drewniana plansza, jeden p
 | Status tury | `@gomoku/ui/game/turn-status` | nad planszą w trakcie partii | wynik partii (Baner wyniku), czas (Zegar) |
 | Baner wyniku | `@gomoku/ui/game/game-result-banner` | po zakończeniu partii | w trakcie partii, lista historii (Znacznik statusu) |
 | Karta kodu zaproszenia | `@gomoku/ui/game/invite-code-card` | strona oczekującej partii | wpisywanie kodu przez zaproszonego (Pole formularza) |
+| Karta podłączenia agenta | `@gomoku/ui/game/agent-connect-card` | strona oczekującej partii prywatnej, pod kartą zaproszenia (adres MCP, polecenie, kod) | pomoc w trakcie partii, ogólne zwijane sekcje (patrz „Czego brakuje”) |
 | Pole hasła | `@gomoku/ui/game/password-field` | każde pole hasła (logowanie, rejestracja, reset, zmiana) | inne dane wrażliwe |
 | Baner potwierdzenia e-maila | `@gomoku/ui/game/verify-email-banner` | `/` i `/account` przy niepotwierdzonym e-mailu (nie blokuje gry; zamykalny, wraca po 7 dniach) | po potwierdzeniu, dla gościa |
 | Status szukania gry | `@gomoku/ui/game/seeking-status` | po oznaczeniu się jako szukający | zegar w partii, lista innych graczy |
 | Lista graczy | `@gomoku/ui/game/lobby-list` | strona lobby | historia partii |
 | Lista partii | `@gomoku/ui/game/history-list` | strona historii | lobby, trwające partie |
 
-Nie ma jeszcze: select, radio, przełącznika, pola wielowierszowego, menu, popovera, podpowiedzi, zakładek, panelu bocznego, awatara, toasta, linku „przejdź do treści”. Użyj zamienników z „Jak wybrać komponent” i wpisz lukę do „Czego brakuje”.
+Nie ma jeszcze: radio, przełącznika, pola wielowierszowego, menu, popovera, podpowiedzi, zakładek, panelu bocznego, awatara, toasta, linku „przejdź do treści”. Użyj zamienników z „Jak wybrać komponent” i wpisz lukę do „Czego brakuje”.
 
 ## Tokeny znaczeniowe
 

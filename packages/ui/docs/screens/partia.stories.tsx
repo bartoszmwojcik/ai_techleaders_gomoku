@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { ReactNode } from "react";
 import { expect, within } from "storybook/test";
 
+import type { ChatPreviewState } from "./chat-preview";
 import { AgentName, GameScreen, type GameState } from "./game-screen";
 import { InviteLanding, JoinPage, type InviteState } from "./invite-screens";
 import { Screen, screenParameters, type Viewer } from "./screen";
@@ -94,4 +95,71 @@ export const PartiaKoniecZAgentem: Story = {
     await expect(canvas.getByText("Rewanż niedostępny")).toBeVisible();
     await expect(canvas.queryByRole("button", { name: "Rewanż" })).toBeNull();
   },
+};
+
+// Czat w partii (E07-S01): panel pod planszą i, po wyniku, pod blokiem rewanżu.
+const chatScreen = (state: GameState, chat: ChatPreviewState, opponent?: { name: ReactNode }): Story => ({
+  render: () => (
+    <Screen viewer="player">
+      <GameScreen state={state} chat={chat} opponent={opponent?.name} />
+    </Screen>
+  ),
+});
+const phone = { ...screenParameters, viewport: { defaultViewport: "phone" } };
+
+export const PartiaCzatPusty: Story = {
+  ...chatScreen("your-turn", "empty"),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("Nikt jeszcze nic nie napisał. Napisz pierwszy.")).toBeVisible();
+    await expect(canvas.getByLabelText("Wiadomość")).toBeVisible();
+  },
+};
+export const PartiaCzatRozmowa: Story = {
+  ...chatScreen("opponent-turn", "conversation"),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("log", { name: "Wiadomości czatu" })).toBeVisible();
+    await expect(canvas.getByText("Cześć! Gramy?")).toBeVisible();
+  },
+};
+export const PartiaCzatWylaczonyPrzezRozmowce: Story = {
+  ...chatScreen("your-turn", "disabled-by-opponent"),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByLabelText("Wiadomość")).toBeDisabled();
+    await expect(canvas.getByRole("button", { name: "Wyłącz czat" })).toBeEnabled();
+  },
+};
+export const PartiaCzatWylaczonyPrzezCiebie: Story = {
+  ...chatScreen("your-turn", "disabled-by-you"),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("button", { name: "Włącz czat" })).toBeVisible();
+    await expect(canvas.getByText(/^Wyłączyłeś czat\./)).toBeVisible();
+    await expect(canvas.queryByLabelText("Wiadomość")).toBeNull();
+  },
+};
+export const PartiaCzatBladPrzelaczenia: Story = {
+  ...chatScreen("your-turn", "switch-error"),
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText("Nie udało się wyłączyć czatu. Spróbuj ponownie.")).toBeVisible();
+  },
+};
+export const PartiaCzatBladWysylki: Story = {
+  ...chatScreen("your-turn", "send-error"),
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByRole("button", { name: "Ponów wysyłanie" })).toBeVisible();
+  },
+};
+export const PartiaCzatPrzedDolaczeniemPrzeciwnika: Story = chatScreen("waiting-for-opponent", "waiting");
+export const PartiaWynikZCzatem: Story = chatScreen("won", "conversation");
+export const PartiaCzatZamkniety: Story = chatScreen("won", "closed");
+export const PartiaCzatWylaczonyPrzezCiebie320: Story = {
+  ...chatScreen("your-turn", "disabled-by-you"),
+  parameters: phone,
+};
+export const PartiaCzat320: Story = {
+  ...chatScreen("opponent-turn", "conversation", { name: <AgentName declared={LONG_MODEL} /> }),
+  parameters: phone,
 };
