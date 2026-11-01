@@ -119,6 +119,21 @@ describe("the board on a phone", () => {
     expect(size.height).toBeGreaterThanOrEqual(44);
   });
 
+  it("keeps the button in the first screen for a guest, whose permanent warning sits below it", async () => {
+    const created = await api("POST", "/api/games", { acknowledgedGuestWarning: true, nickname: "Ola" });
+    expect(created.status).toBe(201);
+    const guest = (created.headers.getSetCookie().find((c) => c.startsWith("gomoku_guest=")) ?? "").split(";")[0]!;
+    expect(guest).not.toBe("");
+    const { data } = (await created.json()) as { data: { gameId: string; invitation: { code: string } } };
+    const bob = await signedUp();
+    expect((await api("POST", `/api/invitations/${data.invitation.code}/accept`, { as: "user" }, bob)).status).toBe(200);
+    await touch.setViewport(320, 568);
+    await visit(touch, guest, data.gameId, "dark");
+    expect(await touch.evaluate<boolean>("document.body.innerText.includes('Grasz bez konta')")).toBe(true);
+    const box = await buttonBox(touch);
+    expect(box.bottom, "guest 320x568").toBeLessThanOrEqual(box.innerHeight);
+  });
+
   it("sends nothing on repeated taps of one cell and plays the move only with the button", async () => {
     const { gameId, mover } = await startedGame();
     await touch.setViewport(390, 844);

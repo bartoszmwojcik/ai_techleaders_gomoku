@@ -194,12 +194,6 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
     <>
       <h1 className="m-0 flex min-h-target items-center pr-12 text-section font-strong sm:pr-0">{finished ? "Koniec partii" : "Partia w toku"}</h1>
       <div className="flex max-w-(--layout-width-board) flex-col gap-stack">
-        {guest && !finished && (
-          // p05.11: permanent for a guest (BR-22) while the game is played.
-          <Alert status="warning" title="Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii">
-            Stracisz dostęp do partii, a Twój zegar będzie biegł dalej.
-          </Alert>
-        )}
         {game.fromRematch && guest && !tokenNoticeSeen && (
           // p06.15: the guest holds a new token for the rematch, in the same browser (rematch Q5).
           <Alert status="info" title="Nowa partia ma nowy dostęp w tej przeglądarce" role="status">
@@ -291,6 +285,13 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
             <Button variant="secondary" onClick={() => void submit(failed.attempt)}>
               Spróbuj ponownie
             </Button>
+          </Alert>
+        )}
+        {guest && !finished && (
+          // p05.11: permanent for a guest (BR-22) while the game is played. Under the action block, not above the board,
+          // so it does not push "Postaw kamień" out of the first screen on a phone (#181).
+          <Alert status="warning" title="Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii">
+            Stracisz dostęp do partii, a Twój zegar będzie biegł dalej.
           </Alert>
         )}
         {game.moveCount === 0 && !finished && (
