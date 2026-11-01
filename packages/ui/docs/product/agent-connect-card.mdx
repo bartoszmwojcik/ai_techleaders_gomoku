@@ -8,7 +8,7 @@ import * as Stories from "./agent-connect-card.stories";
 
 ## 1. Do czego służy
 
-Mówi człowiekowi, który zaprosił własnego agenta LLM do partii prywatnej, jak go podłączyć: adres serwera MCP, polecenie dodania serwera i kod zaproszenia, z kopiowaniem.
+Mówi człowiekowi, który zaprosił własnego agenta LLM do partii prywatnej, jak go podłączyć: adres serwera MCP, lista wyboru klienta (Claude Code, Codex, Gemini CLI, GitHub Copilot CLI i VS Code, Cursor), polecenie albo fragment pliku konfiguracji tylko dla wybranego klienta i kod zaproszenia, z kopiowaniem.
 
 <Canvas of={Stories.Rozwiniety} />
 
@@ -25,9 +25,10 @@ Mówi człowiekowi, który zaprosił własnego agenta LLM do partii prywatnej, j
 ## 4. Anatomia
 
 1. **Podsumowanie** (`summary`) z ikoną strzałki, cel dotyku 44 px.
-2. **Trzy kroki:** polecenie z przyciskiem kopiowania, sprawdzenie połączenia, kod z przyciskiem kopiowania.
-3. **Adres serwera** jako linia do zaznaczenia.
-4. **Uwaga** (opcjonalna).
+2. **Lista wyboru klienta** ([Lista wyboru](?path=/docs/prymitywy-lista-wyboru--docs), stan trzyma strona, bez zapamiętywania).
+3. **Trzy kroki:** polecenie lub fragment pliku z przyciskiem kopiowania, sprawdzenie połączenia, kod z przyciskiem kopiowania.
+4. **Adres serwera** jako linia do zaznaczenia.
+5. **Uwaga** (opcjonalna).
 
 ## 5. Warianty
 
@@ -35,16 +36,16 @@ Brak wariantów wyglądu; panel może startować zwinięty (domyślnie) lub rozw
 
 ## 6. Stany
 
-Zwinięty, rozwinięty, skopiowano polecenie, skopiowano kod. Ładowania, pustego stanu ani błędu nie ma: błąd schowka obsługuje strona (zaznaczenie tekstu i komunikat).
+Zwinięty, rozwinięty, Cursor (plik wielowierszowy), skopiowano fragment, skopiowano kod. Ładowania, pustego stanu ani błędu nie ma: błąd schowka obsługuje strona (zaznaczenie tekstu i komunikat).
 
-<Canvas of={Stories.SkopiowanoPolecenie} />
+<Canvas of={Stories.SkopiowanoFragment} />
 
 ## 7. Zachowanie i dostępność
 
 - **Natywny `<details>`:** Enter i Spacja na podsumowaniu zwijają i rozwijają, bez JavaScriptu.
 - **Fokus:** podsumowanie i przyciski mają obrys fokusu z tokenu.
 - **Skopiowano:** zmiana ikony i etykiety przycisku (nie tylko kolor) oraz `role="status"`.
-- **Zaznaczanie:** polecenie, adres i kod mają `select-all`.
+- **Zaznaczanie:** fragment, adres i kod mają `select-all`.
 
 ## 8. Treść
 
@@ -52,7 +53,7 @@ Teksty podaje strona. Etykiety przycisków: „Kopiuj polecenie”, „Kopiuj ko
 
 ## 9. Responsywność
 
-Polecenie i adres zawijają się w dowolnym miejscu; brak poziomego przewijania przy 320 px.
+Blok z poleceniem łamie się na spacjach (`break-words`), opcje zaczynające się od `-` nie są dzielone, a `no-ligatures` pokazuje `--` jako dwa myślniki; brak poziomego przewijania przy 320 px.
 
 <Canvas of={Stories.DlugiAdresNaWaskimEkranie} />
 
@@ -67,9 +68,13 @@ import { AgentConnectCard } from "@gomoku/ui/game/agent-connect-card";
 
 <AgentConnectCard
   summary="Jak podłączyć agenta"
-  commandIntro="W terminalu agenta uruchom polecenie:"
-  command={agentAddCommand(invitation.mcpUrl)}
-  copyCommandLabel="Kopiuj polecenie"
+  clientLabel="Klient"
+  clients={clients}
+  client={client}
+  onClientChange={setClient}
+  snippetIntro="W terminalu agenta uruchom polecenie:"
+  snippet={agentClientSetup(client, invitation.mcpUrl).text}
+  copySnippetLabel="Kopiuj polecenie"
   checkText="Sprawdź połączenie: w Claude Code wpisz /mcp."
   codeIntro="Powiedz agentowi, żeby dołączył z kodem:"
   code={invitation.code}
@@ -78,7 +83,7 @@ import { AgentConnectCard } from "@gomoku/ui/game/agent-connect-card";
   serverUrl={invitation.mcpUrl}
   copiedLabel="Skopiowano"
   copied={copied}
-  onCopyCommand={copyCommand}
+  onCopySnippet={copySnippet}
   onCopyCode={copyCode}
 />;
 ```

@@ -283,6 +283,11 @@
   animation: game-fade-in var(--duration-base) var(--easing-standard);
 }
 
+/* E07-S05: commands show "--" as two hyphens, not one long dash (no programming ligatures). */
+@utility no-ligatures {
+  font-variant-ligatures: none;
+}
+
 @utility motion-fast {
   transition-duration: var(--duration-fast);
   transition-timing-function: var(--easing-standard);

@@ -1,0 +1,104 @@
+import { ArgTypes, Canvas, Meta, Unstyled } from "@storybook/addon-docs/blocks";
+import { Select } from "@gomoku/ui/game/select";
+import { Field } from "@gomoku/ui/game/field";
+import { DoDont } from "../../.storybook/blocks";
+import * as Stories from "./select.stories";
+
+<Meta of={Stories} />
+
+# Lista wyboru
+
+## 1. Do czego służy
+
+Pozwala graczowi wybrać jedną opcję z krótkiej listy (kilka do kilkunastu pozycji), zajmując jeden wiersz. Pierwsze użycie: wybór klienta agenta w Karcie podłączenia agenta (E07-S05).
+
+<Canvas of={Stories.WPoluFormularza} />
+
+## 2. Kiedy używać
+
+- **Zawsze wewnątrz [Pola formularza](?path=/docs/prymitywy-pole-formularza--docs).**
+- **Wybór jednej opcji z 4 i więcej**, gdy lista nie może zająć kilku wierszy (ekran 320 px).
+
+## 3. Kiedy nie używać
+
+- **Dwie opcje tak/nie:** [Pole wyboru](?path=/docs/prymitywy-pole-wyboru--docs).
+- **Samodzielnie, bez etykiety:** pole bez widocznej etykiety jest błędem; użyj Pola formularza.
+- **Wpisywanie wartości:** [Pole tekstowe](?path=/docs/prymitywy-pole-tekstowe--docs).
+- **Wybór z bardzo długiej listy lub z wyszukiwaniem:** nie ma takiego komponentu.
+
+## 4. Anatomia
+
+1. **Obramowanie** (3:1 względem tła, `border-control`).
+2. **Wybrana wartość.**
+3. **Strzałka** (ikona dekoracyjna, `aria-hidden`).
+
+## 5. Warianty
+
+Brak wariantów wyglądu. Natywny `<select>`: systemowe okno wyboru na telefonie, klawiatura bez dodatkowego kodu.
+
+## 6. Stany
+
+Domyślny, najechanie, fokus, zablokowany i błąd (`aria-invalid`; sam kolor nie wystarcza, tekst błędu z ikoną pokazuje Pole formularza).
+
+<Canvas of={Stories.Stany} />
+
+## 7. Zachowanie i dostępność
+
+- **Klawiatura:** `Tab` ustawia fokus, strzałki i wpisywanie liter zmieniają wartość, `Alt+↓` otwiera listę.
+- **Rola i atrybuty:** natywny `<select>` (rola `combobox`/`listbox` zależnie od przeglądarki); etykieta i opis przychodzą z Pola formularza.
+- **Cel kliknięcia:** wysokość co najmniej 44 px.
+- **Motywy:** pozycje listy mają tło i kolor tekstu z tokenów, żeby okno systemowe było czytelne w ciemnym motywie.
+
+## 8. Treść
+
+Etykiety opcji podaje strona (komponent nie ma wbudowanych tekstów). Pierwsza opcja to wartość domyślna; nie dodawaj pozycji „Wybierz…”.
+
+## 9. Responsywność
+
+Lista zajmuje szerokość kontenera (`w-full`); długa etykieta jest obcinana przez przeglądarkę wewnątrz pola.
+
+<Canvas of={Stories.DlugaEtykietaNaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={Select} />
+
+Dodatkowo: wszystkie atrybuty natywnego `<select>` (`value`, `onChange`, `disabled`, `name`).
+
+## 11. Kod
+
+```tsx
+import { Field } from "@gomoku/ui/game/field";
+import { Select } from "@gomoku/ui/game/select";
+
+<Field label="Klient">
+  {(control) => (
+    <Select
+      options={[{ value: "claude-code", label: "Claude Code" }, { value: "cursor", label: "Cursor" }]}
+      value={client}
+      onChange={(event) => setClient(event.target.value)}
+      {...control}
+    />
+  )}
+</Field>;
+```
+
+## 12. Dobrze i źle
+
+<Unstyled>
+  <DoDont
+    good={
+      <Field label="Klient">
+        {(control) => <Select options={[{ value: "a", label: "Claude Code" }, { value: "b", label: "Cursor" }]} {...control} />}
+      </Field>
+    }
+    goodNote="widoczna etykieta nad listą."
+    bad={<Select aria-label="Klient" options={[{ value: "a", label: "Claude Code" }]} />}
+    badNote="lista z jedną opcją nic nie wybiera; pokaż po prostu tekst."
+  />
+</Unstyled>
+
+## 13. Powiązane
+
+- **Mylony z:** Polem wyboru (tak/nie) i Polem tekstowym.
+- **Występuje w:** Karcie podłączenia agenta.

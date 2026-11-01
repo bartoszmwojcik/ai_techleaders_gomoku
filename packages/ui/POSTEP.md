@@ -204,3 +204,7 @@ Decyzje właściciela do punktów 1–5 z „Otwarte pytania”, potem „dalej�
 ## Karta podłączenia agenta (E06-S04)
 
 Nowy komponent `src/game/agent-connect-card.tsx`: zwijany (natywny `<details>`) panel „Jak podłączyć agenta” pod kartą zaproszenia na ekranie oczekującej partii. Teksty przez propsy, kopiowanie robi strona. Stories i strona MDX w `docs/product/agent-connect-card.*`. Luka: brak ogólnego komponentu „rozwijany panel” (wpis w „Czego brakuje”).
+
+## Lista wyboru i klienty agenta (E07-S05)
+
+Nowy komponent `src/game/select.tsx` (Lista wyboru): natywny `<select>` w Polu formularza, stylowany tokenami jak Pole tekstowe, opcje i etykieta przez propsy; stories i MDX w `docs/components/`. `AgentConnectCard` ma listę klientów (Claude Code, Codex, Gemini CLI, Copilot CLI, Copilot VS Code, Cursor); API: `command` → `snippet`, `copied: "snippet"`, `onCopySnippet`, nowe propsy `clientLabel`, `clients`, `client`, `onClientChange`. Narzędzie `no-ligatures` w `game-tokens.css` (dwa myślniki `--` nie łączą się w jeden), blok z poleceniem łamie się `break-words`, a słowa zaczynające się od `-` są w `whitespace-nowrap`. Specyfikacja: `.ai/specs/implemented/2026-11-01-agent-connect-clients.md`.
