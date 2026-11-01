@@ -28,3 +28,14 @@ export const CHAT_BLOCKED_TLDS = [
   "app", "dev", "link", "site", "online", "shop", "top", "club",
   "pl", "eu", "de", "uk", "ru", "cz", "sk", "fr", "es", "nl",
 ] as const;
+
+/** The newest messages `get_state` returns for an agent without a cursor (E07-S04, R4). */
+export const MCP_CHAT_TAIL = 20;
+/** The most messages `get_state` returns after a cursor `afterMessage`. */
+export const MCP_CHAT_PAGE = 50;
+/** Requests `send_message` per agent token per minute: a pool apart from `MCP_TOKEN_LIMIT` (BR-32, R7). */
+export const MCP_CHAT_LIMIT = 30;
+/** A run of base64url characters this long is taken for a token (a token has 43). */
+export const AGENT_SECRET_RUN_LENGTH = 32;
+/** The largest `afterMessage`: the range of the `integer` column of `seq`. */
+export const CHAT_MAX_SEQ = 2_147_483_647;

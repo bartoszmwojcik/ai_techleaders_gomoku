@@ -1,4 +1,4 @@
-import { ConflictError, GoneError, NotFoundError, TooManyRequestsError, ValidationError } from "@gomoku/core";
+import { ConflictError, ForbiddenError, GoneError, NotFoundError, TooManyRequestsError, ValidationError } from "@gomoku/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { INTERNAL_MESSAGE, INVALID_TOKEN_MESSAGE, toolErrorOf, toolFailure, toolSuccess } from "./mcp-errors";
@@ -92,8 +92,40 @@ describe("toolErrorOf", () => {
 
   it("does not take another AppError for a tool error", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    expect(toolErrorOf(new ValidationError("Inne")).structuredContent).toMatchObject({
+    expect(toolErrorOf(new ForbiddenError("Inne")).structuredContent).toMatchObject({
       error: { code: "INTERNAL" },
+    });
+  });
+});
+
+describe("toolErrorOf for the chat", () => {
+  it.each(["CHAT_DISABLED", "CHAT_UNAVAILABLE", "CHAT_FULL"])("maps %s, not retryable", (code) => {
+    expect(toolErrorOf(new ConflictError("Czat", { code })).structuredContent).toEqual({
+      error: { code, message: "Czat", retryable: false },
+    });
+  });
+
+  it("maps the validation of a text to INVALID_INPUT with its reason and no echo of the text", () => {
+    const error = new ValidationError("Wiadomość jest za długa.", {
+      fieldErrors: { text: ["Wiadomość jest za długa."] },
+      data: { reason: "too_long" },
+    });
+    const result = toolErrorOf(error);
+    expect(result.structuredContent).toEqual({
+      error: { code: "INVALID_INPUT", message: "Wiadomość jest za długa.", retryable: false, reason: "too_long" },
+    });
+  });
+
+  it("maps a validation without a reason to INVALID_INPUT without one", () => {
+    expect(toolErrorOf(new ValidationError("Zły")).structuredContent).toEqual({
+      error: { code: "INVALID_INPUT", message: "Zły", retryable: false },
+    });
+  });
+
+  it("gives RATE_LIMITED the exact wait of the chat, not whole seconds", () => {
+    const error = new TooManyRequestsError("Poczekaj", { retryAfterSeconds: 2, data: { retryAfterMs: 1234 } });
+    expect(toolErrorOf(error).structuredContent).toEqual({
+      error: { code: "RATE_LIMITED", message: "Poczekaj", retryable: true, retryAfterMs: 1234 },
     });
   });
 });

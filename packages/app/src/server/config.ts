@@ -6,6 +6,7 @@ import {
   type ChatLimits,
   AGENT_LOOKUP_GLOBAL_LIMIT,
   AGENT_LOOKUP_LIMIT,
+  MCP_CHAT_LIMIT,
   MCP_JOIN_LIMIT,
   MCP_REQUEST_LIMIT,
   MCP_TOKEN_LIMIT,
@@ -30,6 +31,8 @@ export type McpLimits = {
   lookupGlobalLimit: number;
   /** Requests per agent token per minute (E06-S02). */
   tokenLimit: number;
+  /** `send_message` requests per agent token per minute: a pool apart from `tokenLimit` (E07-S04). */
+  chatLimit: number;
 };
 
 /** Limits of the game chat (E07-S01): one set for people, one for agents, the same initial values (R5). */
@@ -266,6 +269,7 @@ export function readServerConfig(
         AGENT_LOOKUP_GLOBAL_LIMIT,
       ),
       tokenLimit: parsePositiveLimit("MCP_TOKEN_LIMIT", env.MCP_TOKEN_LIMIT, MCP_TOKEN_LIMIT),
+      chatLimit: parsePositiveLimit("MCP_CHAT_LIMIT", env.MCP_CHAT_LIMIT, MCP_CHAT_LIMIT),
     },
     chat: readChatConfig(env),
   };

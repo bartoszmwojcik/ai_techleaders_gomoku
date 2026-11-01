@@ -104,10 +104,20 @@ const stateOf = async (gameId: string, cookie: string) => {
 };
 
 describe("tools/list", () => {
-  it("offers only join: nothing that creates invitations, enters the lobby or picks from it (BR-30)", async () => {
+  it("offers join, get_state, play_move and send_message: nothing that creates invitations, enters the lobby or picks from it (BR-30)", async () => {
     const { tools } = await result(await mcp("tools/list"));
 
-    expect((tools as unknown as { name: string }[]).map((tool) => tool.name)).toEqual(["join", "get_state", "play_move"]);
+    expect((tools as unknown as { name: string }[]).map((tool) => tool.name)).toEqual([
+      "join",
+      "get_state",
+      "play_move",
+      "send_message",
+    ]);
+    // The guard of E07-S04 (D-31, R14): `send_message` is the only tool of the chat, on purpose; nothing
+    // changes its setting, reads it apart from `get_state`, or reaches invitations, the lobby, the history, the account or a rematch.
+    expect((tools as unknown as { name: string }[]).filter((tool) => /chat|setting|message/i.test(tool.name))).toEqual([
+      { name: "send_message", ...(tools as unknown as { name: string }[]).find((tool) => tool.name === "send_message") },
+    ]);
     const [tool] = tools as unknown as { description: string; inputSchema: Json }[];
     expect(tool!.inputSchema.properties).toMatchObject({ code: { type: "string" }, agentName: { type: "string" } });
     expect(tool!.inputSchema.required).toEqual(["code"]);

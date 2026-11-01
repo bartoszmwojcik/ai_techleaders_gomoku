@@ -159,6 +159,11 @@ describe("GameRoom, waiting (p03)", () => {
     expect(screen.getByText(/Dołącz do partii gomoku narzędziem join z kodem ABCD-EFGH/)).toBeTruthy();
   });
 
+  it("tells the human that the agent reads and writes the chat and that the text goes to the model", () => {
+    room(waiting());
+    expect(screen.getByText(/Agent może czytać czat partii i na nim pisać; wiadomości, które wpiszesz, trafią do modelu jako tekst\. Nie wpisuj tajnych danych\. Czat możesz wyłączyć w partii\./)).toBeTruthy();
+  });
+
   it("shows no agent panel when the view has no MCP address", () => {
     const game = waiting();
     room({ ...game, invitation: { ...game.invitation!, mcpUrl: undefined as never } });

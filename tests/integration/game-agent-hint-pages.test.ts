@@ -91,6 +91,8 @@ describe("the agent hint on the waiting screen", () => {
       expect(text).toContain(`${origin}/api/mcp`);
       expect(text).toContain(`claude mcp add --transport http gomoku ${origin}/api/mcp`);
       expect(text).toContain(code);
+      expect(text).toContain("Agent może czytać czat partii i na nim pisać");
+      expect(text).toContain("Nie wpisuj tajnych danych. Czat możesz wyłączyć w partii.");
 
       await creator.evaluate("document.querySelector('[data-copy=code]').nextElementSibling.querySelector('button').click()");
       await bodyHas(creator, "Skopiowano");
