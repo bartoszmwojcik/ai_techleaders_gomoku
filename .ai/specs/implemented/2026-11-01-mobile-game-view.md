@@ -1,6 +1,6 @@
 # Widok partii na telefonie: „Postaw kamień” od razu widoczny, przełącznik motywu jako ikona (#181)
 
-> Status: **szkic autonomiczny** (`om-auto-write-spec`); właściciel zatwierdza specyfikacje z góry (zlecenie 2026-11-01), więc po zielonym CI można scalić i implementować. Źródło wymagań: zgłoszenie #181 (decyzja właściciela 2026-11-01) oraz `packages/ui/docs/design-system.md`. Powiązane (wdrożone): `implemented/2026-10-28-theme-switcher.md` (przełącznik motywu), specyfikacje ekranu partii z E02 (#22, dwukrokowe stawianie na dotyku, Q7).
+> Status: **wdrożona** (#181, PR `fix/issue-181-mobile-game-view`; kroki 1–7 wykonane, kryteria #181 spełnione). Odstępstwa: `Shell` dostał prop `compact` (zagęszczone marginesy tylko na ekranie planszy, nie na ekranach czekania, bo ich nagłówki nie mają rezerwy pod przełącznik); ostrzeżenie `Alert` o odmowie i błędzie wysyłki (`refusal`, `failed`) leży tuż pod blokiem akcji, przed banerem „Wylosowano” i własnym zegarem (żeby „Spróbuj ponownie” nie lądowało pod linią zgięcia); stałe ostrzeżenie dla gościa przeniesione pod blok akcji (nad planszą wypychało przycisk poza pierwszy ekran; poprawka z przeglądu, test integracyjny gościa 320×568). Wcześniejszy status: szkic autonomiczny (`om-auto-write-spec`); właściciel zatwierdził specyfikację z góry (zlecenie 2026-11-01). Źródło wymagań: zgłoszenie #181 (decyzja właściciela 2026-11-01) oraz `packages/ui/docs/design-system.md`. Powiązane (wdrożone): `implemented/2026-10-28-theme-switcher.md` (przełącznik motywu), specyfikacje ekranu partii z E02 (#22, dwukrokowe stawianie na dotyku, Q7).
 
 ## TLDR
 
@@ -13,11 +13,11 @@ Na telefonie (`pointer: coarse`) ekran partii wymaga dziś przewijania, żeby do
 | R1 | Gdzie przycisk względem planszy? | **Bezpośrednio pod planszą**, przed własnym zegarem i linią „Grasz czarnymi”. Kolejność w DOM = kolejność wizualna (bez CSS `order`). | Przycisk jest głównym działaniem tury; przy 320×568 jedyny sposób na pierwszy ekran bez ukrywania zegarów. Czytnik ekranu i Tab dostają ten sam porządek co wzrok. | odwracalne |
 | R2 | Przełącznik motywu na desktopie | Też sama ikona (jedna wersja komponentu), ale **w dotychczasowym wierszu** nad treścią od `sm` w górę. Układ desktopu poza tym bez zmian. | Zgłoszenie dopuszcza „bez zmian na komputerze”; dwa warianty komponentu to dwa razy więcej do utrzymania. | odwracalne |
 | R3 | Nazwa dostępna przełącznika | `aria-label` = dotychczasowe etykiety („Jasny motyw” / „Ciemny motyw”, nazywają motyw włączony teraz), `title` bez zmian (brak). Ikona nadal pokazuje motyw włączony (Słońce/Księżyc). Cel dotyku 44×44 (`min-h-target min-w-target`). | WCAG 4.1.2/1.4.1: nazwa przez tekst dostępny, znaczenie nie samym kolorem. Etykieta nie jest wbudowana w komponent: dalej przez propsy. | odwracalne |
-| R4 | Jak zrobić „jeden wiersz z nagłówkiem” | Poniżej `sm` przełącznik w layoutcie jest `absolute` (`top-group right-group`, `z-10`), a nagłówek `h1` ekranu aktywnej partii dostaje rezerwę po prawej (`pr-12`) i `min-h-target`, więc wiersz nagłówka ma 44 px i przełącznik go nie zakrywa. Od `sm` przełącznik wraca do wiersza w przepływie jak dziś. Na pozostałych stronach graczy przełącznik zajmuje dotychczasowe 8 px marginesu i 4 px nad treścią (padding `py-section` = 48 px), a nagłówki stron są sprawdzane zrzutami 320 px (krok 6). | Inaczej wiersz przełącznika pozostaje osobnym rzędem (52 px) na każdej stronie. Wzorzec „ukrywaj/pozycjonuj wymiarami, nie `display: none`” z lekcji o układzie DS zachowany. | odwracalne |
+| R4 | Jak zrobić „jeden wiersz z nagłówkiem” | Wiersz przełącznika w layoutcie zostaje w przepływie (jak dziś). Strona, która oznaczy swój `main` atrybutem `data-theme-overlay` (tylko ekran planszy), sprawia, że poniżej `sm` wiersz jest `absolute` w rogu (`group-has-[[data-theme-overlay]]/body:max-sm:*`), a `h1` tego ekranu ma rezerwę po prawej (`pr-12`) i `min-h-target`, więc wiersz nagłówka ma 44 px i przełącznik go nie zakrywa. **Odstępstwo od pierwszego szkicu** (przełącznik `absolute` na wszystkich stronach): zrzut/test pokazał, że nakłada się na przyciski prawego górnego rogu `PageHeader` (konto/logowanie), więc pływa tylko tam, gdzie nagłówek ekranu ma na to miejsce. | Inaczej wiersz przełącznika pozostaje osobnym rzędem (52 px). | odwracalne |
 | R5 | Stuknięcie w już zaznaczone pole | **Nic nie zmienia** (zaznaczenie zostaje; bez odznaczania i bez wysyłki). Stuknięcie w inne pole przenosi zaznaczenie. Brak skrótów (podwójne stuknięcie, długie przytrzymanie). | Zgłoszenie: „niczego nie stawia ani nie odznacza w sposób groźny”. Odznaczanie drugim stuknięciem to znów ukryty tryb. | odwracalne |
 | R6 | Zegary | `PlayerClock` w DS dostaje zagęszczony układ poniżej `sm` (`px-3 py-2`, czas `text-subsection` zamiast `text-section`), od `sm` bez zmian. Zmiana natywna komponentu (nie osobny wariant): jedyne użycie to ekran partii. | Dwa zegary po ~98 px to największy pojedynczy koszt wysokości przy 320 px (zmierzone). Zgoda właściciela na zmianę jednego komponentu DS jest zawarta w zatwierdzeniu specyfikacji. | odwracalne |
 | R7 | Baner „Wylosowano: Ty grasz czarnymi” na początku partii | Baner przenosi się **pod planszę** (za blok akcji) na wszystkich szerokościach: jedno miejsce w DOM, bez wariantów `hidden`. Treść i `role="status"` bez zmian. | Baner (≈82 px) dotyczy tylko ruchu 0, ale kryterium „moja tura, nic nie zaznaczone” obejmuje właśnie ruch 0. | odwracalne |
-| R8 | Marginesy | Ekrany `GameRoom` (`Shell`): `px-stack py-group` poniżej `sm` (16 / 8 px), `px-panel py-section` od `sm` (jak dziś). Plansza (`--layout-width-board`) rośnie do 288 px przy 320 px. | Marginesy 24 px po bokach i 48 px u góry to ≈ 100 px niepotrzebnej wysokości/szerokości na telefonie. Wartości z tokenów skali (8/16). | odwracalne |
+| R8 | Marginesy | Ekran planszy (`Shell compact`): `px-stack py-group` poniżej `sm` (16 / 8 px), `px-panel py-section` od `sm` (jak dziś). Plansza (`--layout-width-board`) rośnie do 288 px przy 320 px. | Marginesy 24 px po bokach i 48 px u góry to ≈ 100 px niepotrzebnej wysokości/szerokości na telefonie. Wartości z tokenów skali (8/16). | odwracalne |
 | R9 | Wykrywanie dotyku | Bez zmian: `matchMedia("(pointer: coarse)")` (hybrydy z myszą jako głównym wskaźnikiem dalej stawiają jednym kliknięciem). | Poza zakresem zgłoszenia; zmiana wykrywania to osobna decyzja. | odwracalne |
 
 ## Problem Statement
@@ -40,9 +40,9 @@ Na telefonie (`pointer: coarse`) ekran partii wymaga dziś przewijania, żeby do
 1. **`onCellSelect`** (`play-field.tsx`): `if (!touch) submit(...) else { setRefusal(null); setFailed(null); setPick({ cell, moveCount }) }`. Przycisk „Postaw kamień” jest jedynym źródłem ruchu na dotyku (R5). Stuknięcie w zaznaczone pole ustawia to samo zaznaczenie (idempotentne).
 2. **Kolejność w `PlayField`:** blok dotykowy (przycisk + `data-testid="selection"` ze statusem) przenosi się tuż za `Board` (i `sr-only` „Przeciwnik: …”), przed własny zegar (R1). Komunikaty tekstowe bez zmian. Baner „Wylosowano/Rewanż” renderowany za blokiem akcji (R7), w jednym miejscu DOM.
 3. **`ThemeSwitch`** (`@gomoku/ui/game/theme-switch`): bez widocznego tekstu, `aria-label` z propsów (`lightLabel`/`darkLabel` wybierane według motywu), kształt `min-h-target min-w-target` bez `px-3`. Stories i MDX (`packages/ui/docs/components/theme-switch.*`) i wiersz „Przełącznik motywu” w `design-system.md` zaktualizowane („sama ikona, w rogu layoutu”).
-4. **Layout frontendu** (`(frontend)/layout.tsx`): kontener przełącznika `absolute right-group top-group z-10 sm:static sm:flex sm:justify-end sm:px-group sm:pt-group` (R4).
+4. **Layout frontendu** (`(frontend)/layout.tsx`): `body` jest `group/body`, kontener przełącznika dostaje `group-has-[[data-theme-overlay]]/body:max-sm:absolute top-0 right-0 z-10` (R4); `Shell compact` ustawia `data-theme-overlay`.
 5. **`PlayerClock`** zagęszczony poniżej `sm` (R6); stories zaktualizowane.
-6. **`GameRoom`/`Shell`** marginesy (R8); `h1` aktywnej i zakończonej partii `min-h-target pr-12 sm:pr-0 flex items-center`.
+6. **`GameRoom`/`Shell compact`** marginesy (R8); `h1` aktywnej i zakończonej partii `min-h-target pr-12 sm:pr-0 flex items-center`.
 
 **Odrzucone alternatywy:** pływający (sticky) przycisk u dołu ekranu (zasłania planszę, konflikt z klawiaturą ekranową i paskiem przeglądarki, osobny wzorzec DS bez zgody); przełącznik w stopce/menu (utrata odkrywalności); potwierdzenie „Postawić kamień?” po drugim stuknięciu (ukryty tryb, dokładnie to, co zgłoszenie usuwa); zmniejszenie planszy poniżej 288 px (cele dotyku pól < 19 px, regres dla palców).
 
@@ -109,15 +109,15 @@ Dostępność: nazwa przycisku motywu przez `aria-label`; fokus w kolejności: p
 
 | Ryzyko | Skutek | Mitygacja |
 |---|---|---|
-| Przełącznik `absolute` zasłania treść innych stron na < `sm` | utrata kliknięcia/linku w prawym górnym rogu | zrzuty 320 px wszystkich stron graczy (krok 6); w razie kolizji rezerwa `pr-12` na ich `h1`, nie zmiana przełącznika |
+| Przełącznik `absolute` zasłania treść strony na < `sm` | utrata kliknięcia/linku w prawym górnym rogu | pływa tylko na ekranie planszy (`data-theme-overlay`); test integracyjny geometrii sprawdza brak nakładania się z `h1` i planszą; pozostałe strony bez zmian |
 | Zagęszczony zegar gorszy kontrast/czytelność | regres a11y | `text-subsection` (20 px) to nadal rola typograficzna DS; `test:stories` z kontrolą dostępności w obu motywach |
 | Baner „Wylosowano” czytany po akcji | czytnik ekranu ogłasza go później | `role="status"`, treść nie jest niezbędna do ruchu; kolejność DOM = wizualna |
 | Test integracyjny dotyku zależny od flagi Chrome | niestabilność CI | flaga `--blink-settings=primaryPointerType=2` sprawdzona na Chrome 156 użytym przez `agent-browser`; test zaczyna od asercji `matchMedia('(pointer: coarse)')` |
 
 ## Acceptance criteria (z #181)
 
-- [ ] 320×568, 360×640, 390×844, oba motywy: przycisk „Postaw kamień” widoczny bez przewijania („zaznaczone” i „nic nie zaznaczone”); zrzuty w PR.
-- [ ] Przełącznik motywu: sama ikona, `aria-label`, cel ≥ 44 px, bez osobnego wiersza (< `sm`).
-- [ ] Testy jednostkowy i integracyjny: dwa stuknięcia nie wysyłają ruchu, przycisk wysyła, mysz stawia klikiem.
-- [ ] Komunikat „Zaznaczono: … Naciśnij „Postaw kamień”.” bez zmian; fokus i klawiatura bez regresji.
-- [ ] 100% pokrycia, `check:tokens`, stories/MDX zaktualizowane.
+- [x] 320×568, 360×640, 390×844, oba motywy: przycisk „Postaw kamień” widoczny bez przewijania („zaznaczone” i „nic nie zaznaczone”); zrzuty w PR.
+- [x] Przełącznik motywu: sama ikona, `aria-label`, cel ≥ 44 px, bez osobnego wiersza (< `sm`).
+- [x] Testy jednostkowy i integracyjny: dwa stuknięcia nie wysyłają ruchu, przycisk wysyła, mysz stawia klikiem.
+- [x] Komunikat „Zaznaczono: … Naciśnij „Postaw kamień”.” bez zmian; fokus i klawiatura bez regresji.
+- [x] 100% pokrycia, `check:tokens`, stories/MDX zaktualizowane.

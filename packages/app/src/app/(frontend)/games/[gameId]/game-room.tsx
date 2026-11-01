@@ -88,9 +88,15 @@ function pastGuestWindow(game: GameView): boolean {
   return serverNowMs(game.clock) >= Date.parse(game.finishedAt) + GUEST_RESULT_WINDOW_MS;
 }
 
-function Shell({ children }: { children: ReactNode }) {
+/** `compact`: the board screen on a phone has tighter margins, so the board and its button fit the first screen (issue 181). */
+function Shell({ children, compact = false }: { children: ReactNode; compact?: boolean }) {
   return (
-    <main className="mx-auto flex w-full flex-1 max-w-(--layout-width-dialog) flex-col gap-stack px-panel py-section">
+    <main
+      data-theme-overlay={compact ? "" : undefined}
+      className={`mx-auto flex w-full flex-1 max-w-(--layout-width-dialog) flex-col gap-stack ${
+        compact ? "px-stack py-group sm:px-panel sm:py-section" : "px-panel py-section"
+      }`}
+    >
       {children}
     </main>
   );
@@ -557,7 +563,7 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
 
   if (playing || game.status === "finished") {
     return (
-      <Shell>
+      <Shell compact>
         <PlayField
           gameId={gameId}
           game={game}

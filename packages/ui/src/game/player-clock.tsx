@@ -37,7 +37,7 @@ function PlayerClock({
     <div
       aria-current={active ? "true" : undefined}
       className={cn(
-        "flex flex-wrap items-center justify-between gap-group rounded-base border bg-surface-raised p-4 wrap-anywhere",
+        "flex flex-wrap items-center justify-between gap-group rounded-base border bg-surface-raised px-3 py-2 wrap-anywhere sm:p-4",
         active ? "border-text-primary" : "border-border-default",
         className,
       )}
@@ -51,7 +51,7 @@ function PlayerClock({
         <time
           role="timer"
           dateTime={clockDuration(remainingMs)}
-          className="text-section font-strong text-text-primary tabular-nums"
+          className="text-subsection font-strong text-text-primary tabular-nums sm:text-section"
         >
           {formatClock(remainingMs)}
         </time>

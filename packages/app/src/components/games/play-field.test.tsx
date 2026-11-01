@@ -208,7 +208,7 @@ describe("PlayField, the opponent's turn (p05.2)", () => {
 describe("PlayField, a touch screen (p05.4)", () => {
   beforeEach(() => stubPointer(true));
 
-  it("needs a second step: select the intersection, then 'Postaw kamień' or touch it again", async () => {
+  it("needs a second step: select the intersection, then 'Postaw kamień'", async () => {
     field();
     const send = byText("Postaw kamień");
     expect(send.hasAttribute("disabled")).toBe(true);
@@ -222,11 +222,31 @@ describe("PlayField, a touch screen (p05.4)", () => {
     expect(apiCall).toHaveBeenCalledWith("/api/games/g1/moves", { body: { x: 0, y: 0, moveNumber: 1 } });
   });
 
-  it("sends on the second touch of the same intersection", async () => {
+  it("sends nothing on the second touch of the same intersection and keeps it selected (issue 181)", async () => {
     field();
     await press(cell(CENTER));
     await press(cell(CENTER));
+    await press(cell(CENTER));
+    expect(apiCall).not.toHaveBeenCalled();
+    expect(screen.getByTestId("selection").textContent).toBe("Zaznaczono: Kolumna H, rząd 8. Naciśnij „Postaw kamień”.");
+    expect(byText("Postaw kamień").hasAttribute("disabled")).toBe(false);
+  });
+
+  it("sends the move once, only from the button, after any number of touches", async () => {
+    field();
+    await press(cell(CENTER));
+    await press(cell(CENTER));
+    await press(byText("Postaw kamień"));
     expect(apiCall).toHaveBeenCalledTimes(1);
+    expect(apiCall).toHaveBeenCalledWith("/api/games/g1/moves", { body: { x: 7, y: 7, moveNumber: 1 } });
+  });
+
+  it("puts the button right under the board, before the player's own clock (issue 181)", () => {
+    field();
+    const order = [grid(), byText("Postaw kamień"), screen.getByTestId("my-color")];
+    expect(order[0]!.compareDocumentPosition(order[1]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(order[1]!.compareDocumentPosition(order[2]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText("Wylosowano: Ty grasz czarnymi.").compareDocumentPosition(byText("Postaw kamień")) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
   });
 
   it("drops the selection when the move changes under it", async () => {

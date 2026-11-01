@@ -14,13 +14,29 @@ export const DEFAULT_SYSTEM_SCHEME = "light" as const;
 
 type CliResult<T> = { success: boolean; data: T; error: string | null };
 
+/**
+ * Chrome flag that makes the primary pointer coarse (`matchMedia("(pointer: coarse)")` is true): the board then
+ * works as on a phone (select, then "Postaw kamień"). Checked on the Chrome that `agent-browser` installs.
+ */
+export const COARSE_POINTER_ARG = "--blink-settings=primaryPointerType=2";
+
 export class Browser {
-  constructor(readonly session: string) {}
+  /** `touch`: the session launches with a coarse pointer; the flag applies when its browser starts (first command). */
+  constructor(
+    readonly session: string,
+    readonly options: { touch?: boolean } = {},
+  ) {}
 
   async run<T = Record<string, unknown>>(...args: string[]): Promise<T> {
     let stdout: string;
     try {
-      ({ stdout } = await execFileAsync(AGENT_BROWSER_BIN, ["--session", this.session, "--json", ...args]));
+      ({ stdout } = await execFileAsync(AGENT_BROWSER_BIN, [
+          "--session",
+          this.session,
+          ...(this.options.touch ? ["--args", COARSE_POINTER_ARG] : []),
+          "--json",
+          ...args,
+        ]));
     } catch (error) {
       // Non-zero exit: the JSON error is still printed on stdout.
       stdout = (error as { stdout?: string }).stdout ?? "";
