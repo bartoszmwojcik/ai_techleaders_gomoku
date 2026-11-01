@@ -26,14 +26,18 @@ const MARK = /^\p{M}$/u;
 const VARIATION_SELECTOR = /^[︀-︎\u{E0100}-\u{E01EF}]$/u;
 
 const SCHEME = /[a-z][a-z0-9+.-]*:\/\//i;
-const DANGEROUS_SCHEME = /(?:^|[^\p{L}\p{N}])(?:mailto|javascript|data|file|vbscript):/iu;
+// A scheme is followed straight away by its payload: "Jaka data: dziś" is a sentence, "data:text/html" is not.
+const DANGEROUS_SCHEME = /(?:^|[^\p{L}\p{N}])(?:mailto|javascript|data|file|vbscript):(?=\S)/iu;
 const WWW = /(?:^|[^\p{L}\p{N}])www\./iu;
+const TRIM = /^ +| +$/g;
 const IPV4 = /(?:^|[^\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d])/;
-const DOMAIN = new RegExp(`[\\p{L}\\p{N}][\\p{L}\\p{N}-]*\\.(?:${CHAT_BLOCKED_TLDS.join("|")})(?![\\p{L}\\p{N}])`, "iu");
+// The ending is all lower or all upper case: "Cześć.Co tam" is a sentence, "example.com" and "EXAMPLE.COM" are not.
+const TLD_ALTERNATION = [...CHAT_BLOCKED_TLDS, ...CHAT_BLOCKED_TLDS.map((tld) => tld.toUpperCase())].join("|");
+const DOMAIN = new RegExp(`[\\p{L}\\p{N}][\\p{L}\\p{N}-]*\\.(?:${TLD_ALTERNATION})(?![\\p{L}\\p{N}])`, "u");
 
-/** A message length in code points after NFKC: what the limit and the counter in the form count. */
+/** A message length in code points after NFKC and trimming ASCII spaces: what the limit and the counter count. */
 export function chatMessageLength(text: string): number {
-  return Array.from(text.normalize("NFKC")).length;
+  return Array.from(text.normalize("NFKC").replace(TRIM, "")).length;
 }
 
 function invisibleOrControl(codePoints: string[]): ChatRejection | null {
@@ -82,7 +86,7 @@ export function normalizeChatMessage(raw: unknown, limits: { maxLength: number }
   const codePoints = Array.from(raw.normalize("NFKC"));
   const refused = invisibleOrControl(codePoints);
   if (refused) return { ok: false, reason: refused };
-  const text = codePoints.join("").replace(/^ +| +$/g, "");
+  const text = codePoints.join("").replace(TRIM, "");
   if (text === "") return { ok: false, reason: "empty" };
   if (Array.from(text).length > limits.maxLength) return { ok: false, reason: "too_long" };
   if (containsUrl(text)) return { ok: false, reason: "url" };
