@@ -25,7 +25,7 @@ Pozwala graczowi przełączyć stronę między motywem ciemnym a jasnym. Kompone
 ## 4. Anatomia
 
 1. **Ikona** (słońce w motywie jasnym, księżyc w ciemnym), dekoracyjna.
-2. **Tekst** (wymagany): nazwa motywu, który jest włączony teraz („Jasny motyw” albo „Ciemny motyw”), tak jak ikona.
+2. **Nazwa dostępna** (`aria-label`, wymagana przez propsy `lightLabel` i `darkLabel`): nazwa motywu, który jest włączony teraz („Jasny motyw” albo „Ciemny motyw”), tak jak ikona. Przełącznik nie ma widocznego tekstu (#181).
 
 ## 5. Warianty
 
@@ -36,25 +36,25 @@ Brak wariantów wizualnych. Prop `theme` (`dark` lub `light`) opisuje motyw, kt�
 
 ## 6. Stany
 
-Motyw ciemny (księżyc i „Ciemny motyw”), motyw jasny (słońce i „Jasny motyw”), najechanie i fokus. Zablokowanego, ładowania i błędu przełącznik nie ma.
+Motyw ciemny (księżyc, nazwa „Ciemny motyw”), motyw jasny (słońce, nazwa „Jasny motyw”), najechanie i fokus. Zablokowanego, ładowania i błędu przełącznik nie ma.
 
 <Canvas of={Stories.Stany} />
 
 ## 7. Zachowanie i dostępność
 
 - **Klawiatura:** `Tab` ustawia fokus, `Enter` i `Spacja` przełączają. Fokus zostaje na przycisku.
-- **Rola i nazwa:** natywny `<button>`; jego nazwa (widoczny tekst) mówi, który motyw jest włączony. Przycisk nie ma `aria-pressed`, bo stan niesie sama nazwa (zmienna nazwa razem z `aria-pressed` czytnik odczytałby podwójnie).
+- **Rola i nazwa:** natywny `<button>`; jego nazwa (`aria-label`) mówi, który motyw jest włączony. Przycisk nie ma `aria-pressed`, bo stan niesie sama nazwa (zmienna nazwa razem z `aria-pressed` czytnik odczytałby podwójnie).
 - **Kolor nie jest jedynym nośnikiem:** stan pokazuje ikona.
 - **Cel kliknięcia:** co najmniej 44 na 44 px. Fokus: obrys 2 px `focus-ring`.
 
 ## 8. Treść
 
-- Tekst nazywa motyw, który jest włączony: „Jasny motyw” przy motywie jasnym, „Ciemny motyw” przy ciemnym (zgodnie z prototypem „Motyw: ciemny” / „Motyw: jasny”). Nie opisuje akcji.
+- Nazwa dostępna nazywa motyw, który jest włączony: „Jasny motyw” przy motywie jasnym, „Ciemny motyw” przy ciemnym . Nie opisuje akcji.
 - Komponent nie ma wbudowanych tekstów; `label` przychodzi z propsów.
 
 ## 9. Responsywność
 
-Przycisk ma stałą szerokość wynikającą z tekstu i ikony; mieści się w 320 px.
+Przycisk jest kwadratem 44 na 44 px (sama ikona); mieści się w 320 px. W layoutcie strony gracza poniżej `sm` leży w rogu, w jednym wierszu z nagłówkiem; od `sm` we własnym wierszu nad treścią.
 
 <Canvas of={Stories.NaWaskimEkranie} />
 

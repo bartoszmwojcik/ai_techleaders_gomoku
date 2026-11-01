@@ -62,6 +62,13 @@ describe("FrontendLayout", () => {
     expect(unset).toMatch(/<div class="flex justify-end[^"]*"><button[^>]*><svg[^>]*lucide-moon/);
   });
 
+  it("lets the switch float over the corner below sm only for a page that marks its main (#181)", async () => {
+    const html = await render("dark");
+
+    expect(html).toMatch(/<body class="group\/body /);
+    expect(html).toContain("group-has-[[data-theme-overlay]]/body:max-sm:absolute");
+  });
+
   it("describes the game for search engines", () => {
     expect(metadata).toEqual({
       title: "Gomoku",

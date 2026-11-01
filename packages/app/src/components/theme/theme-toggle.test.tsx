@@ -21,9 +21,9 @@ afterEach(() => {
 
 describe("ThemeToggle", () => {
   it("renders the server snapshot from the cookie theme", () => {
-    expect(renderToStaticMarkup(<ThemeToggle initialTheme="light" />)).toContain("Jasny motyw");
-    expect(renderToStaticMarkup(<ThemeToggle initialTheme="dark" />)).toContain("Ciemny motyw");
-    expect(renderToStaticMarkup(<ThemeToggle initialTheme={null} />)).toContain("Ciemny motyw");
+    expect(renderToStaticMarkup(<ThemeToggle initialTheme="light" />)).toContain('aria-label="Jasny motyw"');
+    expect(renderToStaticMarkup(<ThemeToggle initialTheme="dark" />)).toContain('aria-label="Ciemny motyw"');
+    expect(renderToStaticMarkup(<ThemeToggle initialTheme={null} />)).toContain('aria-label="Ciemny motyw"');
   });
 
   it("reads the theme set on <html> after hydration", () => {

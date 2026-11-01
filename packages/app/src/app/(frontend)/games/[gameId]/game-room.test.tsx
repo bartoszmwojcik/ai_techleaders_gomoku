@@ -109,6 +109,8 @@ describe("GameRoom, waiting (p03)", () => {
     expect(screen.getAllByText("ABCD-EFGH")[0]).toBeTruthy();
     expect(screen.getByText("Ważne do piątek, 30 października 10:00 CET")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Udostępnij" })).toBeNull();
+    // Only the board screen lets the theme switch float over the corner (#181).
+    expect(document.querySelector("main")!.hasAttribute("data-theme-overlay")).toBe(false);
   });
 
   it("shows a guest creator the same card and a permanent warning under it (p03.11, p03.12)", () => {
@@ -318,6 +320,8 @@ describe("GameRoom, waiting (p03)", () => {
     expect(screen.getByText("Kuba_P dołączył do partii")).toBeTruthy();
     await tick(JOIN_STEP_MS);
     expect(screen.getByRole("heading", { name: "Partia w toku" })).toBeTruthy();
+    expect(document.querySelector("main")!.hasAttribute("data-theme-overlay")).toBe(true);
+    expect(document.querySelector("main")!.className).toContain("px-stack");
   });
 
   it("moves on at once with the button", async () => {

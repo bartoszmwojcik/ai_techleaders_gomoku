@@ -23,7 +23,7 @@ Gra planszowa dla dwóch osób online: ciemna strona, drewniana plansza, jeden p
 |---|---|---|---|
 | Przycisk | `@gomoku/ui/game/button` | wysłanie formularza, „Załóż konto”, „Dołącz do partii”, akcja destrukcyjna (wariant danger) | przejście na inną stronę (Link tekstowy), wybór opcji (Pole wyboru) |
 | Link tekstowy | `@gomoku/ui/game/text-link` | odnośnik w zdaniu, „Nie pamiętasz hasła?”, „Konto” w nagłówku | akcja zmieniająca stan na serwerze (Przycisk) |
-| Przełącznik motywu | `@gomoku/ui/game/theme-switch` | jeden przycisk jasny/ciemny w rogu layoutu strony gracza | wybór spośród wielu opcji, akcja na serwerze (Przycisk) |
+| Przełącznik motywu | `@gomoku/ui/game/theme-switch` | jeden przycisk jasny/ciemny (sama ikona z `aria-label`) w rogu layoutu strony gracza | wybór spośród wielu opcji, akcja na serwerze (Przycisk) |
 | Pole tekstowe | `@gomoku/ui/game/text-input` | zawsze wewnątrz Pola formularza | samodzielnie bez etykiety; długi tekst; wybór z listy (Lista wyboru) |
 | Lista wyboru | `@gomoku/ui/game/select` | wybór jednej opcji z kilku (klient agenta), zawsze wewnątrz Pola formularza | dwie opcje tak/nie (Pole wyboru); wpisywanie tekstu; długa lista z wyszukiwaniem |
 | Pole formularza | `@gomoku/ui/game/field` | każde pole formularza | pole wyboru (ma własną etykietę); błąd całego formularza (Alert) |

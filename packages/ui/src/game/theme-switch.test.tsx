@@ -15,7 +15,7 @@ describe("ThemeSwitch", () => {
     const html = renderToStaticMarkup(<ThemeSwitch theme="dark" onToggle={() => undefined} {...labels} />);
 
     expect(html).toContain("lucide-moon");
-    expect(html).toContain("Ciemny motyw");
+    expect(html).toContain('aria-label="Ciemny motyw"');
     expect(html).toContain('type="button"');
     expect(html).toContain("min-h-target");
     expect(html).toContain("focus-visible:focus-ring");
@@ -25,17 +25,15 @@ describe("ThemeSwitch", () => {
     const html = renderToStaticMarkup(<ThemeSwitch theme="light" onToggle={() => undefined} {...labels} />);
 
     expect(html).toContain("lucide-sun");
-    expect(html).toContain("Jasny motyw");
+    expect(html).toContain('aria-label="Jasny motyw"');
   });
 
-  it("keeps the width of the longer text: both texts are rendered and only the current one is visible", () => {
-    const dark = renderToStaticMarkup(<ThemeSwitch theme="dark" onToggle={() => undefined} {...labels} />);
-    const light = renderToStaticMarkup(<ThemeSwitch theme="light" onToggle={() => undefined} {...labels} />);
+  it("shows no visible text: the icon is the whole content and the name is aria-label", () => {
+    const html = renderToStaticMarkup(<ThemeSwitch theme="dark" onToggle={() => undefined} {...labels} />);
 
-    expect(dark).toMatch(/<span aria-hidden="true" class="[^"]*invisible[^"]*">Jasny motyw<\/span>/);
-    expect(dark).toMatch(/<span class="[^"]*">Ciemny motyw<\/span>/);
-    expect(light).toMatch(/<span aria-hidden="true" class="[^"]*invisible[^"]*">Ciemny motyw<\/span>/);
-    expect(light).toMatch(/<span class="[^"]*">Jasny motyw<\/span>/);
+    expect(html).toContain('aria-label="Ciemny motyw"');
+    expect(html.replace(/<svg[\s\S]*?<\/svg>/, "").replace(/<[^>]+>/g, "")).toBe("");
+    expect(html).toContain("min-w-target");
   });
 
   it("exposes only the current theme as the accessible name", () => {

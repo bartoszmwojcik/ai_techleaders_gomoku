@@ -7,8 +7,8 @@ const browser = new Browser(inject("browserSession"));
 
 const SWITCH = "[data-testid=theme-switch]";
 const theme = () => browser.evaluate<string | null>("document.documentElement.dataset.theme ?? null");
-// The switch names the theme that is on ("Jasny motyw" / "Ciemny motyw"), with the sun or the moon.
-const label = () => browser.evaluate<string | null>(`document.querySelector("${SWITCH}").innerText`);
+// The switch is an icon (the sun or the moon); its accessible name is the theme that is on ("Jasny motyw" / "Ciemny motyw").
+const label = () => browser.evaluate<string | null>(`document.querySelector("${SWITCH}").getAttribute("aria-label")`);
 // Perceived brightness (0..255) of the page background: light themes are bright, dark ones are not.
 const brightness = () =>
   browser.evaluate<number>(

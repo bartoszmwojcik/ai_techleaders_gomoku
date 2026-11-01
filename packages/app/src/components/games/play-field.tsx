@@ -177,7 +177,9 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
   }
 
   function onCellSelect(cell: number) {
-    if (!touch || selected === cell) void submit({ cell, moveNumber: game.moveCount + 1 });
+    // A mouse places the stone at once. On touch only "Postaw kamień" sends a move (#181): a tap selects or moves
+    // the selection, and tapping the selected intersection again changes nothing.
+    if (!touch) void submit({ cell, moveNumber: game.moveCount + 1 });
     else {
       setRefusal(null);
       setFailed(null);
@@ -190,7 +192,7 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
 
   return (
     <>
-      <h1 className="m-0 text-section font-strong">{finished ? "Koniec partii" : "Partia w toku"}</h1>
+      <h1 className="m-0 flex min-h-target items-center pr-12 text-section font-strong sm:pr-0">{finished ? "Koniec partii" : "Partia w toku"}</h1>
       <div className="flex max-w-(--layout-width-board) flex-col gap-stack">
         {guest && !finished && (
           // p05.11: permanent for a guest (BR-22) while the game is played.
@@ -206,18 +208,6 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
               Rozumiem
             </Button>
           </Alert>
-        )}
-        {game.moveCount === 0 && !finished && (
-          // L15: the draw is announced at the start only; the line under the board stays.
-          <Alert
-            status="info"
-            title={
-              game.fromRematch
-                ? `Rewanż: kolory zostały zamienione. Grasz ${COLOR_PLAYS[myColor]}.`
-                : `Wylosowano: Ty grasz ${COLOR_PLAYS[myColor]}.`
-            }
-            role="status"
-          />
         )}
         {returnNotice && !finished && <Alert status="info" title={returnNotice} role="status" />}
         {/* A finished game is read in the background for an offer: its failed reads are quiet (offline, a sleeping laptop). */}
@@ -277,23 +267,6 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
             Przeciwnik: {cellName(lastMove).replace(/^K/, "k")}
           </p>
         )}
-        <GameClock
-          name={<PlayerLabel name={playerNameOf(mine)} you />}
-          remainingMs={clocks.remainingMs[game.you.seat - 1]!}
-          active={myTurn}
-          activeLabel="Twój ruch"
-        />
-        <p className="m-0 text-body text-text-secondary" data-testid="my-color">
-          {finished ? "Grałeś" : "Grasz"} {COLOR_PLAYS[myColor]}.
-        </p>
-        {refusal && <Alert status="warning" title={refusal} role="status" />}
-        {failed && (
-          <Alert status="danger" title={failed.message}>
-            <Button variant="secondary" onClick={() => void submit(failed.attempt)}>
-              Spróbuj ponownie
-            </Button>
-          </Alert>
-        )}
         {touch && !finished && (
           <div className="flex flex-col items-start gap-group">
             {/* LUKA D01: no pattern for "selected intersection + confirm"; the Board's `selected` and a Button stand in. */}
@@ -312,6 +285,35 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
             </p>
           </div>
         )}
+        {refusal && <Alert status="warning" title={refusal} role="status" />}
+        {failed && (
+          <Alert status="danger" title={failed.message}>
+            <Button variant="secondary" onClick={() => void submit(failed.attempt)}>
+              Spróbuj ponownie
+            </Button>
+          </Alert>
+        )}
+        {game.moveCount === 0 && !finished && (
+          // L15: the draw is announced at the start only; the line under the board stays.
+          <Alert
+            status="info"
+            title={
+              game.fromRematch
+                ? `Rewanż: kolory zostały zamienione. Grasz ${COLOR_PLAYS[myColor]}.`
+                : `Wylosowano: Ty grasz ${COLOR_PLAYS[myColor]}.`
+            }
+            role="status"
+          />
+        )}
+        <GameClock
+          name={<PlayerLabel name={playerNameOf(mine)} you />}
+          remainingMs={clocks.remainingMs[game.you.seat - 1]!}
+          active={myTurn}
+          activeLabel="Twój ruch"
+        />
+        <p className="m-0 text-body text-text-secondary" data-testid="my-color">
+          {finished ? "Grałeś" : "Grasz"} {COLOR_PLAYS[myColor]}.
+        </p>
         {!finished && (
           // p05.13, p05.14: any time in a game in progress, also out of turn (resignation Q1).
           <div>

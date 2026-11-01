@@ -30,9 +30,11 @@ export default async function FrontendLayout({
           <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         )}
       </head>
-      <body className="flex min-h-svh flex-col bg-surface-page text-text-primary antialiased">
-        {/* In the flow, above every page: the switch never overlaps content, and the row has a fixed height. */}
-        <div className="flex justify-end px-group pt-group">
+      <body className="group/body flex min-h-svh flex-col bg-surface-page text-text-primary antialiased">
+        {/* In the flow, above every page: the switch never overlaps content, and the row has a fixed height. A page that
+            marks its `main` with `data-theme-overlay` (the board, #181) lets the switch float over the corner below `sm`,
+            so it shares the heading's row instead of owning a row. */}
+        <div className="flex justify-end px-group pt-group group-has-[[data-theme-overlay]]/body:max-sm:absolute group-has-[[data-theme-overlay]]/body:max-sm:top-0 group-has-[[data-theme-overlay]]/body:max-sm:right-0 group-has-[[data-theme-overlay]]/body:max-sm:z-10">
           <ThemeToggle initialTheme={theme} />
         </div>
         {children}
