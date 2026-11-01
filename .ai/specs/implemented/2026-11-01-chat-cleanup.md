@@ -1,6 +1,6 @@
 # Czat znika po grze: kasowanie wiadomości, konto, tokeny, kopie zapasowe (E07-S03, #148)
 
-> Status: **specyfikacja do implementacji** (jeden PR implementacji, `Closes #148`). Właściciel zatwierdził specyfikację z góry; założenia z tabeli „Resolved assumptions” są odwracalne i nie blokują scalenia.
+> Status: **zaimplementowane** (PR implementacji, `Closes #148`; część wdrożeniowa na Mikrusie, patrz „Warunki wdrożenia”, należy do operatora). Właściciel zatwierdził specyfikację z góry; założenia z tabeli „Resolved assumptions” są odwracalne i nie blokują scalenia.
 >
 > Źródło: zgłoszenie #148 (E07-S03), epik #144; `.ai/specs/product-brief.md` na `origin/main`: D-30, BR-34, BR-18, BR-24, BR-17, Q-11, Q-12 (zamknięte: cron zainstalowany 2026-10-31); `.ai/specs/research/decisions/2026-10-31-chat.md`; specyfikacja S01 `2026-10-31-game-chat.md` (sekcja „Kontrakty dla S02, S03, S04”: **ten dokument ją uszczegóławia**, w jednym miejscu zmieniając postać warunku, patrz „Odstępstwa od kontraktu S01”); kod: `packages/db/src/cleanup/{rules,cleanup-expired,run-cleanup}.ts`, `AccountService.delete`, `ChatService` (`CONTEXT_SQL`), README (Sprzątanie, Usunięcie konta, Wdrożenie na mikr.us).
 
@@ -217,4 +217,12 @@ Jeden PR implementacji (`Refs #148` w specyfikacji, `Closes #148` w PR-ze implem
 
 ## 📝 Odstępstwa wdrożenia i dowody
 
-(wypełnić przy implementacji)
+Implementacja zgodna ze specyfikacją; odstępstwa i ustalenia:
+
+1. **Kolejność w `AccountService.delete`:** `DELETE_CHAT_SQL` stoi tuż przed `DELETE_USER_SQL`, czyli **po** zamknięciu ofert rewanżu (a nie między usunięciem partii `waiting` a ofertami). Cały czat idzie po wszystkich blokadach partii, więc kolejność `users → games → zapis` jest zachowana dosłownie.
+2. **Weryfikacja kopii:** `pg_restore -a -t chat_messages` bez `-f -` kończy się błędem („one of -d/--dbname and -f/--file must be specified”), więc README i test używają `pg_restore -a -t chat_messages -f - <plik>`, a kryterium „brak danych” to brak bloku `COPY` (`grep -c '^COPY'` zwraca `0`), nie „brak wierszy poza nagłówkami”. Kontrola pozytywna: zrzut bez flagi ma blok `COPY public.chat_messages` z treścią.
+3. **Test `pg_dump`** uruchamia polecenie z README w kontenerze (`docker exec … sh -c 'pg_dump … > plik'`), z użytkownikiem i bazą kontenera testowego; `global-setup.ts` udostępnia `postgresContainerId`.
+4. **Okno R9 po leniwym rozliczeniu** (krok 4, do sprawdzenia): `TimeoutSettler` zapisuje `finished_at` = **moment wygaśnięcia zegara**, nie chwilę rozliczenia. Partia `active` z kontami, której zegar wygasł np. 30 min temu, po rozliczeniu ma okno czatu otwarte jeszcze ~30 min; gdy zegar wygasł > 1 h temu, czat jest od razu `closed` i (reguła `finished`) kasowany w najbliższym przebiegu. Gracz nigdy nie zobaczy pustego czatu otwartego na godzinę; test integracyjny pilnuje przypadku 30 min.
+5. **`BACKWARD_COMPATIBILITY.md`:** dodatkowy klucz `chatMessages` w linii JSON `db:cleanup` nie jest kontraktem (§7 obejmuje nazwy skryptów i format `db:status`); brak zmian w dokumencie.
+6. **Testy:** jednostkowe (reguła, strażnik `graceMs`, kolejności i budżetu `liczba reguł × 15 s < 1 h`, `AccountService`, `ChatService`), integracyjne `tests/integration/chat-cleanup.test.ts` (progi ±1 s trzech gałęzi, partie z kontem, tokeny, paczki/budżet/równoległość, konto z rollbackiem i `ACTIVE_GAME`, `unavailable` dla pozostającego gracza, R9 vs kasowanie, brak treści w `server.log`, `pg_dump`). Krok ręczny w `npm run dev` pominięty: zachowanie pokrywają testy na PostgreSQL, a `db:cleanup` na bazie deweloperskiej kasuje dane.
+7. Kroki operatora (kopie z flagą, rotacja, kontrola crona) **nie zostały wykonane** (zgodnie ze specyfikacją).

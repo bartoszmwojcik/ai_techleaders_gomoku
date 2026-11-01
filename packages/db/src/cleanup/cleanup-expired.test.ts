@@ -1,8 +1,8 @@
-import { GUEST_TOKEN_GRACE_MS, READY_DEADLINE_MS } from "@gomoku/core";
+import { CHAT_RETENTION_MS, GUEST_TOKEN_GRACE_MS, READY_DEADLINE_MS } from "@gomoku/core";
 import { describe, expect, it, vi } from "vitest";
 
 import { entities } from "../entities";
-import { cleanupExpired } from "./cleanup-expired";
+import { DEFAULT_RULE_TIME_LIMIT_MS, cleanupExpired } from "./cleanup-expired";
 import { CLEANUP_EXEMPT_TABLES, CLEANUP_RULES, LONGEST_RATE_LIMIT_WINDOW_MS, type CleanupRule } from "./rules";
 
 const NOW = new Date();
@@ -29,6 +29,7 @@ describe("cleanupExpired", () => {
       emailVerificationTokens: 0,
       passwordResetTokens: 0,
       lobbySeekers: 0,
+      chatMessages: 0,
       waitingGames: 0,
       cancelledGames: 0,
       guestOnlyActiveGames: 0,
@@ -41,11 +42,12 @@ describe("cleanupExpired", () => {
     });
     const cutoffs = Object.fromEntries(
       execute.mock.calls.map(([sql, params]) => [
-        sql.match(/(?:delete from|update) (\w+)/)?.[1] + (sql.startsWith("update") ? ":clear" : sql.includes("status = 'waiting'") ? ":waiting" : sql.includes("status = 'cancelled'") ? ":cancelled" : sql.includes("status = 'active'") ? ":guestActive" : sql.includes("status = 'finished'") ? ":guestFinished" : ""),
+        sql.match(/(?:delete from|update) (\w+)/)?.[1] + (sql.startsWith("update") ? ":clear" : sql.includes("from chat_messages") ? ":chat" : sql.includes("status = 'waiting'") ? ":waiting" : sql.includes("status = 'cancelled'") ? ":cancelled" : sql.includes("status = 'active'") ? ":guestActive" : sql.includes("status = 'finished'") ? ":guestFinished" : ""),
         (params[0] as Date).getTime(),
       ]),
     );
     expect(cutoffs).toEqual({
+      "chat_messages:chat": NOW.getTime() - HOUR,
       "games:waiting": NOW.getTime() - HOUR,
       "games:cancelled": NOW.getTime() - 25 * HOUR,
       "games:guestActive": NOW.getTime() - HOUR,
@@ -76,7 +78,8 @@ describe("cleanupExpired", () => {
   it("deletes games by their own conditions and only clears the guest token hash", async () => {
     const { em, execute } = fakeEm(() => 0);
     await cleanupExpired({ em, now: NOW });
-    const sqlOf = (text: string) => execute.mock.calls.map(([sql]) => sql).find((sql) => sql.includes(text))!;
+    const sqlOf = (text: string) =>
+      execute.mock.calls.map(([sql]) => sql).find((sql) => !sql.startsWith("delete from chat_messages") && sql.includes(text))!;
     expect(sqlOf("status = 'waiting'")).toMatch(/^delete from games where id in/);
     expect(sqlOf("status = 'waiting'")).toContain("i.expires_at < ?");
     expect(sqlOf("status = 'cancelled'")).toMatch(/^delete from games where id in/);
@@ -90,8 +93,8 @@ describe("cleanupExpired", () => {
     const { em, execute } = fakeEm(() => 0);
     await cleanupExpired({ em, now: NOW });
     const sqls = execute.mock.calls.map(([sql]) => sql);
-    const active = sqls.find((sql) => sql.includes("status = 'active'"))!;
-    const finished = sqls.find((sql) => sql.includes("status = 'finished'"))!;
+    const active = sqls.find((sql) => sql.startsWith("delete from games") && sql.includes("status = 'active'"))!;
+    const finished = sqls.find((sql) => sql.startsWith("delete from games") && sql.includes("status = 'finished'"))!;
     for (const sql of [active, finished]) {
       expect(sql).toMatch(/^delete from games where id in/);
       expect(sql).toContain("p.kind not in ('guest', 'agent')");
@@ -109,6 +112,43 @@ describe("cleanupExpired", () => {
     for (const rule of CLEANUP_RULES.filter((r) => r.key.startsWith("guestOnly"))) {
       expect(rule.graceMs).toBe(GUEST_TOKEN_GRACE_MS);
     }
+  });
+
+  it("deletes chat messages of finished, cancelled and dead games, also those kept as history, with one cutoff per branch", async () => {
+    const { em, execute } = fakeEm(() => 0);
+    await cleanupExpired({ em, now: NOW });
+    const call = execute.mock.calls.find(([sql]) => sql.startsWith("delete from chat_messages"))!;
+    const sql = call[0];
+    expect(sql).toContain("exists (select 1 from games g where g.id = chat_messages.game_id");
+    expect(sql).toContain("g.status = 'finished' and g.finished_at < ?");
+    expect(sql).toContain("g.status = 'cancelled' and g.created_at < ?");
+    expect(sql).toContain("g.status = 'active'");
+    // The clock term is the one of the guest-only rule (no second copy of the formula).
+    const active = CLEANUP_RULES.find((rule) => rule.key === "guestOnlyActiveGames")!.condition;
+    const deadline = active.slice(active.indexOf("coalesce("), active.lastIndexOf(" < ?"));
+    expect(sql).toContain(deadline);
+    expect(sql).not.toContain("game_players");
+    expect(call[1]).toEqual([...Array.from({ length: 3 }, () => new Date(NOW.getTime() - HOUR)), 1000]);
+  });
+
+  it("keeps the chat retention equal to the token window (one hour is one constant)", () => {
+    const graceOf = (key: string) => CLEANUP_RULES.find((rule) => rule.key === key)!.graceMs;
+    expect(graceOf("chatMessages")).toBe(GUEST_TOKEN_GRACE_MS);
+    expect(graceOf("chatMessages")).toBe(CHAT_RETENTION_MS);
+    expect(graceOf("chatMessages")).toBe(graceOf("guestTokens"));
+    expect(graceOf("chatMessages")).toBe(graceOf("agentTokens"));
+  });
+
+  it("registers the chat rule before every rule that deletes games", () => {
+    const chat = CLEANUP_RULES.findIndex((rule) => rule.key === "chatMessages");
+    const games = CLEANUP_RULES.flatMap((rule, index) => (rule.table === "games" ? [index] : []));
+    expect(chat).toBeGreaterThanOrEqual(0);
+    expect(games.length).toBeGreaterThan(0);
+    for (const index of games) expect(chat).toBeLessThan(index);
+  });
+
+  it("keeps the worst case of a run (rules x budget) under the hourly cron interval", () => {
+    expect(CLEANUP_RULES.length * DEFAULT_RULE_TIME_LIMIT_MS).toBeLessThan(60 * 60 * 1000);
   });
 
   it("deletes unconfirmed accounts only when they have no game participant row at all (BR-28)", async () => {
@@ -182,7 +222,7 @@ describe("cleanupExpired", () => {
     const rules: CleanupRule[] = CLEANUP_RULES.map((rule) => ({ ...rule, optional: rule.key === "sessions" }));
     const result = await cleanupExpired({ em, now: NOW, rules });
     expect(result.sessions).toBeNull();
-    expect(result.errors.map((e) => e.rule)).toEqual(["rateLimitBuckets", "emailVerificationTokens", "passwordResetTokens", "lobbySeekers", "waitingGames", "cancelledGames", "guestOnlyActiveGames", "guestOnlyFinishedGames", "guestTokens", "agentTokens", "unverifiedUsers"]);
+    expect(result.errors.map((e) => e.rule)).toEqual(["rateLimitBuckets", "emailVerificationTokens", "passwordResetTokens", "lobbySeekers", "chatMessages", "waitingGames", "cancelledGames", "guestOnlyActiveGames", "guestOnlyFinishedGames", "guestTokens", "agentTokens", "unverifiedUsers"]);
   });
 
   it("keeps the counts of finished rules and of rows deleted before an error", async () => {

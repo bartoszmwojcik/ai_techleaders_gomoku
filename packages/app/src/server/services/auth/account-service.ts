@@ -41,6 +41,11 @@ const LOCK_PENDING_REMATCHES_SQL = `
 const closeRematchesSql = (count: number) =>
   `update games set rematch_state = 'declined' where id in (${placeholders(count)})`;
 
+// The chat is not history (BR-34): the whole conversation of every game the account took part in goes
+// with the account (also the opponent's messages). Only row locks on `chat_messages`, so no cycle
+// with `ChatService` (advisory lock of the game, then insert).
+const DELETE_CHAT_SQL = `delete from chat_messages where game_id in (select game_id from game_players where user_id = ?)`;
+
 // The condition on the verified hash protects against a concurrent password change.
 const DELETE_USER_SQL = `delete from users where id = ? and password_hash = ? returning id`;
 
@@ -67,7 +72,7 @@ export class AccountService {
    * the clock or the 15-minute rule already ended are closed first, so only a game truly in
    * progress blocks. One transaction then locks the user, then the account's open games,
    * refuses on a game in progress (BR-21, before any write), removes the games still waiting
-   * (with their invitations), closes pending rematch offers and deletes the user row.
+   * (with their invitations), deletes the chat of all the account's games (BR-34), closes pending rematch offers and deletes the user row.
    * @throws AppError 400 `INVALID_PASSWORD` (also when the password was changed meanwhile);
    * 401 when the account is already gone (a concurrent deletion won);
    * 409 `ACTIVE_GAME` with `data.gameId` of the game in progress.
@@ -105,6 +110,8 @@ export class AccountService {
       if (offers.length > 0) {
         await tx.execute(closeRematchesSql(offers.length), offers.map(({ id }) => id), "run");
       }
+
+      await tx.execute(DELETE_CHAT_SQL, [userId], "run");
 
       const deleted = await tx.execute<{ id: string }[]>(DELETE_USER_SQL, [userId, passwordHash]);
       if (deleted.length === 0) throw invalidPassword();
