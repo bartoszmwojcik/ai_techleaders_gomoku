@@ -29,7 +29,7 @@ const waiting = (): GameView => ({
   status: "waiting",
   you: { seat: 1, kind: "account" },
   players: [{ seat: 1, kind: "account", displayName: "Ala_7", seen: true }],
-  invitation: { code: "ABCD-EFGH", url: "http://localhost:3000/invite/ABCD-EFGH", expiresAt: EXPIRES },
+  invitation: { code: "ABCD-EFGH", url: "http://localhost:3000/invite/ABCD-EFGH", mcpUrl: "http://localhost:3000/api/mcp", expiresAt: EXPIRES },
 });
 const active = (over: Partial<GameView> = {}, seen = [true, true]): GameView => ({
   ...NO_BOARD,
@@ -100,14 +100,14 @@ describe("GameRoom, waiting (p03)", () => {
     expect(screen.getByRole("heading", { name: "Partia czeka na przeciwnika" })).toBeTruthy();
     expect(screen.getByText("Czekamy na przeciwnika…")).toBeTruthy();
     expect(screen.getByText("http://localhost:3000/invite/ABCD-EFGH")).toBeTruthy();
-    expect(screen.getByText("ABCD-EFGH")).toBeTruthy();
+    expect(screen.getAllByText("ABCD-EFGH")[0]).toBeTruthy();
     expect(screen.getByText("Ważne do piątek, 30 października 10:00 CET")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Udostępnij" })).toBeNull();
   });
 
   it("shows a guest creator the same card and a permanent warning under it (p03.11, p03.12)", () => {
     room(guestWaiting());
-    expect(screen.getByText("ABCD-EFGH")).toBeTruthy();
+    expect(screen.getAllByText("ABCD-EFGH")[0]).toBeTruthy();
     expect(screen.getByRole("button", { name: "Anuluj zaproszenie" })).toBeTruthy();
     expect(screen.getByText("Nie zmieniaj przeglądarki, bo stracisz dostęp do partii.")).toBeTruthy();
   });
@@ -142,6 +142,47 @@ describe("GameRoom, waiting (p03)", () => {
     await u.click(screen.getByRole("button", { name: "Kopiuj" }));
     expect(screen.getByTestId("copy-status").textContent).toContain("Link jest zaznaczony");
     expect(window.getSelection()?.toString()).toBe("http://localhost:3000/invite/ABCD-EFGH");
+  });
+
+  it("shows a collapsed agent panel with the MCP address and the command", () => {
+    const { container } = room(waiting());
+    expect(container.querySelector("details")!.open).toBe(false);
+    expect(screen.getByText("Jak podłączyć agenta")).toBeTruthy();
+    expect(screen.getByText("claude mcp add --transport http gomoku http://localhost:3000/api/mcp")).toBeTruthy();
+    expect(screen.getByText("http://localhost:3000/api/mcp")).toBeTruthy();
+    expect(screen.getByText(/Dołącz do partii gomoku narzędziem join z kodem ABCD-EFGH/)).toBeTruthy();
+  });
+
+  it("shows no agent panel when the view has no MCP address", () => {
+    const game = waiting();
+    room({ ...game, invitation: { ...game.invitation!, mcpUrl: undefined as never } });
+    expect(screen.queryByText("Jak podłączyć agenta")).toBeNull();
+  });
+
+  it("copies the command and the code from the agent panel", async () => {
+    room(waiting());
+    const u = user();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    await u.click(screen.getByText("Jak podłączyć agenta"));
+    await u.click(screen.getByRole("button", { name: "Kopiuj polecenie" }));
+    expect(writeText).toHaveBeenLastCalledWith("claude mcp add --transport http gomoku http://localhost:3000/api/mcp");
+    expect(screen.getByTestId("copy-status").textContent).toBe("Skopiowano polecenie do schowka.");
+    await u.click(screen.getByRole("button", { name: "Kopiuj kod" }));
+    expect(writeText).toHaveBeenLastCalledWith("ABCD-EFGH");
+    expect(screen.getByTestId("copy-status").textContent).toBe("Skopiowano kod do schowka.");
+  });
+
+  it("selects the command or the code for copying by hand when the clipboard fails", async () => {
+    room(waiting());
+    const u = user();
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined });
+    await u.click(screen.getByText("Jak podłączyć agenta"));
+    await u.click(screen.getByRole("button", { name: "Kopiuj polecenie" }));
+    expect(screen.getByTestId("copy-status").textContent).toContain("Tekst jest zaznaczony");
+    expect(window.getSelection()?.toString()).toBe("claude mcp add --transport http gomoku http://localhost:3000/api/mcp");
+    await u.click(screen.getByRole("button", { name: "Kopiuj kod" }));
+    expect(window.getSelection()?.toString()).toBe("ABCD-EFGH");
   });
 
   it("shares the link where the browser can (Q22)", async () => {

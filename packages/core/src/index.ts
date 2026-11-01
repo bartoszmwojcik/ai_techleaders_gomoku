@@ -22,6 +22,7 @@ export * from "./games/clock";
 export * from "./games/invitation-code";
 export * from "./games/nickname";
 export * from "./games/agent-name";
+export * from "./games/agent-connect";
 export * from "./games/types";
 export * from "./games/rematch";
 export * from "./games/lobby";

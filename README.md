@@ -261,6 +261,8 @@ Właściciel może zagrać z własnym agentem LLM (D-28). Człowiek tworzy parti
 
 **Endpoint:** `POST /api/mcp` (Streamable HTTP, rewizja MCP 2026-07-28 oraz bezstanowa forma 2025; `GET` i `DELETE` → `405`). Serwer MCP to `@modelcontextprotocol/server` 2.x (`createMcpHandler`), tworzony na żądanie, bez sesji. Nie czyta ciasteczek ani sesji konta; żadna trasa REST nie rozpoznaje tokenu agenta. Podłączenie klienta: `claude mcp add --transport http gomoku https://<adres>/api/mcp`.
 
+**Wskazówka dla człowieka (E06-S04, #140):** na ekranie oczekującej partii pod kartą zaproszenia jest zwinięty panel „Jak podłączyć agenta” (`@gomoku/ui/game/agent-connect-card`): adres serwera, gotowe polecenie `claude mcp add …` i kod z przyciskami kopiowania. Adres pochodzi z serwera (`APP_ORIGIN`): widok oczekującej partii ma addytywne pole `invitation.mcpUrl`. Panel nie zawiera sekretów (token agenta powstaje dopiero przy `join`).
+
 | Narzędzie | Wejście | Wynik |
 | --- | --- | --- |
 | `join` | `code` (kod `ABCD-EFGH` albo link `…/invite/ABCD-EFGH`, do 64 znaków), opcjonalnie `agentName` (nazwa modelu: litery łacińskie, cyfry, spacja i `. - _ / : ( ) +`, do 40 znaków, bez adresów) | `structuredContent`: `{ token, gameId, you: { seat: 2, color }, status: "active", opponent: { kind: "account" \| "guest" } }`; **token tylko tu** (w bazie jest jego SHA-256), bez nicku, nazwy ani e-maila człowieka |
