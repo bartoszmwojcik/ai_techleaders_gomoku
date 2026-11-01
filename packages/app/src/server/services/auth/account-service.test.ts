@@ -82,12 +82,18 @@ describe("AccountService.delete", () => {
       "select id from users",
       "select g.id, g.status from",
       "select g.id from games",
+      "delete from chat_messages where",
       "delete from users where",
     ]);
     expect(calls.filter(({ via }) => via === "em")).toHaveLength(2);
     expect(txCalls(calls)[0]!.sql).toContain("for no key update");
     expect(txCalls(calls)[1]!.sql).toContain("order by g.id for update of g");
-    expect(txCalls(calls)[3]!.params).toEqual(["user-1", HASH]);
+    expect(txCalls(calls)[3]!.params).toEqual(["user-1"]);
+    expect(txCalls(calls)[3]!.sql).toBe(
+      "delete from chat_messages where game_id in (select game_id from game_players where user_id = ?)",
+    );
+    expect(txCalls(calls)[3]!.mode).toBe("run");
+    expect(txCalls(calls)[4]!.params).toEqual(["user-1", HASH]);
   });
 
   it("answers 401 when the account is already gone and checks nothing else", async () => {
@@ -150,6 +156,14 @@ describe("AccountService.delete", () => {
     const close = txCalls(calls).find(({ sql }) => sql.startsWith("update games"))!;
     expect(close.sql).toBe("update games set rematch_state = 'declined' where id in (?, ?)");
     expect(close.params).toEqual(["game-9", "game-8"]);
+  });
+
+  it("deletes the chat after the game locks and the rematch offers, still inside the transaction", async () => {
+    const { service, calls } = setup({ offers: [{ id: "game-9" }] });
+    await service.delete("user-1", "secret");
+    const heads = txCalls(calls).map(({ sql }) => sql.split(" ").slice(0, 3).join(" "));
+    expect(heads.indexOf("delete from chat_messages")).toBeGreaterThan(heads.indexOf("update games set"));
+    expect(heads.indexOf("delete from chat_messages")).toBeLessThan(heads.indexOf("delete from users"));
   });
 
   it("writes nothing extra without waiting games or offers", async () => {

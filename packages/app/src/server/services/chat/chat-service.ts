@@ -35,6 +35,7 @@ const CREATED_AT = `to_char(m.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:
 const CONTEXT_SQL = `
   select p.id as sender_id, p.seat, p.kind, p.chat_enabled as mine, o.chat_enabled as theirs,
     g.status,
+    exists (select 1 from game_players d where d.game_id = g.id and d.kind = 'account' and d.user_id is null) as gone,
     (g.status = 'finished' and g.finished_at > now() - (? * interval '1 millisecond')) as window_open,
     (select extract(epoch from clock_timestamp() - max(m.created_at)) * 1000
        from chat_messages m where m.sender_id = p.id)::float8 as since_last_ms,
@@ -66,6 +67,8 @@ type Context = {
   mine: boolean;
   theirs: boolean | null;
   status: GameStatus;
+  /** A seat belongs to a deleted account (`user_id` NULL, `kind` still `account`). */
+  gone: boolean;
   window_open: boolean;
   since_last_ms: number | null;
   total: number;
@@ -245,6 +248,9 @@ export class ChatService {
   }
 
   #stateOf(context: Context): ChatState {
+    // The account of the other side is deleted and its chat with it (BR-34): nobody to talk to, and
+    // `seq` would restart from 1 under a client's cursor.
+    if (context.gone) return "unavailable";
     return deriveChatState({
       status: context.status,
       windowOpen: context.window_open,

@@ -11,6 +11,7 @@ import { createOrm, cleanupExpired, type CleanupResult, type Orm } from "@gomoku
 import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from "vitest";
 
 import { InvitationCodes } from "../../packages/app/src/server/services/games/invitation-codes";
+import { CLEANUP_RULES } from "../../packages/db/src/cleanup/rules";
 import { runCleanup } from "../../packages/db/src/cleanup/run-cleanup";
 
 const baseUrl = inject("baseUrl");
@@ -805,6 +806,7 @@ describe("batching and parallel runs", () => {
       emailVerificationTokens: 0,
       passwordResetTokens: 0,
       lobbySeekers: 0,
+      chatMessages: 0,
       waitingGames: 0,
       cancelledGames: 0,
       guestOnlyActiveGames: 0,
@@ -882,6 +884,7 @@ describe("db:cleanup command", () => {
       [
         "agentTokens",
         "cancelledGames",
+        "chatMessages",
         "emailVerificationTokens",
         "errors",
         "guestOnlyActiveGames",
@@ -912,7 +915,7 @@ describe("db:cleanup command", () => {
     const { stdout, stderr } = failure as { stdout: string; stderr: string };
     expect(stderr).not.toContain("s3cretpw");
     expect(stdout).not.toContain("s3cretpw");
-    expect(JSON.parse(stdout.trim()).errors).toHaveLength(12);
+    expect(JSON.parse(stdout.trim()).errors).toHaveLength(CLEANUP_RULES.length);
     expect(JSON.parse(stderr.trim().split("\n").at(-1)!)).toMatchObject({ ok: false });
   });
 });

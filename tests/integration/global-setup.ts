@@ -17,6 +17,8 @@ declare module "vitest" {
     baseUrl: string;
     browserSession: string;
     databaseUrl: string;
+    /** Id of the PostgreSQL container (`docker exec` runs `pg_dump` inside it). */
+    postgresContainerId: string;
     emailOutboxPath: string;
   }
 }
@@ -131,6 +133,7 @@ export default async function setup(project: TestProject) {
 
     project.provide("baseUrl", baseUrl);
     project.provide("databaseUrl", container.getConnectionUri());
+    project.provide("postgresContainerId", container.getId());
     project.provide("emailOutboxPath", EMAIL_OUTBOX);
     project.provide("browserSession", browser.session);
   } catch (error) {
