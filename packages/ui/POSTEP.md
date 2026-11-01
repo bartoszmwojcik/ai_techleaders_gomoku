@@ -200,3 +200,7 @@ Do zatwierdzenia przed etapem 1; nic z poniższego nie zostało zainstalowane.
 ## Następny krok
 
 Decyzje właściciela do punktów 1–5 z „Otwarte pytania”, potem „dalej” do etapu 2 (komponenty bazowe, pierwsza partia około sześciu).
+
+## Karta podłączenia agenta (E06-S04)
+
+Nowy komponent `src/game/agent-connect-card.tsx`: zwijany (natywny `<details>`) panel „Jak podłączyć agenta” pod kartą zaproszenia na ekranie oczekującej partii. Teksty przez propsy, kopiowanie robi strona. Stories i strona MDX w `docs/product/agent-connect-card.*`. Luka: brak ogólnego komponentu „rozwijany panel” (wpis w „Czego brakuje”).

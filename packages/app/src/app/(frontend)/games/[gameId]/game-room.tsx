@@ -1,6 +1,8 @@
 "use client";
 
+import { agentAddCommand } from "@gomoku/core/games/agent-connect";
 import { isReturnNoticeFresh } from "@gomoku/core/games/return-notice";
+import { AgentConnectCard } from "@gomoku/ui/game/agent-connect-card";
 import { Alert } from "@gomoku/ui/game/alert";
 import { Button } from "@gomoku/ui/game/button";
 import { ConfirmDialog } from "@gomoku/ui/game/confirm-dialog";
@@ -59,12 +61,15 @@ type Props = {
   ownWaitingNotice: boolean;
 };
 
-type Copy = "idle" | "ok" | "fail" | "share-fail";
+type Copy = "idle" | "ok" | "fail" | "share-fail" | "command-ok" | "code-ok" | "text-fail";
 
 const COPY_FEEDBACK: Record<Exclude<Copy, "idle">, string> = {
   ok: "Skopiowano link do schowka.",
   fail: "Nie można skopiować automatycznie. Link jest zaznaczony — skopiuj go ręcznie (Ctrl+C).",
   "share-fail": "Nie udało się otworzyć udostępniania. Skopiuj link ręcznie.",
+  "command-ok": "Skopiowano polecenie do schowka.",
+  "code-ok": "Skopiowano kod do schowka.",
+  "text-fail": "Nie można skopiować automatycznie. Tekst jest zaznaczony — skopiuj go ręcznie (Ctrl+C).",
 };
 
 // `navigator.share` exists only in some browsers; the server cannot know, so the first render says no.
@@ -106,6 +111,7 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
   const [cancelProblem, setCancelProblem] = useState<ReactNode>(null);
   const canShare = useSyncExternalStore(subscribeNothing, canShareNow, cannotShareOnServer);
   const cardRef = useRef<HTMLDivElement>(null);
+  const agentRef = useRef<HTMLDivElement>(null);
   const status = useRef(initial.status);
   // The newest state, so a poll asks only for the moves it does not know yet (`?after=`).
   const latest = useRef(initial);
@@ -320,6 +326,20 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
     }
   }
 
+  async function onCopyAgentText(which: "command" | "code", text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopy(which === "command" ? "command-ok" : "code-ok");
+    } catch {
+      const range = document.createRange();
+      range.selectNodeContents(agentRef.current!.querySelector(`[data-copy="${which}"]`)!);
+      const selection = window.getSelection()!;
+      selection.removeAllRanges();
+      selection.addRange(range);
+      setCopy("text-fail");
+    }
+  }
+
   async function onShare() {
     setCopy("idle");
     try {
@@ -459,6 +479,27 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
             onCancel={() => setAsking(true)}
           />
         </div>
+        {invitation.mcpUrl && (
+          <div ref={agentRef}>
+            <AgentConnectCard
+              summary="Jak podłączyć agenta"
+              commandIntro="W terminalu agenta uruchom polecenie:"
+              command={agentAddCommand(invitation.mcpUrl)}
+              copyCommandLabel="Kopiuj polecenie"
+              checkText="Sprawdź połączenie: w Claude Code wpisz /mcp."
+              codeIntro={`Powiedz agentowi: „Dołącz do partii gomoku narzędziem join z kodem ${invitation.code}”.`}
+              code={invitation.code}
+              copyCodeLabel="Kopiuj kod"
+              serverLabel="Adres serwera"
+              serverUrl={invitation.mcpUrl}
+              copiedLabel="Skopiowano"
+              copied={copy === "command-ok" ? "command" : copy === "code-ok" ? "code" : null}
+              onCopyCommand={() => void onCopyAgentText("command", agentAddCommand(invitation.mcpUrl))}
+              onCopyCode={() => void onCopyAgentText("code", invitation.code)}
+              note="Inny klient MCP? Podaj mu adres serwera (Streamable HTTP, bez uwierzytelniania). Agent dołączy jako „Agent”. Nie podawaj mu hasła ani tokenów — nie są potrzebne."
+            />
+          </div>
+        )}
         <p role="status" className="m-0 max-w-(--layout-width-dialog) text-meta text-text-secondary" data-testid="copy-status">
           {copy === "idle" ? "" : COPY_FEEDBACK[copy]}
         </p>

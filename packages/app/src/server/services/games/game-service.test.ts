@@ -179,6 +179,7 @@ describe("GameService.create", () => {
       invitation: {
         code: "ABCD-EFGH",
         url: "https://gomoku.test/invite/ABCD-EFGH",
+        mcpUrl: "https://gomoku.test/api/mcp",
         expiresAt,
       },
     });
@@ -198,6 +199,7 @@ describe("GameService.create", () => {
     const { service } = setup({ config: {} });
     const result = await service.create({ kind: "account", userId: "user-1" });
     expect(result.invitation.url).toBe("http://localhost:3000/invite/ABCD-EFGH");
+    expect(result.invitation.mcpUrl).toBe("http://localhost:3000/api/mcp");
   });
 
   it("stops at the rate limit without touching the database", async () => {
@@ -517,6 +519,7 @@ describe("GameService.getState", () => {
       invitation: {
         code: "ABCD-EFGH",
         url: "https://gomoku.test/invite/ABCD-EFGH",
+        mcpUrl: "https://gomoku.test/api/mcp",
         expiresAt: invitation.expiresAt,
       },
     });

@@ -10,7 +10,7 @@ import { resolveParticipant } from "./participant";
  */
 export type GameView = Omit<GameState, "invitation" | "rematch" | "finishedAt"> & {
   /** Only for the creator while the game waits. */
-  invitation?: { code: string; url: string; expiresAt: string };
+  invitation?: { code: string; url: string; mcpUrl: string; expiresAt: string };
   /** Only for a cancelled game: why it was closed (creator's cancel, expiry, nobody opened it). */
   closedReason?: "cancelled" | "expired" | "not_opened";
   /** Only for a finished game: when it ended (the guest's token works for an hour from then). */
