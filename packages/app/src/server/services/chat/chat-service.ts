@@ -1,6 +1,7 @@
 import {
   CHAT_RETENTION_MS,
   ConflictError,
+  ForbiddenError,
   NotFoundError,
   TooManyRequestsError,
   ValidationError,
@@ -9,6 +10,7 @@ import {
   normalizeChatMessage,
   type ChatMessageView,
   type ChatReadData,
+  type ChatSettingsData,
   type ChatSendData,
   type ChatState,
   type GameStatus,
@@ -44,6 +46,8 @@ const CONTEXT_SQL = `
 
 const LOCK_GAME_SQL = `select pg_advisory_xact_lock(hashtextextended(?::text, 0))`;
 
+const SET_ENABLED_SQL = `update game_players set chat_enabled = ? where id = ?`;
+
 const SELECT_MESSAGE = `select m.seq, p.seat, m.body, ${CREATED_AT} as created_at
   from chat_messages m join game_players p on p.id = m.sender_id`;
 
@@ -71,6 +75,7 @@ type MessageRow = { seq: number; seat: Seat; body: string; created_at: string };
 
 export const CHAT_UNAVAILABLE_MESSAGE = "Czat jest teraz niedostępny w tej partii.";
 export const CHAT_DISABLED_MESSAGE = "Czat jest wyłączony.";
+export const CHAT_AGENT_SETTINGS_MESSAGE = "Agent nie zmienia ustawień czatu.";
 export const CHAT_FULL_MESSAGE = "W tej partii jest już maksymalna liczba wiadomości.";
 export const CHAT_RATE_LIMITED_MESSAGE = "Poczekaj chwilę przed następną wiadomością.";
 
@@ -179,6 +184,37 @@ export class ChatService {
           retryAfterMs: this.#limitsOf(context).minIntervalMs,
           created: true,
         };
+      });
+    } catch (error) {
+      // The game went away under us (the cleanup): the same answer as for a stranger.
+      if (error instanceof ForeignKeyConstraintViolationException) {
+        throw new NotFoundError(GAME_NOT_FOUND_MESSAGE);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Turns the chat on or off for this participant only (E07-S02): one transaction under the game's
+   * advisory lock, the same one `send` takes, so a message either lands before the change or is refused
+   * after it. Repeating the current value writes nothing. Nothing is remembered beyond this game's row.
+   * @throws AppError 403 for an agent (it has no way to change the setting, D-31); 404 for a gone
+   * participant or game; 409 `CHAT_UNAVAILABLE` while the game waits, was cancelled or the window is over.
+   */
+  async setEnabled(participant: GameParticipant, gameId: string, enabled: boolean): Promise<ChatSettingsData> {
+    try {
+      return await this.#em.transactional(async (tx) => {
+        await tx.execute(LOCK_GAME_SQL, [gameId], "run");
+        const context = await this.#context(tx, participant, gameId);
+        if (context.kind === "agent") throw new ForbiddenError(CHAT_AGENT_SETTINGS_MESSAGE);
+        const before = this.#stateOf(context);
+        if (before === "unavailable" || before === "closed") {
+          throw new ConflictError(CHAT_UNAVAILABLE_MESSAGE, { code: "CHAT_UNAVAILABLE" });
+        }
+        if (context.mine !== enabled) {
+          await tx.execute(SET_ENABLED_SQL, [enabled, participant.playerId], "run");
+        }
+        return { state: this.#stateOf({ ...context, mine: enabled }) };
       });
     } catch (error) {
       // The game went away under us (the cleanup): the same answer as for a stranger.

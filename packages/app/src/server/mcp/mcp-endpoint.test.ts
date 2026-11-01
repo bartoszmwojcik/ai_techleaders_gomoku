@@ -70,6 +70,8 @@ describe("handleMcpPost", () => {
     const { result } = (await response.json()) as { result: { tools: { name: string; inputSchema: unknown }[] } };
     expect(result.tools.map((tool) => tool.name)).toEqual([...MCP_TOOL_NAMES]);
     expect(result.tools.map((tool) => tool.name)).toEqual(["join", "get_state", "play_move"]);
+    // D-31: the agent has no tool for the chat, least of all one that changes its setting.
+    expect(result.tools.some((tool) => /chat|setting/i.test(tool.name))).toBe(false);
     expect(result.tools[0]!.inputSchema).toMatchObject({
       type: "object",
       properties: {

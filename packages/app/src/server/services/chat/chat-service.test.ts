@@ -1,4 +1,4 @@
-import { ConflictError, NotFoundError, TooManyRequestsError, ValidationError } from "@gomoku/core";
+import { ConflictError, ForbiddenError, NotFoundError, TooManyRequestsError, ValidationError } from "@gomoku/core";
 import { ForeignKeyConstraintViolationException, type EntityManager } from "@gomoku/db";
 import { describe, expect, it, vi } from "vitest";
 
@@ -44,10 +44,11 @@ type Setup = {
   stored?: ReturnType<typeof row>;
   kind?: string | null;
   insertError?: Error;
+  updateError?: Error;
 };
 
 /** A fake `em`: answers each statement by what it selects; `calls` records the SQL and parameters. */
-function setup({ context = {}, messages = [], repeat, stored = row(1), kind = "account", insertError }: Setup = {}) {
+function setup({ context = {}, messages = [], repeat, stored = row(1), kind = "account", insertError, updateError }: Setup = {}) {
   const calls: { sql: string; params: unknown[]; mode?: string }[] = [];
   let inserted = false;
   const execute = vi.fn(async (sql: string, params: unknown[] = [], mode?: string) => {
@@ -56,6 +57,10 @@ function setup({ context = {}, messages = [], repeat, stored = row(1), kind = "a
     if (sql.startsWith("select kind from game_players")) return kind === null ? [] : [{ kind }];
     if (sql.includes("from game_players p") && sql.includes("window_open")) {
       return context === null ? [] : [contextRow(context)];
+    }
+    if (sql.startsWith("update game_players set chat_enabled")) {
+      if (updateError) throw updateError;
+      return [];
     }
     if (sql.includes("m.sender_id = ?")) return inserted ? [stored] : repeat ? [repeat] : [];
     if (sql.startsWith("\n  insert into chat_messages")) {
@@ -277,5 +282,73 @@ describe("ChatService.send", () => {
     );
     const broken = new Error("boom");
     await expect(setup({ insertError: broken }).service.send(PARTICIPANT, GAME, input)).rejects.toBe(broken);
+  });
+});
+
+describe("ChatService.setEnabled", () => {
+  const written = <T extends { sql: string }>(calls: T[]) => calls.filter(({ sql }) => sql.startsWith("update game_players"));
+
+  it("turns the chat off for the asker only, under the game lock, and answers with their state", async () => {
+    const { service, calls } = setup();
+    expect(await service.setEnabled(PARTICIPANT, GAME, false)).toEqual({ state: "disabled_by_you" });
+    expect(calls[0]).toMatchObject({ sql: expect.stringContaining("pg_advisory_xact_lock"), params: [GAME] });
+    expect(written(calls)).toEqual([
+      { sql: "update game_players set chat_enabled = ? where id = ?", params: [false, "player-1"], mode: "run" },
+    ]);
+  });
+
+  it("turns it on again and shows the opponent's own setting", async () => {
+    const open = setup({ context: { mine: false, theirs: true } });
+    expect(await open.service.setEnabled(PARTICIPANT, GAME, true)).toEqual({ state: "open" });
+    expect(written(open.calls)[0]!.params).toEqual([true, "player-1"]);
+    const muted = setup({ context: { mine: false, theirs: false } });
+    expect(await muted.service.setEnabled(PARTICIPANT, GAME, true)).toEqual({ state: "disabled_by_opponent" });
+  });
+
+  it("writes nothing when the value does not change", async () => {
+    const off = setup({ context: { mine: false } });
+    expect(await off.service.setEnabled(PARTICIPANT, GAME, false)).toEqual({ state: "disabled_by_you" });
+    const on = setup();
+    expect(await on.service.setEnabled(PARTICIPANT, GAME, true)).toEqual({ state: "open" });
+    expect(written(off.calls)).toEqual([]);
+    expect(written(on.calls)).toEqual([]);
+  });
+
+  it("is allowed in the window after a finished game and before the first message", async () => {
+    const { service } = setup({ context: { status: "finished", window_open: true, total: 0 } });
+    expect(await service.setEnabled(PARTICIPANT, GAME, false)).toEqual({ state: "disabled_by_you" });
+  });
+
+  it.each([
+    [{ status: "waiting" }],
+    [{ status: "cancelled" }],
+    [{ status: "finished", window_open: false }],
+  ])("refuses with CHAT_UNAVAILABLE for %j and writes nothing", async (context) => {
+    const { service, calls } = setup({ context });
+    const error = await service.setEnabled(PARTICIPANT, GAME, false).catch((e) => e);
+    expect(error).toBeInstanceOf(ConflictError);
+    expect(error).toMatchObject({ code: "CHAT_UNAVAILABLE" });
+    expect(written(calls)).toEqual([]);
+  });
+
+  it("refuses an agent before anything else", async () => {
+    const { service, calls } = setup({ context: { kind: "agent", status: "waiting" } });
+    await expect(service.setEnabled(PARTICIPANT, GAME, false)).rejects.toBeInstanceOf(ForbiddenError);
+    expect(written(calls)).toEqual([]);
+  });
+
+  it("answers 404 for a gone participant", async () => {
+    await expect(setup({ context: null }).service.setEnabled(PARTICIPANT, GAME, false)).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
+  });
+
+  it("maps a game that vanished under the update to 404 and rethrows anything else", async () => {
+    const vanished = new ForeignKeyConstraintViolationException(new Error("fk") as never);
+    await expect(setup({ updateError: vanished }).service.setEnabled(PARTICIPANT, GAME, false)).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
+    const broken = new Error("boom");
+    await expect(setup({ updateError: broken }).service.setEnabled(PARTICIPANT, GAME, false)).rejects.toBe(broken);
   });
 });

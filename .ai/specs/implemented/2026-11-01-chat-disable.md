@@ -1,6 +1,6 @@
 # Wyłączenie czatu w partii przez uczestnika (E07-S02, #147)
 
-> Status: **do przeglądu; właściciel zatwierdził specyfikację z góry** (zakres S02, bez nowych ⚠).
+> Status: **zaimplementowane (PR implementacji, `Closes #147`)**; właściciel zatwierdził specyfikację z góry (zakres S02, bez nowych ⚠). Patrz „Adnotacje implementacji” na końcu.
 >
 > Źródło: zgłoszenie #147 (E07-S02), epik #144, zależność E07-S01 (#146, zaimplementowane w PR #169); `.ai/specs/product-brief.md` na `origin/main`: D-30, D-31, BR-32, BR-33, N-11, A-08, Q-10; `.ai/specs/2026-10-31-game-chat.md` (sekcje R2, R14, „Kontrakty dla S02, S03, S04”, „Adnotacje implementacji”); kod: `ChatService`, `deriveChatState`, `chat-panel.tsx`, `use-chat.ts`, `resolveParticipant`, `mcp-endpoint.test.ts`.
 >
@@ -96,8 +96,8 @@ Kolejność kontroli w `setEnabled` (jedna transakcja, `tx`, zapisy tylko przez 
 
 Makiety (ilustracyjne, nie kod aplikacji; wyłącznie propozycja): `.ai/specs/assets/chat-disable/mockup-01-wylaczenie-320-{light,dark}` (320 px, oba motywy). Zrzuty bieżącej aplikacji pominięte: panel czatu z S01 jest opisany makietami S01 (`assets/czat-w-partii/`), a uruchomienie stosu z bazą nie było potrzebne do tej zmiany.
 
-![makieta: wyłączanie czatu 320, jasny](assets/chat-disable/mockup-01-wylaczenie-320-light.png)
-![makieta: wyłączanie czatu 320, ciemny](assets/chat-disable/mockup-01-wylaczenie-320-dark.png)
+![makieta: wyłączanie czatu 320, jasny](../assets/chat-disable/mockup-01-wylaczenie-320-light.png)
+![makieta: wyłączanie czatu 320, ciemny](../assets/chat-disable/mockup-01-wylaczenie-320-dark.png)
 
 **Umiejscowienie.** Przycisk jest w nagłówku panelu, obok „Zwiń czat”, więc jest osiągalny także przy zwiniętym panelu (kto chce uciec przed nękaniem, nie musi rozwijać rozmowy). Na 320–360 px przyciski zawijają się do drugiego wiersza (`flex-wrap`), każdy ma cel 44 px. Wariant `secondary`: wyłączenie nie jest główną akcją ekranu (zasada DS: jedna mocna akcja).
 
@@ -182,3 +182,12 @@ Każdy krok zostawia aplikację działającą; `npm run check` po kroku 8 i na k
 | Rozmówca widzi „Rozmówca wyłączył czat” i nie może pisać | 2, 4, 6, 8 | `409 CHAT_DISABLED`, test komponentu i przeglądarki |
 | Nowa partia i rewanż: czat włączony, pusty, bez zapamiętanego ustawienia | 3, 8 | test PostgreSQL i test integracyjny rewanżu; brak kolumny/magazynu |
 | Agent nie ma narzędzia do wyłączania czatu (D-31) | 2, 8 | test serwisu (`ForbiddenError`) i listy narzędzi MCP |
+
+## Adnotacje implementacji (E07-S02)
+
+Odstępstwa od specyfikacji:
+
+1. **Przycisk bez `loading`.** `Button loading` ustawia `disabled`, a zablokowany przycisk gubi fokus klawiatury (sprawdzone w przeglądarce: po Enterze Spacja już nie działała). Przycisk ma `aria-busy` w trakcie żądania, a drugie kliknięcie zatrzymuje strażnik `useRef` w `useChat.setEnabled`. Zablokowany pozostaje tylko do pierwszego odczytu (powód w `aria-describedby`, „Wczytujemy czat…”).
+2. **Kolejka po przełączeniu.** Odczyt rozpoczęty przed zmianą i kończący się po niej nie jest odrzucany po cichu: pętla odczytu czyta od razu jeszcze raz z nowego kursora (inaczej odczyt natychmiastowy po włączeniu przepadłby, bo `reading` był zajęty).
+3. **`409 CHAT_UNAVAILABLE`** z zapisu: klient czyta stan od nowa i nie pokazuje `Alert` (panel sam przechodzi w „zamknięty”/„niedostępny”).
+4. Test strażnika MCP rozszerzono o brak narzędzia z „chat”/„setting” w nazwie (lista dokładna już istniała). Test, że token agenta nie rozpoznaje się w `resolveParticipant`, nie był potrzebny: `findParticipant` wyszukuje wyłącznie po `guest_token_hash` i koncie, a `agent_token_hash` jest osobną kolumną.

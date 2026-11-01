@@ -8,8 +8,17 @@ import type { ReactNode } from "react";
 
 // The chat panel of the game screen (E07-S01), composed from the design system the way the app does it
 // (packages/app/src/components/chat). Docs cannot import the app, so the structure is repeated here.
+// E07-S02 adds the switch "Wyłącz czat" / "Włącz czat" to the header, next to "Zwiń czat".
 
-export type ChatPreviewState = "empty" | "conversation" | "disabled-by-opponent" | "send-error" | "closed" | "waiting";
+export type ChatPreviewState =
+  | "empty"
+  | "conversation"
+  | "disabled-by-opponent"
+  | "disabled-by-you"
+  | "switch-error"
+  | "send-error"
+  | "closed"
+  | "waiting";
 
 type Message = { from: "you" | "opponent"; text: string; time: string };
 
@@ -47,6 +56,7 @@ export function ChatPreview({ state, opponent = "Alicja_99" }: { state: ChatPrev
     );
   }
   const blocked = state === "disabled-by-opponent" || state === "closed";
+  const offByYou = state === "disabled-by-you";
   const messages = state === "empty" || state === "closed" ? [] : CONVERSATION;
   return (
     <Panel title="Czat">
@@ -55,10 +65,18 @@ export function ChatPreview({ state, opponent = "Alicja_99" }: { state: ChatPrev
           <span className="shrink-0">z</span>
           <span className="min-w-0 font-strong">{opponent}</span>
         </p>
-        <Button variant="secondary" aria-expanded="true">Zwiń czat</Button>
+        <div className="flex flex-wrap items-center gap-group">
+          {state !== "closed" && <Button variant="secondary">{offByYou ? "Włącz czat" : "Wyłącz czat"}</Button>}
+          <Button variant="secondary" aria-expanded="true">Zwiń czat</Button>
+        </div>
       </div>
+      {state === "switch-error" && <Alert status="danger" title="Nie udało się wyłączyć czatu. Spróbuj ponownie." />}
       {state === "closed" ? (
         <p className="m-0 text-body text-text-secondary">Czat jest już zamknięty.</p>
+      ) : offByYou ? (
+        <p role="status" className="m-0 text-body text-text-secondary">
+          Wyłączyłeś czat. Nie widzisz wiadomości rozmówcy i nie możesz pisać. Rozmówca zobaczy, że czat jest wyłączony.
+        </p>
       ) : (
         <>
           {state === "disabled-by-opponent" && <Alert status="info" title="Rozmówca wyłączył czat. Nie możesz teraz pisać." role="status" />}

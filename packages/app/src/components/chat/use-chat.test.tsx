@@ -282,3 +282,144 @@ describe("useChat, sending", () => {
     expect(onGone).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("useChat, turning the chat off and on", () => {
+  const SETTINGS = "/api/games/g1/chat/settings";
+  const changed = (state: string) => ({ ok: true, data: { state } });
+  /** Answers the settings call and the reads by URL, so the order of the calls does not matter. */
+  const route = (handlers: { settings?: unknown; read?: () => unknown; send?: unknown }) =>
+    apiCall.mockImplementation(async (url: string, options: { method?: string }) => {
+      if (url === SETTINGS) return handlers.settings;
+      if (options.method === "GET") return handlers.read?.() ?? data("open");
+      return handlers.send;
+    });
+
+  it("turns the chat off with a PUT, clears the conversation and shows the switch as busy meanwhile", async () => {
+    apiCall.mockResolvedValue(data("open", [message(1), message(2, 1)]));
+    const hook = await mount();
+    let finish!: (value: unknown) => void;
+    apiCall.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+    let outcome!: Promise<unknown>;
+    await act(async () => void (outcome = hook.result.current.setEnabled(false)));
+    expect(hook.result.current.switching).toBe(true);
+    expect(apiCall).toHaveBeenLastCalledWith(SETTINGS, {
+      method: "PUT",
+      body: { enabled: false },
+      signal: expect.any(AbortSignal),
+    });
+
+    await act(async () => finish(changed("disabled_by_you")));
+    expect(await outcome).toEqual({ ok: true });
+    expect(hook.result.current).toMatchObject({ switching: false, state: "disabled_by_you", messages: [] });
+  });
+
+  it("turns it on again and reads the latest page from scratch, so the earlier messages are back", async () => {
+    apiCall.mockResolvedValue(data("open", [message(1), message(2, 1)]));
+    const hook = await mount();
+    apiCall.mockResolvedValueOnce(changed("disabled_by_you"));
+    await act(() => hook.result.current.setEnabled(false));
+    apiCall.mockClear();
+    apiCall.mockResolvedValueOnce(changed("open")).mockResolvedValue(data("open", [message(1), message(2, 1)]));
+    await act(() => hook.result.current.setEnabled(true));
+    await tick(0);
+
+    expect(urls()).toEqual([SETTINGS, "/api/games/g1/chat"]);
+    expect(hook.result.current).toMatchObject({ state: "open" });
+    expect(hook.result.current.messages.map((m) => m.id)).toEqual([1, 2]);
+  });
+
+  it("keeps the conversation when turning on shows that the opponent has it off", async () => {
+    apiCall.mockResolvedValue(data("disabled_by_opponent", [message(1)]));
+    const hook = await mount();
+    apiCall.mockResolvedValueOnce(changed("disabled_by_opponent"));
+    await act(() => hook.result.current.setEnabled(true));
+    expect(hook.result.current.state).toBe("disabled_by_opponent");
+    expect(hook.result.current.messages.map((m) => m.id)).toEqual([1]);
+  });
+
+  it("changes once for a double click", async () => {
+    const hook = await mount();
+    let finish!: (value: unknown) => void;
+    apiCall.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+    apiCall.mockClear();
+    let results!: unknown[];
+    await act(async () => {
+      const both = Promise.all([hook.result.current.setEnabled(false), hook.result.current.setEnabled(false)]);
+      finish(changed("disabled_by_you"));
+      results = await both;
+    });
+    expect(apiCall).toHaveBeenCalledTimes(1);
+    expect(results).toEqual([{ ok: true }, { ok: false, kind: "busy" }]);
+  });
+
+  it("changes nothing on a lost connection and lets the same call be repeated", async () => {
+    const hook = await mount();
+    apiCall.mockResolvedValueOnce(failure("network"));
+    expect(await act(() => hook.result.current.setEnabled(false))).toEqual({ ok: false, kind: "failed" });
+    expect(hook.result.current).toMatchObject({ state: "open", switching: false });
+    apiCall.mockResolvedValueOnce(changed("disabled_by_you"));
+    expect(await act(() => hook.result.current.setEnabled(false))).toEqual({ ok: true });
+    expect(hook.result.current.state).toBe("disabled_by_you");
+  });
+
+  it("tells the room the game is gone on a 404", async () => {
+    const hook = await mount();
+    apiCall.mockResolvedValueOnce(failure("NOT_FOUND"));
+    expect(await act(() => hook.result.current.setEnabled(false))).toEqual({ ok: false, kind: "failed" });
+    expect(onGone).toHaveBeenCalledTimes(1);
+  });
+
+  it("reads the chat again when it turns out to be unavailable and says it was refused", async () => {
+    const hook = await mount();
+    apiCall.mockClear();
+    apiCall.mockResolvedValueOnce(failure("CHAT_UNAVAILABLE")).mockResolvedValue(data("closed"));
+    expect(await act(() => hook.result.current.setEnabled(false))).toEqual({ ok: false, kind: "refused" });
+    await tick(0);
+    expect(hook.result.current.state).toBe("closed");
+    expect(urls()).toEqual([SETTINGS, "/api/games/g1/chat?after_id=0"]);
+  });
+
+  it("drops a read that began before the change and reads again, so it cannot bring the conversation back", async () => {
+    const hook = await mount();
+    let finishStale!: (value: unknown) => void;
+    let reads = 0;
+    route({
+      settings: changed("disabled_by_you"),
+      read: () => (++reads === 1 ? new Promise((resolve) => (finishStale = resolve)) : data("disabled_by_you")),
+    });
+    await tick(CHAT_POLL_INTERVAL_MS);
+    expect(reads).toBe(1);
+
+    await act(() => hook.result.current.setEnabled(false));
+    await act(async () => finishStale(data("open", [message(9)])));
+    await tick(0);
+
+    expect(reads).toBe(2);
+    expect(hook.result.current).toMatchObject({ state: "disabled_by_you", messages: [] });
+  });
+
+  it("ignores the result of a send that began before the change", async () => {
+    const hook = await mount();
+    let finishSend!: (value: unknown) => void;
+    apiCall.mockImplementation(async (url: string, options: { method?: string }) => {
+      if (url === SETTINGS) return changed("disabled_by_you");
+      if (options.method === "GET") return data("disabled_by_you");
+      return new Promise((resolve) => (finishSend = resolve));
+    });
+    let outcome!: Promise<unknown>;
+    await act(async () => void (outcome = hook.result.current.send("hej", "c1")));
+    await act(() => hook.result.current.setEnabled(false));
+    await act(async () => finishSend({ ok: true, data: { message: message(7, 1), retryAfterMs: 2000 } }));
+
+    expect(await outcome).toEqual({ ok: true });
+    expect(hook.result.current).toMatchObject({ state: "disabled_by_you", messages: [] });
+  });
+
+  it("can be called before the first read without inventing a conversation", async () => {
+    apiCall.mockImplementation(async (url: string) => (url === SETTINGS ? changed("disabled_by_you") : new Promise(() => {})));
+    const hook = renderHook(() => useChat({ gameId: "g1", onGone }));
+    await tick(0);
+    expect(await act(() => hook.result.current.setEnabled(false))).toEqual({ ok: true });
+    expect(hook.result.current.loaded).toBe(false);
+  });
+});

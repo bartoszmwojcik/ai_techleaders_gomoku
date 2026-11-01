@@ -259,6 +259,105 @@ describe("chat on PostgreSQL: states", () => {
   });
 });
 
+const turn = (who: { playerId: string }, gameId: string, enabled: boolean) => service().setEnabled(who, gameId, enabled);
+const enabledOf = async (who: { playerId: string }) =>
+  (await run("select chat_enabled from game_players where id = ?", [who.playerId]))[0]!.chat_enabled as boolean;
+
+describe("chat on PostgreSQL: turning the chat off and on (E07-S02)", () => {
+  it("answers each of the four combinations of the two settings as the matrix says", async () => {
+    const { gameId, one, two } = await setup();
+    await send(one, gameId, "przed");
+
+    expect(await turn(one, gameId, false)).toEqual({ state: "disabled_by_you" });
+    expect(await read(one, gameId)).toMatchObject({ state: "disabled_by_you", messages: [] });
+    expect(await read(two, gameId)).toMatchObject({ state: "disabled_by_opponent", messages: [{ text: "przed" }] });
+    await expect(send(two, gameId, "po")).rejects.toMatchObject({ status: 409, code: "CHAT_DISABLED" });
+
+    // Both off: each still sees "you turned it off"; the one who turns it back on learns about the other.
+    expect(await turn(two, gameId, false)).toEqual({ state: "disabled_by_you" });
+    expect((await read(one, gameId)).state).toBe("disabled_by_you");
+    expect(await turn(one, gameId, true)).toEqual({ state: "disabled_by_opponent" });
+    expect((await read(two, gameId)).state).toBe("disabled_by_you");
+
+    expect(await turn(two, gameId, true)).toEqual({ state: "open" });
+    expect((await read(one, gameId)).messages.map((m) => m.text)).toEqual(["przed"]);
+    await expect(send(two, gameId, "znowu")).resolves.toMatchObject({ created: true });
+  });
+
+  it("is idempotent and writes nothing when the value does not change", async () => {
+    const { gameId, one, two } = await setup();
+    expect(await turn(one, gameId, true)).toEqual({ state: "open" });
+    expect(await turn(one, gameId, false)).toEqual({ state: "disabled_by_you" });
+    expect(await turn(one, gameId, false)).toEqual({ state: "disabled_by_you" });
+    expect(await enabledOf(one)).toBe(false);
+    expect(await enabledOf(two)).toBe(true);
+  });
+
+  it("works before the first message, and in the hour after a finished game", async () => {
+    const early = await setup();
+    expect(await turn(early.one, early.gameId, false)).toEqual({ state: "disabled_by_you" });
+    await expect(send(early.two, early.gameId, "pierwsza")).rejects.toMatchObject({ code: "CHAT_DISABLED" });
+
+    const finished = await setup("finished", { finishedAgoMs: 1000 });
+    expect(await turn(finished.one, finished.gameId, false)).toEqual({ state: "disabled_by_you" });
+  });
+
+  it("refuses with CHAT_UNAVAILABLE while the game waits, after cancel and after the window, and changes nothing", async () => {
+    const waiting = await setup("waiting", { second: false });
+    const cancelled = await setup("cancelled");
+    const late = await setup("finished", { finishedAgoMs: 60 * 60 * 1000 + 1000 });
+    for (const { gameId, one } of [waiting, cancelled, late]) {
+      await expect(turn(one, gameId, false)).rejects.toMatchObject({ status: 409, code: "CHAT_UNAVAILABLE" });
+      expect(await enabledOf(one)).toBe(true);
+    }
+  });
+
+  it("refuses an agent and leaves its setting alone", async () => {
+    const { gameId, one } = await setup();
+    // The guest in seat 2 is replaced by an agent's row.
+    await run("delete from game_players where game_id = ? and seat = 2", [gameId]);
+    const [agent] = await run(
+      `insert into game_players (game_id, seat, kind, agent_token_hash, join_channel, is_active)
+       values (?, 2, 'agent', ?, 'mcp', false) returning id`,
+      [gameId, "a".repeat(64)],
+    );
+    await expect(turn({ playerId: agent!.id }, gameId, false)).rejects.toMatchObject({ status: 403 });
+    expect(await enabledOf({ playerId: agent!.id })).toBe(true);
+    expect(await enabledOf(one)).toBe(true);
+  });
+
+  it("serializes with a concurrent send: a message is stored before the change or refused after it, none is lost", async () => {
+    for (let round = 0; round < 8; round++) {
+      const { gameId, one, two } = await setup();
+      const [sent, change] = await Promise.allSettled([send(two, gameId, `r${round}`), turn(one, gameId, false)]);
+
+      expect(change.status).toBe("fulfilled");
+      const stored = (await run("select count(*)::int as n from chat_messages where game_id = ?", [gameId]))[0]!.n;
+      if (sent.status === "fulfilled") expect(stored).toBe(1);
+      else {
+        expect(sent.reason).toMatchObject({ code: "CHAT_DISABLED" });
+        expect(stored).toBe(0);
+      }
+      // Whatever the order, nothing can be sent after the change.
+      await expect(send(two, gameId, "po zmianie")).rejects.toMatchObject({ code: "CHAT_DISABLED" });
+    }
+  });
+
+  it("answers 404 for a game that is gone", async () => {
+    const { gameId, one } = await setup();
+    await run("delete from games where id = ?", [gameId]);
+    await expect(turn(one, gameId, false)).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("gives a new game (a rematch) the setting on for both seats, whatever the earlier game had", async () => {
+    const earlier = await setup();
+    await turn(earlier.one, earlier.gameId, false);
+    const next = await setup();
+    expect(await enabledOf(next.one)).toBe(true);
+    expect(await enabledOf(next.two)).toBe(true);
+  });
+});
+
 describe("chat_messages schema", () => {
   it("defaults chat_enabled to true for new seats and keeps no personal columns", async () => {
     const { one } = await setup();

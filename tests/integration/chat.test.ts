@@ -1,7 +1,8 @@
 // The game chat in two real browsers (E07-S01): an account and a guest write to each other in a game
 // in progress and on the result screen, the opponent finds the message by polling (<= 3 s) without a
 // reload, markup / bidi / SQL arrive as plain text, an address is refused in the form, a rematch starts
-// with an empty chat, a stranger gets 404, the answers are never cached and carry only the seat, and the
+// with an empty chat and the setting on, either player can turn the chat off and on for themselves (E07-S02),
+// a stranger gets 404, the answers are never cached and carry only the seat, and the
 // server log never holds a message. Screenshots go to $GOMOKU_SHOTS_DIR in the theme $GOMOKU_SHOTS_THEME
 // (default light) at 360, 320 and 1280 px.
 import { readFileSync } from "node:fs";
@@ -37,7 +38,7 @@ const run = (text: string, params: unknown[] = []) =>
 let counter = 0;
 const nextAddress = () => `198.57.${Math.floor(counter / 250)}.${(counter++ % 250) + 1}`;
 
-async function api(method: "GET" | "POST", path: string, body?: unknown, cookie?: string) {
+async function api(method: "GET" | "POST" | "PUT", path: string, body?: unknown, cookie?: string) {
   return fetch(`${baseUrl}${path}`, {
     method,
     headers: {
@@ -231,6 +232,7 @@ describe("chat in the browser", () => {
     const { gameId, a, b } = await activeGame("account");
     await say(a.browser, "przed rewanżem");
     await bodyHas(b.browser, "przed rewanżem");
+    expect((await api("PUT", `/api/games/${gameId}/chat/settings`, { enabled: false }, a.cookie)).status).toBe(200);
     expect((await api("POST", `/api/games/${gameId}/resign`, undefined, a.cookie)).status).toBe(200);
     for (const seat of [a, b]) await bodyHas(seat.browser, "Koniec partii");
 
@@ -248,19 +250,71 @@ describe("chat in the browser", () => {
     expect((await run("select count(*)::int as n from chat_messages where game_id = ?", [newId]))[0]!.n).toBe(0);
   });
 
-  it("tells the one whose opponent turned the chat off, and does not let them write", async () => {
+  it("lets one player turn the chat off for themselves, tells the other, and brings the conversation back when it is on again", async () => {
     const { gameId, a, b } = await activeGame();
+    const SWITCH = "[data-testid=chat-switch]";
     await say(a.browser, "zanim wyłączę");
     await bodyHas(b.browser, "zanim wyłączę");
+    expect(await a.browser.text(SWITCH)).toBe("Wyłącz czat");
 
-    // S02 adds the switch; here the setting is written the way it will be.
-    await run(`update game_players set chat_enabled = false where game_id = ? and seat = 1`, [gameId]);
+    await a.browser.click(SWITCH);
+    await bodyHas(a.browser, "Wyłączyłeś czat. Nie widzisz wiadomości rozmówcy i nie możesz pisać.");
+    expect(await a.browser.count("[role=log]")).toBe(0);
+    expect(await a.browser.count(FIELD)).toBe(0);
+    expect(await a.browser.text(SWITCH)).toBe("Włącz czat");
+    // The focus stays on the same button, so the keyboard user is not thrown out.
+    expect(await a.browser.evaluate<string | null>(`document.activeElement?.getAttribute('data-testid') ?? null`)).toBe("chat-switch");
+    await shot(a.browser, "czat-wylaczony-przez-ciebie", [360, 320]);
+
+    // The other player learns by polling, still reads the talk, cannot write, and can turn it off too.
     await bodyHas(b.browser, "Rozmówca wyłączył czat. Nie możesz teraz pisać.");
     expect(await logText(b.browser)).toContain("zanim wyłączę");
     expect(await b.browser.evaluate<boolean>(`document.querySelector('${FIELD}').disabled`)).toBe(true);
-    await bodyHas(a.browser, "Wyłączyłeś czat.");
-    expect(await a.browser.count("[role=log]")).toBe(0);
+    expect(await b.browser.text(SWITCH)).toBe("Wyłącz czat");
     await shot(b.browser, "czat-wylaczony-przez-rozmowce", [360, 320]);
+
+    // The setting is the game's, not the page's: a reload keeps it.
+    await a.browser.open(`${baseUrl}/games/${gameId}`);
+    await bodyHas(a.browser, "Wyłączyłeś czat.");
+    expect(await a.browser.text(SWITCH)).toBe("Włącz czat");
+
+    await a.browser.click(SWITCH);
+    await bodyHas(a.browser, "zanim wyłączę");
+    expect(await a.browser.text(SWITCH)).toBe("Wyłącz czat");
+    await b.browser.waitForFn(`document.querySelector('${FIELD}') && !document.querySelector('${FIELD}').disabled`);
+    await say(b.browser, "już mogę");
+    await bodyHas(a.browser, "już mogę");
+  });
+
+  it("shows who turned it off when both did and one turns it on", async () => {
+    const { a, b } = await activeGame();
+    const SWITCH = "[data-testid=chat-switch]";
+    await a.browser.click(SWITCH);
+    await bodyHas(a.browser, "Wyłączyłeś czat.");
+    await bodyHas(b.browser, "Rozmówca wyłączył czat.");
+    await b.browser.click(SWITCH);
+    await bodyHas(b.browser, "Wyłączyłeś czat.");
+
+    await a.browser.click(SWITCH);
+    await bodyHas(a.browser, "Rozmówca wyłączył czat. Nie możesz teraz pisać.");
+    expect(await a.browser.evaluate<boolean>(`document.querySelector('${FIELD}').disabled`)).toBe(true);
+    expect(await b.browser.text("[data-testid=chat-switch]")).toBe("Włącz czat");
+    expect(await b.browser.count(FIELD)).toBe(0);
+  });
+
+  it("works from the keyboard and fits a 320 px screen", async () => {
+    const { a } = await activeGame();
+    await a.browser.setViewport(320, 900);
+    expect(await overflow(a.browser)).toBe(false);
+    await a.browser.evaluate(`document.querySelector('[data-testid=chat-switch]').focus()`);
+    await a.browser.press("Enter");
+    await bodyHas(a.browser, "Wyłączyłeś czat.");
+    expect(await overflow(a.browser)).toBe(false);
+    await a.browser.press("Space");
+    await bodyLacks(a.browser, "Wyłączyłeś czat.");
+    expect(await a.browser.evaluate<string>(`document.activeElement.getAttribute('data-testid')`)).toBe("chat-switch");
+    expect(await a.browser.evaluate<number>(`document.querySelector('[data-testid=chat-switch]').getBoundingClientRect().height`)).toBeGreaterThanOrEqual(44);
+    await a.browser.setViewport(360, 900);
   });
 });
 
@@ -353,6 +407,47 @@ describe("chat API", () => {
     const send = await api("POST", `/api/games/${gameId}/chat`, { text: "hej", clientId: crypto.randomUUID() }, aCookie);
     expect(send.status).toBe(409);
     expect(((await send.json()) as { error: { code: string } }).error.code).toBe("CHAT_UNAVAILABLE");
+  });
+});
+
+describe("chat settings API", () => {
+  it("sets the chat for the caller only, answers with the state, is idempotent and refuses what it should", async () => {
+    const { gameId, a, b } = await activeGame();
+    const url = `/api/games/${gameId}/chat/settings`;
+    const stranger = await signUp();
+
+    const off = await api("PUT", url, { enabled: false }, a.cookie);
+    expect(off.status).toBe(200);
+    expect(off.headers.get("cache-control")).toBe("no-store");
+    expect(await off.json()).toEqual({ ok: true, data: { state: "disabled_by_you" } });
+    expect(await (await api("PUT", url, { enabled: false }, a.cookie)).json()).toEqual({ ok: true, data: { state: "disabled_by_you" } });
+    expect(await (await api("PUT", url, { enabled: true }, b.cookie)).json()).toEqual({ ok: true, data: { state: "disabled_by_opponent" } });
+    const settings = await run("select seat, chat_enabled from game_players where game_id = ? order by seat", [gameId]);
+    expect(settings.map((row) => row.chat_enabled)).toEqual([false, true]);
+
+    for (const body of [{}, { enabled: "false" }, { enabled: 0 }, { enabled: true, extra: 1 }]) {
+      const bad = await api("PUT", url, body, a.cookie);
+      expect(bad.status).toBe(400);
+      expect(bad.headers.get("cache-control")).toBe("no-store");
+    }
+    const noCsrf = await fetch(`${baseUrl}${url}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json", cookie: a.cookie, origin: baseUrl },
+      body: JSON.stringify({ enabled: true }),
+    });
+    expect(noCsrf.status).toBe(403);
+    expect((await api("PUT", url, { enabled: true }, stranger)).status).toBe(404);
+    expect((await api("PUT", url, { enabled: true })).status).toBe(404);
+    expect((await api("PUT", "/api/games/4d293981-7b3c-4f81-a1af-0a9e3bf3636b/chat/settings", { enabled: true }, stranger)).status).toBe(404);
+  });
+
+  it("answers CHAT_UNAVAILABLE in a game that waits", async () => {
+    const aCookie = await signUp();
+    const created = await api("POST", "/api/games", {}, aCookie);
+    const { gameId } = ((await created.json()) as { data: { gameId: string } }).data;
+    const response = await api("PUT", `/api/games/${gameId}/chat/settings`, { enabled: false }, aCookie);
+    expect(response.status).toBe(409);
+    expect(((await response.json()) as { error: { code: string } }).error.code).toBe("CHAT_UNAVAILABLE");
   });
 });
 

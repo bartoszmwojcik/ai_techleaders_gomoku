@@ -13,6 +13,7 @@ import { ChatPanel } from "./chat-panel";
 const message = (id: number, seat: 1 | 2, text = `tekst ${id}`) => ({ id, seat, text, createdAt: "2026-11-01T10:00:00.000Z" });
 const refresh = vi.fn();
 const send = vi.fn();
+const setEnabled = vi.fn();
 const onGone = vi.fn();
 const chat = (over: Record<string, unknown> = {}) => ({
   loaded: true,
@@ -21,8 +22,10 @@ const chat = (over: Record<string, unknown> = {}) => ({
   limits: { maxLength: 120, minIntervalMs: 2000 },
   fails: 0,
   pending: null,
+  switching: false,
   refresh,
   send,
+  setEnabled,
   ...over,
 });
 const game = (over: Partial<Pick<GameView, "status" | "players">> = {}): Pick<GameView, "status" | "players" | "you"> => ({
@@ -41,6 +44,7 @@ beforeEach(() => {
   useChat.mockReset().mockReturnValue(chat());
   refresh.mockReset();
   send.mockReset();
+  setEnabled.mockReset().mockResolvedValue({ ok: true });
   onGone.mockReset();
 });
 afterEach(cleanup);
@@ -126,7 +130,7 @@ describe("ChatPanel, the other states", () => {
   it.each([
     ["closed", "Czat jest już zamknięty."],
     ["unavailable", "Czat będzie dostępny, gdy przeciwnik dołączy do partii."],
-    ["disabled_by_you", "Wyłączyłeś czat."],
+    ["disabled_by_you", "Wyłączyłeś czat. Nie widzisz wiadomości rozmówcy i nie możesz pisać. Rozmówca zobaczy, że czat jest wyłączony."],
   ])("says %s in a sentence and has no form", (state, sentence) => {
     useChat.mockReturnValue(chat({ state }));
     setup();
@@ -199,5 +203,107 @@ describe("ChatPanel, folding", () => {
     expect(toggle().textContent).toBe("Zwiń czat");
     fireEvent.click(toggle());
     expect(toggle().textContent).toBe("Rozwiń czat");
+  });
+});
+
+describe("ChatPanel, turning the chat off and on", () => {
+  const switchButton = () => screen.getByTestId("chat-switch") as HTMLButtonElement;
+
+  it("offers 'Wyłącz czat' for an open chat and sends the change", () => {
+    setup();
+    expect(switchButton().textContent).toBe("Wyłącz czat");
+    expect(switchButton().getAttribute("aria-busy")).toBeNull();
+    fireEvent.click(switchButton());
+    expect(setEnabled).toHaveBeenCalledWith(false);
+  });
+
+  it("offers 'Włącz czat' when you turned it off, and says what that means", () => {
+    useChat.mockReturnValue(chat({ state: "disabled_by_you" }));
+    setup();
+    expect(switchButton().textContent).toBe("Włącz czat");
+    fireEvent.click(switchButton());
+    expect(setEnabled).toHaveBeenCalledWith(true);
+    expect(screen.getAllByRole("status").some((element) => element.textContent?.startsWith("Wyłączyłeś czat."))).toBe(true);
+  });
+
+  it("keeps 'Wyłącz czat' when the opponent turned it off", () => {
+    useChat.mockReturnValue(chat({ state: "disabled_by_opponent" }));
+    setup();
+    expect(switchButton().textContent).toBe("Wyłącz czat");
+    expect(switchButton().disabled).toBe(false);
+  });
+
+  it("stays reachable when the panel is folded", () => {
+    setup();
+    fireEvent.click(toggle());
+    expect(switchButton().closest("[hidden]")).toBeNull();
+  });
+
+  it("is blocked, with the reason, until the first read", () => {
+    useChat.mockReturnValue(chat({ loaded: false, limits: null }));
+    setup();
+    expect(switchButton().disabled).toBe(true);
+    const reason = document.getElementById(switchButton().getAttribute("aria-describedby")!)!;
+    expect(reason.textContent).toBe("Wczytujemy czat…");
+  });
+
+  it("is busy while the change is in flight", () => {
+    useChat.mockReturnValue(chat({ switching: true }));
+    setup();
+    expect(switchButton().getAttribute("aria-busy")).toBe("true");
+    // Still enabled: a disabled button would drop the keyboard focus.
+    expect(switchButton().disabled).toBe(false);
+  });
+
+  it.each(["unavailable", "closed"])("is not offered for %s", (state) => {
+    useChat.mockReturnValue(chat({ state }));
+    setup();
+    expect(screen.queryByTestId("chat-switch")).toBeNull();
+  });
+
+  it("shows an alert for a failed change, in the words of the change, and clears it on the next attempt", async () => {
+    setEnabled.mockResolvedValueOnce({ ok: false, kind: "failed" });
+    setup();
+    fireEvent.click(switchButton());
+    expect(await screen.findByText("Nie udało się wyłączyć czatu. Spróbuj ponownie.")).toBeTruthy();
+    fireEvent.click(switchButton());
+    await vi.waitFor(() => expect(screen.queryByText("Nie udało się wyłączyć czatu. Spróbuj ponownie.")).toBeNull());
+    expect(setEnabled).toHaveBeenCalledTimes(2);
+  });
+
+  it("words a failed turning on differently", async () => {
+    useChat.mockReturnValue(chat({ state: "disabled_by_you" }));
+    setEnabled.mockResolvedValueOnce({ ok: false, kind: "failed" });
+    setup();
+    fireEvent.click(switchButton());
+    expect(await screen.findByText("Nie udało się włączyć czatu. Spróbuj ponownie.")).toBeTruthy();
+  });
+
+  it.each(["refused", "busy"])("shows no alert for %s", async (kind) => {
+    setEnabled.mockResolvedValueOnce({ ok: false, kind });
+    setup();
+    fireEvent.click(switchButton());
+    await vi.waitFor(() => expect(setEnabled).toHaveBeenCalled());
+    expect(screen.queryByText(/Nie udało się wyłączyć/)).toBeNull();
+  });
+
+  it("keeps the focus on the same button when the label changes", () => {
+    useChat.mockReturnValue(chat());
+    const view = setup();
+    switchButton().focus();
+    const before = switchButton();
+    useChat.mockReturnValue(chat({ state: "disabled_by_you" }));
+    view.rerender(<ChatPanel gameId="g1" game={game()} onGone={onGone} />);
+    expect(switchButton()).toBe(before);
+    expect(document.activeElement).toBe(before);
+    expect(before.textContent).toBe("Włącz czat");
+  });
+
+  it("remembers nothing in the browser", () => {
+    const set = vi.spyOn(Storage.prototype, "setItem");
+    setup();
+    fireEvent.click(switchButton());
+    expect(set).not.toHaveBeenCalled();
+    set.mockRestore();
   });
 });
