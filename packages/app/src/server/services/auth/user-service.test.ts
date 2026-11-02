@@ -1,8 +1,10 @@
 import {
   AppError,
   ConflictError,
+  TooManyRequestsError,
   UnauthorizedError,
   ValidationError,
+  normalizeDisplayName,
 } from "@gomoku/core";
 import {
   UniqueConstraintViolationException,
@@ -19,6 +21,8 @@ import {
   EMAIL_TAKEN_MESSAGE,
   INVALID_CREDENTIALS_MESSAGE,
   INVALID_CURRENT_PASSWORD_MESSAGE,
+  DISPLAY_NAME_COOLDOWN_MESSAGE,
+  SAME_DISPLAY_NAME_MESSAGE,
   UserService,
 } from "./user-service";
 import { VERIFICATION_SEND_TIMEOUT_MS } from "./email-verification-service";
@@ -81,6 +85,7 @@ function setup(options: { flushError?: unknown; emailCount?: number } = {}) {
     passwordHasher: passwordHasher as unknown as PasswordHasher,
     sessionService: sessionService as unknown as SessionService,
     invalidateResetTokens: vi.fn(async () => undefined),
+    clock: { now: () => new Date("2026-11-02T10:00:00Z") },
     emailVerificationService:
       emailVerificationService as unknown as EmailVerificationService,
   });
@@ -291,6 +296,7 @@ describe("UserService.authenticate", () => {
       passwordHasher: passwordHasher as unknown as PasswordHasher,
       sessionService: sessionService as unknown as SessionService,
       invalidateResetTokens: vi.fn(async () => undefined),
+      clock: { now: () => new Date("2026-11-02T10:00:00Z") },
       emailVerificationService: {} as unknown as EmailVerificationService,
     });
     return { em, passwordHasher, sessionService, service };
@@ -421,6 +427,7 @@ describe("UserService.changePassword", () => {
       passwordHasher: passwordHasher as unknown as PasswordHasher,
       sessionService: sessionService as unknown as SessionService,
       invalidateResetTokens,
+      clock: { now: () => new Date("2026-11-02T10:00:00Z") },
       emailVerificationService: {} as unknown as EmailVerificationService,
     });
     return {
@@ -524,5 +531,85 @@ describe("UserService.changePassword", () => {
       service.changePassword("user-1", "sess-1", "old-pass", "new-pass-1"),
     ).rejects.toBeInstanceOf(UnauthorizedError);
     expect(passwordHasher.verify).not.toHaveBeenCalled();
+  });
+});
+
+describe("UserService.changeDisplayName", () => {
+  const NOW = new Date("2026-11-02T10:00:00Z");
+  function build(options: { found?: object | null; updated?: number; reread?: object | null; updateError?: unknown } = {}) {
+    const found = options.found === undefined ? { displayName: "Stara_7" } : options.found;
+    const em = {
+      findOne: vi
+        .fn()
+        .mockResolvedValueOnce(found)
+        .mockResolvedValueOnce(options.reread ?? null),
+      nativeUpdate: vi.fn(async () => {
+        if (options.updateError) throw options.updateError;
+        return options.updated ?? 1;
+      }),
+    };
+    const service = new UserService({
+      em: em as unknown as EntityManager,
+      passwordHasher: {} as unknown as PasswordHasher,
+      sessionService: {} as unknown as SessionService,
+      invalidateResetTokens: vi.fn(),
+      clock: { now: () => NOW },
+      emailVerificationService: {} as unknown as EmailVerificationService,
+    });
+    return { service, em };
+  }
+
+  it("writes the name, its key and the time in one conditional update", async () => {
+    const { service, em } = build();
+    expect(await service.changeDisplayName("user-1", "Łukasz_8")).toBe("Łukasz_8");
+    const [entity, where, data] = em.nativeUpdate.mock.calls[0] as unknown as [unknown, Record<string, unknown>, Record<string, unknown>];
+    expect(entity).toBe(User);
+    expect(where).toEqual({
+      id: "user-1",
+      $or: [{ displayNameChangedAt: null }, { displayNameChangedAt: { $lte: new Date("2026-11-01T10:00:00Z") } }],
+    });
+    expect(data).toEqual({ displayName: "Łukasz_8", displayNameKey: normalizeDisplayName("Łukasz_8"), displayNameChangedAt: NOW });
+  });
+
+  it("answers 401 when the user is gone", async () => {
+    const { service, em } = build({ found: null });
+    await expect(service.changeDisplayName("user-1", "Nowa_7")).rejects.toBeInstanceOf(UnauthorizedError);
+    expect(em.nativeUpdate).not.toHaveBeenCalled();
+  });
+
+  it("refuses the current name without spending the window", async () => {
+    const { service, em } = build();
+    await expect(service.changeDisplayName("user-1", "Stara_7")).rejects.toMatchObject({
+      status: 400,
+      fieldErrors: { displayName: [SAME_DISPLAY_NAME_MESSAGE] },
+    });
+    expect(em.nativeUpdate).not.toHaveBeenCalled();
+  });
+
+  it("answers 409 with a field error for a taken name", async () => {
+    const { service } = build({ updateError: uniqueViolation("users_display_name_key_unique") });
+    const error = await service.changeDisplayName("user-1", "Zajeta_7").catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ConflictError);
+    expect(error).toMatchObject({ fieldErrors: { displayName: [DISPLAY_NAME_TAKEN_MESSAGE] } });
+  });
+
+  it("rethrows any other failure", async () => {
+    const { service } = build({ updateError: new Error("db down") });
+    await expect(service.changeDisplayName("user-1", "Nowa_7")).rejects.toThrow("db down");
+  });
+
+  it("answers 429 with the seconds left inside the window", async () => {
+    const { service } = build({ updated: 0, reread: { displayNameChangedAt: new Date("2026-11-02T04:00:00Z") } });
+    const error = await service.changeDisplayName("user-1", "Nowa_7").catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(TooManyRequestsError);
+    expect(error).toMatchObject({ code: "DISPLAY_NAME_COOLDOWN", message: DISPLAY_NAME_COOLDOWN_MESSAGE, retryAfterSeconds: 18 * 3600 });
+  });
+
+  it("still answers 429 (one second) when the row cannot be re-read", async () => {
+    const { service } = build({ updated: 0, reread: null });
+    await expect(service.changeDisplayName("user-1", "Nowa_7")).rejects.toMatchObject({
+      code: "DISPLAY_NAME_COOLDOWN",
+      retryAfterSeconds: 24 * 3600,
+    });
   });
 });
