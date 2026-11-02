@@ -8,7 +8,9 @@ const NOW = new Date("2026-10-30T12:00:00Z");
 const HASH = "hash-1";
 
 type Options = {
-  user?: { passwordHash: string } | null;
+  user?: { passwordHash: string; email: string } | null;
+  lockedEmail?: string;
+  adminEmail?: string;
   passwordOk?: boolean;
   userLocked?: boolean;
   games?: { id: string; status: string }[];
@@ -28,7 +30,7 @@ function setup(options: Options = {}) {
       const name = text.split(" ").slice(0, 3).join(" ");
       order.push(`${via}:${name}`);
       if (options.failOn && text.includes(options.failOn)) throw new Error("boom");
-      if (text.startsWith("select id from users")) return options.userLocked === false ? [] : [{ id: "user-1" }];
+      if (text.startsWith("select id, email from users")) return options.userLocked === false ? [] : [{ id: "user-1", email: options.lockedEmail ?? "ala@example.com" }];
       if (text.includes("p.user_id = ? and g.status in")) return options.games ?? [];
       if (text.includes("rematch_state = 'pending'") && text.startsWith("select")) return options.offers ?? [];
       if (text.startsWith("delete from users")) return options.deleted === false ? [] : [{ id: "user-1" }];
@@ -36,7 +38,7 @@ function setup(options: Options = {}) {
     });
   const tx = { execute: answer("tx") };
   const em = {
-    findOne: vi.fn(async () => (options.user === undefined ? { passwordHash: HASH } : options.user)),
+    findOne: vi.fn(async () => (options.user === undefined ? { passwordHash: HASH, email: "ala@example.com" } : options.user)),
     execute: answer("em"),
     transactional: vi.fn(async (fn: (tx: unknown) => unknown) => {
       order.push("transaction");
@@ -59,6 +61,7 @@ function setup(options: Options = {}) {
     passwordHasher: passwordHasher as never,
     timeoutSettler: timeoutSettler as never,
     clock: { now: () => NOW },
+    adminEmail: options.adminEmail,
   });
   return { service, em, tx, calls, order, passwordHasher, timeoutSettler };
 }
@@ -79,7 +82,7 @@ describe("AccountService.delete", () => {
     expect(calls[1]!.params).toEqual([new Date(NOW.getTime() - READY_DEADLINE_MS), "user-1"]);
     // Lock order: user, games, rematch offers, the delete; all through `tx`.
     expect(txCalls(calls).map(({ sql }) => sql.split(" ").slice(0, 4).join(" "))).toEqual([
-      "select id from users",
+      "select id, email from",
       "select g.id, g.status from",
       "select g.id from games",
       "delete from chat_messages where",
@@ -185,5 +188,38 @@ describe("AccountService.delete", () => {
   it("lets a database failure through", async () => {
     const { service } = setup({ failOn: "delete from users" });
     await expect(service.delete("user-1", "secret")).rejects.toThrow("boom");
+  });
+});
+
+describe("AccountService.delete: the installation administrator (E08-S01)", () => {
+  it("refuses before the password check and any write", async () => {
+    const { service, passwordHasher, timeoutSettler, em, calls } = setup({
+      adminEmail: "admin@example.com",
+      user: { passwordHash: HASH, email: "ADMIN@example.com" },
+    });
+
+    await expect(service.delete("user-1", "secret")).rejects.toMatchObject({
+      status: 403,
+      code: "ADMIN_ACCOUNT_PROTECTED",
+      message: "Tego konta nie można usunąć.",
+    });
+
+    expect(passwordHasher.verify).not.toHaveBeenCalled();
+    expect(timeoutSettler.settleFor).not.toHaveBeenCalled();
+    expect(em.transactional).not.toHaveBeenCalled();
+    expect(calls).toHaveLength(0);
+  });
+
+  it("refuses under the row lock when the address became the administrator's meanwhile", async () => {
+    const { service, calls } = setup({ adminEmail: "admin@example.com", lockedEmail: "admin@example.com" });
+
+    await expect(service.delete("user-1", "secret")).rejects.toMatchObject({ code: "ADMIN_ACCOUNT_PROTECTED" });
+
+    expect(txCalls(calls)).toHaveLength(1);
+  });
+
+  it("deletes an ordinary user while an administrator is configured", async () => {
+    const { service } = setup({ adminEmail: "admin@example.com" });
+    await expect(service.delete("user-1", "secret")).resolves.toBeUndefined();
   });
 });

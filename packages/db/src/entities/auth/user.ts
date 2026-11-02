@@ -1,6 +1,12 @@
 import { defineEntity, p } from "@mikro-orm/core";
 
-/** Player account. `email` is stored trimmed and lowercased. */
+/**
+ * Player account. `email` is stored trimmed and lowercased.
+ *
+ * The installation administrator is the account whose e-mail equals `ADMIN_EMAIL` (BR-35, no role
+ * column). Therefore nothing may change `email` of an existing account without handling that rule
+ * (see `users-email-writes.guard.test.ts` in `@gomoku/app`).
+ */
 export const User = defineEntity({
   name: "User",
   tableName: "users",

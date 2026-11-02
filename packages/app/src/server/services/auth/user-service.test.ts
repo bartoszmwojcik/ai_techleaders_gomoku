@@ -35,7 +35,7 @@ function uniqueViolation(constraint: string) {
   return error;
 }
 
-function setup(options: { flushError?: unknown; emailCount?: number } = {}) {
+function setup(options: { flushError?: unknown; emailCount?: number; adminEmail?: string } = {}) {
   const calls: string[] = [];
   // The transaction's em differs from the injected one, like in MikroORM 7 (the fork has
   // `useContext = false`): only writes through `tx` are part of the transaction.
@@ -83,6 +83,7 @@ function setup(options: { flushError?: unknown; emailCount?: number } = {}) {
     invalidateResetTokens: vi.fn(async () => undefined),
     emailVerificationService:
       emailVerificationService as unknown as EmailVerificationService,
+    adminEmail: options.adminEmail,
   });
   return {
     emailVerificationService,
@@ -524,5 +525,34 @@ describe("UserService.changePassword", () => {
       service.changePassword("user-1", "sess-1", "old-pass", "new-pass-1"),
     ).rejects.toBeInstanceOf(UnauthorizedError);
     expect(passwordHasher.verify).not.toHaveBeenCalled();
+  });
+});
+
+describe("UserService.register: the installation administrator's address (E08-S01, A-11)", () => {
+  it.each(["Admin@X.com", "  admin@x.com  ", "ADMIN@X.COM", "admin@x.com"])(
+    "answers %j like a taken e-mail, without a write, session or message",
+    async (email) => {
+      const { service, passwordHasher, tx, em, emailVerificationService } = setup({ adminEmail: "admin@x.com" });
+
+      await expect(service.register({ ...input, email })).rejects.toMatchObject({
+        status: 409,
+        message: EMAIL_TAKEN_MESSAGE,
+      });
+
+      expect(passwordHasher.hash).toHaveBeenCalledOnce();
+      expect(em.transactional).not.toHaveBeenCalled();
+      expect(tx.create).not.toHaveBeenCalled();
+      expect(emailVerificationService.issue).not.toHaveBeenCalled();
+    },
+  );
+
+  it("answers with the e-mail message also when the display name is taken", async () => {
+    const { service } = setup({ adminEmail: "admin@x.com", flushError: uniqueViolation("users_display_name_key_unique") });
+    await expect(service.register({ ...input, email: "admin@x.com" })).rejects.toThrow(EMAIL_TAKEN_MESSAGE);
+  });
+
+  it("registers other addresses and everything when no administrator is configured", async () => {
+    await expect(setup({ adminEmail: "admin@x.com" }).service.register(input)).resolves.toBeDefined();
+    await expect(setup().service.register({ ...input, email: "admin@x.com" })).resolves.toBeDefined();
   });
 });

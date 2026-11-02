@@ -7,7 +7,7 @@ import { handleMcpPost, methodNotAllowed, type McpEndpointDeps } from "./mcp-end
 import { MCP_TOOL_NAMES } from "./mcp-server";
 
 const ORIGIN = "https://gomoku.example";
-const production = { NODE_ENV: "production", TRUST_PROXY_HOPS: "1", APP_ORIGIN: ORIGIN };
+const production = { NODE_ENV: "production", TRUST_PROXY_HOPS: "1", APP_ORIGIN: ORIGIN, ADMIN_EMAIL: "admin@gomoku.example" };
 
 const RESULT = {
   token: "t".repeat(43),

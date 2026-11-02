@@ -50,3 +50,4 @@ Indeks lekcji. Jedna linia na wpis: `- [Tytuł](lessons/YYYY-MM-DD-slug.md) — 
 - [Strażnik liczy instrukcje, nie pliki](lessons/2026-10-31-guard-counts-statements-not-files.md) — „każde miejsce musi wywołać X” porównuje liczbę instrukcji z liczbą wywołań; test negatywny dodaje drugą instrukcję w obsłużonym pliku
 - [`role="log"` nie na `<ol>`](lessons/2026-11-01-aria-log-not-allowed-on-ol.md) — rolę `log` nadawaj blokowi wokół listy (`div role="log"` + `ol`), przewijany blok z `tabIndex=0`; axe w test:stories to wyłapuje.
 - [Nowa reguła cleanup a stare testy](lessons/2026-11-01-new-cleanup-rule-updates-old-expectations.md) — nowa reguła `db:cleanup` wymaga przeglądu testów z usuniętymi kontami i budżetu N × 15 s w kodzie i README.
+- [Eksport z indeksu db a bundle Next](lessons/2026-11-02-db-index-export-pulls-cli-into-next-bundle.md) — nie eksportuj z `cli/` w `packages/db/src/index.ts` (wciąga migracje do bundla); po zmianie indeksu uruchom `npm run build`.

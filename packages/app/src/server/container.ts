@@ -57,6 +57,8 @@ export type AppCradle = {
   passwordHasher: PasswordHasher;
   /** Resolved lazily: invalid production settings fail the routes that use it, not `/api/health`. */
   serverConfig: ServerConfig;
+  /** `ADMIN_EMAIL` normalized (E08); undefined outside production without it. */
+  adminEmail: string | undefined;
   /** G5: does the user have a game that was running when the session expired. Request-scoped. */
   hasActiveGame: HasActiveGame;
   /** Marks a user's unused reset tokens as used; writes only through the `em` it is given. */
@@ -144,6 +146,7 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     ).singleton(),
     passwordHasher: asClass(PasswordHasher).singleton(),
     serverConfig: asFunction(() => readServerConfig(process.env)).singleton(),
+    adminEmail: asFunction(({ serverConfig }: AppCradle) => serverConfig.adminEmail).singleton(),
     hasActiveGame: asFunction(
       ({ gameParticipation }: AppCradle): HasActiveGame =>
         (userId, expiredAt) =>

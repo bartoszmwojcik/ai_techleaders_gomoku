@@ -22,6 +22,7 @@
     "db:migration:list": "npm run migration:list -w @gomoku/db",
     "db:status": "npm run status -w @gomoku/db --silent",
     "db:cleanup": "npm run cleanup -w @gomoku/db --silent",
+    "admin:create": "npm run admin:create -w @gomoku/app --silent --",
     "stats:games": "npm run stats:games -w @gomoku/db --silent",
     "test": "vitest run --coverage",
     "test:watch": "vitest",

@@ -10,6 +10,7 @@ import { promisify } from "node:util";
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import type { TestProject } from "vitest/node";
 
+import { ADMIN_EMAIL } from "./admin";
 import { Browser, DEFAULT_SYSTEM_SCHEME } from "./browser";
 
 declare module "vitest" {
@@ -109,6 +110,8 @@ export default async function setup(project: TestProject) {
         // `next start` is production without HTTPS: plain-HTTP origin, cookie without `Secure`.
         TRUST_PROXY_HOPS: "1",
         APP_ORIGIN: baseUrl,
+        // The installation administrator (E08); tests/integration/admin-account.test.ts uses the same address.
+        ADMIN_EMAIL: ADMIN_EMAIL,
         SESSION_COOKIE_SECURE: "false",
         // Cheap bcrypt: the limit tests make hundreds of password checks (production is 12).
         PASSWORD_HASH_COST: "4",

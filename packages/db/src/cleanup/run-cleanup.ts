@@ -10,6 +10,8 @@ import { cleanupExpired } from "./cleanup-expired";
 export type CleanupRunDeps = {
   createOrm?: (overrides: Parameters<typeof defaultCreateOrm>[0]) => Promise<Orm>;
   now?: () => Date;
+  /** Normalized e-mail of the account the sweep must keep (`ADMIN_EMAIL`, E08-S01). */
+  protectedEmail?: string;
   stdout?: Pick<NodeJS.WriteStream, "write">;
   stderr?: Pick<NodeJS.WriteStream, "write">;
 };
@@ -17,6 +19,7 @@ export type CleanupRunDeps = {
 export async function runCleanup({
   createOrm = defaultCreateOrm,
   now = () => new Date(),
+  protectedEmail,
   stdout = process.stdout,
   stderr = process.stderr,
 }: CleanupRunDeps = {}): Promise<number> {
@@ -24,7 +27,7 @@ export async function runCleanup({
   try {
     // ensureDatabase: false — a maintenance job must never create a missing database.
     orm = await createOrm({ ensureDatabase: false, pool: { min: 0, max: 1 } });
-    const result = await cleanupExpired({ em: orm.em.fork(), now: now() });
+    const result = await cleanupExpired({ em: orm.em.fork(), now: now(), protectedEmail });
     stdout.write(`${JSON.stringify(result)}\n`);
     if (result.errors.length === 0) return 0;
     stderr.write(`${JSON.stringify({ ok: false, errors: result.errors })}\n`);
