@@ -73,15 +73,39 @@ describe("POST /api/games with a session", () => {
     expect(connection).toHaveBeenCalledOnce();
     expect(response.status).toBe(201);
     expect(JSON.parse(JSON.stringify(await response.json())).data.gameId).toBe("game-1");
-    expect(create).toHaveBeenCalledWith({ kind: "account", userId: "user-1" });
+    expect(create).toHaveBeenCalledWith({ kind: "account", userId: "user-1", isPublic: undefined });
     expect(setGuestCookie).not.toHaveBeenCalled();
   });
 
   it("ignores the guest fields, even an invalid nickname", async () => {
     const response = await POST(post({ nickname: "<>", cancelOwnWaitingGame: true }));
     expect(response.status).toBe(201);
-    expect(create).toHaveBeenCalledWith({ kind: "account", userId: "user-1" });
+    expect(create).toHaveBeenCalledWith({ kind: "account", userId: "user-1", isPublic: undefined });
   });
+});
+
+describe("POST /api/games with a session, public flag (BR-40)", () => {
+  it("passes isPublic from the body to the service", async () => {
+    const response = await POST(post({ isPublic: true }));
+    expect(response.status).toBe(201);
+    expect(create).toHaveBeenCalledWith({ kind: "account", userId: "user-1", isPublic: true });
+  });
+
+  it.each([["a non-boolean flag", { isPublic: "yes" }], ["garbage", "{nope"]])(
+    "answers 400 for %s, creating nothing",
+    async (_name, body) => {
+      const request =
+        typeof body === "string"
+          ? new Request("https://gomoku.example/api/games", {
+              method: "POST",
+              headers: { origin: serverConfig.appOrigin, "x-gomoku-request": "1" },
+              body,
+            })
+          : post(body);
+      expect((await POST(request)).status).toBe(400);
+      expect(create).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe("POST /api/games without a session (guest)", () => {
@@ -104,6 +128,11 @@ describe("POST /api/games without a session (guest)", () => {
     expect(config).toBe(serverConfig);
     expect(hashOpaqueToken(token)).toBe(creator.tokenHash);
     expect(maxAge).toBe(25 * 3600);
+  });
+
+  it("passes isPublic to the service for a guest", async () => {
+    await POST(post({ acknowledgedGuestWarning: true, isPublic: true }));
+    expect(create.mock.calls[0]![0]).toMatchObject({ kind: "guest", isPublic: true });
   });
 
   it("keeps the token the browser already carries and passes the cancel flag", async () => {

@@ -137,7 +137,7 @@ const RELEASE_SLOTS_SQL = `update game_players set is_active = false where game_
  * rate-limit key of the client address (`games-create-guest:ip:...`).
  */
 export type GameCreator =
-  | { kind: "account"; userId: string }
+  | { kind: "account"; userId: string; isPublic?: boolean }
   | GuestCreator;
 
 export type GuestCreator = {
@@ -146,6 +146,8 @@ export type GuestCreator = {
   tokenHash: string;
   limitKey: string;
   cancelOwnWaitingGame?: boolean;
+  /** A public game (D-33, BR-40); only an invitation can make one. */
+  isPublic?: boolean;
 };
 
 export type CreatedGame = {
@@ -267,7 +269,7 @@ export class GameService {
     await this.#timeoutSettler.settleFor(userId);
 
     const now = this.#clock.now();
-    const draft = this.#draft(now);
+    const draft = this.#draft(now, creator.isPublic);
     try {
       const gameId = await this.#em.transactional(async (tx) => {
         const locked = await tx.execute<{ id: string; display_name: string }[]>(LOCK_USER_SQL, [userId]);
@@ -312,7 +314,7 @@ export class GameService {
     await this.#timeoutSettler.settleForGuest(creator.tokenHash);
 
     const now = this.#clock.now();
-    const draft = this.#draft(now);
+    const draft = this.#draft(now, creator.isPublic);
     const outcome = await this.#em.transactional(
       async (tx): Promise<{ gameId: string } | { refusal: ConflictError }> => {
         await tx.execute(ADVISORY_LOCK_SQL, [creator.tokenHash], "run");
@@ -359,8 +361,9 @@ export class GameService {
     return this.#created(outcome.gameId, draft);
   }
 
-  #draft(now: Date) {
+  #draft(now: Date, isPublic = false) {
     return {
+      isPublic,
       code: this.#invitationCodes.generate(),
       expiresAt: new Date(now.getTime() + INVITATION_TTL_MS),
     };
@@ -369,7 +372,7 @@ export class GameService {
   /** Writes the game, its seat-1 player and the invitation through `tx`; returns the game id. */
   async #insertGame(
     tx: EntityManager,
-    { code, expiresAt }: { code: string; expiresAt: Date },
+    { code, expiresAt, isPublic }: { code: string; expiresAt: Date; isPublic: boolean },
     now: Date,
     creator:
       | { kind: "account"; userId: string; displayName: string }
@@ -377,6 +380,7 @@ export class GameService {
   ): Promise<string> {
     const game = tx.create(Game, {
       origin: "invite",
+      isPublic,
       status: "waiting",
       createdAt: now,
     });

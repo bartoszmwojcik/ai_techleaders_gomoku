@@ -3,6 +3,7 @@
 import { CREATE_GAME_LIMIT } from "@gomoku/core";
 import { Alert } from "@gomoku/ui/game/alert";
 import { Button } from "@gomoku/ui/game/button";
+import { Checkbox } from "@gomoku/ui/game/checkbox";
 import { TextLink } from "@gomoku/ui/game/text-link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
@@ -24,6 +25,7 @@ type Failure =
 export function CreateGameButton({ heldGame }: { heldGame: HeldGame | null }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [isPublic, setIsPublic] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
   // State alone lags a double click by one render; the ref closes that gap (two games would be a 409).
   const inFlight = useRef(false);
@@ -33,7 +35,9 @@ export function CreateGameButton({ heldGame }: { heldGame: HeldGame | null }) {
     inFlight.current = true;
     setBusy(true);
     setFailure(null);
-    const result = await apiCall<{ gameId: string }>("/api/games");
+    const result = await apiCall<{ gameId: string }>("/api/games", {
+      ...(isPublic ? { body: { isPublic: true } } : {}),
+    });
     if (result.ok) {
       // Stay busy while the page navigates, so a second game cannot be created.
       router.push(`/games/${result.data.gameId}`);
@@ -92,6 +96,14 @@ export function CreateGameButton({ heldGame }: { heldGame: HeldGame | null }) {
           {retry}
         </Alert>
       )}
+      <Checkbox
+        label="Partia publiczna"
+        hint="Po rozpoczęciu partii każdy z kodem lub linkiem będzie mógł ją oglądać."
+        checked={isPublic}
+        onCheckedChange={(value) => setIsPublic(value === true)}
+        disabled={busy}
+        data-testid="create-game-public"
+      />
       <Button data-testid="create-game" loading={busy} onClick={() => void onCreate()}>
         {busy ? "Tworzenie zaproszenia…" : "Utwórz zaproszenie"}
       </Button>

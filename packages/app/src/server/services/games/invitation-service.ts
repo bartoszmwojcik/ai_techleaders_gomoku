@@ -91,6 +91,8 @@ export type InvitationPreview = {
   creatorName: string | null;
   /** Whether the creator plays with an account or as a guest (E02-S08). */
   creatorKind: CreatorKind;
+  /** Whether anyone with the code may watch the game (D-33, BR-45): shown before joining. */
+  isPublic: boolean;
   state:
     /** Free to join (a guest option may still apply to the anonymous visitor). */
     | "joinable"
@@ -191,6 +193,7 @@ export class InvitationService {
       const known = (state: InvitationPreview["state"]): InvitationPreview => ({
         creatorName: creatorNameOf(invitation),
         creatorKind: invitation.creator_kind as CreatorKind,
+        isPublic: invitation.is_public,
         state,
         gameId: invitation.game_id,
       });
@@ -214,6 +217,7 @@ export class InvitationService {
     const creator = {
       creatorName: creatorNameOf(invitation),
       creatorKind: invitation.creator_kind as CreatorKind,
+      isPublic: invitation.is_public,
     };
     if (!slot) return { ...creator, state: "joinable" };
     return {

@@ -38,6 +38,12 @@ export function InviteScreen({ code, view }: Props) {
         </p>
       )}
 
+      {open && view.isPublic && (
+        <div data-testid="invite-public">
+          <Alert status="info" title="Partia publiczna: może ją oglądać każdy z kodem" />
+        </div>
+      )}
+
       {view.kind === "joinable" && <JoinActions code={code} mode={view.signedIn ? "member" : "visitor"} />}
 
       {view.kind === "has-active-game" && (

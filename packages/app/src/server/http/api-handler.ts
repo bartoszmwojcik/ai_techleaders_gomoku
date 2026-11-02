@@ -51,6 +51,20 @@ export async function readJsonBody(request: Request): Promise<unknown> {
   }
 }
 
+/**
+ * Like `readJsonBody`, but a request without a body is `{}`: for endpoints whose body only
+ * carries optional settings. A body that is present must still be valid JSON.
+ */
+export async function readOptionalJsonBody(request: Request): Promise<unknown> {
+  const text = await request.text();
+  if (text.trim() === "") return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new ValidationError("Nieprawidłowe dane żądania.");
+  }
+}
+
 function errorResponse(error: AppError): Response {
   const body: ApiResult<never> = { ok: false, error: error.toBody() };
   const headers = new Headers();

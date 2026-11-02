@@ -32,6 +32,7 @@ const invitationRow = (over: Row = {}): Row => ({
   creator_name: "Ala",
   creator_kind: "account",
   creator_nickname: null,
+  is_public: false,
   ...over,
 });
 
@@ -603,7 +604,7 @@ describe("InvitationService.preview", () => {
   it("shows a free invitation to an anonymous visitor without touching state", async () => {
     const { service, calls, rateLimiter, em, timeoutSettler } = setup();
     const preview = await service.preview(CODE, {}, GUARD);
-    expect(preview).toEqual({ creatorName: "Ala", creatorKind: "account", state: "joinable" });
+    expect(preview).toEqual({ creatorName: "Ala", creatorKind: "account", isPublic: false, state: "joinable" });
     expect(rateLimiter.hit).toHaveBeenCalledWith(GUARD.key, GUARD.limit, INVITATION_LOOKUP_WINDOW_MS);
     expect(rateLimiter.release).toHaveBeenCalledWith(GUARD.key, INVITATION_LOOKUP_WINDOW_MS);
     expect(em.transactional).not.toHaveBeenCalled();
@@ -611,11 +612,19 @@ describe("InvitationService.preview", () => {
     expect(sqlsOf(calls).every((sql) => sql.startsWith("select"))).toBe(true);
   });
 
+  it("passes the public flag of the game on, for a joinable and for a known viewer (BR-45)", async () => {
+    const open = setup({ invitation: [invitationRow({ is_public: true })] });
+    expect(await open.service.preview(CODE, {}, GUARD)).toMatchObject({ isPublic: true, state: "joinable" });
+    const own = setup({ member: [{ seat: 1 }], invitation: [invitationRow({ is_public: true })] });
+    expect(await own.service.preview(CODE, { userId: CREATOR }, GUARD)).toMatchObject({ isPublic: true, state: "own-invitation" });
+  });
+
   it("is joinable for a signed-in user without a slot, after settling their timeouts", async () => {
     const { service, timeoutSettler } = setup();
     expect(await service.preview(CODE, { userId: USER }, GUARD)).toEqual({
       creatorName: "Ala",
       creatorKind: "account",
+      isPublic: false,
       state: "joinable",
     });
     expect(timeoutSettler.settleFor).toHaveBeenCalledWith(USER);
@@ -626,6 +635,7 @@ describe("InvitationService.preview", () => {
     expect(await service.preview(CODE, { userId: CREATOR }, GUARD)).toEqual({
       creatorName: "Ala",
       creatorKind: "account",
+      isPublic: false,
       state: "own-invitation",
       gameId: "game-1",
     });
@@ -693,6 +703,7 @@ describe("InvitationService.preview", () => {
     expect(await service.preview(CODE, { userId: USER }, GUARD)).toEqual({
       creatorName: "Ala",
       creatorKind: "account",
+      isPublic: false,
       state: "has-active-game",
       gameId: "other",
     });
@@ -703,6 +714,7 @@ describe("InvitationService.preview", () => {
     expect(await service.preview(CODE, { userId: USER }, GUARD)).toEqual({
       creatorName: "Ala",
       creatorKind: "account",
+      isPublic: false,
       state: "has-own-waiting-game",
       gameId: "own",
     });

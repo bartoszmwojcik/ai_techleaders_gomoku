@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createGuestGameSchema } from "./create-game-schema";
+import { createAccountGameSchema, createGuestGameSchema } from "./create-game-schema";
 
 describe("createGuestGameSchema", () => {
   it("accepts the acknowledged warning alone", () => {
@@ -30,5 +30,18 @@ describe("createGuestGameSchema", () => {
     const result = createGuestGameSchema.safeParse({ acknowledgedGuestWarning: true, nickname: "<b>" });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0]?.path).toEqual(["nickname"]);
+  });
+});
+
+describe("createAccountGameSchema and the guest public flag", () => {
+  it("is private unless isPublic is sent", () => {
+    expect(createAccountGameSchema.parse({})).toEqual({});
+    expect(createAccountGameSchema.parse({ isPublic: true })).toEqual({ isPublic: true });
+    expect(createGuestGameSchema.parse({ acknowledgedGuestWarning: true, isPublic: false }).isPublic).toBe(false);
+  });
+
+  it("rejects a non-boolean flag", () => {
+    expect(createAccountGameSchema.safeParse({ isPublic: "yes" }).success).toBe(false);
+    expect(createGuestGameSchema.safeParse({ acknowledgedGuestWarning: true, isPublic: 1 }).success).toBe(false);
   });
 });

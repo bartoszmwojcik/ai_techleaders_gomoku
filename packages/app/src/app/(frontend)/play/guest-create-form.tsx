@@ -4,6 +4,7 @@ import { CREATE_GAME_LIMIT } from "@gomoku/core";
 import { nicknameSchema } from "@gomoku/core/games/nickname";
 import { Alert } from "@gomoku/ui/game/alert";
 import { Button } from "@gomoku/ui/game/button";
+import { Checkbox } from "@gomoku/ui/game/checkbox";
 import { ConfirmDialog } from "@gomoku/ui/game/confirm-dialog";
 import { Field } from "@gomoku/ui/game/field";
 import { TextInput } from "@gomoku/ui/game/text-input";
@@ -34,6 +35,7 @@ export function GuestCreateForm() {
   const [nicknameError, setNicknameError] = useState<string | null>(null);
   const [failure, setFailure] = useState<Failure | null>(null);
   const [busy, setBusy] = useState(false);
+  const [isPublic, setIsPublic] = useState(false);
   const [asking, setAsking] = useState(false);
   // State alone lags a double click by one render; the ref closes that gap (a second game would be a 409).
   const inFlight = useRef(false);
@@ -63,6 +65,7 @@ export function GuestCreateForm() {
         acknowledgedGuestWarning: true,
         ...(checked.data === undefined ? {} : { nickname: checked.data }),
         ...(cancelOwnWaitingGame ? { cancelOwnWaitingGame: true } : {}),
+        ...(isPublic ? { isPublic: true } : {}),
       },
     });
     if (result.ok) {
@@ -134,6 +137,14 @@ export function GuestCreateForm() {
             />
           )}
         </Field>
+        <Checkbox
+          label="Partia publiczna"
+          hint="Po rozpoczęciu partii każdy z kodem lub linkiem będzie mógł ją oglądać."
+          checked={isPublic}
+          onCheckedChange={(value) => setIsPublic(value === true)}
+          disabled={busy}
+          data-testid="guest-create-public"
+        />
         <Alert status="warning" title="Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii">
           Jeśli zmienisz przeglądarkę albo wyczyścisz dane, stracisz dostęp do tej partii.
         </Alert>
