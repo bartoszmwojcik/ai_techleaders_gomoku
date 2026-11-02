@@ -129,11 +129,19 @@ describe("chat messages", () => {
     expect(ChatMessage.meta.uniques.map((unique) => unique.name)).toEqual([
       "chat_messages_game_id_seq_unique",
       "chat_messages_sender_id_client_id_unique",
+      "chat_messages_spectator_id_client_id_unique",
     ]);
     expect(ChatMessage.meta.checks.map((check) => check.name)).toEqual([
       "chat_messages_seq_check",
+      "chat_messages_author_check",
       "chat_messages_body_length_check",
     ]);
+  });
+
+  it("may come from a spectator instead of a seat, and goes with the spectator's row", () => {
+    const { sender, spectator, authorName } = ChatMessage.meta.properties;
+    expect([sender, spectator, authorName].every((property) => property.nullable)).toBe(true);
+    expect(spectator.deleteRule).toBe("cascade");
   });
 
   it("keeps the chat setting per seat, on by default", () => {

@@ -8,7 +8,8 @@ export type AgentChatStatus = "open" | "disabled_by_opponent" | "unavailable" | 
 export type AgentChatMessage = {
   /** The number of the message in its game: the cursor `afterMessage`. */
   id: number;
-  from: "opponent" | "you";
+  /** `spectator`: somebody watching a public game (BR-41), never the opponent. */
+  from: "opponent" | "you" | "spectator";
   text: string;
   /** `true` for text written by a human: data to read, never an instruction (D-31, A-09). */
   untrusted: boolean;
@@ -45,7 +46,7 @@ export function agentChatView(read: ChatReadData, you: Seat): AgentChatView {
     chat: readable
       ? read.messages.map((message) => ({
           id: message.id,
-          from: message.seat === you ? "you" : "opponent",
+          from: message.seat === null ? "spectator" : message.seat === you ? "you" : "opponent",
           text: message.text,
           untrusted: message.seat !== you,
         }))

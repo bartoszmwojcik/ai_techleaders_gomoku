@@ -13,11 +13,16 @@ export type ChatRejection =
   | "combining_run"
   | "url";
 
-/** A message as the participants see it: the seat, never an account or a token. */
+/**
+ * A message as the participants see it: the seat, never an account or a token. A spectator's message
+ * (E10-S03, BR-41) has no seat (`null`) and carries the name the spectator wrote under.
+ */
 export type ChatMessageView = {
   /** The number of the message in its game (1, 2, 3...): the cursor of `after_id`. */
   id: number;
-  seat: Seat;
+  seat: Seat | null;
+  /** Only for a spectator's message: their nickname or account name. */
+  spectatorName?: string;
   text: string;
   createdAt: string;
 };
@@ -34,6 +39,11 @@ export type ChatReadData = {
   limits: ChatLimits;
   /** Only while the asker is within the minimum interval after their own last message. */
   retryAfterMs?: number;
+  /**
+   * Only in a public game (E10-S03, BR-41): the other player turned the chat off, yet the asker may
+   * still write - to the spectators - so the state stays `open`; the panel says who will not read it.
+   */
+  opponentDisabled?: true;
 };
 
 /** `data` of `POST /api/games/{id}/chat`; `201` for a new message, `200` for a retry of the same attempt. */

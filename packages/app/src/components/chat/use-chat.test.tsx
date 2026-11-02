@@ -423,3 +423,24 @@ describe("useChat, turning the chat off and on", () => {
     expect(hook.result.current.loaded).toBe(false);
   });
 });
+
+describe("useChat, a spectator's endpoint and the public game (E10-S03)", () => {
+  it("reads and sends through the path it is given", async () => {
+    const hook = renderHook(() => useChat({ gameId: "g1", onGone, path: "/api/games/g1/spectate/chat" }));
+    await tick(0);
+    expect(urls()[0]).toBe("/api/games/g1/spectate/chat");
+    apiCall.mockResolvedValueOnce({ ok: true, data: { message: message(1), retryAfterMs: 2000 } });
+    await act(async () => void (await hook.result.current.send("hej", "c1")));
+    expect(urls().at(-1)).toBe("/api/games/g1/spectate/chat");
+    expect(urls().every((url) => url.startsWith("/api/games/g1/spectate/chat"))).toBe(true);
+  });
+
+  it("tells whether the opponent has turned the chat off while it stays open", async () => {
+    apiCall.mockResolvedValue({ ok: true, data: { state: "open", messages: [], lastId: 0, limits: LIMITS, opponentDisabled: true } });
+    const hook = await mount();
+    expect(hook.result.current).toMatchObject({ state: "open", opponentDisabled: true });
+    apiCall.mockResolvedValue(data("closed"));
+    await tick(CHAT_POLL_INTERVAL_MS);
+    expect(hook.result.current.opponentDisabled).toBe(false);
+  });
+});

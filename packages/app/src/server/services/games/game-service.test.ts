@@ -487,6 +487,23 @@ describe("GameService.findParticipant", () => {
 });
 
 describe("GameService.getState", () => {
+  it("carries the audience of a public game in progress, after the lazy bookkeeping, and nothing otherwise", async () => {
+    const pub = setup({
+      game: { status: "active", isPublic: true },
+      players: [creator, guest],
+      executeRows: [[], [], [], [], [{ n: 2 }]],
+    });
+    expect((await pub.service.getState({ playerId: "p1" }, "game-1")).audience).toEqual({ spectators: 2 });
+
+    const closed = setup({ game: { status: "active", isPublic: false }, players: [creator, guest] });
+    expect(await closed.service.getState({ playerId: "p1" }, "game-1")).not.toHaveProperty("audience");
+    const done = setup({
+      game: { status: "finished", isPublic: true, finishedAt: NOW },
+      players: [creator, guest],
+    });
+    expect(await done.service.getState({ playerId: "p1" }, "game-1")).not.toHaveProperty("audience");
+  });
+
   const creator = {
     id: "p1",
     seat: 1,

@@ -6,6 +6,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { apiCall } = vi.hoisted(() => ({ apiCall: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiCall }));
 
+vi.mock("@/components/chat/spectator-chat", () => ({
+  SpectatorChat: ({ gameId, canWrite, players, onGone }: { gameId: string; canWrite: boolean; players: unknown[]; onGone: () => void }) => (
+    <div data-testid="spectator-chat">
+      {`${gameId}:${canWrite}:${players.length}`}
+      <button onClick={onGone}>chat gone</button>
+    </div>
+  ),
+}));
+
 import type { SpectatorView } from "@/server/http/spectator-view";
 
 import { SPECTATOR_POLL_TIMEOUT_MS, SpectatorRoom } from "./spectator-room";
@@ -25,6 +34,7 @@ const live = (over: Partial<SpectatorView> = {}): SpectatorView => ({
     { seat: 1, kind: "account", displayName: "Ala_7" },
     { seat: 2, kind: "guest", displayName: "Kuba" },
   ],
+  canChat: true,
   ...over,
 });
 const over = (): SpectatorView =>
@@ -73,7 +83,39 @@ describe("SpectatorRoom", () => {
     expect(stones()).toHaveLength(1);
   });
 
-  it("has no control of a player: no move, resignation, rematch or chat (the board is read-only)", () => {
+  it("shows the flag with the number of spectators only while the game is public and on", () => {
+    const first = room(live({ audience: { spectators: 4 } }));
+    expect(screen.getByTestId("public-flag-count").textContent).toBe("4");
+    first.unmount();
+    room(live());
+    expect(screen.queryByTestId("public-flag")).toBeNull();
+  });
+
+  it("updates the counter from the poll and drops the flag when the audience is closed", async () => {
+    room(live({ audience: { spectators: 2 } }));
+    apiCall.mockResolvedValue(read(same({ audience: { spectators: 1 } })));
+    await tick(SPECTATOR_POLL_INTERVAL_MS);
+    expect(screen.getByTestId("public-flag-count").textContent).toBe("1");
+    apiCall.mockResolvedValue(read(same()));
+    await tick(SPECTATOR_POLL_INTERVAL_MS);
+    expect(screen.queryByTestId("public-flag")).toBeNull();
+  });
+
+  it("has the chat of a spectator, told whether they may write", () => {
+    const first = room(live());
+    expect(screen.getByTestId("spectator-chat").textContent).toBe("g1:true:2chat gone");
+    first.unmount();
+    room(live({ canChat: false }));
+    expect(screen.getByTestId("spectator-chat").textContent).toBe("g1:false:2chat gone");
+  });
+
+  it("shows the gone notice when the chat finds the game gone", () => {
+    room(live());
+    act(() => screen.getByText("chat gone").click());
+    expect(screen.getByText("Oglądanie wygasło albo partii już nie ma")).toBeTruthy();
+  });
+
+  it("has no control of a player: no move, resignation, rematch or switch (the board is read-only)", () => {
     room(live());
     expect(screen.queryByRole("button", { name: /Poddaj|Postaw|Rewan|Wyślij/ })).toBeNull();
     expect(screen.queryByRole("textbox")).toBeNull();

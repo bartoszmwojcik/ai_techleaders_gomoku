@@ -54,3 +54,4 @@ Indeks lekcji. Jedna linia na wpis: `- [Tytuł](lessons/YYYY-MM-DD-slug.md) — 
 - [Integracja w worktree: krótki TMPDIR](lessons/2026-11-02-integration-in-worktree-needs-short-tmpdir.md) — `TMPDIR=/tmp npm run test:integration`; inaczej Chrome: Socket path too long.
 - [Integracja: TMPDIR i gniazdo Chrome](lessons/2026-11-02-integration-tmpdir-socket-path.md) — w worktree cezara uruchamiaj `TMPDIR=/tmp npm run test:integration`; nick gościa czytaj przez `textContent`.
 - [Tempo odpytywania a odpowiedź](lessons/2026-11-02-poll-pace-reads-the-answer-before-scheduling.md) — kolejny odczyt planuj po zakończeniu poprzedniego (tempo zależy od odpowiedzi); `clearTimeout` w `schedule`, flaga `stopped`.
+- [Nowy rodzaj nadawcy czatu](lessons/2026-11-02-new-sender-kind-needs-labels-for-every-sender.md) — przejdź przez każdą parę nadawca × czytelnik; martwa funkcja w pokryciu to brakujący przypadek; zaktualizuj testy listujące kolumny/klucze.

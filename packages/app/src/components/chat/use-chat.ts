@@ -52,6 +52,8 @@ export type Chat = {
   state: ChatState;
   messages: ChatMessageView[];
   limits: ChatLimits | null;
+  /** A public game whose other player turned the chat off: still open, but only the spectators read what is written. */
+  opponentDisabled: boolean;
   /** Failed reads in a row. */
   fails: number;
   /** The message being sent, shown dimmed until the server confirms it. */
@@ -70,6 +72,8 @@ type Options = {
   gameId: string;
   /** The game is gone for this visitor (`404`): polling stops. */
   onGone: () => void;
+  /** The chat endpoint; a spectator's is `/api/games/{id}/spectate/chat` (E10-S03). */
+  path?: string;
 };
 
 const NETWORK: SendOutcome = { ok: false, kind: "network" };
@@ -85,8 +89,14 @@ const SWITCH_FAILED: SettingsOutcome = { ok: false, kind: "failed" };
  * on starts a new epoch: a read or a send that began before the change is dropped when it comes back, so
  * a late answer cannot undo the change (it would show a conversation the participant just switched off).
  */
-export function useChat({ gameId, onGone }: Options): Chat {
-  const [data, setData] = useState<{ state: ChatState; messages: ChatMessageView[]; limits: ChatLimits } | null>(null);
+export function useChat({ gameId, onGone, path }: Options): Chat {
+  const chatPath = path ?? `/api/games/${gameId}/chat`;
+  const [data, setData] = useState<{
+    state: ChatState;
+    messages: ChatMessageView[];
+    limits: ChatLimits;
+    opponentDisabled: boolean;
+  } | null>(null);
   const [fails, setFails] = useState(0);
   const [pending, setPending] = useState<Chat["pending"]>(null);
   const [switching, setSwitching] = useState(false);
@@ -109,7 +119,7 @@ export function useChat({ gameId, onGone }: Options): Chat {
   const apply = useCallback((next: ChatReadData) => {
     if (!isReadable(next.state)) {
       cursor.current = undefined;
-      setData({ state: next.state, messages: [], limits: next.limits });
+      setData({ state: next.state, messages: [], limits: next.limits, opponentDisabled: false });
       return;
     }
     cursor.current = next.lastId;
@@ -117,6 +127,7 @@ export function useChat({ gameId, onGone }: Options): Chat {
     setData((previous) => ({
       state: next.state,
       limits: next.limits,
+      opponentDisabled: next.opponentDisabled === true,
       messages: mergeMessages(previous && isReadable(previous.state) ? previous.messages : [], next.messages),
     }));
   }, []);
@@ -129,7 +140,7 @@ export function useChat({ gameId, onGone }: Options): Chat {
         const after = cursor.current;
         const startedIn = epoch.current;
         const result = await apiCall<ChatReadData>(
-          `/api/games/${gameId}/chat${after === undefined ? "" : `?after_id=${after}`}`,
+          `${chatPath}${after === undefined ? "" : `?after_id=${after}`}`,
           { method: "GET", signal: AbortSignal.timeout(CHAT_TIMEOUT_MS) },
         );
         if (!result.ok) {
@@ -151,7 +162,7 @@ export function useChat({ gameId, onGone }: Options): Chat {
     } finally {
       reading.current = false;
     }
-  }, [gameId, apply]);
+  }, [chatPath, apply]);
 
   const hidden = usePageVisibility({ onReturn: () => void refresh() });
   const hiddenNow = useRef(hidden);
@@ -183,7 +194,7 @@ export function useChat({ gameId, onGone }: Options): Chat {
       setPending({ clientId, text });
       const startedIn = epoch.current;
       try {
-        const result = await apiCall<ChatSendData>(`/api/games/${gameId}/chat`, {
+        const result = await apiCall<ChatSendData>(chatPath, {
           body: { text, clientId },
           signal: AbortSignal.timeout(CHAT_TIMEOUT_MS),
         });
@@ -220,7 +231,7 @@ export function useChat({ gameId, onGone }: Options): Chat {
         setPending(null);
       }
     },
-    [gameId, refresh],
+    [chatPath, refresh],
   );
 
   const setEnabled = useCallback(
@@ -271,6 +282,7 @@ export function useChat({ gameId, onGone }: Options): Chat {
     state: data?.state ?? "open",
     messages: data?.messages ?? [],
     limits: data?.limits ?? null,
+    opponentDisabled: data?.opponentDisabled ?? false,
     fails,
     pending,
     switching,

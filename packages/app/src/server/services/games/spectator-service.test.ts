@@ -16,7 +16,7 @@ type Script = {
   row?: { id: string } | undefined;
   present?: number;
   alive?: { id: string } | undefined;
-  stale?: { stale: boolean } | undefined;
+  stale?: { stale: boolean; can_chat?: boolean } | undefined;
 };
 
 type FakeEm = {
@@ -37,7 +37,7 @@ function setup(script: Script = {}) {
     if (sql.includes("select id from game_spectators") && sql.includes("expires_at")) return script.alive ? [script.alive] : [];
     if (sql.includes("select id from game_spectators")) return script.row ? [script.row] : [];
     if (sql.includes("count(*)")) return [{ n: script.present ?? 0 }];
-    if (sql.includes("select last_seen_at <=")) return script.stale ? [script.stale] : [];
+    if (sql.includes("select last_seen_at <=")) return script.stale ? [{ can_chat: true, ...script.stale }] : [];
     return [];
   });
   const em: FakeEm = {
@@ -240,12 +240,31 @@ describe("SpectatorService.getState", () => {
       ],
     });
     expect(state.clock).toMatchObject({ remainingMs: [580_000, 585_000], running: 1, now: NOW.getTime() });
-    expect(Object.keys(state).sort()).toEqual(["blackSeat", "clock", "moveCount", "moves", "players", "result", "status", "turnSeat"]);
+    expect(Object.keys(state).sort()).toEqual(["blackSeat", "canChat", "clock", "moveCount", "moves", "players", "result", "status", "turnSeat"]);
     for (const player of state.players) expect(Object.keys(player)).not.toContain("seen");
     expect(JSON.stringify(state)).not.toMatch(/secret|ala@example|invitation|code|rematch|you/i);
     expect(timeoutSettler.settleExpired).toHaveBeenCalledWith(GAME, em, NOW);
     expect(em.find).toHaveBeenCalledWith(GamePlayer, { game: GAME }, { populate: ["user"], orderBy: { seat: "asc" } });
     expect(em.findOneOrFail).toHaveBeenCalledWith(Game, GAME, { failHandler: expect.any(Function) });
+  });
+
+  it("tells whether the spectator may write, and counts the audience of a public game in progress", async () => {
+    const named = readSetup(gameRow({ isPublic: true }), { stale: { stale: false }, present: 3 });
+    expect(await named.service.getState({ spectatorId: "s1" }, GAME)).toMatchObject({
+      canChat: true,
+      audience: { spectators: 3 },
+    });
+    const silent = readSetup(gameRow({ isPublic: true }), { stale: { stale: false, can_chat: false } });
+    expect((await silent.service.getState({ spectatorId: "s1" }, GAME)).canChat).toBe(false);
+  });
+
+  it("has no audience for a closed audience or a finished game", async () => {
+    const closed = readSetup(gameRow({ isPublic: false }), { stale: { stale: false }, present: 3 });
+    expect(await closed.service.getState({ spectatorId: "s1" }, GAME)).not.toHaveProperty("audience");
+    const done = readSetup(gameRow({ isPublic: true, status: "finished", finishedAt: NOW, turnStartedAt: null }), {
+      stale: { stale: false },
+    });
+    expect(await done.service.getState({ spectatorId: "s1" }, GAME)).not.toHaveProperty("audience");
   });
 
   it("carries the result and the end of a finished game", async () => {
