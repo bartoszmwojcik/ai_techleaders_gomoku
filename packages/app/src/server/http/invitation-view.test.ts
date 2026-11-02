@@ -58,6 +58,20 @@ describe("loadInvitationView", () => {
     expect(await loadInvitationView("x")).toEqual({ kind: "review", gameId: "g1" });
   });
 
+  it("lets a viewer watch a public game in progress, with their kind of identity (E10-S02)", async () => {
+    preview.mockResolvedValue({ creatorName: "Ala", creatorKind: "guest", isPublic: true, state: "watchable", gameId: "g1" });
+    expect(await loadInvitationView("x")).toEqual({
+      kind: "watch",
+      isPublic: true,
+      creatorName: "Ala",
+      creatorKind: "guest",
+      gameId: "g1",
+      signedIn: false,
+    });
+    getCurrentUser.mockResolvedValue({ id: "u1" });
+    expect(await loadInvitationView("x")).toMatchObject({ kind: "watch", signedIn: true });
+  });
+
   it("answers invalid for the uniform 410", async () => {
     preview.mockRejectedValue(new GoneError("x", { code: "INVALID_INVITATION" }));
     expect(await loadInvitationView("x")).toEqual({ kind: "invalid" });

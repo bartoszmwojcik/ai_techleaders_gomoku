@@ -9,6 +9,7 @@ export { Session } from "./entities/auth/session";
 export { ChatMessage } from "./entities/chat/chat-message";
 export { Game } from "./entities/games/game";
 export { GamePlayer } from "./entities/games/game-player";
+export { GameSpectator } from "./entities/games/game-spectator";
 export { Invitation } from "./entities/games/invitation";
 export { RateLimitBucket } from "./entities/rate-limit/rate-limit-bucket";
 export { ForeignKeyConstraintViolationException, UniqueConstraintViolationException } from "@mikro-orm/core";

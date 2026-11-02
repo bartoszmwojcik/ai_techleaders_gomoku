@@ -28,6 +28,7 @@ import { RematchService } from "./services/games/rematch-service";
 import { FinishedGameStatsService } from "./services/games/finished-game-stats-service";
 import { GameHistoryService } from "./services/games/game-history-service";
 import { GameReviewService } from "./services/games/game-review-service";
+import { SpectatorService } from "./services/games/spectator-service";
 import { GameService } from "./services/games/game-service";
 import { InvitationCodes } from "./services/games/invitation-codes";
 import { InvitationService } from "./services/games/invitation-service";
@@ -93,6 +94,7 @@ export type AppCradle = {
   gameHistoryService: GameHistoryService;
   /** A finished game for review: the one rule of who may read it (E09-S01). */
   gameReviewService: GameReviewService;
+  spectatorService: SpectatorService;
   /** Finished games per pair of participant kinds (E06-S03); the admin panel reads the same. */
   finishedGameStatsService: FinishedGameStatsService;
   /** The "looking for a game" status and the lobby list (#25). */
@@ -184,6 +186,7 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     adminOverviewService: asClass(AdminOverviewService).scoped(),
     gameHistoryService: asClass(GameHistoryService).scoped(),
     gameReviewService: asClass(GameReviewService).scoped(),
+    spectatorService: asClass(SpectatorService).scoped(),
     finishedGameStatsService: asClass(FinishedGameStatsService).scoped(),
     lobbyService: asClass(LobbyService).scoped(),
     timeoutSettler: asClass(SqlTimeoutSettler).scoped(),

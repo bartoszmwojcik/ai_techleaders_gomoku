@@ -45,6 +45,7 @@ export type CleanupRule = {
     | "emailChangeTokens"
     | "lobbySeekers"
     | "chatMessages"
+    | "gameSpectators"
     | "waitingGames"
     | "cancelledGames"
     | "guestOnlyActiveGames"
@@ -138,6 +139,16 @@ export const CLEANUP_RULES: readonly CleanupRule[] = [
       or (g.status = 'cancelled' and g.created_at < ?)
       or (g.status = 'active' and ${GAME_DEADLINE_SQL} < ?)))`,
     graceMs: CHAT_RETENTION_MS,
+  },
+  {
+    // E10-S02: a spectator's access slides one hour from their last read (`expires_at`); reads
+    // filter on it, so a dead row never matters for correctness. The 1 h margin absorbs the clock
+    // skew between Node and the database. Rows of a deleted game or account go with them (cascade).
+    key: "gameSpectators",
+    table: "game_spectators",
+    primaryKey: "id",
+    condition: "expires_at < ?",
+    graceMs: HOUR_MS,
   },
   {
     // An unjoined game whose invitation expired: kept for 1 h after the expiry, because the guest

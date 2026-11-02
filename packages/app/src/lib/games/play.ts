@@ -18,7 +18,7 @@ export function stonesOf(moves: readonly number[]): PlacedStone[] {
  * game never reopens: a game can end without a move (timeout, resignation), so a late `active`
  * response with the same move count must not undo `finished`.
  */
-export function mergeState(current: GameView, next: GameView, after: number): GameView {
+export function mergeState<T extends Pick<GameView, "moves" | "moveCount" | "status">>(current: T, next: T, after: number): T {
   if (next.moveCount < current.moves.length) return current;
   if (current.status === "finished" && next.status !== "finished") return current;
   return { ...next, moves: [...current.moves.slice(0, after), ...next.moves] };

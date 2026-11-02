@@ -75,3 +75,14 @@ export const MCP_POLL_INTERVAL_MS = 1000;
 export const MCP_RETRY_HINT_MS = 2000;
 /** An agent token is `createOpaqueToken()`: 32 bytes as base64url. */
 export const AGENT_TOKEN_LENGTH = 43;
+
+/**
+ * Spectators of a public game (E10-S02, D-33). At most 20 per game (BR-42); a spectator counts as
+ * present while the server saw them in the last 15 s; their access slides one hour from the last
+ * read (as a guest's token, BR-29); the presence is written at most every 10 s, so 20 pollers
+ * at 2 s cost 2 writes a second, not 10.
+ */
+export const SPECTATORS_MAX = 20;
+export const SPECTATOR_PRESENCE_MS = 15 * 1000;
+export const SPECTATOR_ACCESS_MS = 60 * 60 * 1000;
+export const SPECTATOR_TOUCH_INTERVAL_MS = 10 * 1000;

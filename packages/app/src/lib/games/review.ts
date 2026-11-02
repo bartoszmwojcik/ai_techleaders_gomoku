@@ -27,7 +27,7 @@ export function stepStatus(review: GameReview, step: number): string {
   return `Ruch ${step} z ${review.moves.length}: ${COLOR_WORD[turnColor(step - 1)]}, ${cellName(cell).replace(/^K/, "k")}`;
 }
 
-function seatName(review: GameReview, seat: Seat): string {
+function seatName(review: Pick<GameReview, "players">, seat: Seat): string {
   return playerNameOf(review.players.find((player) => player.seat === seat)).label;
 }
 
@@ -43,13 +43,21 @@ const NEUTRAL_DETAIL = {
  * reader who did not (`viewerSeat` null, the public games of E09-S02) hears who won, by colour and name.
  */
 export function reviewOutcomeOf(review: GameReview): Outcome {
-  const { winnerSeat, reason } = review.result;
   if (review.viewerSeat !== null) {
     return outcomeOf({ result: review.result, you: { seat: review.viewerSeat } })!;
   }
+  return neutralOutcomeOf(review);
+}
+
+/**
+ * The banner for somebody who did not play (a reader with a code, a spectator): who won, by colour and
+ * name, never "Wygrałeś". `result` is the finished game's result, `players` its seats.
+ */
+export function neutralOutcomeOf(game: Pick<GameReview, "result" | "blackSeat" | "players">): Outcome {
+  const { winnerSeat, reason } = game.result;
   if (winnerSeat === null) return { result: "draw", title: "Remis", detail: NEUTRAL_DETAIL.draw };
-  const color = colorOfSeat(review.blackSeat, winnerSeat)!;
-  return { result: "win", title: `${COLOR_WINS[color]}: ${seatName(review, winnerSeat)}`, detail: NEUTRAL_DETAIL[reason] };
+  const color = colorOfSeat(game.blackSeat, winnerSeat)!;
+  return { result: "win", title: `${COLOR_WINS[color]}: ${seatName(game, winnerSeat)}`, detail: NEUTRAL_DETAIL[reason] };
 }
 
 /** The colour as the legend names it: "Czarne: Ala". */
