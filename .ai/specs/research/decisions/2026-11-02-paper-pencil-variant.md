@@ -22,6 +22,7 @@ Prośba (słowa właściciela): „wersja gry papier w kratkę i ołówek. poleg
 | 8 | Koniec czasu (agent wskazał furtkę: prowadzący przy regule „koniec od razu” może przeczekać własny czas) | „Gdy pierwszy straci czas wygrywający, to wówczas nie może sam dalej stawiać swoich kamieni. Będą one stawiane automatycznie na polu najbliższym tego, gdzie jego przeciwnik ostatnio postawił. Jeśli takich pól jest kilka, to losowo na jednym z nich. Jeśli zaś przegrywający lub remisujący stracił czas pierwszy, wówczas jest koniec.” | słowa właściciela (własny wariant, odrzucił oba warianty agenta) |
 | 9 | Szczegóły fazy z automatem | Faza trwa do końca czasu drugiego gracza. Kamienie automatu działają jak normalnie położone (także punktują). Ruch automatu pada 2 s po ruchu przeciwnika. Najbliższe pole to sąsiednie (8 sąsiadów); gdy zajęte — sąsiedzi sąsiadów itd. | słowa właściciela; „wynik decyduje na końcu” i „bez zużycia czasu” to sformułowania agenta przyjęte w tej odpowiedzi |
 | 10 | Recenzja skeptyka wskazała luki: (a) liczenie od nowa z planszy czy stałe przypisanie piątki do kamieni; (b) kiedy pada pierwszy ruch automatu i czy zegar przeciwnika stoi przez 2 s; (c) poddanie (Q-19); (d) wariant domyślny (Q-20) | „Zgoda na rekomendacje”: (a) liczenie od nowa z bieżącego układu, przy więcej niż 2 kierunkach przez kamień pierwszeństwo mają kierunki z wcześniejszą piątką; (b) pierwszy ruch automatu od razu po wyczerpaniu czasu prowadzącego w jego turze, zegar przeciwnika stoi przez 2 s; (c) poddanie = przegrana bez względu na punkty; (d) domyślny klasyk. | rekomendacje agenta przyjęte zbiorczo |
+| 11 | Zmiana (b) z wiersza 10, z inicjatywy właściciela | „Przy automacie na końcu czasu jednego gracza gdy kamień położy automat za 2s, to wówczas czas tego gracza co jeszcze gra nie zatrzymuje się. Motywacja jest taka, żeby to nie był zbyt duży benefit.” Zegar grającego biegnie także przez 2 s oczekiwania na ruch automatu. | słowa właściciela (nadpisuje (b) z wiersza 10) |
 
 ## Rozważone alternatywy
 
@@ -33,6 +34,7 @@ Prośba (słowa właściciela): „wersja gry papier w kratkę i ołówek. poleg
 - **Gracz bez czasu przestaje grać, drugi stawia kamienie sam:** odrzucone; zamiast tego automat stawia kamienie prowadzącego.
 - **Faza automatu kończy się, gdy przegrywający dogoni prowadzącego:** odrzucone; trwa do końca czasu drugiego gracza.
 - **Wybór czasu także w klasyku:** odrzucone; klasyk zostaje 10 minut.
+- **Zegar grającego stoi przez 2 s oczekiwania na automat:** przyjęte w czwartej rundzie, potem odrzucone przez właściciela — „żeby to nie był zbyt duży benefit”.
 - **Liczenie przez stałe „skreślenie” konkretnych pięciu kamieni:** odrzucone; przy rzędzie 6+ wybór kamieni mógłby sprawić, że 10 kamieni da 1 punkt.
 
 Powody odrzuceń inne niż podane nie zostały zapisane; agent nie dopisuje uzasadnień, których właściciel nie podał.
