@@ -8,7 +8,12 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const SRC = join(import.meta.dirname, "..");
-const ALLOWED = ["server/services/auth/user-service.ts", "server/services/auth/admin-account-service.ts"];
+const ALLOWED = [
+  "server/services/auth/user-service.ts",
+  "server/services/auth/admin-account-service.ts",
+  // Handles the administrator rule: refuses the administrator's change and a change to ADMIN_EMAIL (Q7).
+  "server/services/auth/email-change-service.ts",
+];
 
 const WRITE_PATTERNS = [
   /update\s+users\s+set[^`"';]*\bemail\s*=/i,

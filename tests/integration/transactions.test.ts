@@ -62,6 +62,7 @@ function scope(options: {
     passwordHasher,
     sessionService,
     invalidateResetTokens: options.invalidateResetTokens ?? (async () => {}),
+    clock: { now: () => new Date() },
     emailVerificationService: noMail(em),
   });
   return { em, sessionService: real, userService };
@@ -135,6 +136,7 @@ describe("transactions on PostgreSQL", () => {
       passwordHasher,
       sessionService: failing.sessionService,
       invalidateResetTokens: async () => {},
+      clock: { now: () => new Date() },
       emailVerificationService: noMail(failing.em),
     });
 

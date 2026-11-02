@@ -150,6 +150,7 @@ describe("InvitationService.accept", () => {
       USER,
       NOW,
       NOW,
+      USER,
     ]);
     expect(calls.find(({ sql }) => sql.includes("set consumed_at"))!.params).toEqual([NOW, "ABCDEFGH", NOW]);
     expect(calls.find(({ sql }) => sql.includes("set consumed_by"))!.params).toEqual(["player-2", "inv-1"]);

@@ -1,6 +1,6 @@
 # Zmiana adresu e-mail i nazwy gracza (E05-S01, #190)
 
-> Status: **szkic autonomiczny** (`om-auto-write-spec`, 2026-11-02) — do zatwierdzenia przez właściciela przed kodem (osobny PR specyfikacji, `AGENTS.md`). Źródło: zgłoszenie #190 (sekcja „Rozstrzygnięte”, właściciel Bartosz Wójcik, 2026-11-02), `.ai/specs/product-brief.md` (D-18 rozszerzone tym samym PR-em; BR-14, BR-16, BR-17, BR-24, BR-26, BR-27, BR-35), specyfikacje wdrożone: `2026-10-24-account-registration.md`, `2026-10-24-email-verification.md`, `2026-10-24-password-change.md`, `2026-10-24-password-reset.md`, `2026-10-24-account-deletion.md`.
+> Status: **wdrożona 2026-11-02** (PR implementacyjny `Closes #190`; odstępstwa niżej). Poprzednio: szkic autonomiczny (`om-auto-write-spec`, 2026-11-02) — do zatwierdzenia przez właściciela przed kodem (osobny PR specyfikacji, `AGENTS.md`). Źródło: zgłoszenie #190 (sekcja „Rozstrzygnięte”, właściciel Bartosz Wójcik, 2026-11-02), `.ai/specs/product-brief.md` (D-18 rozszerzone tym samym PR-em; BR-14, BR-16, BR-17, BR-24, BR-26, BR-27, BR-35), specyfikacje wdrożone: `2026-10-24-account-registration.md`, `2026-10-24-email-verification.md`, `2026-10-24-password-change.md`, `2026-10-24-password-reset.md`, `2026-10-24-account-deletion.md`.
 
 ## 📝 TLDR
 
@@ -137,3 +137,11 @@ Jedna faza, jeden PR implementacyjny (`Closes #190`) po zatwierdzeniu specyfikac
 4. **Zmiana adresu:** `EmailChangeService` (żądanie, potwierdzenie, wiadomości `email-change-message.ts`), rozszerzenie `createInvalidateResetTokens` (albo osobna funkcja) o tokeny zmiany adresu i potwierdzenia e-maila, wywołania z `changePassword` i resetu hasła, route'y `email-change` i `email-change/confirm`, kontener DI. Testy jednostkowe 100% (w tym ścieżki błędów wysyłki, limity, BR-35) i integracyjne (zajęty adres daje tę samą odpowiedź, unieważnienie linków resetu i sesji, jednorazowość linku).
 5. **UI:** formularze na `/account` (stan okna 24 h, konto administratora), strona `/confirm-email-change`. Testy komponentów; agent-browser: scenariusz zmiany nazwy i adresu na szerokości 320 px, `npm run check:tokens -w @gomoku/ui`.
 6. **Dokumentacja:** adnotacje w `2026-10-24-password-change.md` i `…-email-verification.md` (unieważnianie), przeniesienie tej specyfikacji do `implemented/` po spełnieniu kryteriów.
+
+## Adnotacje po wdrożeniu (2026-11-02)
+
+- **Q7 (BR-35, `ADMIN_EMAIL`) wdrożone** po scaleniu E08-S01 (`ADMIN_EMAIL`): `EmailChangeService.request` odrzuca konto administratora (`403 ADMIN_EMAIL_LOCKED`, po sprawdzeniu hasła), `deliver` pomija adres równy `ADMIN_EMAIL` (jak zajęty, `202` bez wiadomości), a `confirm` w transakcji traktuje konto administratora i adres docelowy równy `ADMIN_EMAIL` jak `INVALID_TOKEN`. Formularz pokazuje komunikat o błędzie przy `403` (zamiast ukrywać pola dla administratora; strona konta nie zna roli). Strażnik `users-email-writes.guard.test.ts` ma `EmailChangeService` na liście dozwolonych.
+- **Q10:** potwierdzenie linku kończy wszystkie sesje konta (żądanie potwierdzenia nie czyta sesji); strona kończy komunikatem z przejściem do `/login`.
+- **Q11:** adres zajęty w chwili potwierdzenia daje `400 INVALID_TOKEN`; transakcja się wycofuje, więc token nie jest zużyty (nigdy nie zadziała, wygasa po 24 h).
+- **Odczyt nazwy:** `game_players.display_name` jest czytane z awaryjnym `coalesce` do `users.display_name`, więc wiersz bez migawki (starsze dane, ścieżki spoza serwisów) nadal ma nazwę. Zerowanie migawek przy usunięciu konta jest w `AccountService.delete`.
+- Pole „oczekujący adres” nie jest pokazywane na stronie konta (Q3).

@@ -112,8 +112,8 @@ const INSERT_GAME_SQL = `
 
 // `seen_at` stays NULL: the clock starts when both open the page (#21 Q20), Q21 applies.
 const INSERT_PLAYER_SQL = `
-  insert into game_players (game_id, seat, kind, user_id, guest_token_hash, nickname, is_active, joined_at)
-  values (?, ?, ?, ?, ?, ?, true, ?)`;
+  insert into game_players (game_id, seat, kind, user_id, guest_token_hash, nickname, is_active, joined_at, display_name)
+  values (?, ?, ?, ?, ?, ?, true, ?, (select display_name from users where id = ?))`;
 
 const MARK_ACCEPTED_SQL = `
   update games set rematch_state = 'accepted', rematch_game_id = ?
@@ -305,6 +305,8 @@ export class RematchService {
             : null,
           player.nickname,
           now,
+          // A rematch is a new game: an account's name is the one it has now (E05-S01).
+          player.user_id,
         ],
         "run",
       );

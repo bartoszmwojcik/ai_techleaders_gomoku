@@ -308,6 +308,7 @@ describe("e-mail verification on PostgreSQL", () => {
         hasActiveGame: async () => false,
       }),
       invalidateResetTokens: async () => {},
+      clock: { now: () => new Date() },
       emailVerificationService: verification({
         em,
         emailSender: {

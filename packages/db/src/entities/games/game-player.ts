@@ -45,6 +45,9 @@ export const GamePlayer = defineEntity({
     // The participant's chat setting (E07-S01): `false` once they turned the chat off (S02 writes
     // it); a new seat, a rematch included, starts with it on. Read by the chat service only.
     chatEnabled: p.boolean().default(true),
+    // An account's name as it was when this row was created (E05-S01): a later change of
+    // `users.display_name` reaches new games only. NULL for a guest, an agent and a deleted account (BR-17).
+    displayName: p.string().length(24).nullable(),
   },
   indexes: [
     // Lookups by account: the `set null` action of `DELETE FROM users` (#37), the cleanup rule of
@@ -102,6 +105,10 @@ export const GamePlayer = defineEntity({
     {
       name: "game_players_nickname_not_empty_check",
       expression: `nickname is null or char_length(nickname) >= 1`,
+    },
+    {
+      name: "game_players_display_name_only_account_check",
+      expression: `kind = 'account' or display_name is null`,
     },
     {
       name: "game_players_nickname_only_guest_check",

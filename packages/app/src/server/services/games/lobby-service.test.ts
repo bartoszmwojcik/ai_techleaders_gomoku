@@ -288,8 +288,8 @@ describe("LobbyService.pick", () => {
     expect(game.params).toEqual([NOW, NOW, 2]);
     const players = calls.filter(({ sql }) => sql.includes("insert into game_players"));
     expect(players.map(({ params }) => params)).toEqual([
-      ["game-new", 1, PICKER, NOW],
-      ["game-new", 2, OWNER, NOW],
+      ["game-new", 1, PICKER, NOW, PICKER],
+      ["game-new", 2, OWNER, NOW, OWNER],
     ]);
     expect(players[0]!.sql).toContain("true");
     expect(players[0]!.sql).not.toContain("seen_at");

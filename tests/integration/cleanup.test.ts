@@ -58,11 +58,13 @@ async function insertSession(userId: string, expiresAt: Date) {
   await sql(`insert into sessions (user_id, token_hash, expires_at) values (?, ?, ?)`, [userId, hash(), expiresAt]);
 }
 async function insertToken(table: string, userId: string, expiresAt: Date, usedAt: Date | null) {
-  await sql(`insert into ${table} (user_id, token_hash, expires_at, used_at) values (?, ?, ?, ?)`, [
+  const extra = table === "email_change_tokens" ? { column: ", new_email", value: "nowy@example.com" } : null;
+  await sql(`insert into ${table} (user_id, token_hash, expires_at, used_at${extra?.column ?? ""}) values (?, ?, ?, ?${extra ? ", ?" : ""})`, [
     userId,
     hash(),
     expiresAt,
     usedAt,
+    ...(extra ? [extra.value] : []),
   ]);
 }
 
@@ -115,6 +117,7 @@ describe("cleanup thresholds on PostgreSQL", () => {
   it.each([
     ["email_verification_tokens", "emailVerificationTokens"],
     ["password_reset_tokens", "passwordResetTokens"],
+    ["email_change_tokens", "emailChangeTokens"],
   ] as const)("%s: expired or used more than 24 h ago go, the rest stays", async (table, key) => {
     const now = new Date();
     const userId = await insertUser();
@@ -883,6 +886,7 @@ describe("batching and parallel runs", () => {
       rateLimitBuckets: 0,
       emailVerificationTokens: 0,
       passwordResetTokens: 0,
+      emailChangeTokens: 0,
       lobbySeekers: 0,
       chatMessages: 0,
       waitingGames: 0,
@@ -964,6 +968,7 @@ describe("db:cleanup command", () => {
         "agentTokens",
         "cancelledGames",
         "chatMessages",
+        "emailChangeTokens",
         "emailVerificationTokens",
         "errors",
         "guestOnlyActiveGames",

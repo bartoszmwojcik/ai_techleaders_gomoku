@@ -42,6 +42,7 @@ export type CleanupRule = {
     | "rateLimitBuckets"
     | "emailVerificationTokens"
     | "passwordResetTokens"
+    | "emailChangeTokens"
     | "lobbySeekers"
     | "chatMessages"
     | "waitingGames"
@@ -101,6 +102,13 @@ export const CLEANUP_RULES: readonly CleanupRule[] = [
   {
     key: "passwordResetTokens",
     table: "password_reset_tokens",
+    primaryKey: "id",
+    condition: "expires_at < ? or used_at < ?",
+    graceMs: 24 * HOUR_MS,
+  },
+  {
+    key: "emailChangeTokens",
+    table: "email_change_tokens",
     primaryKey: "id",
     condition: "expires_at < ? or used_at < ?",
     graceMs: 24 * HOUR_MS,
