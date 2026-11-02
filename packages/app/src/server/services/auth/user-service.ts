@@ -1,5 +1,6 @@
 import {
   ConflictError,
+  TooManyRequestsError,
   UnauthorizedError,
   ValidationError,
   isInstallationAdmin,
@@ -14,6 +15,7 @@ import {
 } from "@gomoku/db";
 
 import { describeError } from "../../http/describe-error";
+import type { Clock } from "../email/email-sender";
 import {
   VERIFICATION_SEND_TIMEOUT_MS,
   type EmailVerificationService,
@@ -38,6 +40,7 @@ type Deps = {
   sessionService: SessionService;
   invalidateResetTokens: InvalidateResetTokens;
   emailVerificationService: EmailVerificationService;
+  clock: Clock;
   /** `ADMIN_EMAIL` (normalized) or undefined; nobody can register on it (E08-S01). */
   adminEmail?: string;
 };
@@ -59,6 +62,12 @@ export const INVALID_CREDENTIALS_MESSAGE = "Nieprawidłowy e-mail lub hasło.";
 export const INVALID_CURRENT_PASSWORD_MESSAGE =
   "Obecne hasło jest nieprawidłowe.";
 
+/** A player may rename themselves at most once per this window (E05-S01). */
+export const DISPLAY_NAME_CHANGE_WINDOW_MS = 24 * 60 * 60 * 1000;
+export const SAME_DISPLAY_NAME_MESSAGE = "To już jest Twoja nazwa gracza.";
+export const DISPLAY_NAME_COOLDOWN_MESSAGE =
+  "Nazwę gracza można zmienić raz na dobę. Spróbuj później.";
+
 const DISPLAY_NAME_KEY_CONSTRAINT = "users_display_name_key_unique";
 
 export class UserService {
@@ -67,6 +76,7 @@ export class UserService {
   readonly #sessionService: SessionService;
   readonly #invalidateResetTokens: InvalidateResetTokens;
   readonly #emailVerificationService: EmailVerificationService;
+  readonly #clock: Clock;
   readonly #adminEmail: string | undefined;
 
   constructor({
@@ -75,6 +85,7 @@ export class UserService {
     sessionService,
     invalidateResetTokens,
     emailVerificationService,
+    clock,
     adminEmail,
   }: Deps) {
     this.#em = em;
@@ -82,6 +93,7 @@ export class UserService {
     this.#sessionService = sessionService;
     this.#invalidateResetTokens = invalidateResetTokens;
     this.#emailVerificationService = emailVerificationService;
+    this.#clock = clock;
     this.#adminEmail = adminEmail;
   }
 
@@ -216,6 +228,83 @@ export class UserService {
       await this.#sessionService.revokeOthers(userId, currentSessionId, tx);
       await this.#invalidateResetTokens(userId, tx);
     });
+  }
+
+  /**
+   * Renames a signed-in user (E05-S01). `displayName` must come from `displayNameChangeSchema`.
+   * The window is checked in the same conditional `UPDATE` that writes the name, so two
+   * parallel requests cannot both pass; uniqueness is decided by the `display_name_key` index.
+   * Seats of games already created keep their snapshot of the old name.
+   * @returns the new name.
+   * @throws ValidationError (`fieldErrors.displayName`) for the current name (the window is not
+   * spent); ConflictError (`fieldErrors.displayName`) for a taken name; TooManyRequestsError
+   * `DISPLAY_NAME_COOLDOWN` with `retryAfterSeconds` inside the window; UnauthorizedError when
+   * the user no longer exists.
+   */
+  async changeDisplayName(userId: string, displayName: string): Promise<string> {
+    const user = await this.#em.findOne(User, { id: userId });
+    if (!user) throw new UnauthorizedError("Zaloguj się, aby kontynuować.");
+    if (user.displayName === displayName) {
+      throw new ValidationError(SAME_DISPLAY_NAME_MESSAGE, {
+        fieldErrors: { displayName: [SAME_DISPLAY_NAME_MESSAGE] },
+      });
+    }
+    const now = this.#clock.now();
+    const cutoff = new Date(now.getTime() - DISPLAY_NAME_CHANGE_WINDOW_MS);
+    let updated: number;
+    try {
+      updated = await this.#em.nativeUpdate(
+        User,
+        {
+          id: userId,
+          $or: [
+            { displayNameChangedAt: null },
+            { displayNameChangedAt: { $lte: cutoff } },
+          ],
+        },
+        {
+          displayName,
+          displayNameKey: normalizeDisplayName(displayName),
+          displayNameChangedAt: now,
+        },
+      );
+    } catch (error) {
+      if (error instanceof UniqueConstraintViolationException) {
+        throw new ConflictError(DISPLAY_NAME_TAKEN_MESSAGE, {
+          fieldErrors: { displayName: [DISPLAY_NAME_TAKEN_MESSAGE] },
+        });
+      }
+      throw error;
+    }
+    if (updated === 0) {
+      // The user exists (read above), so the window is what held the update back.
+      const row = await this.#em.findOne(User, { id: userId }, { refresh: true });
+      const changedAt = row?.displayNameChangedAt ?? now;
+      const retryAfterSeconds = Math.max(
+        1,
+        Math.ceil(
+          (changedAt.getTime() + DISPLAY_NAME_CHANGE_WINDOW_MS - now.getTime()) / 1000,
+        ),
+      );
+      throw new TooManyRequestsError(DISPLAY_NAME_COOLDOWN_MESSAGE, {
+        code: "DISPLAY_NAME_COOLDOWN",
+        retryAfterSeconds,
+      });
+    }
+    return displayName;
+  }
+
+  /**
+   * When the user may rename themselves again, or `null` when they may now (never renamed, or
+   * the 24 h window has passed). Read by the account page to disable the form (E05-S01).
+   */
+  async displayNameChangeAvailableAt(userId: string): Promise<Date | null> {
+    const user = await this.#em.findOne(User, { id: userId });
+    if (!user?.displayNameChangedAt) return null;
+    const availableAt = new Date(
+      user.displayNameChangedAt.getTime() + DISPLAY_NAME_CHANGE_WINDOW_MS,
+    );
+    return availableAt.getTime() > this.#clock.now().getTime() ? availableAt : null;
   }
 
   /**

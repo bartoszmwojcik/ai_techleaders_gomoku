@@ -19,6 +19,8 @@ export const User = defineEntity({
     passwordHash: p.string().length(60),
     // NULL = e-mail not confirmed.
     emailVerifiedAt: p.datetime().nullable(),
+    // When the name was last changed by the user (E05-S01): once per 24 h. NULL = never (registration does not count).
+    displayNameChangedAt: p.datetime().nullable(),
     createdAt: p.datetime().defaultRaw("now()"),
   },
 });

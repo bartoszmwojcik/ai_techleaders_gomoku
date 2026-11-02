@@ -35,6 +35,7 @@ import {
   type TimeoutSettler,
 } from "./services/games/timeout-settler";
 import { createInvalidateResetTokens } from "./services/auth/invalidate-reset-tokens";
+import { EmailChangeService } from "./services/auth/email-change-service";
 import { PasswordResetService } from "./services/auth/password-reset-service";
 import {
   UserService,
@@ -97,6 +98,8 @@ export type AppCradle = {
   userService: UserService;
   accountService: AccountService;
   passwordResetService: PasswordResetService;
+  /** A signed-in user changes their e-mail address (E05-S01). */
+  emailChangeService: EmailChangeService;
 };
 
 /** Dependencies available within a single request. */
@@ -181,6 +184,7 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     userService: asClass(UserService).scoped(),
     accountService: asClass(AccountService).scoped(),
     passwordResetService: asClass(PasswordResetService).scoped(),
+    emailChangeService: asClass(EmailChangeService).scoped(),
   });
   return container;
 }

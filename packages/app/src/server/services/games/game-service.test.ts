@@ -476,7 +476,7 @@ describe("GameService.getState", () => {
     id: "p1",
     seat: 1,
     kind: "account",
-    user: { displayName: "Ala" },
+    displayName: "Ala",
     seenAt: NOW,
   };
   const guest = { id: "p2", seat: 2, kind: "guest", user: null, nickname: null, seenAt: null };
@@ -542,10 +542,19 @@ describe("GameService.getState", () => {
   it("shows a guest's own nickname, and null only for a deleted account", async () => {
     const { service } = setup({
       game: { status: "active" },
-      players: [{ ...creator, user: null }, { ...guest, nickname: "Kasia" }],
+      players: [{ ...creator, displayName: null }, { ...guest, nickname: "Kasia" }],
     });
     const state = await service.getState({ playerId: "p2" }, "game-1");
     expect(state.players.map(({ displayName }) => displayName)).toEqual([null, "Kasia"]);
+  });
+
+  it("falls back to the account's current name for a seat without a snapshot", async () => {
+    const { service } = setup({
+      game: { status: "active" },
+      players: [{ ...creator, displayName: null, user: { displayName: "Zed" } }, { ...guest, nickname: "Kasia" }],
+    });
+    const state = await service.getState({ playerId: "p2" }, "game-1");
+    expect(state.players.map(({ displayName }) => displayName)).toEqual(["Zed", "Kasia"]);
   });
 
   it("names an agent by its kind only, with the model name it declared (BR-31)", async () => {

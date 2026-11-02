@@ -56,6 +56,10 @@ const closeRematchesSql = (count: number) =>
 const DELETE_CHAT_SQL = `delete from chat_messages where game_id in (select game_id from game_players where user_id = ?)`;
 
 // The condition on the verified hash protects against a concurrent password change.
+// BR-17: the deleted account's name, kept per seat since E05-S01, must not outlive it; the seat shows
+// "Usunięty gracz". Before the delete, while `user_id` still points at the account.
+const CLEAR_SEAT_NAMES_SQL = `update game_players set display_name = null where user_id = ?`;
+
 const DELETE_USER_SQL = `delete from users where id = ? and password_hash = ? returning id`;
 
 /**
@@ -128,6 +132,8 @@ export class AccountService {
       }
 
       await tx.execute(DELETE_CHAT_SQL, [userId], "run");
+
+      await tx.execute(CLEAR_SEAT_NAMES_SQL, [userId], "run");
 
       const deleted = await tx.execute<{ id: string }[]>(DELETE_USER_SQL, [userId, passwordHash]);
       if (deleted.length === 0) throw invalidPassword();

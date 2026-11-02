@@ -1,4 +1,5 @@
 import { EmailVerificationToken } from "./auth/email-verification-token";
+import { EmailChangeToken } from "./auth/email-change-token";
 import { PasswordResetToken } from "./auth/password-reset-token";
 import { Session } from "./auth/session";
 import { User } from "./auth/user";
@@ -18,6 +19,7 @@ export const entities = [
   Session,
   EmailVerificationToken,
   PasswordResetToken,
+  EmailChangeToken,
   RateLimitBucket,
   Game,
   GamePlayer,

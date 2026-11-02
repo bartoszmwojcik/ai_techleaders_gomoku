@@ -1,4 +1,4 @@
-import { PasswordResetToken, type EntityManager } from "@gomoku/db";
+import { EmailChangeToken, PasswordResetToken, type EntityManager } from "@gomoku/db";
 import { describe, expect, it, vi } from "vitest";
 
 import { createInvalidateResetTokens } from "./invalidate-reset-tokens";
@@ -13,10 +13,9 @@ describe("createInvalidateResetTokens", () => {
 
     await invalidateResetTokens("user-1", em as unknown as EntityManager);
 
-    expect(em.nativeUpdate).toHaveBeenCalledExactlyOnceWith(
-      PasswordResetToken,
-      { user: "user-1", usedAt: null },
-      { usedAt: now },
-    );
+    expect(em.nativeUpdate.mock.calls).toEqual([
+      [PasswordResetToken, { user: "user-1", usedAt: null }, { usedAt: now }],
+      [EmailChangeToken, { user: "user-1", usedAt: null }, { usedAt: now }],
+    ]);
   });
 });

@@ -114,7 +114,7 @@ const START_CLOCK_SQL = `
 // `FOR KEY SHARE` on the user row, which does not conflict with the deletion's own lock, so
 // without this a game could appear for an account that is being deleted. First in the
 // transaction: the lock order is users, then games, then game_players.
-const LOCK_USER_SQL = `select id from users where id = ? for no key update`;
+const LOCK_USER_SQL = `select id, display_name from users where id = ? for no key update`;
 
 // Serializes the creates of one browser (same token hash); released at the commit.
 const ADVISORY_LOCK_SQL = `select pg_advisory_xact_lock(hashtext(?))`;
@@ -202,18 +202,19 @@ export type GameState = BoardView & {
   fromRematch?: true;
 };
 
-/** A guest's nickname, an account's name; `null` for a deleted account and for an agent (BR-31). */
+/** A guest's nickname, an account's name as it was when the seat was created (E05-S01); `null` for a deleted account and for an agent (BR-31). */
 function displayNameOf(player: {
   kind: string;
   seat: number;
   nickname?: string | null;
+  displayName?: string | null;
   user?: { displayName: string } | null;
 }): string | null {
   switch (player.kind as ParticipantKind) {
     case "guest":
       return player.nickname ?? defaultNickname(player.seat as Seat);
     case "account":
-      return player.user?.displayName ?? null;
+      return player.displayName ?? player.user?.displayName ?? null;
     case "agent":
       return null;
   }
@@ -269,13 +270,13 @@ export class GameService {
     const draft = this.#draft(now);
     try {
       const gameId = await this.#em.transactional(async (tx) => {
-        const locked = await tx.execute<{ id: string }[]>(LOCK_USER_SQL, [userId]);
+        const locked = await tx.execute<{ id: string; display_name: string }[]>(LOCK_USER_SQL, [userId]);
         // The account was deleted between the session check and now (#37).
         if (locked.length === 0) throw new UnauthorizedError(SESSION_REQUIRED_MESSAGE);
         // Whoever starts a game stops looking for one (#25 Q5); right after the user lock (lock order).
         await tx.execute(deleteSeekersSql(1), [userId], "run");
         await closeStaleSlotsOfUser(tx, userId, now);
-        return this.#insertGame(tx, draft, now, { kind: "account", userId });
+        return this.#insertGame(tx, draft, now, { kind: "account", userId, displayName: locked[0]!.display_name });
       });
       return this.#created(gameId, draft);
     } catch (error) {
@@ -371,7 +372,7 @@ export class GameService {
     { code, expiresAt }: { code: string; expiresAt: Date },
     now: Date,
     creator:
-      | { kind: "account"; userId: string }
+      | { kind: "account"; userId: string; displayName: string }
       | { kind: "guest"; guestTokenHash: string; nickname?: string },
   ): Promise<string> {
     const game = tx.create(Game, {
@@ -383,7 +384,7 @@ export class GameService {
       game,
       seat: 1,
       ...(creator.kind === "account"
-        ? { kind: "account", user: tx.getReference(User, creator.userId) }
+        ? { kind: "account", user: tx.getReference(User, creator.userId), displayName: creator.displayName }
         : { kind: "guest", guestTokenHash: creator.guestTokenHash, nickname: creator.nickname }),
       isActive: true,
       joinedAt: now,

@@ -435,6 +435,7 @@ describe("password reset on PostgreSQL", () => {
       passwordHasher,
       sessionService,
       invalidateResetTokens,
+      clock: { now: () => new Date() },
       emailVerificationService: {} as never,
     });
 

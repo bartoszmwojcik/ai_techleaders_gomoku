@@ -28,6 +28,7 @@ describe("cleanupExpired", () => {
       rateLimitBuckets: 0,
       emailVerificationTokens: 0,
       passwordResetTokens: 0,
+      emailChangeTokens: 0,
       lobbySeekers: 0,
       chatMessages: 0,
       waitingGames: 0,
@@ -59,6 +60,7 @@ describe("cleanupExpired", () => {
       rate_limit_buckets: NOW.getTime() - 48 * HOUR,
       email_verification_tokens: NOW.getTime() - 24 * HOUR,
       password_reset_tokens: NOW.getTime() - 24 * HOUR,
+      email_change_tokens: NOW.getTime() - 24 * HOUR,
       lobby_seekers: NOW.getTime() - HOUR,
     });
     expect(execute.mock.calls[0]).toEqual([expect.stringContaining("expires_at < ?"), [expect.any(Date), 1000], "run"]);
@@ -68,7 +70,7 @@ describe("cleanupExpired", () => {
     const { em, execute } = fakeEm(() => 0);
     await cleanupExpired({ em, now: NOW });
     const sqls = execute.mock.calls.map(([sql]) => sql);
-    expect(sqls.filter((s) => s.includes("expires_at < ? or used_at < ?"))).toHaveLength(2);
+    expect(sqls.filter((s) => s.includes("expires_at < ? or used_at < ?"))).toHaveLength(3);
     expect(sqls.every((s) => s.includes("for update skip locked"))).toBe(true);
     // One bound cutoff per `?` of the condition (MikroORM binds `?`, not `$n`), then the limit.
     const tokenCall = execute.mock.calls.find(([sql]) => sql.includes("from password_reset_tokens"));
@@ -242,7 +244,7 @@ describe("cleanupExpired", () => {
     const rules: CleanupRule[] = CLEANUP_RULES.map((rule) => ({ ...rule, optional: rule.key === "sessions" }));
     const result = await cleanupExpired({ em, now: NOW, rules });
     expect(result.sessions).toBeNull();
-    expect(result.errors.map((e) => e.rule)).toEqual(["rateLimitBuckets", "emailVerificationTokens", "passwordResetTokens", "lobbySeekers", "chatMessages", "waitingGames", "cancelledGames", "guestOnlyActiveGames", "guestOnlyFinishedGames", "orphanedFinishedGames", "guestTokens", "agentTokens", "unverifiedUsers"]);
+    expect(result.errors.map((e) => e.rule)).toEqual(["rateLimitBuckets", "emailVerificationTokens", "passwordResetTokens", "emailChangeTokens", "lobbySeekers", "chatMessages", "waitingGames", "cancelledGames", "guestOnlyActiveGames", "guestOnlyFinishedGames", "orphanedFinishedGames", "guestTokens", "agentTokens", "unverifiedUsers"]);
   });
 
   it("keeps the counts of finished rules and of rows deleted before an error", async () => {

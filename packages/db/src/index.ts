@@ -3,6 +3,7 @@ export { createOrm, type Orm, type EntityManager } from "./orm";
 export { entities } from "./entities";
 export { User } from "./entities/auth/user";
 export { EmailVerificationToken } from "./entities/auth/email-verification-token";
+export { EmailChangeToken } from "./entities/auth/email-change-token";
 export { PasswordResetToken } from "./entities/auth/password-reset-token";
 export { Session } from "./entities/auth/session";
 export { ChatMessage } from "./entities/chat/chat-message";

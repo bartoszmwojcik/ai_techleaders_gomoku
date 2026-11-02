@@ -185,3 +185,38 @@ describe("the administrator's account on the website", () => {
     expect(await run(`select 1 from users where email = ?`, [`sweep-${n}@example.com`])).toHaveLength(0);
   });
 });
+
+describe("e-mail change of the installation administrator (E05-S01, Q7)", () => {
+  it("is refused with 403 ADMIN_EMAIL_LOCKED, and nobody can change to ADMIN_EMAIL", async () => {
+    await adminCreate("Admin-haslo-1", ["--name", "Szef_Mail"]);
+    const session = await login(ADMIN_EMAIL, "Admin-haslo-1");
+    expect(session.status).toBe(200);
+    const locked = await call(
+      "/api/auth/email-change",
+      { newEmail: `nowy-${Date.now().toString(36)}@example.com`, currentPassword: "Admin-haslo-1" },
+      cookieOf(session),
+    );
+    expect(locked.status).toBe(403);
+    expect(((await locked.json()) as { error: { code: string } }).error.code).toBe("ADMIN_EMAIL_LOCKED");
+
+    // A wrong password is still a 400: the rule is no oracle without the password.
+    const wrong = await call(
+      "/api/auth/email-change",
+      { newEmail: "inny@example.com", currentPassword: "zle-haslo-123" },
+      cookieOf(session),
+    );
+    expect(wrong.status).toBe(400);
+
+    // An ordinary account asking for ADMIN_EMAIL gets the neutral 202, and no message is sent.
+    const n = `${Date.now().toString(36)}${++userCounter}`;
+    const user = { email: `chg-${n}@example.com`, displayName: `Chg_${n}`, password: "secret123" };
+    const registered = await call("/api/auth/register", user);
+    expect(registered.status).toBe(201);
+    const asked = await call(
+      "/api/auth/email-change",
+      { newEmail: ADMIN_EMAIL, currentPassword: user.password },
+      cookieOf(registered),
+    );
+    expect(asked.status).toBe(202);
+  });
+});

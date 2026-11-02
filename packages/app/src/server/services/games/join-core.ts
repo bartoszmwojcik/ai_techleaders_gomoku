@@ -36,7 +36,7 @@ export type InvitationRow = {
 
 export const READ_INVITATION_SQL = `
   select i.id, i.game_id, i.consumed_at, i.expires_at <= ? as expired, g.status,
-    c.user_id as creator_id, u.display_name as creator_name,
+    c.user_id as creator_id, coalesce(c.display_name, u.display_name) as creator_name,
     c.kind as creator_kind, c.nickname as creator_nickname
   from invitations i
   join games g on g.id = i.game_id
