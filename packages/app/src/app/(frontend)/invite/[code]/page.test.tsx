@@ -51,4 +51,10 @@ describe("InvitePage", () => {
     await expect(render("ABCD-EFGH")).rejects.toThrow("NEXT_REDIRECT");
     expect(redirect).toHaveBeenCalledWith("/games/g1");
   });
+
+  it("sends anybody with the code of a finished public game to its review", async () => {
+    loadInvitationView.mockResolvedValue({ kind: "review", gameId: "g1" });
+    await expect(render("abcd-efgh")).rejects.toThrow("NEXT_REDIRECT");
+    expect(redirect).toHaveBeenCalledWith("/games/g1/review?code=ABCDEFGH");
+  });
 });

@@ -1,5 +1,5 @@
 import { cellOf } from "@gomoku/core";
-import { Game, GamePlayer, type EntityManager } from "@gomoku/db";
+import { Game, GamePlayer, Invitation, type EntityManager } from "@gomoku/db";
 import { describe, expect, it, vi } from "vitest";
 
 import { canReview, GameReviewService } from "./game-review-service";
@@ -30,8 +30,8 @@ const game = (over: Record<string, unknown> = {}) => ({
 const mine = { seat: 1, kind: "account", user: { id: ME, displayName: "Ala" }, displayName: "Ala" };
 const theirs = { seat: 2, kind: "guest", user: null, nickname: "Bob" };
 
-function setup(found: unknown, players: unknown[] = [mine, theirs]) {
-  const findOne = vi.fn(async () => found);
+function setup(found: unknown, players: unknown[] = [mine, theirs], invitation: unknown = { id: "i1" }) {
+  const findOne = vi.fn(async (entity: unknown) => (entity === Invitation ? invitation : found));
   const find = vi.fn(async () => players);
   const service = new GameReviewService({ em: { findOne, find } as unknown as EntityManager });
   return { service, findOne, find };
@@ -99,12 +99,43 @@ describe("GameReviewService.open", () => {
   });
 });
 
+const PRIVATE = { isPublic: false, codeMatches: false };
+
 describe("canReview", () => {
   it("lets in only an account that has a seat in the game", () => {
-    expect(canReview({ kind: "account", userId: ME }, [mine, theirs])).toBe(true);
-    expect(canReview({ kind: "account", userId: "other" }, [mine, theirs])).toBe(false);
+    expect(canReview({ kind: "account", userId: ME }, [mine, theirs], PRIVATE)).toBe(true);
+    expect(canReview({ kind: "account", userId: "other" }, [mine, theirs], PRIVATE)).toBe(false);
     // A guest or an agent has no account, whatever the id.
-    expect(canReview({ kind: "account", userId: ME }, [{ kind: "guest", user: { id: ME } }])).toBe(false);
-    expect(canReview({ kind: "account", userId: ME }, [{ kind: "account", user: null }])).toBe(false);
+    expect(canReview({ kind: "account", userId: ME }, [{ kind: "guest", user: { id: ME } }], PRIVATE)).toBe(false);
+    expect(canReview({ kind: "account", userId: ME }, [{ kind: "account", user: null }], PRIVATE)).toBe(false);
+  });
+
+  it("lets in a code only for a public game whose invitation it is", () => {
+    const code = { kind: "code", code: "ABCD-EFGH" } as const;
+    expect(canReview(code, [mine, theirs], { isPublic: true, codeMatches: true })).toBe(true);
+    expect(canReview(code, [mine, theirs], { isPublic: false, codeMatches: true })).toBe(false);
+    expect(canReview(code, [mine, theirs], { isPublic: true, codeMatches: false })).toBe(false);
+  });
+});
+
+describe("GameReviewService.open with a code (E09-S02)", () => {
+  const code = { kind: "code", code: "abcd-efgh" } as const;
+
+  it("returns the game of a public one for the holder of its code, who takes no seat", async () => {
+    const { service, findOne } = setup(game({ isPublic: true }));
+
+    const review = await service.open(code, ID);
+
+    expect(findOne).toHaveBeenCalledWith(Invitation, { game: ID, code: "ABCDEFGH" });
+    expect(review?.viewerSeat).toBeNull();
+    expect(review?.moves).toEqual(MOVES);
+  });
+
+  it("answers null for a private game, a closed audience, a code of another game and a malformed code", async () => {
+    expect(await setup(game({ isPublic: false })).service.open(code, ID)).toBeNull();
+    expect(await setup(game({ isPublic: true }), [mine, theirs], null).service.open(code, ID)).toBeNull();
+    const malformed = setup(game({ isPublic: true }));
+    expect(await malformed.service.open({ kind: "code", code: "!!" }, ID)).toBeNull();
+    expect(malformed.findOne).not.toHaveBeenCalledWith(Invitation, expect.anything());
   });
 });

@@ -26,5 +26,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
   // Already a player here, or the creator: the game page is the right place (s07.4, s07.5).
   if (view.kind === "redirect") redirect(`/games/${view.gameId}`);
   const normalized = normalizeInvitationCode(code);
+  // A finished public game: anybody with the code may step through it (E09-S02, BR-44).
+  if (view.kind === "review") redirect(`/games/${view.gameId}/review?code=${normalized!}`);
   return <InviteScreen code={normalized ? formatInvitationCode(normalized) : ""} view={view} />;
 }

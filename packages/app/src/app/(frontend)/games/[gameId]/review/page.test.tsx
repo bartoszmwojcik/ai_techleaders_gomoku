@@ -10,6 +10,9 @@ const { connection, notFound, redirect, getCurrentUserWith, open } = vi.hoisted(
 }));
 vi.mock("next/server", () => ({ connection }));
 vi.mock("next/navigation", () => ({ notFound, redirect }));
+vi.mock("@/server/container", () => ({
+  withRequestScope: (fn: (scope: unknown) => unknown) => fn({ cradle: { gameReviewService: { open } } }),
+}));
 vi.mock("@/server/http/auth", () => ({ getCurrentUserWith }));
 vi.mock("./review-view", () => ({
   ReviewView: (props: { review: { gameId: string }; back: { href: string; label: string } }) => (
@@ -20,7 +23,8 @@ vi.mock("./review-view", () => ({
 import ReviewPage, { metadata } from "./page";
 
 const ID = "0b9a6c52-7e3b-4a61-9f0e-2d3c4b5a6978";
-const render = async (gameId = ID) => renderToStaticMarkup(await ReviewPage({ params: Promise.resolve({ gameId }) }));
+const render = async (gameId = ID, code?: string | string[]) =>
+  renderToStaticMarkup(await ReviewPage({ params: Promise.resolve({ gameId }), searchParams: Promise.resolve({ code }) }));
 
 beforeEach(() => {
   connection.mockReset().mockResolvedValue(undefined);
@@ -44,6 +48,7 @@ describe("ReviewPage", () => {
     const html = await render();
 
     expect(connection).toHaveBeenCalledOnce();
+    expect(metadata.referrer).toBe("no-referrer");
     expect(metadata.robots).toEqual({ index: false, follow: false });
     expect(open).toHaveBeenCalledExactlyOnceWith({ kind: "account", userId: "u1" }, ID);
     expect(html).toContain(`data-id="${ID}"`);
@@ -69,5 +74,24 @@ describe("ReviewPage", () => {
     await expect(render()).rejects.toThrow("NEXT_REDIRECT");
 
     expect(redirect).toHaveBeenCalledExactlyOnceWith(`/login?next=${encodeURIComponent(`/games/${ID}/review`)}`);
+  });
+
+  it("opens a public game for the holder of a code with no session, and leads back home", async () => {
+    getCurrentUserWith.mockRejectedValue(new Error("must not read the session"));
+
+    const html = await render(ID, "ABCD-EFGH");
+
+    expect(open).toHaveBeenCalledExactlyOnceWith({ kind: "code", code: "ABCD-EFGH" }, ID);
+    expect(html).toContain('data-back="/"');
+    expect(html).toContain('data-label="Wróć na stronę główną"');
+  });
+
+  it("answers 404 for a code that opens nothing and for a repeated code parameter", async () => {
+    open.mockResolvedValue(null);
+    await expect(render(ID, "ABCD-EFGH")).rejects.toThrow("NEXT_NOT_FOUND");
+
+    open.mockClear();
+    await expect(render(ID, ["a", "b"])).rejects.toThrow("NEXT_NOT_FOUND");
+    expect(open).not.toHaveBeenCalled();
   });
 });

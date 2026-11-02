@@ -619,6 +619,22 @@ describe("InvitationService.preview", () => {
     expect(await own.service.preview(CODE, { userId: CREATOR }, GUARD)).toMatchObject({ isPublic: true, state: "own-invitation" });
   });
 
+  it("points a visitor at the review of a finished public game, and stays invalid for a private one (E09-S02)", async () => {
+    const finished = { consumed_at: "2026-11-02", status: "finished" };
+    const pub = setup({ invitation: [invitationRow({ ...finished, is_public: true })] });
+    expect(await pub.service.preview(CODE, {}, GUARD)).toEqual({
+      creatorName: "Ala",
+      creatorKind: "account",
+      isPublic: true,
+      state: "reviewable",
+      gameId: "game-1",
+    });
+    const priv = setup({ invitation: [invitationRow(finished)] });
+    await expect(priv.service.preview(CODE, {}, GUARD)).rejects.toMatchObject({ code: "INVALID_INVITATION" });
+    const active = setup({ invitation: [invitationRow({ ...finished, status: "active", is_public: true })] });
+    await expect(active.service.preview(CODE, {}, GUARD)).rejects.toMatchObject({ code: "INVALID_INVITATION" });
+  });
+
   it("is joinable for a signed-in user without a slot, after settling their timeouts", async () => {
     const { service, timeoutSettler } = setup();
     expect(await service.preview(CODE, { userId: USER }, GUARD)).toEqual({
