@@ -105,7 +105,9 @@ export type InvitationPreview = {
     /** The viewer has their own waiting game (Q18). */
     | "has-own-waiting-game"
     /** A finished public game, the viewer not in it: its code opens the review (E09-S02, BR-44). */
-    | "reviewable";
+    | "reviewable"
+    /** A public game in progress, both seats taken, the viewer not in it: its code lets them watch (E10-S02, BR-39). */
+    | "watchable";
   /** The game to open or link to, for every state except `joinable`. */
   gameId?: string;
 };
@@ -211,6 +213,16 @@ export class InvitationService {
         creatorKind: invitation.creator_kind as CreatorKind,
         isPublic: true,
         state: "reviewable",
+        gameId: invitation.game_id,
+      };
+    }
+    if (invitation && invitation.status === "active" && invitation.is_public) {
+      // Watching takes no slot (BR-13), so a viewer who plays elsewhere may watch too.
+      return {
+        creatorName: creatorNameOf(invitation),
+        creatorKind: invitation.creator_kind as CreatorKind,
+        isPublic: true,
+        state: "watchable",
         gameId: invitation.game_id,
       };
     }

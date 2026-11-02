@@ -1,6 +1,11 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("./watch-actions", () => ({
+  WatchActions: ({ code, signedIn }: { code: string; signedIn: boolean }) => (
+    <div data-testid="watch-actions" data-code={code} data-signed-in={String(signedIn)} />
+  ),
+}));
 vi.mock("./join-actions", () => ({
   JoinActions: ({ code, mode }: { code: string; mode: string }) => <div data-testid="actions" data-code={code} data-mode={mode} />,
 }));
@@ -29,6 +34,16 @@ describe("InviteScreen", () => {
   it("says nothing about publicity for a private game or an invalid code", () => {
     expect(render({ kind: "joinable", creatorName: "Ala_7", creatorKind: "account", isPublic: false, signedIn: false })).not.toContain("Partia publiczna");
     expect(render({ kind: "invalid" })).not.toContain("Partia publiczna");
+  });
+
+  it("offers a game in progress to be watched: no join, the audience notice and the watch button (E10-S02)", () => {
+    const html = render({ kind: "watch", isPublic: true, creatorName: "Ala_7", creatorKind: "account", gameId: "g1", signedIn: true });
+    expect(html).toContain("Ta partia już trwa</h1>");
+    expect(html).toContain("Obaj gracze są już w partii. Możesz ją oglądać na żywo");
+    expect(html).toContain("Partia publiczna: może ją oglądać każdy z kodem");
+    expect(html).toContain('data-testid="watch-actions" data-code="ABCD-EFGH" data-signed-in="true"');
+    expect(html).not.toContain('data-testid="actions"');
+    expect(html).toContain('data-state="watch"');
   });
 
   it("offers a signed-in player to join (s07.3)", () => {

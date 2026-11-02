@@ -631,8 +631,28 @@ describe("InvitationService.preview", () => {
     });
     const priv = setup({ invitation: [invitationRow(finished)] });
     await expect(priv.service.preview(CODE, {}, GUARD)).rejects.toMatchObject({ code: "INVALID_INVITATION" });
-    const active = setup({ invitation: [invitationRow({ ...finished, status: "active", is_public: true })] });
-    await expect(active.service.preview(CODE, {}, GUARD)).rejects.toMatchObject({ code: "INVALID_INVITATION" });
+  });
+
+  it("lets anybody with the code of a public game in progress watch it, and keeps a private one invalid (E10-S02, BR-39)", async () => {
+    const active = { consumed_at: "2026-11-02", status: "active" };
+    const pub = setup({ invitation: [invitationRow({ ...active, is_public: true })] });
+    expect(await pub.service.preview(CODE, {}, GUARD)).toEqual({
+      creatorName: "Ala",
+      creatorKind: "account",
+      isPublic: true,
+      state: "watchable",
+      gameId: "game-1",
+    });
+    // A player elsewhere may watch too: watching takes no slot (BR-13).
+    const busy = setup({ invitation: [invitationRow({ ...active, is_public: true })], slot: [[{ game_id: "g9", status: "active", seat: 1 }]] });
+    expect(await busy.service.preview(CODE, { userId: USER }, GUARD)).toMatchObject({ state: "watchable" });
+    const priv = setup({ invitation: [invitationRow(active)] });
+    await expect(priv.service.preview(CODE, {}, GUARD)).rejects.toMatchObject({ code: "INVALID_INVITATION" });
+  });
+
+  it("sends a player of the public game in progress to their game, not to the audience", async () => {
+    const { service } = setup({ member: [{ seat: 2 }], invitation: [invitationRow({ consumed_at: "2026-11-02", status: "active", is_public: true })] });
+    expect(await service.preview(CODE, { userId: USER }, GUARD)).toMatchObject({ state: "participant", gameId: "game-1" });
   });
 
   it("is joinable for a signed-in user without a slot, after settling their timeouts", async () => {

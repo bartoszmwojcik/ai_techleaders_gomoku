@@ -53,3 +53,4 @@ Indeks lekcji. Jedna linia na wpis: `- [Tytuł](lessons/YYYY-MM-DD-slug.md) — 
 - [Eksport z indeksu db a bundle Next](lessons/2026-11-02-db-index-export-pulls-cli-into-next-bundle.md) — nie eksportuj z `cli/` w `packages/db/src/index.ts` (wciąga migracje do bundla); po zmianie indeksu uruchom `npm run build`.
 - [Integracja w worktree: krótki TMPDIR](lessons/2026-11-02-integration-in-worktree-needs-short-tmpdir.md) — `TMPDIR=/tmp npm run test:integration`; inaczej Chrome: Socket path too long.
 - [Integracja: TMPDIR i gniazdo Chrome](lessons/2026-11-02-integration-tmpdir-socket-path.md) — w worktree cezara uruchamiaj `TMPDIR=/tmp npm run test:integration`; nick gościa czytaj przez `textContent`.
+- [Tempo odpytywania a odpowiedź](lessons/2026-11-02-poll-pace-reads-the-answer-before-scheduling.md) — kolejny odczyt planuj po zakończeniu poprzedniego (tempo zależy od odpowiedzi); `clearTimeout` w `schedule`, flaga `stopped`.

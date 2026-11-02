@@ -31,6 +31,7 @@ describe("cleanupExpired", () => {
       emailChangeTokens: 0,
       lobbySeekers: 0,
       chatMessages: 0,
+      gameSpectators: 0,
       waitingGames: 0,
       cancelledGames: 0,
       guestOnlyActiveGames: 0,
@@ -50,6 +51,7 @@ describe("cleanupExpired", () => {
     );
     expect(cutoffs).toEqual({
       "chat_messages:chat": NOW.getTime() - HOUR,
+      game_spectators: NOW.getTime() - HOUR,
       "games:waiting": NOW.getTime() - HOUR,
       "games:cancelled": NOW.getTime() - 25 * HOUR,
       "games:guestActive": NOW.getTime() - HOUR,
@@ -244,7 +246,7 @@ describe("cleanupExpired", () => {
     const rules: CleanupRule[] = CLEANUP_RULES.map((rule) => ({ ...rule, optional: rule.key === "sessions" }));
     const result = await cleanupExpired({ em, now: NOW, rules });
     expect(result.sessions).toBeNull();
-    expect(result.errors.map((e) => e.rule)).toEqual(["rateLimitBuckets", "emailVerificationTokens", "passwordResetTokens", "emailChangeTokens", "lobbySeekers", "chatMessages", "waitingGames", "cancelledGames", "guestOnlyActiveGames", "guestOnlyFinishedGames", "orphanedFinishedGames", "guestTokens", "agentTokens", "unverifiedUsers"]);
+    expect(result.errors.map((e) => e.rule)).toEqual(["rateLimitBuckets", "emailVerificationTokens", "passwordResetTokens", "emailChangeTokens", "lobbySeekers", "chatMessages", "gameSpectators", "waitingGames", "cancelledGames", "guestOnlyActiveGames", "guestOnlyFinishedGames", "orphanedFinishedGames", "guestTokens", "agentTokens", "unverifiedUsers"]);
   });
 
   it("keeps the counts of finished rules and of rows deleted before an error", async () => {

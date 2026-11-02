@@ -17,6 +17,17 @@ export type InvitationView =
   /** A finished public game: the code opens its review for anybody (E09-S02). */
   | { kind: "review"; gameId: string }
   | {
+      /** A public game in progress: the code lets the viewer watch it (E10-S02, BR-39). */
+      kind: "watch";
+      /** Always `true`: only a public game can be watched; the page shows the same notice as for a joinable one. */
+      isPublic: true;
+      creatorName: string | null;
+      creatorKind: CreatorKind;
+      gameId: string;
+      /** An account watches under its name and gives no nickname. */
+      signedIn: boolean;
+    }
+  | {
       kind: "joinable" | "has-active-game" | "has-own-waiting-game";
       creatorName: string | null;
       /** A guest creator is shown as "{name} (gość)"; `creatorName === null` is only a deleted account. */
@@ -52,6 +63,16 @@ export async function loadInvitationView(code: string): Promise<InvitationView> 
         return { kind: "redirect", gameId: preview.gameId! };
       }
       if (preview.state === "reviewable") return { kind: "review", gameId: preview.gameId! };
+      if (preview.state === "watchable") {
+        return {
+          kind: "watch",
+          isPublic: true,
+          creatorName: preview.creatorName,
+          creatorKind: preview.creatorKind,
+          gameId: preview.gameId!,
+          signedIn: user !== null,
+        };
+      }
       return {
         kind: preview.state,
         creatorName: preview.creatorName,

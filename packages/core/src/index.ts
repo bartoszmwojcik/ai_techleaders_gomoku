@@ -29,6 +29,7 @@ export * from "./games/types";
 export * from "./games/rematch";
 export * from "./games/lobby";
 export * from "./validators/games/accept-invitation-schema";
+export * from "./validators/games/spectate-invitation-schema";
 export * from "./validators/games/create-game-schema";
 export * from "./validators/games/game-id-schema";
 export * from "./validators/games/seeker-id-schema";

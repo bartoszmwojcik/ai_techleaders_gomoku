@@ -91,6 +91,7 @@ Wygasłe sesje, liczniki limitów i tokeny nie wpływają na poprawność (są f
 | `password_reset_tokens` | `expires_at` **lub** `used_at` starsze niż 24 godziny |
 | `email_change_tokens` | `expires_at` **lub** `used_at` starsze niż 24 godziny |
 | `lobby_seekers` | `expires_at` starsze niż 1 godzina (status „szukam gry” żyje 5 minut, odczyt filtruje wygasłe, więc godzina to tylko margines na rozjazd zegarów) |
+| `game_spectators` | widzowie partii publicznych (E10-S02) po wygaśnięciu dostępu (`expires_at`: 1 godzina od ostatniego odczytu) + 1 godzina marginesu; widz znika też razem z partią lub kontem (`on delete cascade`) |
 | `chat_messages` | wiadomości czatu partii `finished` (`finished_at`), `cancelled` (`created_at`) lub `active` z wygasłym zegarem (ten sam wzór co reguła partii gościnnych), starsze niż 1 godzina, **także gdy partia zostaje jako historia konta** (BR-34); reguła stoi przed regułami usuwającymi partie, a ten sam próg co tokeny gościa i agenta sprawia, że dostęp i treść znikają w jednym przebiegu |
 | `games` (`waiting`) | zaproszenie wygasło ponad 1 godzinę temu (okno 1 h, w którym twórca-gość widzi „Zaproszenie wygasło”; uczestnicy i zaproszenie znikają razem z partią, `on delete cascade`) |
 | `games` (`cancelled`) | `created_at` starsze niż 25 godzin (24 godziny życia zaproszenia + to samo okno 1 h dla niedołączonej wygasłej partii; razem z uczestnikami i zaproszeniem) |
@@ -105,7 +106,7 @@ Potwierdzone konta usuwa tylko ich właściciel ([Usunięcie konta](#usunięcie-
 **Wynik i kody wyjścia.** Jedna linia JSON na stdout: liczba usuniętych wierszy na regułę (przy błędzie reguły — liczba usuniętych do chwili błędu), `null` (tylko reguła oznaczona jako opcjonalna, gdy jej tabeli brak; dziś żadna nie jest), `errors` (reguły, które zgłosiły błąd) i `truncated`:
 
 ```json
-{"sessions":3,"rateLimitBuckets":0,"emailVerificationTokens":1,"passwordResetTokens":0,"emailChangeTokens":0,"lobbySeekers":0,"chatMessages":0,"waitingGames":0,"cancelledGames":0,"guestOnlyActiveGames":0,"guestOnlyFinishedGames":0,"orphanedFinishedGames":0,"guestTokens":0,"agentTokens":0,"unverifiedUsers":0,"errors":[],"truncated":false}
+{"sessions":3,"rateLimitBuckets":0,"emailVerificationTokens":1,"passwordResetTokens":0,"emailChangeTokens":0,"lobbySeekers":0,"chatMessages":0,"gameSpectators":0,"waitingGames":0,"cancelledGames":0,"guestOnlyActiveGames":0,"guestOnlyFinishedGames":0,"orphanedFinishedGames":0,"guestTokens":0,"agentTokens":0,"unverifiedUsers":0,"errors":[],"truncated":false}
 ```
 
 Błąd jednej reguły (w tym brak tabeli, np. nieuruchomione migracje) nie przerywa pozostałych: linia JSON z postępem nadal trafia na stdout, a w `errors` jest `{"rule":"sessions","code":"42P01"}` (nazwa reguły i kod SQL lub nazwa klasy błędu — bez komunikatu, który mógłby zawierać dane). Wtedy kod wyjścia to `1`, a na stderr jest `{"ok":false,"errors":[…]}`. Kod `1` i `{"ok":false,"error":"…"}` (zamaskowane hasło w adresie bazy) także przy innej awarii całego przebiegu. Kod `0` oznacza brak błędów (`truncated: true` to nie błąd). Następny przebieg `cron` spróbuje ponownie. Komenda nigdy nie tworzy brakującej bazy.

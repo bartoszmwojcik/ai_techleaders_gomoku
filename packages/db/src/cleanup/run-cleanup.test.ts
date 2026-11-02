@@ -29,6 +29,7 @@ describe("runCleanup", () => {
       emailChangeTokens: 2,
       lobbySeekers: 2,
       chatMessages: 2,
+      gameSpectators: 2,
       waitingGames: 2,
       cancelledGames: 2,
       guestOnlyActiveGames: 2,
@@ -62,7 +63,7 @@ describe("runCleanup", () => {
     const line = s.stderr.write.mock.calls[0]![0] as string;
     expect(JSON.parse(line)).toEqual({
       ok: false,
-      errors: ["sessions", "rateLimitBuckets", "emailVerificationTokens", "passwordResetTokens", "emailChangeTokens", "lobbySeekers", "chatMessages", "waitingGames", "cancelledGames", "guestOnlyActiveGames", "guestOnlyFinishedGames", "orphanedFinishedGames", "guestTokens", "agentTokens", "unverifiedUsers"].map((rule) => ({
+      errors: ["sessions", "rateLimitBuckets", "emailVerificationTokens", "passwordResetTokens", "emailChangeTokens", "lobbySeekers", "chatMessages", "gameSpectators", "waitingGames", "cancelledGames", "guestOnlyActiveGames", "guestOnlyFinishedGames", "orphanedFinishedGames", "guestTokens", "agentTokens", "unverifiedUsers"].map((rule) => ({
         rule,
         code: "42P01",
       })),

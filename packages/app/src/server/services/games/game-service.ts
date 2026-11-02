@@ -222,6 +222,77 @@ export function displayNameOf(player: {
   }
 }
 
+/** What every reader of a game sees: see `watchableState`. */
+export type WatchableState = BoardView & Pick<GameState, "status" | "clock" | "players">;
+
+/** The part of a game row the shared state view reads (a row of `games`). */
+type StateGame = {
+  status: string;
+  blackSeat?: number | null;
+  moveCount: number;
+  stonesBlack: string;
+  stonesWhite: string;
+  moves: Uint8Array;
+  winnerSeat?: number | null;
+  endReason?: string | null;
+  clockMs1: number;
+  clockMs2: number;
+  turnStartedAt?: Date | null;
+};
+
+/** The part of a seat the shared state view reads (a row of `game_players`). */
+type StatePlayer = Parameters<typeof displayNameOf>[0] & { agentName?: string | null; seenAt?: Date | null };
+
+/**
+ * What every reader of a game sees, whoever they are: status, board, both clocks and the seats with
+ * their names. A participant's `getState` adds `you` and the private parts; a spectator's read
+ * (E10-S02) takes this and nothing else, so no private field can leak into it by being added to
+ * the participant's view. `after` is the number of moves the reader already knows.
+ * @throws AppError 400 when `after` is greater than the number of moves
+ */
+export function watchableState(
+  game: StateGame,
+  players: readonly StatePlayer[],
+  after: number,
+  now: Date,
+): WatchableState {
+  if (after > game.moveCount) {
+    throw new ValidationError(AFTER_MESSAGE);
+  }
+  const board = boardView(
+    {
+      status: game.status as GameStatus,
+      blackSeat: game.blackSeat ?? null,
+      moveCount: game.moveCount,
+      stonesBlack: game.stonesBlack,
+      stonesWhite: game.stonesWhite,
+      moves: game.moves,
+      winnerSeat: game.winnerSeat ?? null,
+      endReason: (game.endReason ?? null) as EndReason | null,
+    },
+    after,
+  );
+  return {
+    status: game.status as GameStatus,
+    clock: clockView(
+      {
+        clockMs: [game.clockMs1, game.clockMs2],
+        turnStartedAtMs: game.turnStartedAt?.getTime() ?? null,
+        turnSeat: board.turnSeat,
+      },
+      now.getTime(),
+    ),
+    players: players.map((player) => ({
+      seat: player.seat as Seat,
+      kind: player.kind as ParticipantKind,
+      displayName: displayNameOf(player),
+      ...(player.kind === "agent" && { agentName: player.agentName ?? null }),
+      seen: player.seenAt != null,
+    })),
+    ...board,
+  };
+}
+
 export type ClosedReason = "cancelled" | "expired" | "not_opened";
 
 export class GameService {
@@ -534,47 +605,16 @@ export class GameService {
     const game = await tx.findOneOrFail(Game, gameId, {
       failHandler: () => new NotFoundError(GAME_NOT_FOUND_MESSAGE),
     });
-    if (after > game.moveCount) {
-      throw new ValidationError(AFTER_MESSAGE);
-    }
     const players = await tx.find(
       GamePlayer,
       { game: gameId },
       { populate: ["user"], orderBy: { seat: "asc" } },
     );
     const you = players.find(({ id }) => id === participant.playerId)!;
-    const board = boardView(
-      {
-        status: game.status as GameStatus,
-        blackSeat: game.blackSeat ?? null,
-        moveCount: game.moveCount,
-        stonesBlack: game.stonesBlack,
-        stonesWhite: game.stonesWhite,
-        moves: game.moves,
-        winnerSeat: game.winnerSeat ?? null,
-        endReason: (game.endReason ?? null) as EndReason | null,
-      },
-      after,
-    );
+    const watchable = watchableState(game, players, after, now);
     const state: GameState = {
-      status: game.status as GameStatus,
-      clock: clockView(
-        {
-          clockMs: [game.clockMs1, game.clockMs2],
-          turnStartedAtMs: game.turnStartedAt?.getTime() ?? null,
-          turnSeat: board.turnSeat,
-        },
-        now.getTime(),
-      ),
+      ...watchable,
       you: { seat: you.seat as Seat, kind: you.kind as ParticipantKind },
-      players: players.map((player) => ({
-        seat: player.seat as Seat,
-        kind: player.kind as ParticipantKind,
-        displayName: displayNameOf(player),
-        ...(player.kind === "agent" && { agentName: player.agentName ?? null }),
-        seen: player.seenAt !== null,
-      })),
-      ...board,
     };
     if (you.seat === 1 && game.status === "waiting") {
       const invitation = await tx.findOneOrFail(Invitation, { game: gameId });
