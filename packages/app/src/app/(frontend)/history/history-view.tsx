@@ -19,7 +19,7 @@ type Problem = "signed-out" | "failed";
 
 /**
  * `/history` (E04-S01): the first page arrives from the server, "Pokaż starsze" appends the next
- * ones. The row is not a link: replaying a game is out of scope.
+ * ones. Each row links to the review of the game (E09-S01).
  */
 export function HistoryView({ initial }: { initial: HistoryPage }) {
   const [entries, setEntries] = useState(initial.entries);
@@ -71,6 +71,11 @@ export function HistoryView({ initial }: { initial: HistoryPage }) {
                 resultLabel={RESULT_LABEL[entry.result]}
                 date={formatFinishedAt(entry.finishedAt)}
                 reason={REASON_LABEL[entry.reason]}
+                action={
+                  <TextLink href={`/games/${entry.gameId}/review`} data-testid="history-review">
+                    Przejrzyj partię
+                  </TextLink>
+                }
               />
             ))}
           </HistoryList>

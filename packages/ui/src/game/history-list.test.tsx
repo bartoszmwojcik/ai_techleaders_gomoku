@@ -35,4 +35,14 @@ describe("HistoryList and HistoryRow", () => {
 
     expect(html).not.toContain("·");
   });
+
+  it("shows an action under the date", () => {
+    const html = renderToStaticMarkup(
+      <HistoryList label="Partie">
+        <HistoryRow opponent="Ala" result="win" resultLabel="Wygrana" date="1.10.2026" action={<button type="button">Przejrzyj partię</button>} />
+      </HistoryList>,
+    );
+
+    expect(html).toContain('<button type="button">Przejrzyj partię</button>');
+  });
 });
