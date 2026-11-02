@@ -184,11 +184,11 @@ describe("account forms in the browser", () => {
     const link = /https?:\/\/\S+\/confirm-email-change\?token=[^\s&]+/.exec(message!.text)![0];
     await browser.open(link.replace(/^https?:\/\/[^/]+/, baseUrl));
     expect(await browser.count("[data-testid=change-confirm-done]")).toBe(0);
-    await browser.click("button:not([disabled])");
+    await browser.click("[data-testid=change-confirm-button]");
     await browser.waitFor("[data-testid=change-confirm-done]");
 
     await browser.open(link.replace(/^https?:\/\/[^/]+/, baseUrl));
-    await browser.click("button:not([disabled])");
+    await browser.click("[data-testid=change-confirm-button]");
     await browser.waitFor("[data-testid=change-confirm-invalid]");
   });
 });

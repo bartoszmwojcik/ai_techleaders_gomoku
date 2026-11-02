@@ -81,7 +81,7 @@ export function ConfirmEmailChange({ token }: { token: string | undefined }) {
             Kliknij przycisk, aby ustawić ten adres jako adres e-mail konta. Pozostałe urządzenia zostaną wylogowane.
           </p>
           <div>
-            <Button loading={phase === "confirming"} onClick={onConfirm}>
+            <Button loading={phase === "confirming"} onClick={onConfirm} data-testid="change-confirm-button">
               Potwierdź nowy adres
             </Button>
           </div>
