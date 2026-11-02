@@ -10,8 +10,10 @@ import { TurnStatus } from "@gomoku/ui/game/turn-status";
 import type { Seat } from "@gomoku/core/games/types";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { SpectatorChat } from "@/components/chat/spectator-chat";
 import { GameClock } from "@/components/games/game-clock";
 import { PlayerLabel } from "@/components/games/player-label";
+import { PublicFlag } from "@/components/games/public-flag";
 import { useGameClock } from "@/components/games/use-game-clock";
 import { usePageVisibility } from "@/components/games/use-page-visibility";
 import { apiCall } from "@/lib/api-client";
@@ -33,8 +35,8 @@ type Props = {
 /**
  * `/games/[gameId]` for a spectator of a public game (E10-S02, BR-39): the board, both clocks, whose
  * turn it is and the result, read-only. It polls `GET /api/games/[id]/spectate` every 2 s (slower when
- * nobody moves, not at all in a hidden tab or after the end) and never sends anything else: there is
- * no move, resignation, rematch or chat here. The clocks count down against the server's time
+ * nobody moves, not at all in a hidden tab or after the end) and sends nothing but chat messages
+ * (`SpectatorChat`, E10-S03): there is no move, resignation, rematch or chat switch here. The clocks count down against the server's time
  * (`useGameClock`), so a wrong device clock changes nothing.
  */
 export function SpectatorRoom({ gameId, initial }: Props) {
@@ -158,6 +160,7 @@ export function SpectatorRoom({ gameId, initial }: Props) {
     <Shell>
       <h1 className="m-0 text-section font-strong">{finished ? "Koniec partii" : "Oglądasz partię"}</h1>
       <Alert status="info" title="Jesteś widzem — oglądasz partię bez wpływu na jej przebieg." />
+      <PublicFlag audience={game.audience} />
       {!finished && fails > 0 && fails < SPECTATOR_FAILURES_BEFORE_BANNER && (
         <p role="status" className="m-0 text-meta text-text-secondary">
           Ponawiamy sprawdzanie stanu partii (próba {fails} z {SPECTATOR_FAILURES_BEFORE_BANNER}).
@@ -199,6 +202,7 @@ export function SpectatorRoom({ gameId, initial }: Props) {
           readOnly
         />
       </div>
+      <SpectatorChat gameId={gameId} players={game.players} canWrite={game.canChat} onGone={() => setGone(true)} />
       <TextLink href="/" placement="standalone">
         Wróć na stronę główną
       </TextLink>

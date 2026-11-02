@@ -359,14 +359,24 @@ describe("chat on PostgreSQL: turning the chat off and on (E07-S02)", () => {
 });
 
 describe("chat_messages schema", () => {
-  it("defaults chat_enabled to true for new seats and keeps no personal columns", async () => {
+  it("defaults chat_enabled to true for new seats and keeps no personal columns (a spectator is a name, never an account)", async () => {
     const { one } = await setup();
 
     expect((await run("select chat_enabled from game_players where id = ?", [one.playerId]))[0]!.chat_enabled).toBe(true);
     const columns = await run(
       `select column_name from information_schema.columns where table_name = 'chat_messages' order by column_name`,
     );
-    expect(columns.map((c) => c.column_name)).toEqual(["body", "client_id", "created_at", "game_id", "id", "sender_id", "seq"]);
+    expect(columns.map((c) => c.column_name)).toEqual([
+      "author_name",
+      "body",
+      "client_id",
+      "created_at",
+      "game_id",
+      "id",
+      "sender_id",
+      "seq",
+      "spectator_id",
+    ]);
   });
 
   it("enforces the checks, the uniques and the cascades", async () => {

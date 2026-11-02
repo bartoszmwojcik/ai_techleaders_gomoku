@@ -90,7 +90,7 @@ describe("the spectator pages", () => {
     // Both clocks and whose turn it is are in view; nothing of a player's is.
     await bodyHas("Ruch czarnych");
     expect(await browser.evaluate<number>(`document.querySelectorAll("[data-slot=clock]").length`)).toBe(2);
-    expect(await browser.count("textarea, [data-testid=resign], [data-testid*=chat]")).toBe(0);
+    expect(await browser.count("textarea, [data-testid=resign], [data-testid=chat-switch]")).toBe(0);
     expect(await browser.evaluate<boolean>(`document.body.innerText.includes("Poddaj")`)).toBe(false);
     await shot("widz-plansza-320");
     expect(await overflows()).toBe(false);
@@ -113,6 +113,36 @@ describe("the spectator pages", () => {
     await bodyHas("Wygrały czarne");
     await shot("widz-wynik-320");
     expect(await overflows()).toBe(false);
+  });
+
+  it("lets a spectator with a nickname chat, marked as a spectator, and shows the flag with the count to all", async () => {
+    const game = await startedGame();
+    await asVisitor();
+    await browser.setViewport(1024, 900);
+    await browser.open(`${baseUrl}/invite/${game.code}`);
+    await browser.waitFor("[data-testid=invite-watch-note]");
+    await browser.fill("#watch-nickname", "Zosia");
+    await click("Oglądaj partię");
+    await bodyHas("Oglądasz partię");
+
+    // The flag with the number of those watching; no chat switch for a spectator.
+    await browser.waitFor("[data-testid=public-flag]");
+    await bodyHas("Partia publiczna · widzów: 1");
+    expect(await browser.count("[data-testid=chat-switch]")).toBe(0);
+    await browser.fill("input[name=message]", "Ładna partia");
+    await browser.press("Enter");
+    await browser.waitForFn(`document.querySelector("[role=log]")?.innerText.includes("Widz · Zosia")`);
+    await shot("widz-czat-pulpit");
+
+    // A player sees the same flag and the spectator's message.
+    await browser.clearCookies();
+    await browser.setCookie("gomoku_theme", shotsTheme, baseUrl);
+    const cookie = game.black.cookie;
+    await browser.setCookie(cookie.slice(0, cookie.indexOf("=")), cookie.slice(cookie.indexOf("=") + 1), baseUrl);
+    await browser.open(`${baseUrl}/games/${game.gameId}`);
+    await bodyHas("Partia publiczna · widzów: 1");
+    await browser.waitForFn(`document.querySelector("[role=log]")?.innerText.includes("Widz · Zosia")`);
+    await shot("gracz-flaga-czat-pulpit");
   });
 
   it("lets an account watch with one button and no nickname field, under its name", async () => {

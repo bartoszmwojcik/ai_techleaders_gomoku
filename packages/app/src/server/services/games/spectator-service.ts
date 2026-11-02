@@ -3,13 +3,13 @@ import {
   NotFoundError,
   SPECTATORS_MAX,
   SPECTATOR_ACCESS_MS,
-  SPECTATOR_PRESENCE_MS,
   SPECTATOR_TOUCH_INTERVAL_MS,
   ValidationError,
   normalizeInvitationCode,
 } from "@gomoku/core";
 import { Game, GamePlayer, type EntityManager } from "@gomoku/db";
 
+import { countPresentSpectators, readAudience } from "./audience";
 import { createOpaqueToken, hashOpaqueToken } from "../../http/opaque-token";
 import type { Clock } from "../email/email-sender";
 import type { RateLimiter } from "../rate-limit/rate-limiter";
@@ -57,6 +57,8 @@ export type SpectatorState = Omit<WatchableState, "players"> & {
   players: Omit<WatchableState["players"][number], "seen">[];
   /** Only for a finished game: when it ended. */
   finishedAt?: Date;
+  /** The spectator has a name to write under (a nickname or an account), so the chat has a composer (BR-41). */
+  canChat: boolean;
 };
 
 // One lock per game for the whole join (the count and the insert), released at the commit. A key of
@@ -80,10 +82,6 @@ const FIND_ROW_OF_TOKEN_SQL = `select id from game_spectators where game_id = ? 
 const FIND_ALIVE_OF_USER_SQL = `select id from game_spectators where game_id = ? and user_id = ? and expires_at > ?`;
 const FIND_ALIVE_OF_TOKEN_SQL = `select id from game_spectators where game_id = ? and token_hash = ? and expires_at > ?`;
 
-const COUNT_PRESENT_SQL = `
-  select count(*)::int as n from game_spectators
-  where game_id = ? and expires_at > ? and last_seen_at > ?`;
-
 const INSERT_SQL = `
   insert into game_spectators (game_id, user_id, nickname, token_hash, created_at, last_seen_at, expires_at)
   values (?, ?, ?, ?, ?, ?, ?)`;
@@ -92,7 +90,8 @@ const SLIDE_SQL = `update game_spectators set last_seen_at = ?, expires_at = ? w
 
 // Is the presence older than the write interval? Computed in SQL: raw dates come back as text.
 const READ_ROW_SQL = `
-  select last_seen_at <= ? as stale from game_spectators
+  select last_seen_at <= ? as stale, (nickname is not null or user_id is not null) as can_chat
+  from game_spectators
   where id = ? and game_id = ? and expires_at > ?`;
 
 /**
@@ -164,12 +163,7 @@ export class SpectatorService {
         // The cookie they carry is still theirs: no new token.
         return { gameId: id, created: false };
       }
-      const [present] = await tx.execute<{ n: number }[]>(COUNT_PRESENT_SQL, [
-        id,
-        now,
-        new Date(now.getTime() - SPECTATOR_PRESENCE_MS),
-      ]);
-      if (present!.n >= SPECTATORS_MAX) {
+      if ((await countPresentSpectators(tx, id, now)) >= SPECTATORS_MAX) {
         throw new ConflictError(SPECTATORS_FULL_MESSAGE, { code: "SPECTATORS_FULL" });
       }
       await tx.execute(
@@ -216,7 +210,7 @@ export class SpectatorService {
   async getState(access: SpectatorAccess, gameId: string, after = 0): Promise<SpectatorState> {
     return this.#em.transactional(async (tx) => {
       const now = this.#clock.now();
-      const [row] = await tx.execute<{ stale: boolean }[]>(READ_ROW_SQL, [
+      const [row] = await tx.execute<{ stale: boolean; can_chat: boolean }[]>(READ_ROW_SQL, [
         new Date(now.getTime() - SPECTATOR_TOUCH_INTERVAL_MS),
         access.spectatorId,
         gameId,
@@ -232,8 +226,11 @@ export class SpectatorService {
       });
       const players = await tx.find(GamePlayer, { game: gameId }, { populate: ["user"], orderBy: { seat: "asc" } });
       const { players: seats, ...view } = watchableState(game, players, after, now);
+      const audience = await readAudience(tx, game, now);
       return {
         ...view,
+        canChat: row.can_chat,
+        ...(audience && { audience }),
         players: seats.map(({ seat, kind, displayName, agentName }) => ({
           seat,
           kind,

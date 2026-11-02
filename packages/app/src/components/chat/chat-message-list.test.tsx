@@ -17,6 +17,16 @@ function layout(element: HTMLElement, { scrollHeight, clientHeight, scrollTop }:
   element.scrollTop = scrollTop;
 }
 
+describe("ChatMessageList, a spectator's message", () => {
+  it("is marked as a spectator's and shows the name as plain text", () => {
+    const spectator = { id: 3, seat: null, spectatorName: "<b>Ala</b>", text: "Cześć", createdAt: "2026-11-01T10:00:00.000Z" };
+    render(<ChatMessageList messages={[spectator]} labelOf={labelOf} pending={{ text: "w drodze", seat: null, spectatorName: "Ty" }} />);
+    expect(screen.getAllByTestId("chat-spectator")[0]!.textContent).toBe("Widz · <b>Ala</b>");
+    expect(document.querySelector("b")).toBeNull();
+    expect(screen.getByTestId("chat-pending").textContent).toContain("Widz · Ty");
+  });
+});
+
 describe("ChatMessageList, what it shows", () => {
   it("is a polite log of additions and, while empty, says what to do next", () => {
     render(<ChatMessageList messages={[]} labelOf={labelOf} />);

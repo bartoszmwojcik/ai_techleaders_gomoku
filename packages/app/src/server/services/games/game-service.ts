@@ -36,6 +36,7 @@ import {
 import type { ServerConfig } from "../../config";
 import type { Clock } from "../email/email-sender";
 import type { RateLimiter } from "../rate-limit/rate-limiter";
+import { readAudience, type Audience } from "./audience";
 import type { InvitationCodes } from "./invitation-codes";
 import { PARTICIPANT_TOKEN_VALID_SQL } from "./participant-token";
 import {
@@ -179,6 +180,11 @@ export type GameState = BoardView & {
     /** Whether the player already opened the game page (#21 Q20). */
     seen: boolean;
   }[];
+  /**
+   * Only while a public game is in progress (E10-S04, BR-45): how many spectators watch it now. Absent
+   * for a private game, so the flag disappears when the audience is closed.
+   */
+  audience?: Audience;
   /** Only for the creator, only while the game waits. */
   invitation?: { code: string; url: string; mcpUrl: string; expiresAt: Date };
   /**
@@ -223,7 +229,7 @@ export function displayNameOf(player: {
 }
 
 /** What every reader of a game sees: see `watchableState`. */
-export type WatchableState = BoardView & Pick<GameState, "status" | "clock" | "players">;
+export type WatchableState = BoardView & Pick<GameState, "status" | "clock" | "players" | "audience">;
 
 /** The part of a game row the shared state view reads (a row of `games`). */
 type StateGame = {
@@ -612,8 +618,10 @@ export class GameService {
     );
     const you = players.find(({ id }) => id === participant.playerId)!;
     const watchable = watchableState(game, players, after, now);
+    const audience = await readAudience(tx, game, now);
     const state: GameState = {
       ...watchable,
+      ...(audience && { audience }),
       you: { seat: you.seat as Seat, kind: you.kind as ParticipantKind },
     };
     if (you.seat === 1 && game.status === "waiting") {

@@ -87,6 +87,17 @@ describe("PlayField, on the server", () => {
   });
 });
 
+describe("PlayField, the public flag (E10-S04)", () => {
+  it("shows the flag with the count of spectators for a public game and none otherwise", () => {
+    field({ audience: { spectators: 2 } });
+    expect(screen.getByTestId("public-flag").textContent).toContain("Partia publiczna");
+    expect(screen.getByTestId("public-flag-count").textContent).toBe("2");
+    cleanup();
+    field();
+    expect(screen.queryByTestId("public-flag")).toBeNull();
+  });
+});
+
 describe("PlayField, own turn with a mouse (p05.1, p05.5)", () => {
   it("shows the status in words, the colour, the draw and the board", () => {
     field();
