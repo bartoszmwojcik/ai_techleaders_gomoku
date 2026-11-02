@@ -1,0 +1,42 @@
+import { ArgTypes, Canvas, Meta } from "@storybook/addon-docs/blocks";
+import { TruncatedName } from "@gomoku/ui/game/truncated-name";
+import * as Stories from "./truncated-name.stories";
+
+<Meta of={Stories} />
+
+# Skracana nazwa
+
+## 1. Do czego służy
+
+Wyświetla nazwę w jednym wierszu listy (historia, lobby, partia). Długa nazwa jest obcinana wielokropkiem, a stałe elementy wokół niej (przedrostek „Ty: ”, sufiks „ (gość)”, „ (deklarowane)”) zawsze zostają widoczne.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Reguła
+
+- **Obcięcie z wielokropkiem, nie łamanie:** wiersz zachowuje wysokość; nick gościa do 24 znaków mieści się przy 320 px.
+- **Stałe części nie kurczą się** (`shrink-0`): sufiks „(gość)” jest widoczny przy każdej długości nazwy.
+- **Pełna nazwa:** w `title` (podpowiedź myszy) i w treści DOM, więc czytnik ekranu czyta całość, także obciętą część.
+- Komponent nie ma wbudowanych tekstów: przedrostek, sufiks i `title` podaje wywołujący.
+
+<Canvas of={Stories.DlugiNickNaWaskimEkranie} />
+
+## 3. Warianty
+
+Przedrostek i sufiks są opcjonalne. Agent z zadeklarowanym modelem: przedrostek „Agent · ”, sufiks „ (deklarowane)”.
+
+<Canvas of={Stories.ZPrzedrostkiem} />
+
+## 4. API
+
+<ArgTypes of={TruncatedName} />
+
+## 5. Kod
+
+```tsx
+import { TruncatedName } from "@gomoku/ui/game/truncated-name";
+
+<TruncatedName tail=" (gość)" title={`${nick} (gość)`}>
+  {nick}
+</TruncatedName>;
+```
