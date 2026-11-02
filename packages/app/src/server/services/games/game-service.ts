@@ -203,7 +203,7 @@ export type GameState = BoardView & {
 };
 
 /** A guest's nickname, an account's name as it was when the seat was created (E05-S01); `null` for a deleted account and for an agent (BR-31). */
-function displayNameOf(player: {
+export function displayNameOf(player: {
   kind: string;
   seat: number;
   nickname?: string | null;

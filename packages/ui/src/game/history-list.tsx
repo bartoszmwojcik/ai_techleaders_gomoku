@@ -31,10 +31,12 @@ type HistoryRowProps = {
   date: ReactNode;
   /** How it ended, e.g. "5 w linii", "Koniec czasu", "Plansza pełna". */
   reason?: ReactNode;
+  /** An action on the game, e.g. a link "Przejrzyj partię"; shown under the date. */
+  action?: ReactNode;
   className?: string;
 };
 
-function HistoryRow({ opponent, result, resultLabel, date, reason, className }: HistoryRowProps) {
+function HistoryRow({ opponent, result, resultLabel, date, reason, action, className }: HistoryRowProps) {
   return (
     <li className={cn("flex flex-wrap items-center justify-between gap-stack border-t border-border-default py-3 first:border-t-0", className)}>
       <div className="flex min-w-0 flex-col wrap-anywhere">
@@ -43,6 +45,7 @@ function HistoryRow({ opponent, result, resultLabel, date, reason, className }: 
           {date}
           {reason && <> · {reason}</>}
         </span>
+        {action}
       </div>
       <StatusBadge status={STATUS_BY_RESULT[result]}>{resultLabel}</StatusBadge>
     </li>

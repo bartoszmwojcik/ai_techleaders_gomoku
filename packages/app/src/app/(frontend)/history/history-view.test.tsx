@@ -37,6 +37,8 @@ describe("HistoryView: the list", () => {
     expect(row.textContent).toContain("31 października 2026, 10:00 CET");
     expect(row.textContent).toContain("5 w linii");
     expect(row.textContent).toContain("Wygrana");
+    // The row opens the review of that game (E09-S01).
+    expect(within(row).getByRole("link", { name: "Przejrzyj partię" }).getAttribute("href")).toBe("/games/g1/review");
     expect(screen.queryByRole("button", { name: "Pokaż starsze" })).toBeNull();
     expect(screen.getByRole("link", { name: "Wróć na stronę główną" })).toBeTruthy();
   });
