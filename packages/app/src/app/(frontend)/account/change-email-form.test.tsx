@@ -56,6 +56,14 @@ describe("ChangeEmailForm", () => {
     expect(apiCall).not.toHaveBeenCalled();
   });
 
+  it("explains that the administrator's address cannot be changed", async () => {
+    apiCall.mockResolvedValue(failure({ code: "ADMIN_EMAIL_LOCKED" }));
+    render(<ChangeEmailForm />);
+    await submit();
+    await waitFor(() => expect(screen.getByTestId("change-email-error").textContent).toContain("Nie można zmienić adresu"));
+    expect(screen.getByTestId("change-email-error").textContent).toContain("konfiguracji serwera");
+  });
+
   it("clears only the wrong password and shows the field error", async () => {
     apiCall.mockResolvedValue(
       failure({ code: "INVALID_CURRENT_PASSWORD", fieldErrors: { currentPassword: ["Obecne hasło jest nieprawidłowe."] } }),

@@ -95,7 +95,12 @@ export function ChangeEmailForm() {
       showErrors(messages);
       return;
     }
-    if (code === "RATE_LIMITED") {
+    if (code === "ADMIN_EMAIL_LOCKED") {
+      setGeneral({
+        title: "Nie można zmienić adresu",
+        details: "Adres administratora instalacji jest ustawiony w konfiguracji serwera i nie zmienia się w aplikacji.",
+      });
+    } else if (code === "RATE_LIMITED") {
       const minutes = retryAfterSeconds === undefined ? undefined : Math.max(1, Math.ceil(retryAfterSeconds / 60));
       setGeneral({
         title: "Zbyt wiele prób",

@@ -1,4 +1,4 @@
-import { TooManyRequestsError, ValidationError } from "@gomoku/core";
+import { ForbiddenError, TooManyRequestsError, ValidationError } from "@gomoku/core";
 import {
   EmailChangeToken,
   EmailVerificationToken,
@@ -48,6 +48,7 @@ function setup(
     passwordOk?: boolean;
     taken?: number;
     config?: Partial<ServerConfig>;
+    adminEmail?: string;
     sendError?: unknown;
     hitErrors?: unknown[];
     consumed?: { user_id: string; new_email: string }[];
@@ -110,6 +111,7 @@ function setup(
     clock: { now: () => NOW },
     serverConfig,
     rateLimiter: rateLimiter as unknown as RateLimiter,
+    adminEmail: options.adminEmail,
   });
   return { service, em, tx, emailSender, passwordHasher, sessionService, invalidateResetTokens, rateLimiter, calls };
 }
@@ -149,6 +151,21 @@ describe("EmailChangeService.request", () => {
     expect(rateLimiter.hit).not.toHaveBeenCalled();
   });
 
+  it("refuses the installation administrator after the password check, spending nothing", async () => {
+    const { service, rateLimiter } = setup({ adminEmail: "Ala@Example.com" });
+    const error = await service.request("user-1", "nowy@example.com", "secret").catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ForbiddenError);
+    expect(error).toMatchObject({ status: 403, code: "ADMIN_EMAIL_LOCKED" });
+    expect(rateLimiter.hit).not.toHaveBeenCalled();
+  });
+
+  it("does not tell a wrong password from the administrator rule", async () => {
+    const { service } = setup({ adminEmail: "ala@example.com", passwordOk: false });
+    await expect(service.request("user-1", "nowy@example.com", "bad")).rejects.toMatchObject({
+      code: "INVALID_CURRENT_PASSWORD",
+    });
+  });
+
   it("passes the account limit through as 429", async () => {
     const { service } = setup({ hitErrors: [new TooManyRequestsError("limit", { retryAfterSeconds: 5 })] });
     await expect(service.request("user-1", "nowy@example.com", "secret")).rejects.toBeInstanceOf(TooManyRequestsError);
@@ -185,6 +202,14 @@ describe("EmailChangeService.deliver", () => {
       EMAIL_CHANGE_ADDRESS_LIMIT,
       EMAIL_CHANGE_WINDOW_MS,
     );
+  });
+
+  it("treats ADMIN_EMAIL as a taken address, without a trace", async () => {
+    const { service, em, emailSender, rateLimiter } = setup({ adminEmail: "admin@example.com" });
+    await service.deliver(user, "Admin@Example.com");
+    expect(rateLimiter.hit).not.toHaveBeenCalled();
+    expect(em.create).not.toHaveBeenCalled();
+    expect(emailSender.send).not.toHaveBeenCalled();
   });
 
   it("falls back to the local origin when APP_ORIGIN is unset", async () => {
@@ -280,6 +305,15 @@ describe("EmailChangeService.confirm", () => {
   it("answers INVALID_TOKEN when the address was taken meanwhile", async () => {
     const { service } = setup({ consumed, updateError: violation() });
     await expect(service.confirm("raw-token")).rejects.toMatchObject({ code: "INVALID_TOKEN" });
+  });
+
+  it("answers INVALID_TOKEN when the account became the administrator or the target is ADMIN_EMAIL", async () => {
+    const asAdmin = setup({ consumed, adminEmail: "ala@example.com" });
+    await expect(asAdmin.service.confirm("raw-token")).rejects.toMatchObject({ code: "INVALID_TOKEN" });
+    expect(asAdmin.tx.nativeUpdate).not.toHaveBeenCalled();
+    const toAdmin = setup({ consumed, adminEmail: consumed[0]!.new_email });
+    await expect(toAdmin.service.confirm("raw-token")).rejects.toMatchObject({ code: "INVALID_TOKEN" });
+    expect(toAdmin.sessionService.revokeAll).not.toHaveBeenCalled();
   });
 
   it("rethrows any other failure", async () => {

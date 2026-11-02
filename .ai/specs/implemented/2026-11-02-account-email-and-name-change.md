@@ -140,7 +140,7 @@ Jedna faza, jeden PR implementacyjny (`Closes #190`) po zatwierdzeniu specyfikac
 
 ## Adnotacje po wdrożeniu (2026-11-02)
 
-- **Q7 (BR-35, `ADMIN_EMAIL`) niewdrożone:** w repozytorium nie ma jeszcze konfiguracji `ADMIN_EMAIL` (E08-S01-T01, #156). Blokadę zmiany e-maila konta administratora instalacyjnego (`403 ADMIN_EMAIL_LOCKED`) i odrzucanie zmiany *na* `ADMIN_EMAIL` dodaje E08-S01-T01.
+- **Q7 (BR-35, `ADMIN_EMAIL`) wdrożone** po scaleniu E08-S01 (`ADMIN_EMAIL`): `EmailChangeService.request` odrzuca konto administratora (`403 ADMIN_EMAIL_LOCKED`, po sprawdzeniu hasła), `deliver` pomija adres równy `ADMIN_EMAIL` (jak zajęty, `202` bez wiadomości), a `confirm` w transakcji traktuje konto administratora i adres docelowy równy `ADMIN_EMAIL` jak `INVALID_TOKEN`. Formularz pokazuje komunikat o błędzie przy `403` (zamiast ukrywać pola dla administratora; strona konta nie zna roli). Strażnik `users-email-writes.guard.test.ts` ma `EmailChangeService` na liście dozwolonych.
 - **Q10:** potwierdzenie linku kończy wszystkie sesje konta (żądanie potwierdzenia nie czyta sesji); strona kończy komunikatem z przejściem do `/login`.
 - **Q11:** adres zajęty w chwili potwierdzenia daje `400 INVALID_TOKEN`; transakcja się wycofuje, więc token nie jest zużyty (nigdy nie zadziała, wygasa po 24 h).
 - **Odczyt nazwy:** `game_players.display_name` jest czytane z awaryjnym `coalesce` do `users.display_name`, więc wiersz bez migawki (starsze dane, ścieżki spoza serwisów) nadal ma nazwę. Zerowanie migawek przy usunięciu konta jest w `AccountService.delete`.

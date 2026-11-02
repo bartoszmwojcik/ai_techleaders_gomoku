@@ -1,4 +1,4 @@
-import { TooManyRequestsError, ValidationError, normalizeEmail } from "@gomoku/core";
+import { ForbiddenError, TooManyRequestsError, ValidationError, isInstallationAdmin, normalizeEmail } from "@gomoku/core";
 import {
   EmailChangeToken,
   EmailVerificationToken,
@@ -39,6 +39,7 @@ type Deps = {
   clock: Clock;
   serverConfig: ServerConfig;
   rateLimiter: RateLimiter;
+  adminEmail?: string;
 };
 
 export const EMAIL_CHANGE_TOKEN_TTL_MS = EMAIL_CHANGE_LINK_VALID_HOURS * 60 * 60 * 1000;
@@ -49,6 +50,8 @@ export const EMAIL_CHANGE_WINDOW_MS = 60 * 60 * 1000;
 /** Q4: its own pool of `EMAIL_DAILY_LIMIT`, like the reset's. */
 export const EMAIL_CHANGE_DAILY_KEY = "email-daily:email-change";
 export const SAME_EMAIL_MESSAGE = "To już jest adres Twojego konta.";
+/** BR-35: the installation administrator's address follows `ADMIN_EMAIL` and never changes through the app. */
+export const ADMIN_EMAIL_LOCKED_MESSAGE = "Adresu e-mail tego konta nie można zmienić.";
 export const EMAIL_CHANGE_RATE_MESSAGE = "Za dużo próśb o zmianę adresu. Spróbuj później.";
 
 /** Used only outside production, where `APP_ORIGIN` may be unset. */
@@ -72,6 +75,7 @@ export class EmailChangeService {
   readonly #clock: Clock;
   readonly #serverConfig: ServerConfig;
   readonly #rateLimiter: RateLimiter;
+  readonly #adminEmail: string | undefined;
 
   constructor({
     em,
@@ -82,6 +86,7 @@ export class EmailChangeService {
     clock,
     serverConfig,
     rateLimiter,
+    adminEmail,
   }: Deps) {
     this.#em = em;
     this.#emailSender = emailSender;
@@ -91,6 +96,7 @@ export class EmailChangeService {
     this.#clock = clock;
     this.#serverConfig = serverConfig;
     this.#rateLimiter = rateLimiter;
+    this.#adminEmail = adminEmail;
   }
 
   /**
@@ -100,7 +106,8 @@ export class EmailChangeService {
    * `emailChangeSchema`. The caller counts the password attempts (shared pool with the password change).
    * @returns the account, for `deliver`.
    * @throws ValidationError `INVALID_CURRENT_PASSWORD` (`fieldErrors.currentPassword`) or
-   * `fieldErrors.newEmail` for the current address; TooManyRequestsError for the account limit.
+   * `fieldErrors.newEmail` for the current address; ForbiddenError `ADMIN_EMAIL_LOCKED` for the
+   * installation administrator; TooManyRequestsError for the account limit.
    */
   async request(userId: string, newEmail: string, currentPassword: string): Promise<EmailChangeUser> {
     const user = await this.#em.findOneOrFail(User, { id: userId });
@@ -109,6 +116,10 @@ export class EmailChangeService {
         code: "INVALID_CURRENT_PASSWORD",
         fieldErrors: { currentPassword: [INVALID_CURRENT_PASSWORD_MESSAGE] },
       });
+    }
+    // BR-35, Q7: after the password check (so it is not an oracle without it) and before any write.
+    if (isInstallationAdmin(user.email, this.#adminEmail)) {
+      throw new ForbiddenError(ADMIN_EMAIL_LOCKED_MESSAGE, { code: "ADMIN_EMAIL_LOCKED" });
     }
     if (user.email === newEmail) {
       throw new ValidationError(SAME_EMAIL_MESSAGE, {
@@ -133,6 +144,8 @@ export class EmailChangeService {
    */
   async deliver(user: EmailChangeUser, newEmail: string): Promise<void> {
     const address = normalizeEmail(newEmail);
+    // Q7: nobody may take the administrator's address; answered like a taken one, with no trace.
+    if (isInstallationAdmin(address, this.#adminEmail)) return;
     if (!(await this.#allowed(address))) return;
     if ((await this.#em.count(User, { email: address })) > 0) return;
 
@@ -221,6 +234,11 @@ export class EmailChangeService {
         if (!row) throw invalidToken();
         const user = await tx.findOneOrFail(User, { id: row.user_id });
         const oldEmail = user.email;
+        // Q7 again under the transaction (the role may have been assigned after the request):
+        // rolls back, the token stays unused and expires.
+        if (isInstallationAdmin(oldEmail, this.#adminEmail) || isInstallationAdmin(row.new_email, this.#adminEmail)) {
+          throw invalidToken();
+        }
         const wasVerified = user.emailVerifiedAt !== null;
         await tx.nativeUpdate(User, { id: row.user_id }, { email: row.new_email, emailVerifiedAt: now });
         await this.#sessionService.revokeAll(row.user_id, tx);
