@@ -17,6 +17,7 @@ export type CleanupResult = {
   rateLimitBuckets: number | null;
   emailVerificationTokens: number | null;
   passwordResetTokens: number | null;
+  emailChangeTokens: number | null;
   /** "Looking for a game" statuses (#25) expired more than 1 h ago. */
   lobbySeekers: number | null;
   /** Chat messages of finished, cancelled or dead games older than 1 h (BR-34, E07-S03). */
@@ -87,6 +88,7 @@ export async function cleanupExpired({
     rateLimitBuckets: 0,
     emailVerificationTokens: 0,
     passwordResetTokens: 0,
+    emailChangeTokens: 0,
     lobbySeekers: 0,
     chatMessages: 0,
     waitingGames: 0,

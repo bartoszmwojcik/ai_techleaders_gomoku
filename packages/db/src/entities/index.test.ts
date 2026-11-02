@@ -19,6 +19,7 @@ describe("entities registry", () => {
       "sessions",
       "email_verification_tokens",
       "password_reset_tokens",
+      "email_change_tokens",
       "rate_limit_buckets",
       "games",
       "game_players",
