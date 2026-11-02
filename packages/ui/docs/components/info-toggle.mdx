@@ -1,0 +1,37 @@
+import { ArgTypes, Canvas, Meta } from "@storybook/addon-docs/blocks";
+import { InfoToggleButton } from "@gomoku/ui/game/info-toggle";
+import * as Stories from "./info-toggle.stories";
+
+<Meta of={Stories} />
+
+# Informacja rozwijana
+
+## 1. Do czego służy
+
+Dyskretna ikonka (i) przy nagłówku, po której kliknięciu rozwija się krótka informacja (np. co dzieje się z wiadomościami czatu). Nie zastępuje komunikatu, który gracz musi zobaczyć.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Zachowanie i dostępność
+
+- Dwie części: `InfoToggleButton` (przycisk) i `InfoToggleNote` (treść). Stan otwarcia i `id` prowadzi wywołujący; stan nie jest zapamiętywany (domyślnie zwinięte).
+- Przycisk ma `aria-expanded`, `aria-controls` i czytelną etykietę dla czytnika ekranu (`label`), ikona jest dekoracyjna.
+- Enter i Spacja otwierają i zamykają; fokus jest widoczny; pole dotykowe co najmniej `min-h-target`.
+- Treść bez wbudowanych tekstów, tylko tokeny, oba motywy, bez poziomego przewijania przy 320 px.
+
+<Canvas of={Stories.OtwieraSieKlawiatura} />
+<Canvas of={Stories.NaWaskimEkranie} />
+
+## 3. API
+
+<ArgTypes of={InfoToggleButton} />
+
+## 4. Kod
+
+```tsx
+const [open, setOpen] = useState(false);
+const noteId = useId();
+
+<InfoToggleButton label="Informacja o czacie" expanded={open} controls={noteId} onClick={() => setOpen(!open)} />
+<InfoToggleNote id={noteId} open={open}>…</InfoToggleNote>
+```

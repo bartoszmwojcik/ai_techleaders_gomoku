@@ -228,6 +228,31 @@ describe("chat in the browser", () => {
     expect(await a.browser.text("[data-testid=chat-toggle]")).toBe("Zwiń czat");
   });
 
+  it("unfolds the retention note with the (i) button from the keyboard, on a 320 px screen, in the game and on the result screen", async () => {
+    const { gameId, a } = await activeGame();
+    const info = "[data-testid=chat-info]";
+    const expanded = () => a.browser.evaluate<string>(`document.querySelector('[data-testid=chat-info-toggle]').getAttribute('aria-expanded')`);
+    await a.browser.setViewport(320, 900);
+
+    expect(await expanded()).toBe("false");
+    expect(await a.browser.evaluate<boolean>(`document.querySelector('${info}').hidden`)).toBe(true);
+    await a.browser.evaluate("document.querySelector('[data-testid=chat-info-toggle]').focus()");
+    await a.browser.press("Enter");
+    expect(await expanded()).toBe("true");
+    expect(await a.browser.text(info)).toContain("około godziny po zakończeniu partii");
+    expect(await overflow(a.browser)).toBe(false);
+    await shot(a.browser, "czat-informacja", [320]);
+    await a.browser.press("Space");
+    expect(await expanded()).toBe("false");
+
+    // The note is not remembered: a reload brings it back folded; the result screen has it too.
+    expect((await api("POST", `/api/games/${gameId}/resign`, undefined, a.cookie)).status).toBe(200);
+    await bodyHas(a.browser, "Koniec partii");
+    await a.browser.open(`${baseUrl}/games/${gameId}`);
+    await bodyHas(a.browser, "Koniec partii");
+    expect(await expanded()).toBe("false");
+  });
+
   it("starts a rematch with an empty chat and the setting on", async () => {
     const { gameId, a, b } = await activeGame("account");
     await say(a.browser, "przed rewanżem");
