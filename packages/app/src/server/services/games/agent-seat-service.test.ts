@@ -24,6 +24,7 @@ const invitationRow = (over: Row = {}): Row => ({
   creator_name: "Ala",
   creator_kind: "account",
   creator_nickname: null,
+  is_public: false,
   ...over,
 });
 

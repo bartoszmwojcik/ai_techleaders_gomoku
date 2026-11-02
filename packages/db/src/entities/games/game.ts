@@ -16,6 +16,8 @@ export const Game = defineEntity({
     id: p.uuid().primary().defaultRaw("gen_random_uuid()"),
     // `invite` | `lobby` | `rematch` (D-21); CHECK below.
     origin: p.string().length(16),
+    // Public game (D-33, BR-40): set only when an invitation is created; lobby and rematch games stay private.
+    isPublic: p.boolean().default(false),
     // `waiting` | `active` | `finished` | `cancelled`; CHECK below.
     status: p.string().length(16),
     createdAt: p.datetime().defaultRaw("now()"),

@@ -164,7 +164,7 @@ describe("GameService.create", () => {
 
     const expiresAt = new Date(NOW.getTime() + INVITATION_TTL_MS);
     expect(created.map(({ entity }) => entity)).toEqual([Game, GamePlayer, Invitation]);
-    expect(created[0]!.data).toEqual({ origin: "invite", status: "waiting", createdAt: NOW });
+    expect(created[0]!.data).toEqual({ origin: "invite", isPublic: false, status: "waiting", createdAt: NOW });
     expect(created[1]!.data).toMatchObject({
       seat: 1,
       kind: "account",
@@ -183,6 +183,12 @@ describe("GameService.create", () => {
         expiresAt,
       },
     });
+  });
+
+  it("makes the game public only when the creator asks for it (BR-40)", async () => {
+    const { service, created } = setup();
+    await service.create({ kind: "account", userId: "user-1", isPublic: true });
+    expect(created[0]!.data).toMatchObject({ origin: "invite", isPublic: true });
   });
 
   it("answers 401 and creates nothing when the account was deleted meanwhile (#37)", async () => {
@@ -237,6 +243,15 @@ describe("GameService.create for a guest (E02-S08)", () => {
   const slotRow = (status: string, seat = 1) => [{ game_id: "held-game", status, seat }];
   // Statements of the transaction in order: advisory lock, expire, cancel not started, slot read.
   const withSlot = (...rest: unknown[][]) => [[], [], [], ...rest];
+
+  it("keeps a guest's game private by default and public on request (BR-40)", async () => {
+    const first = setup({ executeRows: withSlot([]) });
+    await first.service.create(guest());
+    expect(first.created[0]!.data).toMatchObject({ isPublic: false });
+    const second = setup({ executeRows: withSlot([]) });
+    await second.service.create(guest({ isPublic: true }));
+    expect(second.created[0]!.data).toMatchObject({ isPublic: true });
+  });
 
   it("limits per address, settles the browser's timeouts, locks the token and inserts the guest", async () => {
     const { service, em, calls, created, rateLimiter, timeoutSettler } = setup({ executeRows: withSlot([]) });

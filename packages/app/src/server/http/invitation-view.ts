@@ -19,6 +19,8 @@ export type InvitationView =
       creatorName: string | null;
       /** A guest creator is shown as "{name} (gość)"; `creatorName === null` is only a deleted account. */
       creatorKind: CreatorKind;
+      /** A public game: anyone with the code may watch it (D-33, BR-45). */
+      isPublic: boolean;
       /** The viewer's other game, for the two `has-*` kinds. */
       gameId?: string;
       /** Whether the viewer has an account session (otherwise they are a visitor). */
@@ -51,6 +53,7 @@ export async function loadInvitationView(code: string): Promise<InvitationView> 
         kind: preview.state,
         creatorName: preview.creatorName,
         creatorKind: preview.creatorKind,
+        isPublic: preview.isPublic,
         gameId: preview.gameId,
         signedIn: user !== null,
       };

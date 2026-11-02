@@ -31,10 +31,21 @@ describe("CreateGameButton", () => {
     apiCall.mockResolvedValue({ ok: true, data: { gameId: "g1" } });
     render(<CreateGameButton heldGame={null} />);
     await click();
-    expect(apiCall).toHaveBeenCalledWith("/api/games");
+    expect(apiCall).toHaveBeenCalledWith("/api/games", {});
     expect(push).toHaveBeenCalledWith("/games/g1");
     const busy = screen.getByRole("button", { name: "Tworzenie zaproszenia…" }) as HTMLButtonElement;
     expect(busy.disabled).toBe(true);
+  });
+
+  it("offers 'Partia publiczna', unticked, and sends isPublic only when it is ticked (BR-40)", async () => {
+    apiCall.mockResolvedValue({ ok: true, data: { gameId: "g1" } });
+    render(<CreateGameButton heldGame={null} />);
+    const box = screen.getByRole("checkbox", { name: /Partia publiczna/ });
+    expect(box.getAttribute("aria-checked")).toBe("false");
+    const u = userEvent.setup();
+    await u.click(box);
+    await u.click(screen.getByRole("button", { name: "Utwórz zaproszenie" }));
+    expect(apiCall).toHaveBeenCalledWith("/api/games", { body: { isPublic: true } });
   });
 
   it("sends only one request while busy", async () => {

@@ -13,6 +13,7 @@ export const createGuestGameSchema = z
   .object({
     acknowledgedGuestWarning: z.boolean().optional(),
     cancelOwnWaitingGame: z.boolean().optional(),
+    isPublic: z.boolean().optional(),
     nickname: nicknameSchema.optional(),
   })
   .refine((input) => input.acknowledgedGuestWarning === true, {
@@ -21,3 +22,11 @@ export const createGuestGameSchema = z
   });
 
 export type CreateGuestGameInput = z.infer<typeof createGuestGameSchema>;
+
+/**
+ * Optional body of `POST /api/games` for a signed-in user (E10-S01): an absent body means a
+ * private game. Unknown keys are ignored, as before the body existed.
+ */
+export const createAccountGameSchema = z.object({ isPublic: z.boolean().optional() });
+
+export type CreateAccountGameInput = z.infer<typeof createAccountGameSchema>;
