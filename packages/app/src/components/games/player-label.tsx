@@ -20,7 +20,7 @@ type Props = {
  * "(deklarowane)" that never shrinks, so the claim is never shown as a fact (BR-31). The name is a
  * text node: React escapes it, nothing is parsed as markup or turned into a link.
  *
- * The cutting rule itself is the design system's `TruncatedName` (#135); this wrapper only maps a
+ * The cutting rule itself is the design system's `TruncatedName`; this wrapper only maps a
  * participant onto its lead, name and tail.
  */
 export function PlayerLabel({ name, you = false, testId = "player-name" }: Props): ReactNode {
