@@ -34,6 +34,7 @@ describe("cleanupExpired", () => {
       cancelledGames: 0,
       guestOnlyActiveGames: 0,
       guestOnlyFinishedGames: 0,
+      orphanedFinishedGames: 0,
       guestTokens: 0,
       agentTokens: 0,
       unverifiedUsers: 0,
@@ -105,10 +106,19 @@ describe("cleanupExpired", () => {
     expect(finished).toContain("finished_at < ?");
   });
 
+  it("the orphaned-games rule only targets finished games without a living account (#137)", () => {
+    const rule = CLEANUP_RULES.find((r) => r.key === "orphanedFinishedGames")!;
+    expect(rule.table).toBe("games");
+    expect(rule.condition).toContain("status = 'finished'");
+    expect(rule.condition).toContain("finished_at < ?");
+    expect(rule.condition).toContain("p.user_id is not null");
+    expect(rule.graceMs).toBe(GUEST_TOKEN_GRACE_MS);
+  });
+
   it("registers the guest-only rules before the token rule", () => {
     const keys = CLEANUP_RULES.map((rule) => rule.key);
     // `unverifiedUsers` is last (BR-28): by then the games of the same run are swept.
-    expect(keys.slice(-5)).toEqual(["guestOnlyActiveGames", "guestOnlyFinishedGames", "guestTokens", "agentTokens", "unverifiedUsers"]);
+    expect(keys.slice(-6)).toEqual(["guestOnlyActiveGames", "guestOnlyFinishedGames", "orphanedFinishedGames", "guestTokens", "agentTokens", "unverifiedUsers"]);
     for (const rule of CLEANUP_RULES.filter((r) => r.key.startsWith("guestOnly"))) {
       expect(rule.graceMs).toBe(GUEST_TOKEN_GRACE_MS);
     }
@@ -222,7 +232,7 @@ describe("cleanupExpired", () => {
     const rules: CleanupRule[] = CLEANUP_RULES.map((rule) => ({ ...rule, optional: rule.key === "sessions" }));
     const result = await cleanupExpired({ em, now: NOW, rules });
     expect(result.sessions).toBeNull();
-    expect(result.errors.map((e) => e.rule)).toEqual(["rateLimitBuckets", "emailVerificationTokens", "passwordResetTokens", "lobbySeekers", "chatMessages", "waitingGames", "cancelledGames", "guestOnlyActiveGames", "guestOnlyFinishedGames", "guestTokens", "agentTokens", "unverifiedUsers"]);
+    expect(result.errors.map((e) => e.rule)).toEqual(["rateLimitBuckets", "emailVerificationTokens", "passwordResetTokens", "lobbySeekers", "chatMessages", "waitingGames", "cancelledGames", "guestOnlyActiveGames", "guestOnlyFinishedGames", "orphanedFinishedGames", "guestTokens", "agentTokens", "unverifiedUsers"]);
   });
 
   it("keeps the counts of finished rules and of rows deleted before an error", async () => {

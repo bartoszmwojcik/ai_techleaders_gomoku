@@ -513,7 +513,8 @@ describe("guest-only games rules (#102, spec 2026-10-30-guest-only-games-cleanup
     const ids: string[] = [];
     for (const pair of kinds) {
       ids.push(await insertDuel(now, { ...dead, kinds: pair }));
-      ids.push(await insertDuel(now, { kinds: pair, status: "finished", finishedAt: ago(now, 5 * HOUR) }));
+      // A finished game without a living account is swept by `orphanedFinishedGames` (#137, tests below).
+      if (pair.includes("account")) ids.push(await insertDuel(now, { kinds: pair, status: "finished", finishedAt: ago(now, 5 * HOUR) }));
     }
     const guests = await insertDuel(now, dead);
 
@@ -523,6 +524,82 @@ describe("guest-only games rules (#102, spec 2026-10-30-guest-only-games-cleanup
     expect(await exists(guests)).toBe(false);
     // The guest-only deletion leaves the slots of accounts untouched (BR-13): none of those rows was removed.
     expect(await rows("game_players", `game_id in (${ids.map((id) => `'${id}'`).join(",")})`)).toBe(String(ids.length * 2));
+  });
+
+  describe("orphaned finished games (#137)", () => {
+    const finishedAgo = (now: Date, agoMs: number, kinds: [Kind, Kind]) =>
+      insertDuel(now, { kinds, status: "finished", finishedAt: ago(now, agoMs) });
+
+    it("removes a finished game whose accounts were all deleted, with players and invitation, after 1 h", async () => {
+      const now = new Date();
+      const gone = await finishedAgo(now, HOUR + SECOND, ["deleted-account", "deleted-account"]);
+      const onTheLine = await finishedAgo(now, HOUR, ["deleted-account", "deleted-account"]);
+      const recent = await finishedAgo(now, HOUR - SECOND, ["deleted-account", "deleted-account"]);
+
+      const result = await cleanupExpired({ em: orm.em.fork(), now });
+
+      expect(result.orphanedFinishedGames).toBeGreaterThanOrEqual(1);
+      expect(await exists(gone)).toBe(false);
+      expect(await dependents(gone)).toBe(0);
+      expect(await exists(onTheLine)).toBe(true);
+      expect(await exists(recent)).toBe(true);
+      expect((await cleanupExpired({ em: orm.em.fork(), now })).orphanedFinishedGames).toBe(0);
+    });
+
+    it("keeps a game with a living account (also against a deleted one) and removes deleted-account + guest/agent after the token window", async () => {
+      const now = new Date();
+      const kept = [
+        await finishedAgo(now, 30 * HOUR, ["account", "deleted-account"]),
+        await finishedAgo(now, 30 * HOUR, ["deleted-account", "account"]),
+        await finishedAgo(now, 30 * HOUR, ["account", "guest"]),
+        await finishedAgo(now, 30 * HOUR, ["account", "agent"]),
+        await finishedAgo(now, HOUR - SECOND, ["deleted-account", "guest"]),
+        await finishedAgo(now, HOUR - SECOND, ["deleted-account", "agent"]),
+      ];
+      const gone = [
+        await finishedAgo(now, HOUR + SECOND, ["deleted-account", "guest"]),
+        await finishedAgo(now, HOUR + SECOND, ["deleted-account", "agent"]),
+      ];
+
+      await cleanupExpired({ em: orm.em.fork(), now });
+
+      for (const id of kept) expect(await exists(id), id).toBe(true);
+      for (const id of gone) expect(await exists(id), id).toBe(false);
+    });
+
+    it("does not touch waiting, active or cancelled games", async () => {
+      const now = new Date();
+      const active = await insertDuel(now, { kinds: ["deleted-account", "deleted-account"], turnStartedAt: ago(now, SECOND) });
+      const cancelled = await insertDuel(now, { kinds: ["deleted-account", "deleted-account"] });
+      await sql(`update games set status = 'cancelled', turn_started_at = null, started_at = null, created_at = ? where id = ?`, [ago(now, HOUR), cancelled]);
+      const waiting = await insertDuel(now, { kinds: ["deleted-account", "deleted-account"] });
+      await sql(`update games set status = 'waiting', turn_started_at = null, started_at = null, created_at = ? where id = ?`, [ago(now, HOUR), waiting]);
+      await sql(`update invitations set expires_at = ? where game_id = ?`, [new Date(now.getTime() + DAY), waiting]);
+
+      await cleanupExpired({ em: orm.em.fork(), now });
+
+      for (const id of [active, cancelled, waiting]) expect(await exists(id), id).toBe(true);
+    });
+
+    it("two parallel runs together remove each such game exactly once, without an error", async () => {
+      const now = new Date();
+      const ids: string[] = [];
+      for (let i = 0; i < 12; i++) ids.push(await finishedAgo(now, 2 * HOUR, ["deleted-account", "deleted-account"]));
+      const eligible = Number(
+        await rows("games", `status = 'finished' and finished_at < '${ago(now, HOUR).toISOString()}' and not exists (select 1 from game_players p where p.game_id = games.id and p.user_id is not null)`),
+      );
+
+      const [a, b] = await Promise.all([
+        cleanupExpired({ em: orm.em.fork(), now, batchSize: 3 }),
+        cleanupExpired({ em: orm.em.fork(), now, batchSize: 3 }),
+      ]);
+
+      expect(a.errors).toEqual([]);
+      expect(b.errors).toEqual([]);
+      // `guestOnlyFinishedGames` takes the guests-only part of the same rows first; together they remove each exactly once.
+      expect(a.orphanedFinishedGames! + b.orphanedFinishedGames! + a.guestOnlyFinishedGames! + b.guestOnlyFinishedGames!).toBe(eligible);
+      for (const id of ids) expect(await exists(id), id).toBe(false);
+    });
   });
 
   it("finished: removes a guests-only game 1 h after the end, keeps the boundary and games with an account", async () => {
@@ -555,7 +632,8 @@ describe("guest-only games rules (#102, spec 2026-10-30-guest-only-games-cleanup
     const kept: string[] = [];
     for (const pair of [["account", "agent"], ["deleted-account", "agent"]] as [Kind, Kind][]) {
       kept.push(await insertDuel(now, { ...dead, kinds: pair }));
-      kept.push(await insertDuel(now, { kinds: pair, status: "finished", finishedAt: ago(now, 5 * HOUR) }));
+      // Finished without a living account: swept by `orphanedFinishedGames` (#137).
+      if (pair[0] === "account") kept.push(await insertDuel(now, { kinds: pair, status: "finished", finishedAt: ago(now, 5 * HOUR) }));
     }
 
     await cleanupExpired({ em: orm.em.fork(), now });
@@ -811,6 +889,7 @@ describe("batching and parallel runs", () => {
       cancelledGames: 0,
       guestOnlyActiveGames: 0,
       guestOnlyFinishedGames: 0,
+      orphanedFinishedGames: 0,
       guestTokens: 0,
       agentTokens: 0,
       unverifiedUsers: 0,
@@ -891,6 +970,7 @@ describe("db:cleanup command", () => {
         "guestOnlyFinishedGames",
         "guestTokens",
         "lobbySeekers",
+        "orphanedFinishedGames",
         "passwordResetTokens",
         "rateLimitBuckets",
         "sessions",
