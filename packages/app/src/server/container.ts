@@ -21,6 +21,7 @@ import { GameParticipation } from "./services/auth/game-participation";
 import { ChatService } from "./services/chat/chat-service";
 import { AgentGameService } from "./services/games/agent-game-service";
 import { AgentSeatService } from "./services/games/agent-seat-service";
+import { AdminOverviewService } from "./services/admin/admin-overview-service";
 import { ColorDraw } from "./services/games/color-draw";
 import { GameMoveService } from "./services/games/game-move-service";
 import { RematchService } from "./services/games/rematch-service";
@@ -84,6 +85,8 @@ export type AppCradle = {
   agentSeatService: AgentSeatService;
   /** The tools get_state and play_move of an agent (E06-S02). */
   agentGameService: AgentGameService;
+  /** Read model of the admin panel (E08-S02): counters and the list of accounts. */
+  adminOverviewService: AdminOverviewService;
   /** The finished games of an account (E04-S01). */
   gameHistoryService: GameHistoryService;
   /** Finished games per pair of participant kinds (E06-S03); the admin panel reads the same. */
@@ -172,6 +175,7 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     invitationService: asClass(InvitationService).scoped(),
     agentSeatService: asClass(AgentSeatService).scoped(),
     agentGameService: asClass(AgentGameService).scoped(),
+    adminOverviewService: asClass(AdminOverviewService).scoped(),
     gameHistoryService: asClass(GameHistoryService).scoped(),
     finishedGameStatsService: asClass(FinishedGameStatsService).scoped(),
     lobbyService: asClass(LobbyService).scoped(),

@@ -24,7 +24,7 @@ describe("player pages", () => {
   });
 });
 
-describe("admin panel (closed in production until the administrator role, #152)", () => {
+describe("admin panel (404 without an administrator session, E08-S02)", () => {
   it("answers 404 without a session and does not leak the panel", async () => {
     for (const path of ["/backend", "/backend/anything"]) {
       const response = await fetch(`${baseUrl}${path}`);

@@ -1,7 +1,7 @@
 # Licznik zakończonych partii wg pary typów uczestników (trwałe agregaty, odczyt przez polecenie operatora)
 
 Status: **wdrożona (2026-10-31, PR implementacyjny z `Closes #129`; odstępstwa i dowody: sekcja na końcu)**; wcześniej zatwierdzona przez właściciela (zgoda z góry na specyfikacje i rekomendacje, 2026-10-31: Q1-Q4 potwierdzone, Q5-Q11 przyjęte). Zgłoszenie: E06-S03 (#129), epik E06 (#124). Zależność: E06-S01 (#127, `game_players.kind`/`join_channel`, wdrożone).
-Powiązane: E08-S02 (#158, panel `/backend`; specyfikacja `.ai/specs/2026-10-31-admin-panel-read-only.md`, PR #162): panel tylko wyświetla wartości z usługi odczytu zdefiniowanej tutaj.
+Powiązane: E08-S02 (#158, panel `/backend`; specyfikacja `.ai/specs/implemented/2026-10-31-admin-panel-read-only.md`, PR #162): panel tylko wyświetla wartości z usługi odczytu zdefiniowanej tutaj.
 Decyzje: D-28, BR-30/BR-31 (agent jako osobny typ uczestnika), BR-29, BR-24, BR-18, D-32/BR-37, A-04, Q-06 (próg „ma sens” nieustalony; tej specyfikacji nie dotyczy). Decyzja zakresowa właściciela 2026-10-31 (komentarz na #129, PR #162 Q2): licznik NIE jest liczony po fakcie z `games`.
 
 ## 📝 TLDR

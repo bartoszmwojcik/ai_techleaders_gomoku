@@ -3,20 +3,15 @@
 // the created account, takeover of an account a stranger registered earlier (A-11: sessions die, old
 // password stops working, e-mail confirmed), registration on ADMIN_EMAIL answered like a taken
 // e-mail, deletion refused, password reset by mail (A-12) and the sweep that keeps the account.
-import { execFile } from "node:child_process";
-import { resolve } from "node:path";
-import { promisify } from "node:util";
-
 import { createOrm, type Orm } from "@gomoku/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from "vitest";
 
 import { runCleanup } from "../../packages/db/src/cleanup/run-cleanup";
-import { ADMIN_EMAIL } from "./admin";
+import { ADMIN_EMAIL, adminCreate } from "./admin";
 import { waitForMessages } from "./outbox";
 
 const baseUrl = inject("baseUrl");
 const outbox = inject("emailOutboxPath");
-const repoRoot = resolve(import.meta.dirname, "../..");
 const PASSWORD = "secret123";
 
 let orm: Orm;
@@ -53,20 +48,6 @@ function call(path: string, body: unknown, cookie?: string, address = nextAddres
 }
 const cookieOf = (response: Response) => (response.headers.get("set-cookie") ?? "").split(";")[0] ?? "";
 const login = (email: string, password: string) => call("/api/auth/login", { email, password });
-
-/** The real command against the test database; the password goes through stdin. */
-async function adminCreate(password: string, args: string[]) {
-  const child = promisify(execFile)(
-    "npm",
-    ["run", "-s", "admin:create", "--", ...args],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, DATABASE_URL: inject("databaseUrl"), ADMIN_EMAIL, PASSWORD_HASH_COST: "4" },
-    },
-  );
-  child.child.stdin?.end(`${password}\n`);
-  return child;
-}
 
 describe("npm run admin:create", () => {
   it("creates the confirmed account, the administrator logs in, and a repeat is a takeover", async () => {
