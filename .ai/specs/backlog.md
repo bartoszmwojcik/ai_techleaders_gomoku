@@ -2,7 +2,7 @@
 
 ## .ai/specs/product-brief.md
 Backlog source: .ai/specs/product-brief.md
-Last filed: 2026-10-31
+Last filed: 2026-11-02
 
 | Id | Issue | Title | Epic | Depends on | Adopted |
 |---|---|---|---|---|---|
@@ -51,6 +51,21 @@ Last filed: 2026-10-31
 | E08-S01 | #157 | Właściciel zakłada lub przejmuje konto administratora poleceniem npm run admin:create i loguje się nim | #155 | E08-S01-T01 (#156) | no |
 | E08-S01-T01 | #156 | Konfiguracja ADMIN_EMAIL (wymagany w produkcji, fail closed) | #157 | — | no |
 | E08-S02 | #158 | Administrator widzi w panelu /backend liczniki partii i listę kont ze stanami | #155 | E08-S01 (#157); #154 (bramka doraźna dla #152) | no |
+| E09 | #200 | Przegląd przebiegu zakończonej partii | — | — | no |
+| E09-S01 | #203 | Uczestnik z kontem otwiera zakończoną partię z /history i przegląda jej ruchy | #200 | E04-S01 (#27) | no |
+| E09-S02 | #204 | Każdy z kodem/linkiem przegląda zakończoną partię publiczną | #200 | E09-S01 (#203), E10-S01 (#202) | no |
+| E10 | #201 | Partie publiczne z widzami | — | — | no |
+| E10-S01 | #202 | Twórca zaznacza „partia publiczna” przy zaproszeniu, a przeciwnik widzi to przed dołączeniem | #201 | E02-S02 (#22), E02-S08 (#95), E10-S01-T01 (#205) | no |
+| E10-S01-T01 | #205 | Migracja: flaga publiczności partii | #202 | E02-S01-T01 (#29) | no |
+| E10-S02 | #207 | Osoba z kodem ogląda rozpoczętą partię publiczną na żywo jako widz | #201 | E10-S01 (#202), E10-S02-T01 (#206), E10-S02-T02 (#208) | no |
+| E10-S02-T01 | #206 | Decyzja: mechanizm odświeżania widza (polling czy push, Q-17) i pomiar obciążenia przy 20 widzach (A-14) | #207 | — | no |
+| E10-S02-T02 | #208 | Migracja: uczestnik-widz (tymczasowy; nick lub konto) | #207 | E10-S01-T01 (#205) | no |
+| E10-S03 | #209 | Widz pisze na czacie i nie może go wyłączyć; gracz wyłącza czat dla siebie | #201 | E10-S02 (#207), E07-S01 (#146), E07-S02 (#147) | no |
+| E10-S04 | #210 | Gracze i widzowie widzą flagę „Partia publiczna” z licznikiem oglądających | #201 | E10-S02 (#207) | no |
+| E10-S05 | #211 | Twórca zamyka publiczność w trakcie partii | #201 | E10-S02 (#207) | no |
+| E10-S06 | #212 | Partia z agentem (MCP) też może być publiczna | #201 | E10-S01 (#202), E06-S01 (#127) | no |
+
+Uwagi 2026-11-02 (E09, E10): przegląd historii i partie publiczne z widzami to osąd właściciela (D-33), bez dowodu popytu (A-01); przyjęte ryzyka A-13, A-15, A-14 do zmierzenia (E10-S02-T01); `SDLC.md` nie ma Definition of Ready. Zgłoszenia założono przez `om-prepare-issue` (bez adopcji: wyszukiwanie „publiczna”, „widz”, „przegląd partii”, „spectator”, „replay” niczego nie znalazło). Szczegóły z „propozycja agenta, niepotwierdzona” (BR-13 dla widza, podpis widza, czat widzów po zakończeniu i w polu `chat` agenta, ponowne otwarcie publiczności, czas dostępu widza) zapisano jako otwarte pytania nieblokujące do specyfikacji. Q-16 (prawo) wymagane przed udostępnieniem osobom z zewnątrz (S3).
 
 Uwagi 2026-10-31 (E08): rola administratora i panel `/backend` to eksperyment i potrzeba właściciela (D-32, A-10), bez dowodu popytu; `SDLC.md` nie ma Definition of Ready. Zgłoszenia założono przez `om-prepare-issue`. Q-13 i Q-15 blokują tylko historyjki poza v1, Q-14 dopiero udostępnienie osobom z zewnątrz. Zależność: licznik z E06-S03 (#129) jest odczytywany w panelu, więc wyświetla go E08-S02 (#158); sam panel nie czeka na E06. Niezałożone (E05 #33): nadawanie i odbieranie roli z dziennikiem audytowym (BR-36, BR-38), edycja nazwy gracza przez administratora, usuwanie cudzego konta przez administratora.
 
