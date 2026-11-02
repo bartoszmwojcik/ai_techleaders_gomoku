@@ -1,4 +1,4 @@
-// The review of a finished game in a real browser (E09-S01, #203): a visitor without an account is
+// The review of a finished game in a real browser (E09-S01, #203; by code E09-S02, #204): a visitor without an account is
 // sent to the login; an account opens its own game from /history and steps through the moves
 // (start / previous / next / end), sees the result and how it ended, and finds no chat; somebody
 // else's game, a missing one and one removed by the cleanup answer 404 with one text; nothing
@@ -23,6 +23,7 @@ afterAll(async () => {
   if (users.length > 0) {
     await run(`delete from games where id in (select game_id from game_players where user_id = any(?::uuid[]))`, [`{${users.join(",")}}`]);
   }
+  if (seededGames.length > 0) await run(`delete from games where id = any(?::uuid[])`, [`{${seededGames.join(",")}}`]);
   await orm.close();
   await browser.clearCookies();
   await browser.close();
@@ -69,6 +70,22 @@ async function seed(me: string): Promise<string> {
   await run(`insert into game_players (game_id, seat, kind, nickname, is_active) values (?, 2, 'guest', 'Kasia', false)`, [game!.id]);
   return game!.id as string;
 }
+
+/** A finished game of two guests with a consumed invitation; `isPublic` is the flag of BR-40. */
+async function seedWithCode(isPublic: boolean): Promise<{ id: string; code: string }> {
+  const [game] = await run(
+    `insert into games (origin, status, started_at, finished_at, black_seat, winner_seat, end_reason, move_count, stones_black, stones_white, moves, is_public)
+     values ('invite', 'finished', now() - interval '5 minutes', now(), 1, 1, 'five_in_row', ?, ?::bit(225), ?::bit(225), decode(?, 'hex'), ?) returning id`,
+    [MOVES.length, bits(BLACK), bits(WHITE), Buffer.from(MOVES).toString("hex"), isPublic],
+  );
+  await run(`insert into game_players (game_id, seat, kind, nickname, is_active) values (?, 1, 'guest', 'Ola', false)`, [game!.id]);
+  await run(`insert into game_players (game_id, seat, kind, nickname, is_active) values (?, 2, 'guest', 'Kasia', false)`, [game!.id]);
+  const code = Array.from({ length: 8 }, () => "23456789ABCDEFGHJKMNPQRSTUVWXYZ"[Math.floor(Math.random() * 31)]).join("");
+  await run(`insert into invitations (game_id, code, expires_at, consumed_at) values (?, ?, now() + interval '1 day', now())`, [game!.id, code]);
+  seededGames.push(game!.id as string);
+  return { id: game!.id as string, code };
+}
+const seededGames: string[] = [];
 
 const get = (path: string, cookie?: string) => fetch(`${baseUrl}${path}`, { headers: cookie ? { cookie } : {}, redirect: "manual" });
 const bodyHas = (text: string) => browser.waitForFn(`document.body.innerText.includes(${JSON.stringify(text)})`);
@@ -159,5 +176,51 @@ describe("the review page", () => {
     await run(`insert into game_players (game_id, seat, kind, user_id, is_active) values (?, 1, 'account', ?, true)`, [game!.id, me.id]);
 
     expect((await get(`/games/${game!.id}/review`, me.cookie)).status).toBe(404);
+  });
+});
+
+describe("the review by code (E09-S02)", () => {
+  it("lets a visitor without an account step through a finished public game from its invitation link", async () => {
+    const { id, code } = await seedWithCode(true);
+    await browser.clearCookies();
+
+    await browser.open(`${baseUrl}/invite/${code}`);
+    await browser.waitFor("[data-testid=review-step]");
+    expect(await browser.url()).toContain(`/games/${id}/review?code=${code}`);
+    await bodyHas("Wygrały czarne");
+    expect(await step()).toBe("Ruch 9 z 9: czarny, kolumna E, rząd 8");
+    expect(await browser.count("textarea, input[type=text], [data-testid*=chat]")).toBe(0);
+    await browser.click("[data-testid=review-start]");
+    await browser.waitForFn(`document.querySelector("[data-testid=review-step]").textContent.startsWith("Początek")`);
+    expect(await stones()).toBe(0);
+    await browser.click("[data-testid=review-end]");
+    await browser.waitForFn(`document.querySelector("[data-testid=review-step]").textContent.startsWith("Ruch 9 z 9")`);
+    expect(await stones()).toBe(9);
+    // A reader leaves nothing behind: still two players, no session was needed.
+    const [row] = await run(`select count(*)::int as count from game_players where game_id = ?`, [id]);
+    expect(row!.count).toBe(2);
+  });
+
+  it("refuses a private game, a closed audience, a wrong code and a code without the game", async () => {
+    const priv = await seedWithCode(false);
+    const closed = await seedWithCode(true);
+    const other = await seedWithCode(true);
+    await run(`update games set is_public = false where id = ?`, [closed.id]);
+
+    const invite = await get(`/invite/${priv.code}`);
+    expect(invite.status).toBe(200);
+    expect(await invite.text()).toContain("Zaproszenie nie działa");
+    for (const path of [
+      `/games/${priv.id}/review?code=${priv.code}`,
+      `/games/${closed.id}/review?code=${closed.code}`,
+      `/games/${other.id}/review?code=${priv.code}`,
+      `/games/${other.id}/review?code=nonsense`,
+      `/games/${other.id}/review`,
+    ]) {
+      expect((await get(path)).status, path).toBe(path.endsWith("review") ? 307 : 404);
+    }
+    expect((await get(`/invite/${closed.code}`)).status).toBe(200);
+    expect(await (await get(`/invite/${closed.code}`)).text()).toContain("Zaproszenie nie działa");
+    expect((await get(`/games/${other.id}/review?code=${other.code}`)).status).toBe(200);
   });
 });

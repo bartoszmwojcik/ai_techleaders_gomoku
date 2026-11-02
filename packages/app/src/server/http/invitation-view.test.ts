@@ -53,6 +53,11 @@ describe("loadInvitationView", () => {
     expect(await loadInvitationView("x")).toEqual({ kind: "redirect", gameId: "g1" });
   });
 
+  it("sends anybody to the review of a finished public game", async () => {
+    preview.mockResolvedValue({ creatorName: "Ala", isPublic: true, state: "reviewable", gameId: "g1" });
+    expect(await loadInvitationView("x")).toEqual({ kind: "review", gameId: "g1" });
+  });
+
   it("answers invalid for the uniform 410", async () => {
     preview.mockRejectedValue(new GoneError("x", { code: "INVALID_INVITATION" }));
     expect(await loadInvitationView("x")).toEqual({ kind: "invalid" });

@@ -103,7 +103,9 @@ export type InvitationPreview = {
     /** The viewer holds a slot in another game that is in progress. */
     | "has-active-game"
     /** The viewer has their own waiting game (Q18). */
-    | "has-own-waiting-game";
+    | "has-own-waiting-game"
+    /** A finished public game, the viewer not in it: its code opens the review (E09-S02, BR-44). */
+    | "reviewable";
   /** The game to open or link to, for every state except `joinable`. */
   gameId?: string;
 };
@@ -202,6 +204,15 @@ export class InvitationService {
       } else if (member.seat === 2 || invitation.status !== "cancelled") {
         return known("participant");
       }
+    }
+    if (invitation && invitation.status === "finished" && invitation.is_public) {
+      return {
+        creatorName: creatorNameOf(invitation),
+        creatorKind: invitation.creator_kind as CreatorKind,
+        isPublic: true,
+        state: "reviewable",
+        gameId: invitation.game_id,
+      };
     }
     if (
       !invitation ||

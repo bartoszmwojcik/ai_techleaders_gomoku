@@ -14,6 +14,8 @@ export type InvitationView =
   | { kind: "limit" }
   /** The viewer already plays in this game, or created it: go to the game page. */
   | { kind: "redirect"; gameId: string }
+  /** A finished public game: the code opens its review for anybody (E09-S02). */
+  | { kind: "review"; gameId: string }
   | {
       kind: "joinable" | "has-active-game" | "has-own-waiting-game";
       creatorName: string | null;
@@ -49,6 +51,7 @@ export async function loadInvitationView(code: string): Promise<InvitationView> 
       if (preview.state === "own-invitation" || preview.state === "participant") {
         return { kind: "redirect", gameId: preview.gameId! };
       }
+      if (preview.state === "reviewable") return { kind: "review", gameId: preview.gameId! };
       return {
         kind: preview.state,
         creatorName: preview.creatorName,

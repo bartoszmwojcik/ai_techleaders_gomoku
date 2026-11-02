@@ -9,8 +9,8 @@ import { JoinActions } from "./join-actions";
 type Props = {
   /** The invitation code in its display form, `ABCD-EFGH`. */
   code: string;
-  /** Any view except `redirect`, which the page handles before rendering. */
-  view: Exclude<InvitationView, { kind: "redirect" }>;
+  /** Any view except `redirect` and `review`, which the page handles before rendering. */
+  view: Exclude<InvitationView, { kind: "redirect" | "review" }>;
 };
 
 function heading(view: Props["view"]): string {
