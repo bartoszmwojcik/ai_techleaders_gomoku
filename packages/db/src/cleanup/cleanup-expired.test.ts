@@ -176,6 +176,16 @@ describe("cleanupExpired", () => {
     expect(call[1]).toEqual([new Date(NOW.getTime() - 14 * 24 * HOUR), 1000]);
   });
 
+  it("skips the protected e-mail only in the unconfirmed accounts rule (E08-S01)", async () => {
+    const { em, execute } = fakeEm(() => 0);
+    await cleanupExpired({ em, now: NOW, protectedEmail: "admin@example.com" });
+    const calls = execute.mock.calls.filter(([text]) => text.includes("email <> ?"));
+    expect(calls).toHaveLength(1);
+    expect(calls[0]![0]).toMatch(/^delete from users /);
+    expect(calls[0]![1]).toEqual([new Date(NOW.getTime() - 14 * 24 * HOUR), "admin@example.com", 1000]);
+    expect(CLEANUP_RULES.filter((rule) => rule.protectsEmail).map((rule) => rule.key)).toEqual(["unverifiedUsers"]);
+  });
+
   it("repeats full batches until a short one", async () => {
     const answers = [2, 2, 1];
     const { em, execute } = fakeEm((sql) => (sql.includes("from sessions") ? (answers.shift() as number) : 0));

@@ -65,6 +65,30 @@ describe("ChatPanel, games without a chat", () => {
   });
 });
 
+describe("ChatPanel, the retention note", () => {
+  it("is folded by default and unfolds and folds with the (i) button, without remembering the choice", () => {
+    const first = setup();
+    const button = screen.getByRole("button", { name: "Informacja o wiadomościach czatu" });
+    const note = screen.getByTestId("chat-info");
+    expect(button.getAttribute("aria-expanded")).toBe("false");
+    expect(button.getAttribute("aria-controls")).toBe(note.id);
+    expect(note.hidden).toBe(true);
+    expect(note.textContent).toContain("około godziny po zakończeniu partii");
+    expect(note.textContent).toContain("Czat nie ma moderacji");
+
+    fireEvent.click(button);
+    expect(button.getAttribute("aria-expanded")).toBe("true");
+    expect(note.hidden).toBe(false);
+    fireEvent.click(button);
+    expect(note.hidden).toBe(true);
+
+    fireEvent.click(button);
+    first.unmount();
+    setup();
+    expect(screen.getByTestId("chat-info").hidden).toBe(true);
+  });
+});
+
 describe("ChatPanel, an open chat", () => {
   it("shows the opponent, the conversation signed by name with 'Ty' on your own, and the form", () => {
     useChat.mockReturnValue(chat({ messages: [message(1, 2, "Cześć"), message(2, 1, "Hej")] }));

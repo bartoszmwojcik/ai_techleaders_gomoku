@@ -18,6 +18,8 @@ x-app: &app
     DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-5}
     # Required: without them the domain routes (/api/auth/*) answer 500 (fail closed), see README.md.
     APP_ORIGIN: ${APP_ORIGIN:?set APP_ORIGIN in .env.production (e.g. https://gomoku.byst.re)}
+    # Installation administrator (E08, BR-35): required, fail closed; the account is created with `npm run admin:create`.
+    ADMIN_EMAIL: ${ADMIN_EMAIL:?set ADMIN_EMAIL in .env.production (the administrator's e-mail)}
     TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:?set TRUST_PROXY_HOPS in .env.production (e.g. 1)}
     CLIENT_IP_HEADER: ${CLIENT_IP_HEADER:-x-forwarded-for}
     # Outgoing mail (#38): empty EMAIL_TRANSPORT means sending fails with 502; see README.md.

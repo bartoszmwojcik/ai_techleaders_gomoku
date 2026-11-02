@@ -44,6 +44,14 @@ describe("runCleanup", () => {
     expect(s.orm.close).toHaveBeenCalledOnce();
   });
 
+  it("passes the protected e-mail on to the sweep", async () => {
+    const s = setup(async () => ({ affectedRows: 0 }));
+
+    await runCleanup({ createOrm: s.createOrm, stdout: s.stdout, stderr: s.stderr, protectedEmail: "admin@example.com" });
+
+    expect((s.fork.execute.mock.calls as unknown as [string, unknown[]][]).some(([sql, params]) => /email <> \?/.test(sql) && params.includes("admin@example.com"))).toBe(true);
+  });
+
   it("prints the partial result, reports failed rules without messages and returns 1", async () => {
     const s = setup(() => Promise.reject(Object.assign(new Error("relation x missing"), { code: "42P01" })));
 

@@ -3,6 +3,7 @@ import {
   TooManyRequestsError,
   UnauthorizedError,
   ValidationError,
+  isInstallationAdmin,
   normalizeDisplayName,
   normalizeEmail,
   type RegisterInput,
@@ -40,6 +41,8 @@ type Deps = {
   invalidateResetTokens: InvalidateResetTokens;
   emailVerificationService: EmailVerificationService;
   clock: Clock;
+  /** `ADMIN_EMAIL` (normalized) or undefined; nobody can register on it (E08-S01). */
+  adminEmail?: string;
 };
 
 export type RegisteredUser = {
@@ -74,6 +77,7 @@ export class UserService {
   readonly #invalidateResetTokens: InvalidateResetTokens;
   readonly #emailVerificationService: EmailVerificationService;
   readonly #clock: Clock;
+  readonly #adminEmail: string | undefined;
 
   constructor({
     em,
@@ -82,6 +86,7 @@ export class UserService {
     invalidateResetTokens,
     emailVerificationService,
     clock,
+    adminEmail,
   }: Deps) {
     this.#em = em;
     this.#passwordHasher = passwordHasher;
@@ -89,6 +94,7 @@ export class UserService {
     this.#invalidateResetTokens = invalidateResetTokens;
     this.#emailVerificationService = emailVerificationService;
     this.#clock = clock;
+    this.#adminEmail = adminEmail;
   }
 
   /**
@@ -100,6 +106,12 @@ export class UserService {
    */
   async register(input: RegisterInput): Promise<RegisteredUser> {
     const passwordHash = await this.#passwordHasher.hash(input.password);
+    // The installation administrator's account comes only from `admin:create` (A-11): the same answer
+    // as for a taken e-mail, after hashing and before any write, so neither the answer nor its time
+    // tells the two cases apart.
+    if (isInstallationAdmin(input.email, this.#adminEmail)) {
+      throw new ConflictError(EMAIL_TAKEN_MESSAGE);
+    }
     let registered: RegisteredUser;
     try {
       // One transaction: a failure to create the session leaves no account without one.

@@ -2,9 +2,9 @@
 
 import type { HistoryPage } from "@gomoku/core";
 import { Alert } from "@gomoku/ui/game/alert";
-import { Button } from "@gomoku/ui/game/button";
 import { EmptyState } from "@gomoku/ui/game/empty-state";
 import { HistoryList, HistoryRow } from "@gomoku/ui/game/history-list";
+import { LoadMore } from "@gomoku/ui/game/load-more";
 import { Panel } from "@gomoku/ui/game/panel";
 import { TextLink } from "@gomoku/ui/game/text-link";
 import { useRef, useState } from "react";
@@ -83,16 +83,17 @@ export function HistoryView({ initial }: { initial: HistoryPage }) {
             <TextLink href="/login?next=%2Fhistory">Zaloguj się ponownie</TextLink>, żeby zobaczyć starsze partie.
           </Alert>
         )}
-        {problem === "failed" && (
-          <Alert status="danger" title="Nie udało się wczytać starszych partii" role="alert">
-            Sprawdź połączenie z internetem i spróbuj ponownie.
-          </Alert>
-        )}
         {nextCursor !== null && (
           <div className="mt-stack">
-            <Button variant="secondary" loading={loading} onClick={() => void onMore()} data-testid="history-more">
-              {problem === "failed" ? "Spróbuj ponownie" : "Pokaż starsze"}
-            </Button>
+            <LoadMore
+              status={loading ? "loading" : problem === "failed" ? "error" : "idle"}
+              onLoadMore={() => void onMore()}
+              data-testid="history-more"
+              label="Pokaż starsze"
+              retryLabel="Spróbuj ponownie"
+              errorTitle="Nie udało się wczytać starszych partii"
+              errorMessage="Sprawdź połączenie z internetem i spróbuj ponownie."
+            />
           </div>
         )}
       </Panel>

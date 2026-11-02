@@ -1,4 +1,11 @@
-import { ConflictError, UnauthorizedError, ValidationError } from "@gomoku/core";
+import {
+  ADMIN_ACCOUNT_PROTECTED_MESSAGE,
+  ConflictError,
+  ForbiddenError,
+  UnauthorizedError,
+  ValidationError,
+  isInstallationAdmin,
+} from "@gomoku/core";
 import { User, type EntityManager } from "@gomoku/db";
 
 import type { Clock } from "../email/email-sender";
@@ -11,6 +18,8 @@ type Deps = {
   passwordHasher: PasswordHasher;
   timeoutSettler: TimeoutSettler;
   clock: Clock;
+  /** `ADMIN_EMAIL` (normalized) or undefined; that account cannot be deleted (E08-S01). */
+  adminEmail?: string;
 };
 
 export const INVALID_PASSWORD_MESSAGE = "Nieprawidłowe hasło.";
@@ -22,7 +31,7 @@ const placeholders = (count: number) => Array.from({ length: count }, () => "?")
 // Lock order of the whole application: users, then games (by id), then writes (#37, #22 Risks).
 // `for no key update` does not block the foreign key checks of unrelated inserts that
 // reference the user (sessions, game_players), only a concurrent deletion or lock like it.
-const LOCK_USER_SQL = `select id from users where id = ? for no key update`;
+const LOCK_USER_SQL = `select id, email from users where id = ? for no key update`;
 
 // The games of the account that still matter: not yet played (`waiting`) or in progress.
 const LOCK_OPEN_GAMES_SQL = `
@@ -63,12 +72,14 @@ export class AccountService {
   readonly #passwordHasher: PasswordHasher;
   readonly #timeoutSettler: TimeoutSettler;
   readonly #clock: Clock;
+  readonly #adminEmail: string | undefined;
 
-  constructor({ em, passwordHasher, timeoutSettler, clock }: Deps) {
+  constructor({ em, passwordHasher, timeoutSettler, clock, adminEmail }: Deps) {
     this.#em = em;
     this.#passwordHasher = passwordHasher;
     this.#timeoutSettler = timeoutSettler;
     this.#clock = clock;
+    this.#adminEmail = adminEmail;
   }
 
   /**
@@ -79,11 +90,14 @@ export class AccountService {
    * (with their invitations), deletes the chat of all the account's games (BR-34), closes pending rematch offers and deletes the user row.
    * @throws AppError 400 `INVALID_PASSWORD` (also when the password was changed meanwhile);
    * 401 when the account is already gone (a concurrent deletion won);
+   * 403 `ADMIN_ACCOUNT_PROTECTED` for the installation administrator (before the password is checked);
    * 409 `ACTIVE_GAME` with `data.gameId` of the game in progress.
    */
   async delete(userId: string, password: string): Promise<void> {
     const user = await this.#em.findOne(User, { id: userId });
     if (!user) throw new UnauthorizedError(SESSION_REQUIRED_MESSAGE);
+    // Before the password check and any write: the administrator's account is never deleted.
+    if (isInstallationAdmin(user.email, this.#adminEmail)) throw adminProtected();
     const passwordHash = user.passwordHash;
     if (!(await this.#passwordHasher.verify(password, passwordHash))) {
       throw invalidPassword();
@@ -93,8 +107,10 @@ export class AccountService {
     await closeStaleSlotsOfUser(this.#em, userId, this.#clock.now());
 
     await this.#em.transactional(async (tx) => {
-      const locked = await tx.execute<{ id: string }[]>(LOCK_USER_SQL, [userId]);
+      const locked = await tx.execute<{ id: string; email: string }[]>(LOCK_USER_SQL, [userId]);
       if (locked.length === 0) throw new UnauthorizedError(SESSION_REQUIRED_MESSAGE);
+      // Read under the row lock, so a race with `admin:create` cannot let the deletion through.
+      if (isInstallationAdmin(locked[0]!.email, this.#adminEmail)) throw adminProtected();
 
       const games = await tx.execute<{ id: string; status: string }[]>(LOCK_OPEN_GAMES_SQL, [
         userId,
@@ -130,4 +146,8 @@ function invalidPassword(): ValidationError {
     code: "INVALID_PASSWORD",
     fieldErrors: { password: [INVALID_PASSWORD_MESSAGE] },
   });
+}
+
+function adminProtected(): ForbiddenError {
+  return new ForbiddenError(ADMIN_ACCOUNT_PROTECTED_MESSAGE, { code: "ADMIN_ACCOUNT_PROTECTED" });
 }

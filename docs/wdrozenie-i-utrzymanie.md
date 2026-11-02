@@ -134,3 +134,18 @@ Błąd jednej reguły (w tym brak tabeli, np. nieuruchomione migracje) nie przer
 
 Nazwę kontenera sprawdź przez `docker compose -f compose.prod.yaml ps` (przy `name: gomoku_prod` to zwykle `gomoku_prod-app-1`). Kontrola: `docker exec gomoku_prod-app-1 npm run -s db:cleanup; echo $?` oraz `tail /var/log/gomoku-cleanup.log`. Rollback: usunięcie pliku `/etc/cron.d/gomoku-cleanup`.
 
+## Konto administratora
+
+Administratorem instalacji (E08, BR-35) jest konto, którego e-mail równa się zmiennej `ADMIN_EMAIL` (nie ma pola roli w bazie). W produkcji zmienna jest **wymagana**: wpisz ją do `.env.production` przed aktualizacją (bez niej `docker compose up` odmówi startu).
+
+Konto zakłada wyłącznie operator poleceniem (w kontenerze `app`, potrzebne `-it` dla monitu bez echa):
+
+```bash
+docker compose --env-file .env.production -f compose.prod.yaml exec -it app npm run -s admin:create -- --name "Nazwa"
+```
+
+- Gdy konto na `ADMIN_EMAIL` już istnieje (np. założył je ktoś obcy przed wdrożeniem), polecenie pyta `[t/N]` i je **przejmuje**: nowe hasło, potwierdzony e-mail, unieważnione wszystkie sesje i tokeny; nazwa gracza zostaje. `--yes` pomija pytanie (wymagane bez terminala). To także sposób na odzyskanie dostępu (A-12); alternatywą jest zwykły reset hasła z poczty.
+- Bez terminala hasło idzie jedną linią ze stdin: `printf '%s\n' "$HASLO" | docker compose … exec -T app npm run -s admin:create -- --name Nazwa --yes`. Operator odpowiada za historię powłoki. Hasła nie da się podać argumentem ani zmienną środowiskową (widać je w `ps`, `/proc` i `docker inspect`).
+- Polecenie działa na bazie z `DATABASE_URL` procesu (w repozytorium: na bazie dev) i wypisuje jej adres przed pytaniem o hasło; wynik to jedna linia JSON bez sekretów.
+- Rejestracja przez stronę na `ADMIN_EMAIL` jest odrzucana tym samym komunikatem co zajęty e-mail, konta nie można usunąć (`403 ADMIN_ACCOUNT_PROTECTED`), a `db:cleanup` nie kasuje go jako niepotwierdzonego.
+- Zmiana `ADMIN_EMAIL` po wdrożeniu: stare konto staje się zwykłym graczem (traci ochronę przed usunięciem), nowy adres wymaga `admin:create` (Q-15 w briefie jest otwarte).

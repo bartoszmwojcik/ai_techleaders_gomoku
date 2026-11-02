@@ -54,11 +54,13 @@ export type CleanupOptions = {
   clock?: () => number;
   /** Rules to run (default: the registry in `rules.ts`; overridable for tests). */
   rules?: readonly CleanupRule[];
+  /** Normalized e-mail of an account no rule may delete (the installation administrator, E08-S01). */
+  protectedEmail?: string;
 };
 
 // Identifiers come from the static rules, never from callers; values are bound parameters.
 // MikroORM's `em.execute` binds `?` placeholders (not `$n`): one cutoff per `?` of the condition, then the limit.
-function batchSql({ table, primaryKey, condition, clearColumn }: CleanupRule): string {
+function batchSql({ table, primaryKey, condition, clearColumn }: Pick<CleanupRule, "table" | "primaryKey" | "condition" | "clearColumn">): string {
   const select = `${primaryKey} in (select ${primaryKey} from ${table} where ${condition} limit ? for update skip locked)`;
   if (clearColumn) return `update ${table} set ${clearColumn} = null where ${select}`;
   return `delete from ${table} where ${primaryKey} in (select ${primaryKey} from ${table} where ${condition} limit ? for update skip locked)`;
@@ -82,6 +84,7 @@ export async function cleanupExpired({
   ruleTimeLimitMs = DEFAULT_RULE_TIME_LIMIT_MS,
   clock = Date.now,
   rules = CLEANUP_RULES,
+  protectedEmail,
 }: CleanupOptions): Promise<CleanupResult> {
   const result: CleanupResult = {
     sessions: 0,
@@ -103,9 +106,11 @@ export async function cleanupExpired({
     truncated: false,
   };
   for (const rule of rules) {
-    const sql = batchSql(rule);
+    const protect = rule.protectsEmail === true && protectedEmail !== undefined;
+    const sql = batchSql(protect ? { ...rule, condition: `${rule.condition} and email <> ?` } : rule);
     const cutoff = new Date(now.getTime() - rule.graceMs);
-    const cutoffs = Array.from({ length: rule.condition.split("?").length - 1 }, () => cutoff);
+    const cutoffs: (Date | string)[] = Array.from({ length: rule.condition.split("?").length - 1 }, () => cutoff);
+    if (protect) cutoffs.push(protectedEmail);
     const ruleDeadline = clock() + ruleTimeLimitMs;
     let deleted = 0;
     try {

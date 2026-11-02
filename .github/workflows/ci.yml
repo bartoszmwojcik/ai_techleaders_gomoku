@@ -167,6 +167,7 @@ jobs:
           POSTGRES_PASSWORD: ci-only-password
           APP_ORIGIN: https://gomoku.example
           TRUST_PROXY_HOPS: "1"
+          ADMIN_EMAIL: admin@gomoku.example
         run: docker compose -f compose.prod.yaml up -d --build
       - name: Poczekaj na /api/health i sprawdź stronę główną
         run: |

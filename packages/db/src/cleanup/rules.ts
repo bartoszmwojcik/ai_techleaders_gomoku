@@ -64,6 +64,11 @@ export type CleanupRule = {
   readonly clearColumn?: string;
   /** Only an optional rule treats a missing table (42P01) as "nothing to do" (`null`); otherwise it is an error. */
   readonly optional?: boolean;
+  /**
+   * The rule may skip the account of `CleanupOptions.protectedEmail` (the installation administrator,
+   * E08-S01): `and email <> ?` is appended to the condition when such an address is given.
+   */
+  readonly protectsEmail?: boolean;
   /** Rows matching the condition for cutoff = `now - graceMs` are deleted. */
   readonly graceMs: number;
 };
@@ -225,6 +230,7 @@ export const CLEANUP_RULES: readonly CleanupRule[] = [
     condition:
       "email_verified_at is null and created_at < ? and not exists (select 1 from game_players gp where gp.user_id = users.id)",
     graceMs: 14 * DAY_MS,
+    protectsEmail: true,
   },
 ];
 
