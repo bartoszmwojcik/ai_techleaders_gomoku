@@ -168,4 +168,15 @@ describe("Board", () => {
     expect(letters).toContain("15");
     expect(screen.getByRole("grid").className).toContain("mx-auto");
   });
+
+  it("sets the line width to whole device pixels for the current device pixel ratio", () => {
+    vi.stubGlobal("devicePixelRatio", 2.625);
+    vi.stubGlobal("matchMedia", () => ({ addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+    try {
+      renderBoard();
+      expect(screen.getByRole("grid").style.getPropertyValue("--board-line-width")).toBe(`${2 / 2.625}px`);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });

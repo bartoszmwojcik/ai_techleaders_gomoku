@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 
+import { crispLineWidth, watchDevicePixelRatio } from "./board-line-width";
 import { cn } from "./cn";
 
 // Same size as BOARD_SIZE in @gomoku/core (the ui package may not depend on core).
@@ -55,6 +56,9 @@ function Board({
 }: BoardProps) {
   const [focusedCell, setFocusedCell] = useState(FIRST_FOCUSED_CELL);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
+  // undefined until mounted: server render and first paint use the token (1px).
+  const [lineWidth, setLineWidth] = useState<string>();
+  useEffect(() => watchDevicePixelRatio((ratio) => setLineWidth(crispLineWidth(ratio))), []);
   const stoneAt = new Map(stones.map(({ cell, color }) => [cell, color]));
 
   function moveFocus(event: KeyboardEvent) {
@@ -74,7 +78,12 @@ function Board({
       aria-label={label}
       aria-readonly={readOnly || undefined}
       onKeyDown={moveFocus}
-      style={{ gridTemplateColumns: `auto repeat(${BOARD_SIZE}, minmax(0, 1fr))` }}
+      style={
+        {
+          gridTemplateColumns: `auto repeat(${BOARD_SIZE}, minmax(0, 1fr))`,
+          ...(lineWidth && { "--board-line-width": lineWidth }),
+        } as CSSProperties
+      }
       className={cn(
         "board-texture @container grid w-full max-w-(--layout-width-board) rounded-base bg-board-surface p-(--board-padding) text-meta text-piece-outline shadow-board",
         className,
