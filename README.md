@@ -1,5 +1,7 @@
 # Gomoku
 
+[![CI](https://github.com/bartoszmwojcik/ai_techleaders_gomoku/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/bartoszmwojcik/ai_techleaders_gomoku/actions/workflows/ci.yml)
+
 Gomoku 1:1 online: dwóch graczy gra w przeglądarce w czasie rzeczywistym na planszy 15×15, według swobodnych zasad (pięć kamieni w linii wygrywa), z zegarem szachowym 10 minut na gracza. Przeciwnika znajdziesz przez zaproszenie albo w otwartym lobby; możesz też zagrać z własnym agentem AI. Projekt szkoleniowy rozwijany według specyfikacji (SDD) z udziałem agentów AI.
 
 Pełne wymagania produktu: [`.ai/specs/product-brief.md`](.ai/specs/product-brief.md).
