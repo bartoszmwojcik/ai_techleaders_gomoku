@@ -48,6 +48,7 @@ export type CleanupRule = {
     | "cancelledGames"
     | "guestOnlyActiveGames"
     | "guestOnlyFinishedGames"
+    | "orphanedFinishedGames"
     | "guestTokens"
     | "agentTokens"
     | "unverifiedUsers";
@@ -165,6 +166,22 @@ export const CLEANUP_RULES: readonly CleanupRule[] = [
     table: "games",
     primaryKey: "id",
     condition: `status = 'finished' and ${GUEST_ONLY_SQL} and finished_at < ?`,
+    graceMs: GUEST_TOKEN_GRACE_MS,
+  },
+  {
+    // A finished game nobody can reach any more (#137): every account of it was deleted (#37,
+    // `user_id` is NULL, `kind` stays `account`), and the guest and agent tokens (only an account
+    // has `user_id`, BR-22/BR-31) expired 1 h after the end. No history shows it, so it only
+    // grows the database. A game with a living account is its history (BR-18, BR-24) and stays.
+    // Idempotent: a deleted row no longer matches; two runs split the rows with `skip locked`.
+    // Rows of players, moves and the invitation go with the game (`on delete cascade`); the
+    // chat is swept earlier by `chatMessages`. Stands before the token rules (no `UPDATE` on rows
+    // that vanish in the same run) and before `unverifiedUsers`. Covers `guestOnlyFinishedGames`.
+    key: "orphanedFinishedGames",
+    table: "games",
+    primaryKey: "id",
+    condition:
+      "status = 'finished' and finished_at < ? and not exists (select 1 from game_players p where p.game_id = games.id and p.user_id is not null)",
     graceMs: GUEST_TOKEN_GRACE_MS,
   },
   {
