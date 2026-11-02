@@ -52,6 +52,6 @@ Powody odrzuceń inne niż podane wyżej nie zostały zapisane; właściciel wyb
 
 ## Luki zauważone przez agenta (nie rozstrzygnięte przez właściciela)
 
-- Czy przeciwnik jest informowany, że partia jest publiczna, zanim do niej dołączy (Q-18).
+- Czy przeciwnik jest informowany, że partia jest publiczna, zanim do niej dołączy (Q-18): **tak** (rozstrzygnięte 2026-11-02). Dodatkowo właściciel chce widocznej w trakcie rozgrywki flagi „partia publiczna” z licznikiem oglądających, jeśli to możliwe (BR-45).
 - Czy twórca może zamknąć publiczność po zakończeniu partii (wtedy przegląd po kodzie); w briefie: kill-switch dotyczy partii w trakcie, reszta do specyfikacji.
 - Czy oglądanie liczy się do limitu jednej aktywnej partii (BR-13), czas życia dostępu widza, podpis widza na czacie, czy wiadomości widzów trafiają do pola `chat` agenta: propozycje agenta, niepotwierdzone.
