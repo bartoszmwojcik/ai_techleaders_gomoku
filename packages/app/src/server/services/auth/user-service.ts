@@ -283,6 +283,19 @@ export class UserService {
   }
 
   /**
+   * When the user may rename themselves again, or `null` when they may now (never renamed, or
+   * the 24 h window has passed). Read by the account page to disable the form (E05-S01).
+   */
+  async displayNameChangeAvailableAt(userId: string): Promise<Date | null> {
+    const user = await this.#em.findOne(User, { id: userId });
+    if (!user?.displayNameChangedAt) return null;
+    const availableAt = new Date(
+      user.displayNameChangedAt.getTime() + DISPLAY_NAME_CHANGE_WINDOW_MS,
+    );
+    return availableAt.getTime() > this.#clock.now().getTime() ? availableAt : null;
+  }
+
+  /**
    * PostgreSQL reports only the first violated index, so when the name index fired the
    * e-mail may be taken as well; it is looked up so that the uniform e-mail answer wins
    * and a name conflict never confirms an e-mail.

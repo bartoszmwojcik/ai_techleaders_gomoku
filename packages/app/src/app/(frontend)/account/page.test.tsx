@@ -1,7 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { connection, requirePageSession, withRequestScope, currentGame } = vi.hoisted(() => ({
+const { connection, requirePageSession, withRequestScope, currentGame, availableAt } = vi.hoisted(() => ({
+  availableAt: vi.fn(),
   connection: vi.fn(),
   requirePageSession: vi.fn(),
   withRequestScope: vi.fn(),
@@ -32,6 +33,16 @@ vi.mock("./delete-account-form", () => ({
   ),
 }));
 
+vi.mock("./change-display-name-form", () => ({
+  ChangeDisplayNameForm: (props: { displayName: string; availableAt: string | null }) => (
+    <form data-testid="change-name-form" data-name={props.displayName} data-available={String(props.availableAt)} />
+  ),
+}));
+
+vi.mock("./change-email-form", () => ({
+  ChangeEmailForm: () => <form data-testid="change-email-form" />,
+}));
+
 vi.mock("./change-password-form", () => ({
   ChangePasswordForm: () => <form data-testid="change-password-form" />,
 }));
@@ -44,10 +55,11 @@ beforeEach(() => {
     .mockReset()
     .mockResolvedValue({ id: "u1", displayName: "Ala_7", email: "ala@example.com", emailVerifiedAt: null });
   currentGame.mockReset().mockResolvedValue(null);
+  availableAt.mockReset().mockResolvedValue(null);
   withRequestScope
     .mockReset()
     .mockImplementation(async (fn: (scope: unknown) => unknown) =>
-      fn({ cradle: { gameParticipation: { currentGame } } }),
+      fn({ cradle: { gameParticipation: { currentGame }, userService: { displayNameChangeAvailableAt: availableAt } } }),
     );
 });
 
@@ -126,5 +138,21 @@ describe("AccountPage", () => {
   it("does not render for a guest: the guard redirects", async () => {
     requirePageSession.mockRejectedValue(new Error("NEXT_REDIRECT"));
     await expect(AccountPage()).rejects.toThrow("NEXT_REDIRECT");
+  });
+
+  it("offers the name and e-mail forms, the name form open when a rename is possible", async () => {
+    const html = renderToStaticMarkup(await AccountPage());
+    expect(html).toContain("Zmień nazwę gracza");
+    expect(html).toContain("Zmień adres e-mail");
+    expect(html).toContain('data-name="Ala_7"');
+    expect(html).toContain('data-available="null"');
+    expect(html).toContain('data-testid="change-email-form"');
+    expect(availableAt).toHaveBeenCalledWith("u1");
+  });
+
+  it("hands the end of the 24 h window to the name form", async () => {
+    availableAt.mockResolvedValue(new Date("2026-11-03T04:00:00.000Z"));
+    const html = renderToStaticMarkup(await AccountPage());
+    expect(html).toContain('data-available="2026-11-03T04:00:00.000Z"');
   });
 });

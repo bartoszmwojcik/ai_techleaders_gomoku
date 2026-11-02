@@ -613,3 +613,30 @@ describe("UserService.changeDisplayName", () => {
     });
   });
 });
+
+describe("UserService.displayNameChangeAvailableAt", () => {
+  function build(user: object | null) {
+    const em = { findOne: vi.fn(async () => user) };
+    const service = new UserService({
+      em: em as unknown as EntityManager,
+      passwordHasher: {} as unknown as PasswordHasher,
+      sessionService: {} as unknown as SessionService,
+      invalidateResetTokens: vi.fn(),
+      clock: { now: () => new Date("2026-11-02T10:00:00Z") },
+      emailVerificationService: {} as unknown as EmailVerificationService,
+    });
+    return service;
+  }
+
+  it("is null for a user who never renamed themselves, or who is gone", async () => {
+    expect(await build({ displayNameChangedAt: null }).displayNameChangeAvailableAt("u")).toBeNull();
+    expect(await build(null).displayNameChangeAvailableAt("u")).toBeNull();
+  });
+
+  it("is the end of the window while it lasts and null once it has passed", async () => {
+    expect(await build({ displayNameChangedAt: new Date("2026-11-02T04:00:00Z") }).displayNameChangeAvailableAt("u")).toEqual(
+      new Date("2026-11-03T04:00:00Z"),
+    );
+    expect(await build({ displayNameChangedAt: new Date("2026-11-01T10:00:00Z") }).displayNameChangeAvailableAt("u")).toBeNull();
+  });
+});

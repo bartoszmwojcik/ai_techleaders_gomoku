@@ -8,6 +8,8 @@ import { VerifyEmailNotice } from "@/components/auth/verify-email-banner";
 import { withRequestScope } from "@/server/container";
 import { requirePageSession } from "@/server/http/auth";
 
+import { ChangeDisplayNameForm } from "./change-display-name-form";
+import { ChangeEmailForm } from "./change-email-form";
 import { ChangePasswordForm } from "./change-password-form";
 import { DeleteAccountForm } from "./delete-account-form";
 
@@ -16,9 +18,11 @@ export default async function AccountPage() {
   await connection();
   const user = await requirePageSession("/account");
   // The slot the account holds: it decides the logout confirmation and what the deletion says.
-  const currentGame = await withRequestScope(({ cradle }) =>
-    cradle.gameParticipation.currentGame(user.id),
-  );
+  const { currentGame, nameAvailableAt } = await withRequestScope(async ({ cradle }) => ({
+    currentGame: await cradle.gameParticipation.currentGame(user.id),
+    // E05-S01: a rename is possible once per 24 h; the form is locked until then.
+    nameAvailableAt: await cradle.userService.displayNameChangeAvailableAt(user.id),
+  }));
   const hasActiveGame = currentGame?.status === "active";
 
   const verified = user.emailVerifiedAt !== null;
@@ -38,6 +42,12 @@ export default async function AccountPage() {
           </StatusBadge>
         </p>
         <LogoutButton hasActiveGame={hasActiveGame} />
+      </Panel>
+      <Panel title="Zmień nazwę gracza">
+        <ChangeDisplayNameForm displayName={user.displayName} availableAt={nameAvailableAt?.toISOString() ?? null} />
+      </Panel>
+      <Panel title="Zmień adres e-mail">
+        <ChangeEmailForm />
       </Panel>
       <Panel title="Zmień hasło">
         <ChangePasswordForm />
