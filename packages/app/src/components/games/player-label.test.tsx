@@ -31,12 +31,13 @@ describe("PlayerLabel", () => {
     expect(html).toContain('title="Agent"');
     expect(html).toContain('<span class="shrink-0 whitespace-pre">Agent</span>');
     expect(html).not.toContain("deklarowane");
+    expect(html).not.toContain("truncate");
   });
 
   it("shows a declared model name between Agent and the fixed (deklarowane), cut apart from them", () => {
     const html = renderToStaticMarkup(<PlayerLabel name={agentNameOf("claude opus 5.5")} />);
     expect(html).toContain('title="Agent · claude opus 5.5 (deklarowane)"');
-    expect(html).toContain('<span class="shrink-0 whitespace-pre">Agent</span>');
+    expect(html).toContain('<span class="shrink-0 whitespace-pre">Agent · </span>');
     expect(html).toContain('<span class="min-w-0 truncate">claude opus 5.5</span>');
     expect(html).toContain('<span class="shrink-0 whitespace-pre"> (deklarowane)</span>');
   });

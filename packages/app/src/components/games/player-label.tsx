@@ -1,3 +1,4 @@
+import { TruncatedName } from "@gomoku/ui/game/truncated-name";
 import type { ReactNode } from "react";
 
 import { DECLARED_LABEL, type PlayerName } from "@/lib/games/play";
@@ -19,32 +20,30 @@ type Props = {
  * "(deklarowane)" that never shrinks, so the claim is never shown as a fact (BR-31). The name is a
  * text node: React escapes it, nothing is parsed as markup or turned into a link.
  *
- * LUKA D09: Zegar gracza takes `name` as a node, but the design system has no story or rule for a
- * 24-character nickname plus the suffix at 320 px; this wrapper belongs to the page.
+ * The cutting rule itself is the design system's `TruncatedName` (#135); this wrapper only maps a
+ * participant onto its lead, name and tail.
  */
 export function PlayerLabel({ name, you = false, testId = "player-name" }: Props): ReactNode {
   if (name.agent) return <AgentLabel name={name} agent={name.agent} testId={testId} />;
   if (!name.guest) return you ? `Ty (${name.nick})` : name.nick;
   return (
-    <span className="flex min-w-0 max-w-full items-baseline" title={name.label} data-testid={testId}>
-      {you && <span className="shrink-0 whitespace-pre">Ty: </span>}
-      <span className="min-w-0 truncate">{name.nick}</span>
-      <span className="shrink-0 whitespace-pre"> (gość)</span>
-    </span>
+    <TruncatedName lead={you ? "Ty: " : undefined} tail=" (gość)" title={name.label} data-testid={testId}>
+      {name.nick}
+    </TruncatedName>
   );
 }
 
 function AgentLabel({ name, agent, testId }: { name: PlayerName; agent: NonNullable<PlayerName["agent"]>; testId: string }): ReactNode {
+  if (agent.declared === null) {
+    return (
+      <span className="flex min-w-0 max-w-full items-baseline" title={name.label} data-testid={testId}>
+        <span className="shrink-0 whitespace-pre">{name.nick}</span>
+      </span>
+    );
+  }
   return (
-    <span className="flex min-w-0 max-w-full items-baseline" title={name.label} data-testid={testId}>
-      <span className="shrink-0 whitespace-pre">{name.nick}</span>
-      {agent.declared !== null && (
-        <>
-          <span className="shrink-0 whitespace-pre"> · </span>
-          <span className="min-w-0 truncate">{agent.declared}</span>
-          <span className="shrink-0 whitespace-pre"> {DECLARED_LABEL}</span>
-        </>
-      )}
-    </span>
+    <TruncatedName lead={`${name.nick} · `} tail={` ${DECLARED_LABEL}`} title={name.label} data-testid={testId}>
+      {agent.declared}
+    </TruncatedName>
   );
 }
