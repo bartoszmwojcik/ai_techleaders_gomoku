@@ -24,8 +24,8 @@ export const CHAT_MAX_COMBINING_RUN = 4;
  * heuristic against pasted links, not moderation; "Dobra.Gramy" is a sentence, "ok.com" is not.
  */
 export const CHAT_BLOCKED_TLDS = [
-  "com", "net", "org", "info", "biz", "xyz", "io", "gg", "ly", "cc", "co", "tv", "ws", "ai",
-  "app", "dev", "link", "site", "online", "shop", "top", "club",
+  "com", "net", "org", "info", "biz", "xyz", "io", "gg", "ly", "cc", "tv", "ws", "ai",
+  "app", "dev", "link", "site", "online", "shop", "club",
   "pl", "eu", "de", "uk", "ru", "cz", "sk", "fr", "es", "nl",
 ] as const;
 

@@ -49,3 +49,4 @@ Indeks lekcji. Jedna linia na wpis: `- [Tytuł](lessons/YYYY-MM-DD-slug.md) — 
 - [Pokrycie: oba miejsca i martwe `??`](lessons/2026-10-31-coverage-needs-both-sides-of-a-seat-branch.md) — funkcje zależne od `seat` testuj dla miejsc 1 i 2; nie dodawaj `??` dla argumentów zawsze podanych.
 - [Strażnik liczy instrukcje, nie pliki](lessons/2026-10-31-guard-counts-statements-not-files.md) — „każde miejsce musi wywołać X” porównuje liczbę instrukcji z liczbą wywołań; test negatywny dodaje drugą instrukcję w obsłużonym pliku
 - [`role="log"` nie na `<ol>`](lessons/2026-11-01-aria-log-not-allowed-on-ol.md) — rolę `log` nadawaj blokowi wokół listy (`div role="log"` + `ol`), przewijany blok z `tabIndex=0`; axe w test:stories to wyłapuje.
+- [Nowa reguła cleanup a stare testy](lessons/2026-11-01-new-cleanup-rule-updates-old-expectations.md) — nowa reguła `db:cleanup` wymaga przeglądu testów z usuniętymi kontami i budżetu N × 15 s w kodzie i README.
