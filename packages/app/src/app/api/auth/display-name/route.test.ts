@@ -1,19 +1,19 @@
 import { ConflictError, TooManyRequestsError, UnauthorizedError } from "@gomoku/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { connection, hit, changeDisplayName, requireSession } = vi.hoisted(() => ({
+const { connection, hit, changeDisplayName, requireSession, serverConfig } = vi.hoisted(() => ({
+  serverConfig: {
+    production: true,
+    trustProxyHops: 1,
+    clientIpHeader: "x-forwarded-for",
+    appOrigin: "https://gomoku.example",
+    sessionCookieSecure: true,
+  },
   connection: vi.fn(),
   hit: vi.fn(),
   changeDisplayName: vi.fn(),
   requireSession: vi.fn(),
 }));
-const serverConfig = {
-  production: true,
-  trustProxyHops: 1,
-  clientIpHeader: "x-forwarded-for",
-  appOrigin: "https://gomoku.example",
-  sessionCookieSecure: true,
-};
 vi.mock("next/server", () => ({ connection }));
 vi.mock("@/server/http/auth", () => ({ requireSession }));
 vi.mock("@/server/container", () => ({
