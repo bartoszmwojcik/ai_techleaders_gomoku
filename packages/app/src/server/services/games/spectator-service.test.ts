@@ -207,6 +207,7 @@ const gameRow = (over: Record<string, unknown> = {}) => ({
   clockMs2: 585_000,
   turnStartedAt: new Date("2026-11-02T11:59:50.000Z"),
   finishedAt: null,
+  isPublic: true,
   ...over,
 });
 const seats = [
@@ -223,7 +224,7 @@ function readSetup(game: unknown, script: Script = { stale: { stale: false } }) 
 
 describe("SpectatorService.getState", () => {
   it("returns the board, both clocks and the names of the seats - and nothing of the players' own", async () => {
-    const { service, em, timeoutSettler } = readSetup(gameRow());
+    const { service, em, timeoutSettler } = readSetup(gameRow({ isPublic: true }), { stale: { stale: false }, present: 0 });
 
     const state = await service.getState({ spectatorId: "s1" }, GAME, 1);
 
@@ -240,7 +241,7 @@ describe("SpectatorService.getState", () => {
       ],
     });
     expect(state.clock).toMatchObject({ remainingMs: [580_000, 585_000], running: 1, now: NOW.getTime() });
-    expect(Object.keys(state).sort()).toEqual(["blackSeat", "canChat", "clock", "moveCount", "moves", "players", "result", "status", "turnSeat"]);
+    expect(Object.keys(state).sort()).toEqual(["audience", "blackSeat", "canChat", "clock", "moveCount", "moves", "players", "result", "status", "turnSeat"]);
     for (const player of state.players) expect(Object.keys(player)).not.toContain("seen");
     expect(JSON.stringify(state)).not.toMatch(/secret|ala@example|invitation|code|rematch|you/i);
     expect(timeoutSettler.settleExpired).toHaveBeenCalledWith(GAME, em, NOW);
@@ -258,9 +259,16 @@ describe("SpectatorService.getState", () => {
     expect((await silent.service.getState({ spectatorId: "s1" }, GAME)).canChat).toBe(false);
   });
 
-  it("has no audience for a closed audience or a finished game", async () => {
-    const closed = readSetup(gameRow({ isPublic: false }), { stale: { stale: false }, present: 3 });
-    expect(await closed.service.getState({ spectatorId: "s1" }, GAME)).not.toHaveProperty("audience");
+  it("tells a spectator of a game whose creator closed the audience, and shows them nothing of it (BR-43)", async () => {
+    const closed = readSetup(gameRow({ isPublic: false }), { stale: { stale: true }, present: 3 });
+    await expect(closed.service.getState({ spectatorId: "s1" }, GAME)).rejects.toMatchObject({
+      status: 410,
+      code: "AUDIENCE_CLOSED",
+    });
+    expect(closed.em.find).not.toHaveBeenCalled();
+  });
+
+  it("has no audience for a finished game", async () => {
     const done = readSetup(gameRow({ isPublic: true, status: "finished", finishedAt: NOW, turnStartedAt: null }), {
       stale: { stale: false },
     });

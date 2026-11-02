@@ -459,6 +459,17 @@ describe("PlayField, clocks (#23, p05.1, p05.3, p06.3)", () => {
   });
 });
 
+describe("PlayField, closing the audience (E10-S05)", () => {
+  it("offers the creator of a public game the kill-switch, and both players the note once it is closed", () => {
+    field({ canCloseAudience: true });
+    expect(screen.getByTestId("close-audience")).toBeTruthy();
+    cleanup();
+    field({ audienceClosed: true });
+    expect(screen.getByTestId("audience-closed-note")).toBeTruthy();
+    expect(screen.queryByTestId("close-audience")).toBeNull();
+  });
+});
+
 describe("PlayField, resigning (p05.13, p05.14)", () => {
   const open = async () => {
     await press(byText("Poddaj partię"));

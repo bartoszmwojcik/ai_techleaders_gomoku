@@ -71,6 +71,13 @@ describe("GamePage", () => {
     expect(notFound).not.toHaveBeenCalled();
   });
 
+  it("tells a spectator the creator closed the audience instead of answering 404 (E10-S05)", async () => {
+    loadGameView.mockResolvedValue(null);
+    loadSpectatorView.mockResolvedValue("closed");
+    expect(await render()).toContain('data-testid="audience-closed"');
+    expect(notFound).not.toHaveBeenCalled();
+  });
+
   it("does not look for a spectator when the visitor plays", async () => {
     await render();
     expect(loadSpectatorView).not.toHaveBeenCalled();

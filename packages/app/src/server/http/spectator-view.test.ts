@@ -1,4 +1,4 @@
-import { NotFoundError } from "@gomoku/core";
+import { GoneError, NotFoundError } from "@gomoku/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { resolveSpectator, getState } = vi.hoisted(() => ({ resolveSpectator: vi.fn(), getState: vi.fn() }));
@@ -35,8 +35,15 @@ describe("loadSpectatorView", () => {
     expect(await loadSpectatorView("g1")).toBeNull();
   });
 
+  it("is closed for a spectator of a game whose creator closed the audience", async () => {
+    getState.mockRejectedValue(new GoneError("x", { code: "AUDIENCE_CLOSED" }));
+    expect(await loadSpectatorView("g1")).toBe("closed");
+  });
+
   it("does not hide other errors", async () => {
     getState.mockRejectedValue(new Error("db down"));
     await expect(loadSpectatorView("g1")).rejects.toThrow("db down");
+    getState.mockRejectedValue(new GoneError("x"));
+    await expect(loadSpectatorView("g1")).rejects.toThrow("x");
   });
 });

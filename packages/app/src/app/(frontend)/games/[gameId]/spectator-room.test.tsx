@@ -109,10 +109,26 @@ describe("SpectatorRoom", () => {
     expect(screen.getByTestId("spectator-chat").textContent).toBe("g1:false:2chat gone");
   });
 
-  it("shows the gone notice when the chat finds the game gone", () => {
+  it("asks the server what happened when the chat finds the game gone: the access ended", async () => {
     room(live());
-    act(() => screen.getByText("chat gone").click());
+    apiCall.mockResolvedValue(failure("NOT_FOUND"));
+    await act(async () => screen.getByText("chat gone").click());
     expect(screen.getByText("Oglądanie wygasło albo partii już nie ma")).toBeTruthy();
+  });
+
+  it("shows the closed audience when the creator closed it: at the poll, and when the chat found out first (BR-43)", async () => {
+    const first = room(live());
+    apiCall.mockResolvedValue(failure("AUDIENCE_CLOSED"));
+    await tick(SPECTATOR_POLL_INTERVAL_MS);
+    expect(screen.getByTestId("audience-closed")).toBeTruthy();
+    expect(screen.queryByTestId("spectator-chat")).toBeNull();
+    expect(document.querySelector("[role=grid]")).toBeNull();
+    await tick(SPECTATOR_POLL_INTERVAL_MS * 3);
+    expect(apiCall).toHaveBeenCalledTimes(1);
+    first.unmount();
+    room(over());
+    await act(async () => screen.getByText("chat gone").click());
+    expect(screen.getByTestId("audience-closed")).toBeTruthy();
   });
 
   it("has no control of a player: no move, resignation, rematch or switch (the board is read-only)", () => {
