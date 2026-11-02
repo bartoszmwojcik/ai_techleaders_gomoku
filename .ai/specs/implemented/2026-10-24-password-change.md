@@ -98,3 +98,6 @@ Odstępstwa od pierwotnej treści opisuje adnotacja „Zmienione przez `2026-10-
 | K4 (nowe, BR-28): nowe hasło < 8 znaków lub > 72 bajty: błąd przy polu | `password-change-schema.test.ts` — „rejects a new password of 7 characters, accepts 8”, „enforces the 72 byte limit including multibyte characters”; `password-change.test.ts` — „answers 400 VALIDATION for a weak new password”; `change-password-form.test.ts` — „validates the form on the client without leaving the page” |
 
 Sprawdzenie 2026-10-31 na `origin/main` przez czytanie testów i kodu; testy nie były uruchamiane w ramach tego domknięcia (zmiana dokumentacyjna).
+
+
+> **Adnotacja (E05-S01, 2026-11-02):** zmiana hasła unieważnia także oczekujące linki zmiany adresu e-mail (`createInvalidateResetTokens`).

@@ -208,3 +208,6 @@ Odstępstwa od pierwotnej treści opisuje adnotacja „Zmienione przez `2026-10-
 Sprawdzenie 2026-10-31 na `origin/main` przez czytanie testów i kodu; testy nie były uruchamiane w ramach tego domknięcia (zmiana dokumentacyjna).
 
 **Nie wdrożone z tej specyfikacji:** kasowanie niepotwierdzonych kont bez partii po 14 dniach (BR-28) — należy do #39 / #37 (krok 8 specyfikacji `account-deletion`), nie do kryteriów #34.
+
+
+> **Adnotacja (E05-S01, 2026-11-02):** potwierdzenie zmiany adresu e-mail unieważnia niewykorzystane tokeny potwierdzenia i ustawia nowy adres jako potwierdzony.
