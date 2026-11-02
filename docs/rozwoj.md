@@ -39,6 +39,7 @@ Zmienne środowiskowe czytane są z plików `.env*` w katalogu głównym repozyt
 | `DATABASE_POOL_MAX` | `10` | Maksymalna liczba połączeń w puli; build produkcyjny ma dwie pule (strony i route'y), więc realnie do dwukrotności |
 | `DATABASE_DEBUG` | `false` | Logowanie zapytań SQL |
 | `APP_ORIGIN` | brak (dev: `http://localhost:<port>`) | Dokładny origin aplikacji, np. `https://gomoku.byst.re`; porównywany z nagłówkiem `Origin` (CSRF). **Wymagany w produkcji** |
+| `ADMIN_EMAIL` | brak (dev: nikt nie jest administratorem) | Adres administratora instalacji (E08, BR-35), normalizowany jak e-mail przy rejestracji. **Wymagany w produkcji** (`compose.prod.yaml` odmawia startu, `readServerConfig` rzuca). Konto powstaje tylko poleceniem `npm run admin:create`; rejestracja na ten adres jest odrzucana jak zajęty e-mail, konta nie da się usunąć, a `db:cleanup` je pomija |
 | `TRUST_PROXY_HOPS` | brak (dev: wspólny klucz `local`) | Liczba własnych proxy przed aplikacją (liczba całkowita ≥ 1). **Wymagana w produkcji** |
 | `CLIENT_IP_HEADER` | `x-forwarded-for` | Nagłówek z adresem klienta: `x-forwarded-for`, `x-real-ip` albo `cf-connecting-ip` |
 | `PASSWORD_HASH_COST` | `12` | Koszt bcrypt (liczba całkowita 4–31); obniża go tylko `global-setup` testów integracyjnych (4), żeby setki prób logowania nie trwały minutami. W produkcji zostaw nieustawione |
@@ -65,6 +66,7 @@ Uruchamiane z katalogu głównego:
 | `npm run db:migration:list` | Lista wykonanych migracji |
 | `npm run db:status` | Czy baza z `DATABASE_URL` odpowiada i ile migracji czeka (JSON) |
 | `npm run stats:games` | Licznik zakończonych partii wg pary typów uczestników (JSON, **tylko odczyt**; w produkcji przez `docker exec`, zob. [Licznik zakończonych partii](#licznik-zakończonych-partii)) |
+| `npm run admin:create -- [--name <nazwa>] [--yes]` | Zakłada konto administratora instalacji (`ADMIN_EMAIL`) albo je **przejmuje** (nowe hasło, potwierdzony e-mail, wylogowanie wszystkich sesji). Hasło tylko z monitu bez echa (dwukrotnie) lub z jednej linii stdin; wypisuje bazę docelową (`host:port/nazwa`) na stderr. Szczegóły: [Konto administratora](wdrozenie-i-utrzymanie.md#konto-administratora) |
 | `npm run db:cleanup` | Usuwa wygasłe sesje, liczniki limitów, tokeny i nieodebrane partie z bazy z `DATABASE_URL` (JSON z liczbami; **kasuje dane**, zob. [Sprzątanie](#sprzątanie-wygasłych-rekordów)) |
 
 ## Testy i CI

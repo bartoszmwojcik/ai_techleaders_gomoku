@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { readServerConfig } from "./config";
+import { readAdminEmail, readServerConfig } from "./config";
 
 const MCP_DEFAULTS = { requestLimit: 300, joinLimit: 10, lookupLimit: 20, lookupGlobalLimit: 300, tokenLimit: 60, chatLimit: 30 };
 
@@ -14,6 +14,7 @@ const production = {
   NODE_ENV: "production",
   TRUST_PROXY_HOPS: "1",
   APP_ORIGIN: "https://gomoku.byst.re",
+  ADMIN_EMAIL: "Admin@Example.com",
 };
 
 describe("readServerConfig", () => {
@@ -52,6 +53,7 @@ describe("readServerConfig", () => {
       trustProxyHops: 1,
       clientIpHeader: "cf-connecting-ip",
       appOrigin: "https://gomoku.byst.re",
+      adminEmail: "admin@example.com",
       sessionCookieSecure: true,
       passwordHashCost: 12,
       emailTransport: undefined,
@@ -274,5 +276,35 @@ describe("readServerConfig MCP limits", () => {
     for (const value of bad) {
       expect(() => readServerConfig({ [name]: value })).toThrow(new RegExp(name));
     }
+  });
+});
+
+describe("readAdminEmail (ADMIN_EMAIL, E08-S01-T01)", () => {
+  it("normalizes case and white space", () => {
+    expect(readAdminEmail({ ADMIN_EMAIL: "  Admin@Example.COM " }, false)).toBe("admin@example.com");
+    expect(readAdminEmail({ ADMIN_EMAIL: "Admin@Example.COM" }, true)).toBe("admin@example.com");
+  });
+
+  it("is optional outside production", () => {
+    expect(readAdminEmail({}, false)).toBeUndefined();
+    expect(readAdminEmail({ ADMIN_EMAIL: "" }, false)).toBeUndefined();
+    expect(readAdminEmail({ ADMIN_EMAIL: "   " }, false)).toBeUndefined();
+  });
+
+  it("is required in production (fail closed)", () => {
+    expect(() => readAdminEmail({}, true)).toThrow("ADMIN_EMAIL is required in production.");
+    expect(() => readAdminEmail({ ADMIN_EMAIL: "" }, true)).toThrow(/required/);
+    expect(() => readServerConfig({ ...production, ADMIN_EMAIL: undefined })).toThrow(/ADMIN_EMAIL/);
+  });
+
+  it("rejects a value that is not an e-mail address", () => {
+    expect(() => readAdminEmail({ ADMIN_EMAIL: "not-an-email" }, false)).toThrow(
+      "ADMIN_EMAIL must be a valid e-mail address.",
+    );
+  });
+
+  it("is passed through readServerConfig", () => {
+    expect(readServerConfig({ ADMIN_EMAIL: "a@b.pl" }).adminEmail).toBe("a@b.pl");
+    expect(readServerConfig({}).adminEmail).toBeUndefined();
   });
 });

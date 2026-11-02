@@ -1,6 +1,6 @@
 # Konto administratora instalacyjnego: `ADMIN_EMAIL` i `npm run admin:create` (E08-S01 #157, E08-S01-T01 #156)
 
-> Status: **szkic autonomiczny** (`om-auto-write-spec`), czeka na zatwierdzenie właściciela. Epik E08 #155. Autorytet wymagań: `.ai/specs/product-brief.md` (D-32, BR-35) i `research/decisions/2026-10-31-admin.md`. Jedna specyfikacja, jeden PR implementacji, bo zadanie #156 (konfiguracja) nie ma sensu bez #157 (polecenie i reguły konta).
+> Status: **wdrożona** (2026-11-02, PR implementacji E08-S01/T01; odstępstwa: CLI loguje błędy nieznane tylko jako klasa i kod przez `describeError`, bez treści; punkty Q11/Q12 nadal wymagają potwierdzenia właściciela). Wcześniej: szkic autonomiczny (`om-auto-write-spec`). Epik E08 #155. Autorytet wymagań: `.ai/specs/product-brief.md` (D-32, BR-35) i `research/decisions/2026-10-31-admin.md`. Jedna specyfikacja, jeden PR implementacji, bo zadanie #156 (konfiguracja) nie ma sensu bez #157 (polecenie i reguły konta).
 
 ## 📝 TLDR
 

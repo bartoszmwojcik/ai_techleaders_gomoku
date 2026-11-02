@@ -1,4 +1,5 @@
 import {
+  emailSchema,
   CHAT_HARD_MAX_LENGTH,
   CHAT_MAX_LENGTH,
   CHAT_MAX_MESSAGES_PER_GAME,
@@ -50,6 +51,8 @@ export type ServerConfig = {
   clientIpHeader: ClientIpHeader;
   /** Exact origin of the app, e.g. `https://gomoku.byst.re`; unset only outside production. */
   appOrigin?: string;
+  /** Installation administrator's e-mail, normalized (`ADMIN_EMAIL`, BR-35); unset only outside production. */
+  adminEmail?: string;
   /** `false` only for the integration tests (plain HTTP); never together with an https origin. */
   sessionCookieSecure: boolean;
   /** bcrypt cost factor (4-31); 12 unless `PASSWORD_HASH_COST` lowers it (integration tests). */
@@ -78,13 +81,34 @@ export const DEFAULT_EMAIL_OUTBOX_PATH = ".email-outbox.jsonl";
 
 export const DEFAULT_PASSWORD_HASH_COST = 12;
 
-function parsePasswordHashCost(raw: string | undefined): number {
+export function parsePasswordHashCost(raw: string | undefined): number {
   if (raw === undefined || raw === "") return DEFAULT_PASSWORD_HASH_COST;
   const cost = /^[0-9]{1,2}$/.test(raw) ? Number(raw) : NaN;
   if (!(cost >= 4 && cost <= 31)) {
     throw new Error("PASSWORD_HASH_COST must be an integer from 4 to 31.");
   }
   return cost;
+}
+
+/**
+ * Reads `ADMIN_EMAIL`: normalized by `emailSchema` (the registration rules). Unset or empty means
+ * nobody is an administrator outside production and an error in production (fail closed).
+ * Also used by the `admin:create` command.
+ */
+export function readAdminEmail(
+  env: Record<string, string | undefined>,
+  production: boolean,
+): string | undefined {
+  const raw = env.ADMIN_EMAIL;
+  if (raw === undefined || raw.trim() === "") {
+    if (production) throw new Error("ADMIN_EMAIL is required in production.");
+    return undefined;
+  }
+  const parsed = emailSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new Error("ADMIN_EMAIL must be a valid e-mail address.");
+  }
+  return parsed.data;
 }
 
 function parseEmailTransport(
@@ -232,6 +256,7 @@ export function readServerConfig(
   const trustProxyHops = parseTrustProxyHops(env.TRUST_PROXY_HOPS, production);
   const clientIpHeader = parseClientIpHeader(env.CLIENT_IP_HEADER);
   const appOrigin = parseAppOrigin(env.APP_ORIGIN, production);
+  const adminEmail = readAdminEmail(env, production);
   const sessionCookieSecure = env.SESSION_COOKIE_SECURE !== "false";
   if (!sessionCookieSecure && appOrigin?.startsWith("https://")) {
     throw new Error(
@@ -251,6 +276,7 @@ export function readServerConfig(
     trustProxyHops,
     clientIpHeader,
     appOrigin,
+    adminEmail,
     sessionCookieSecure,
     passwordHashCost: parsePasswordHashCost(env.PASSWORD_HASH_COST),
     emailTransport,
