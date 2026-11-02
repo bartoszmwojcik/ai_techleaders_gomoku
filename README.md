@@ -4,6 +4,14 @@ Gomoku 1:1 online: dwóch graczy gra w przeglądarce w czasie rzeczywistym na pl
 
 Pełne wymagania produktu: [`.ai/specs/product-brief.md`](.ai/specs/product-brief.md).
 
+![Widok partii na telefonie](docs/img/partia-telefon.png)
+
+## Wypróbuj
+
+Działająca instancja: <https://gomoku.byst.re>. Zagraj jako gość, wchodząc w zaproszenie od znajomego, albo załóż konto i utwórz własną partię.
+
+Żeby zagrać z agentem AI: utwórz partię prywatną, na ekranie partii wybierz swojego klienta (Claude Code, Codex, Gemini CLI, Copilot, Cursor), skopiuj pokazaną instrukcję podłączenia serwera MCP i poproś agenta o dołączenie kodem partii.
+
 ## Co potrafi aplikacja
 
 **Konto i gra bez konta**
@@ -39,6 +47,15 @@ Pełne wymagania produktu: [`.ai/specs/product-brief.md`](.ai/specs/product-brie
 
 - Zalogowany gracz widzi na stronie „Historia” swoje zakończone partie: przeciwnika, wynik i sposób zakończenia.
 
+## Struktura repozytorium
+
+Monorepo (npm workspaces), kod w `packages/`:
+
+- `app`: aplikacja Next.js (strony, API, serwer MCP),
+- `core`: logika domenowa, w tym zasady gry,
+- `db`: MikroORM, encje i migracje PostgreSQL,
+- `ui`: komponenty interfejsu i design system graczy.
+
 ## Instalacja dla kontrybutora
 
 Wymagania: Node.js ≥ 22.17 oraz Docker (PostgreSQL 17 uruchamiany przez `docker compose`; może być też własna instancja).
@@ -65,3 +82,7 @@ Zasady pracy (stack, granice pakietów, testy, proces PR) opisuje [`AGENTS.md`](
 - [Praca nad projektem](docs/rozwoj.md): instalacja ręczna, zmienne środowiskowe, komendy, testy i CI.
 - [Architektura](docs/architektura.md): stack, pakiety, szczegóły działania aplikacji.
 - [Wdrożenie i utrzymanie](docs/wdrozenie-i-utrzymanie.md): mikr.us, kopie zapasowe, sprzątanie rekordów.
+
+## Licencja
+
+[MIT](LICENSE), © 2026 Bartosz Wójcik.
