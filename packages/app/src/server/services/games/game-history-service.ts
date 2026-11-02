@@ -40,10 +40,11 @@ export const historySql = (afterCursor: boolean) => `
     to_char(g.finished_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as finished_at,
     g.end_reason, g.winner_seat, me.seat as my_seat,
     op.kind as opponent_kind, op.seat as opponent_seat, op.nickname as opponent_nickname,
-    op.agent_name as opponent_agent_name, op.display_name as opponent_name
+    op.agent_name as opponent_agent_name, coalesce(op.display_name, u.display_name) as opponent_name
   from game_players me
   join games g on g.id = me.game_id and g.status = 'finished'
   join game_players op on op.game_id = g.id and op.seat <> me.seat
+  left join users u on u.id = op.user_id
   where me.user_id = ?${afterCursor ? "\n    and (g.finished_at, g.id) < (?::timestamptz, ?::uuid)" : ""}
   order by g.finished_at desc, g.id desc
   limit ?`;

@@ -36,11 +36,12 @@ export type InvitationRow = {
 
 export const READ_INVITATION_SQL = `
   select i.id, i.game_id, i.consumed_at, i.expires_at <= ? as expired, g.status,
-    c.user_id as creator_id, c.display_name as creator_name,
+    c.user_id as creator_id, coalesce(c.display_name, u.display_name) as creator_name,
     c.kind as creator_kind, c.nickname as creator_nickname
   from invitations i
   join games g on g.id = i.game_id
   join game_players c on c.game_id = g.id and c.seat = 1
+  left join users u on u.id = c.user_id
   where i.code = ?`;
 
 // The conditional updates below are what makes the join atomic: of two concurrent accepts,

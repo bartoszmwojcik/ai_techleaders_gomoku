@@ -548,6 +548,15 @@ describe("GameService.getState", () => {
     expect(state.players.map(({ displayName }) => displayName)).toEqual([null, "Kasia"]);
   });
 
+  it("falls back to the account's current name for a seat without a snapshot", async () => {
+    const { service } = setup({
+      game: { status: "active" },
+      players: [{ ...creator, displayName: null, user: { displayName: "Zed" } }, { ...guest, nickname: "Kasia" }],
+    });
+    const state = await service.getState({ playerId: "p2" }, "game-1");
+    expect(state.players.map(({ displayName }) => displayName)).toEqual(["Zed", "Kasia"]);
+  });
+
   it("names an agent by its kind only, with the model name it declared (BR-31)", async () => {
     const agent = { id: "p2", seat: 2, kind: "agent", user: null, nickname: null, agentName: "claude opus 5.5", seenAt: NOW };
     const named = setup({ game: { status: "active" }, players: [creator, agent] });

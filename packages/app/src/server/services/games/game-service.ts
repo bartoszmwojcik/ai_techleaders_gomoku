@@ -208,12 +208,13 @@ function displayNameOf(player: {
   seat: number;
   nickname?: string | null;
   displayName?: string | null;
+  user?: { displayName: string } | null;
 }): string | null {
   switch (player.kind as ParticipantKind) {
     case "guest":
       return player.nickname ?? defaultNickname(player.seat as Seat);
     case "account":
-      return player.displayName ?? null;
+      return player.displayName ?? player.user?.displayName ?? null;
     case "agent":
       return null;
   }
@@ -535,7 +536,7 @@ export class GameService {
     const players = await tx.find(
       GamePlayer,
       { game: gameId },
-      { orderBy: { seat: "asc" } },
+      { populate: ["user"], orderBy: { seat: "asc" } },
     );
     const you = players.find(({ id }) => id === participant.playerId)!;
     const board = boardView(
