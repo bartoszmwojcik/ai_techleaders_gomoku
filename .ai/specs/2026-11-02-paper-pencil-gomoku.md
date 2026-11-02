@@ -1,6 +1,6 @@
 # Gomoku „papier i ołówek”: wariant z punktami za piątki, planszą 101×101 i zegarem 1/2/3/5 min
 
-> Status: **szkic do przeglądu** (`om-spec-writing`, tryb interaktywny, 2026-11-02; bramka pytań Q1–Q10 zamknięta przez właściciela — Bartosz Wójcik). Źródła: `.ai/specs/product-brief.md` (D-34, BR-46…BR-51, N-14, A-16…A-18, Q-21), `research/decisions/2026-11-02-paper-pencil-variant.md`, mapa kodu (sesja 2026-11-02), wdrożone specyfikacje `2026-10-25-game-moves-win-detection.md`, `2026-10-26-game-clock.md`, `2026-11-01-mobile-game-view.md`, standardy `.ai/docs/2026-09-01-engineering-standards.md`.
+> Status: **szkic do przeglądu** (`om-spec-writing`, tryb interaktywny, 2026-11-02; bramka pytań Q1–Q10 zamknięta przez właściciela — Bartosz Wójcik; po przeglądzie architektonicznym 2026-11-02 poprawki naniesione, otwarte Q11–Q12). Źródła: `.ai/specs/product-brief.md` (D-34, BR-46…BR-51, N-14, A-16…A-18, Q-21), `research/decisions/2026-11-02-paper-pencil-variant.md`, mapa kodu (sesja 2026-11-02), wdrożone specyfikacje `2026-10-25-game-moves-win-detection.md`, `2026-10-26-game-clock.md`, `2026-11-01-mobile-game-view.md`, standardy `.ai/docs/2026-09-01-engineering-standards.md`.
 
 ## 📝 TLDR
 
@@ -21,6 +21,11 @@ Dziś jest jeden wariant: swobodne gomoku 15×15, pierwsza piątka wygrywa, 10 m
 | R9 | Model danych | Osobny model stanu planszy wariantu przy wspólnym nagłówku partii (zob. Proposed Solution) | sugestia właściciela 2026-11-02, zweryfikowana tutaj |
 | R10 | Widok | Plansza przesuwana i powiększana; telefon 15–21 pól w poprzek | sugestia właściciela 2026-11-02, zweryfikowana w „UI/UX — studium” |
 | R11 | Jeden PR | Jedna funkcja w fazach; brief i ta specyfikacja zatwierdzane przed kodem | właściciel (Q1, Q9) |
+
+## ⚠️ Open Questions (bramka ponownie otwarta tylko dla tych pytań — przegląd architektoniczny 2026-11-02)
+
+- **Q11.** Rząd 6–9 kamieni daje 1 punkt. Czy kamienie „nadwyżkowe” (poza pięcioma) są zużyte w tym kierunku? Ma to znaczenie tylko wtedy, gdy przez taki kamień przechodzą piątki w dwóch innych kierunkach. (a) **Cały rząd jest przekreślony**: każdy kamień rzędu ma zużyty ten kierunek. Reguła jest prosta i da się ją wytłumaczyć jednym zdaniem. (b) **Zużyte tylko pięć kamieni**, jak przy skreślaniu na papierze. Wtedy system musi sam wybrać, które pięć, np. od strony najstarszego kamienia, a gracz tego wyboru nie widzi przed ruchem. *(rekomendacja: a)*
+- **Q12.** Jeden ruch tworzy piątki w trzech lub czterech kierunkach przez ten sam kamień, a kamień może należeć tylko do dwóch. Które dwa się liczą? (a) **Najkorzystniejsze dla gracza** (najwięcej punktów; przy remisie stała kolejność). (b) Stała kolejność: poziomo, pionowo, ukosy. *(rekomendacja: a)*
 
 ## 📝 Problem Statement
 
@@ -50,8 +55,9 @@ flowchart LR
     classDef newNode fill:#2f6feb,color:#fff,stroke:#1b4fb0
     classDef existing fill:#e5e7eb,color:#111,stroke:#9ca3af
     n1["POST /api/games, lobby, rewanż (wariant, czas)"]:::existing --> n2["GameService.create — zapis variant + time_control_ms"]:::existing
-    n3["POST /games/id/moves"]:::existing --> n4{"variant"}:::newNode
-    n4 -->|classic| n5["GameMoveService (bez zmian)"]:::existing
+    n3["POST /games/id/moves, /resign"]:::existing --> n4{"GameMoveService: variant"}:::newNode
+    n10["MCP play_move (AgentGameService)"]:::existing --> n4
+    n4 -->|classic| n5["ścieżka klasyczna (bez zmian)"]:::existing
     n4 -->|paper| n6["PaperMoveService"]:::newNode
     n7["GET /games/id, MCP get_state"]:::existing --> n8["PaperSettler.settle (czas, automat)"]:::newNode
     n6 --> n8
@@ -59,7 +65,9 @@ flowchart LR
     n6 --> n9
 ```
 
-Wniosek: wariant wchodzi przez jedno rozgałęzienie w trzech miejscach (ruch, odczyt stanu, rozstrzyganie czasu); wszystko inne (uczestnicy, zaproszenia, czat, publiczność, rewanż, historia) działa na wspólnym nagłówku.
+Wniosek: rozgałęzienie ruchu i poddania leży **w `GameMoveService`** (jedno miejsce dla trasy HTTP i dla MCP, które woła serwis bezpośrednio — `agent-game-service.ts:199`); odczyt stanu i rozstrzyganie czasu mają osobne rozgałęzienia. Uczestnicy, zaproszenia, czat, publiczność działają na wspólnym nagłówku bez zmian; rewanż, lobby, historia, sprzątanie i MCP wymagają jawnego przeniesienia ustawień (lista niżej).
+
+**Inwentarz miejsc czytających stan klasyka** (`grep move_count|moveCount|clock_ms|clockMs|seatOnTurn`, 2026-11-02 — każde przypisane do kroku planu): `game-move-service.ts` (krok 9), `timeout-settler.ts` (8), `game-service.ts` (7, 10), `agent-game-service.ts` — `PEEK_SQL` i `seatOnTurn(row.move_count…)` w długim odpytywaniu (17), `api/games/[id]/route.ts` (10), `game-room.tsx`, `play-field.tsx`, `lib/games/play.ts` (13), `db/src/cleanup/rules.ts` — `GAME_DEADLINE_SQL` z parzystości `move_count` (16), `entities/games/game.ts` (6). Implementacja zaczyna od ponownego przeszukania i aktualizacji tej listy.
 
 ### Moduły `core/src/games/paper/` (czyste)
 
@@ -67,7 +75,7 @@ Wniosek: wariant wchodzi przez jedno rozgałęzienie w trzech miejscach (ruch, o
 - `board.ts`: `PaperStone { x, y, seat, auto }`, `isOnBoard`, `isAllowed(stones, x, y)` — wolne, na planszy, przy `stones.length === 0` tylko środek, w przeciwnym razie istnieje kamień z `max(|dx|,|dy|) ≤ 3`. Indeks zajętości: `Map` po `y*101+x`.
 - `scoring.ts`: `scoreGame(moves): { scores: [s1, s2], fives: Five[] }`, deterministyczny algorytm BR-48:
   1. Przechodzi ruchy w kolejności. Każdy kamień ma listę `dirs` (kierunki, w których jest „w piątce”, najwyżej 2, w kolejności dodania).
-  2. Po ruchu `m` gracza P, dla kierunków w stałej kolejności (poziomo, pionowo, ukos ↘, ukos ↗): bierze maksymalny rząd R kamieni P przez `m` w tym kierunku; dzieli R na odcinki na kamieniach **pełnych** (`dirs.length === 2` i kierunek ∉ `dirs`); każdemu kamieniowi odcinka o długości ≥ 5 dopisuje kierunek do `dirs` (jeśli brak).
+  2. *(Kroki 2–3 zależą od Q11 i Q12; tekst opisuje wariant „cały rząd przekreślony” i stałą kolejność, do poprawy po odpowiedzi.)* Po ruchu `m` gracza P, dla kierunków w stałej kolejności (poziomo, pionowo, ukos ↘, ukos ↗): bierze maksymalny rząd R kamieni P przez `m` w tym kierunku; dzieli R na odcinki na kamieniach **pełnych** (`dirs.length === 2` i kierunek ∉ `dirs`); każdemu kamieniowi odcinka o długości ≥ 5 dopisuje kierunek do `dirs` (jeśli brak).
   3. Wynik gracza = suma po wszystkich jego rzędach i kierunkach ⌊długość odcinka / 5⌋, z podziałem na odcinkach według stanu `dirs` na końcu przebiegu.
   4. `fives` to odcinki punktujące pocięte na kolejne piątki (do rysowania kreski): `{ seat, from: {x,y}, to: {x,y} }`.
 
@@ -90,8 +98,13 @@ Zegar O w fazie automatu jest liczony od T: `remaining = clockMs[O](T) − (now 
 
 ### Serwisy (`app/src/server/services/games/`)
 
-- `PaperMoveService.play(gameId, seat, {x, y, moveNumber})`: blokada `games` → `PaperSettler.settle` → status, tura, `auto_seat`, `pending_auto_at`, numer ruchu → `isAllowed` → zapis ruchu, `scoreGame`, aktualizacja `paper_game_states` i zegara w jednej transakcji (`tx`). Kody: `MOVE_TOO_FAR`, `FIRST_MOVE_CENTER`, `CELL_OCCUPIED`, `NOT_YOUR_TURN`, `AUTO_MOVE_PENDING`, `GAME_FINISHED`, `MOVE_NUMBER_MISMATCH` (istniejące kody, gdzie są).
-- `PaperSettler` (port obok `timeoutSettler`): `settle(gameId, tx, now)`; `SqlTimeoutSettler.settleFor/settleForGuest/settleExpired` wybierają ścieżkę po `variant` — klasyczny `FINISH_SQL` dostaje warunek `variant = 'classic'`, żeby nigdy nie zakończył partii „papier”.
+- `GameMoveService.play/resign`: po zablokowaniu wiersza czyta `variant` i dla „papier” deleguje do `PaperMoveService` (wstrzykiwany w konstruktorze); ścieżka klasyczna bez zmian. Dzięki temu HTTP i MCP przechodzą tę samą drogę.
+- `PaperMoveService.play(gameId, seat, {x, y, moveNumber})`: (pod blokadą `games`) `PaperSettler.settle` → status, tura, `auto_seat`, `pending_auto_at`, numer ruchu → `isAllowed` → zapis ruchu, `scoreGame`, aktualizacja `paper_game_states` i zegara w jednej transakcji (`tx`). Kody: `MOVE_TOO_FAR`, `FIRST_MOVE_CENTER` (nowe), istniejące `CELL_OCCUPIED`, `NOT_YOUR_TURN` (także gdy czeka ruch automatu — komunikat „Automat stawia kamień”), `GAME_FINISHED`, `MOVE_NUMBER_MISMATCH`.
+- `PaperMoveService.resign`: **najpierw `PaperSettler.settle`** (przegrywający, któremu czas już minął, nie nadpisze wyniku `points` poddaniem), potem `resolveResignation`.
+- `PaperSettler` (port obok `timeoutSettler`): `settle(gameId, tx, now)` pod blokadą oraz `settleDue(gameId, now)` dla czytelników — **najpierw podgląd bez blokady** (`now ≥ min(deadline, pending_auto_at)`), blokada `FOR NO KEY UPDATE` i `settle` tylko wtedy (wzorzec `settleExpired` z #23; odpytywanie graczy i widzów D-33 nie blokuje wiersza). `SqlTimeoutSettler.settleFor/settleForGuest/settleExpired` wybierają ścieżkę po `variant` — klasyczny `FINISH_SQL` dostaje warunek `variant = 'classic'`, żeby nigdy nie zakończył partii „papier”.
+- `AgentGameService`: długie odpytywanie (`PEEK_SQL`, `seatOnTurn`) dla „papier” czyta `paper_game_states` (tura, `auto_seat`, `pending_auto_at`, termin), a `afterMove` waliduje względem `paper_game_states.move_count`.
+- `db/src/cleanup/rules.ts` (`GAME_DEADLINE_SQL`, partie samych gości): termin dla „papier” z `paper_game_states` i zegara gracza na ruchu (w fazie automatu — zegar przeciwnika od `T`), osobna gałąź SQL po `variant` + test na PostgreSQL.
+- `LOW_TIME_MS` (60 s) przy 1 min oznaczałby „mało czasu” od startu: próg dla „papier” = `min(60 s, 25% czasu partii)` (propozycja agenta, odwracalna).
 - `GameService.create` / `#insertGame`, `LobbyService` (`INSERT_LOBBY_GAME_SQL`), `RematchService` (`INSERT_GAME_SQL`): zapis `variant`, `time_control_ms`, `clock_ms_1/2 = time_control_ms`, a dla „papier” wiersz `paper_game_states`.
 - `GameService.getState/stateOf`: `ClockState` z `time_control_ms`; dla „papier” `PaperSettler.settle` (zamiast/obok `settleExpired`) i widok `paperView`.
 - `GameHistoryService`, `recordFinishedGame`, `admin-overview-service`: `end_reason = 'points'` w etykietach i licznikach; historia czyta wynik z `paper_game_states`.
@@ -107,10 +120,12 @@ Migracja `Migration<ts>_paper_variant.ts` (przez `npm run db:migration:create`, 
 
 | Encja → tabela | Pola | Ograniczenia |
 |---|---|---|
-| `Game` → `games` (rozszerzenie) | `variant` text NOT NULL DEFAULT `'classic'`; `time_control_ms` integer NOT NULL DEFAULT 600000; `end_reason` dostaje wartość `points` | `games_variant_check`: `variant in ('classic','paper')`; `games_time_control_check`: `(variant='classic' and time_control_ms=600000) or (variant='paper' and time_control_ms in (60000,120000,180000,300000))`; `games_clock_ms_check` dochodzi `clock_ms_n <= time_control_ms`; `games_paper_board_empty_check`: `variant='classic' or move_count=0`; `end_reason in ('five_in_row','draw')` ⇒ `variant='classic'`; `end_reason='points'` ⇒ `variant='paper'`; `games_winner_required_check` dopuszcza `winner_seat IS NULL` dla `points` (remis) |
+| `Game` → `games` (rozszerzenie) | `variant` text NOT NULL DEFAULT `'classic'`; `time_control_ms` integer NOT NULL DEFAULT 600000; `end_reason` dostaje wartość `points` | `games_variant_check`: `variant in ('classic','paper')`; `games_time_control_check`: `(variant='classic' and time_control_ms=600000) or (variant='paper' and time_control_ms in (60000,120000,180000,300000))`; `games_clock_ms_check` dochodzi `clock_ms_n <= time_control_ms`; `games_paper_board_empty_check`: `variant='classic' or move_count=0`; `end_reason in ('five_in_row','draw','timeout')` ⇒ `variant='classic'`; `end_reason='points'` ⇒ `variant='paper'`; `games_winner_required_check` dopuszcza `winner_seat IS NULL` dla `points` (remis) |
 | `PaperGameState` → `paper_game_states` (nowa, 1:1) | `game_id` PK FK → `games` ON DELETE CASCADE; `move_count` int; `score_1`, `score_2` int; `auto_seat` smallint NULL; `pending_auto_at` timestamptz NULL; `last_move_at` timestamptz NULL | `move_count >= 0`, `score_n >= 0`, `auto_seat in (1,2)`, `pending_auto_at IS NULL OR auto_seat IS NOT NULL` |
 | `PaperMove` → `paper_moves` (nowa, 1:n) | `game_id` FK → `games` ON DELETE CASCADE; `move_number` int; `x`, `y` smallint; `seat` smallint; `is_auto` boolean; `played_at` timestamptz | PK `(game_id, move_number)`; UNIQUE `(game_id, x, y)`; `x, y between 0 and 100`; `seat in (1,2)`; `move_number >= 1` |
 | `LobbySeeker` → `lobby_seekers` (rozszerzenie) | `variant`, `time_control_ms` (jak w `games`) | ten sam `CHECK` co `games_time_control_check` |
+
+Spójności między tabelami (`auto_seat = S` ⇒ `clock_ms_S = 0`) nie da się wyrazić `CHECK`-iem — pilnuje jej `PaperSettler` i test integracyjny. `END_REASONS` w `core` generuje `games_end_reason_check`, a dopisanie `points` zmienia typy `REASON_LABEL` i `finishedByEndReason` (`admin-overview-service.ts`), więc wszystko to idzie w tym samym kroku co migracja (inaczej `typecheck` nie przejdzie).
 
 Istniejące wiersze dostają `variant='classic'`, `time_control_ms=600000` (domyślne), więc klasyk działa bez zmian. `down()` usuwa nowe tabele i kolumny i przywraca poprzednie `CHECK`-i; przed `down` partie „papier” trzeba usunąć (migracja odmawia przy ich obecności — test). Dane wrażliwe: brak nowych. Kolor kamienia wynika z `seat` i `games.black_seat`; wynik i `fives` są pochodne (`scoreGame`), a `score_n` w stanie to cache dla historii, przeliczany przy każdym ruchu w tej samej transakcji.
 
@@ -135,8 +150,8 @@ Koperta i nagłówki CSRF jak dziś. Wszystkie zmiany addytywne; klient klasyka 
 - **`POST /api/games`** — konto: opcjonalne ciało `{ variant?: 'classic' | 'paper', timeControlMs?: 60000 | 120000 | 180000 | 300000 }` (brak ciała = klasyk, jak dziś); gość: te same pola w `createGuestGameSchema`. `timeControlMs` przy `classic` → `400 VALIDATION`; brak przy `paper` → 180000. Schemat `createGameSettingsSchema` w `core/validators/games/`.
 - **`POST /api/lobby/seeking`** — te same pola; lista lobby pokazuje wariant i czas; `pick` tworzy partię z ustawieniami szukającego.
 - **Rewanż** — kopiuje `variant` i `time_control_ms`.
-- **`GET /api/games/{id}`** — dochodzi `variant`, `timeControlMs`; dla `paper`: `paper: { moveCount, moves: [{ n, x, y, seat, auto, at }], scores: [s1, s2], fives: [{ seat, from, to }], autoSeat: 1 | 2 | null, autoMoveAt: ISO | null }` (`?after=n` działa po `n`); klasyczne `moves` puste. `clock.running` w fazie automatu = miejsce O. `result.reason` może być `points`, `result.scores` przy `points` i `resignation`.
-- **`POST /api/games/{id}/moves`** — ciało bez zmian `{ x, y, moveNumber }`; schemat ma granice 0–100 i `moveNumber ≤ 10201`; klasyczny serwis odrzuca `x, y > 14` dotychczasowym kodem (lekcja 2026-10-31: zakres sprawdzany przed `cellOf`). Nowe kody: `MOVE_TOO_FAR` (400), `FIRST_MOVE_CENTER` (400), `AUTO_MOVE_PENDING` (409).
+- **`GET /api/games/{id}`** — dochodzi `variant`, `timeControlMs`; dla `paper`: `paper: { moveCount, moves: [{ n, x, y, seat, auto, at }], scores: [s1, s2], fives: [{ seat, from, to }], autoSeat: 1 | 2 | null, autoMoveAt: ISO | null }`; klasyczne `moves` puste. `?after=n` działa po `n`: `gameStateQuerySchema` dostaje górną granicę 10201 (dziś `\d{1,3}` i `max(BOARD_CELLS)`), klasyk dalej odrzuca `after > 225` tym samym kodem; to samo dla `afterMove` w MCP. Piątki w `fives` tnie się od końca odcinka o mniejszej współrzędnej (deterministycznie). `clock.running` w fazie automatu = miejsce O. `result.reason` może być `points`, `result.scores` przy `points` i `resignation`.
+- **`POST /api/games/{id}/moves`** — ciało bez zmian `{ x, y, moveNumber }`; schemat ma granice 0–100 i `moveNumber ≤ 10201`; klasyczny serwis odrzuca `x, y > 14` **dokładnie dotychczasowym kodem, statusem i `fieldErrors`** (test kontraktu przed i po; lekcja 2026-10-31: zakres sprawdzany przed `cellOf`). Nowe kody: `MOVE_TOO_FAR` (400), `FIRST_MOVE_CENTER` (400); oczekiwanie na automat to istniejące `NOT_YOUR_TURN` (409).
 - **Historia** `GET /api/history` — wpis dostaje `variant` i `scores` (dla `paper`).
 
 ## 📝 UI/UX
@@ -153,7 +168,8 @@ Wybór „Wariant: Klasyczny | Papier i ołówek” (domyślnie Klasyczny) i —
 - **Pola dozwolone** (≤ 3 od kamienia) lekko wyróżnione tokenem; pole niedozwolone nieaktywne z opisem dla czytnika.
 - **Piątki** — kreska „ołówkiem” (SVG, token) przez każdą policzoną piątkę; ostatni ruch i ruchy automatu oznaczone (automat: dodatkowy wskaźnik i `aria-live` „Automat postawił kamień za …”).
 - **Krawędź planszy** (współrzędna ±50) widoczna jako koniec kratki.
-- **Dotyk:** jak w klasyku (spec #181) — stuknięcie zaznacza, „Postaw kamień” stawia; dodatkowo przyciski „przesuń zaznaczenie” (4 × 44 px) przy zaznaczeniu.
+- **Dotyk:** jak w klasyku (spec #181) — stuknięcie zaznacza, „Postaw kamień” stawia. Pod planszą **zawsze widoczny** pasek: 4 strzałki przesuwające zaznaczenie o jedno pole (okno przesuwa się za zaznaczeniem, gdy wyjdzie poza widok) oraz „−”/„+” — 6 × 44 px + 5 × 4 px = 284 px ≤ 288 px (okno 320). Na starcie tury zaznaczenie stoi na ostatnim kamieniu przeciwnika, więc cały ruch da się wykonać bez stukania w pole 14–19 px. „Wyśrodkuj” w wierszu z „Postaw kamień”. Budżet wysokości 320×568: plansza 288 + pasek 52 + przycisk 44 względem dzisiejszych 492 px dołu przycisku (spec #181) ≈ 544 px < 568 — do potwierdzenia testem integracyjnym. Plansza ma `touch-action: none` (przeciąganie i szczypanie tylko w jej obrębie); powiększanie strony przeglądarki działa poza planszą (WCAG 1.4.4).
+- **Logika widoku** (poziomy, przesuwanie, próg 8 px, znacznik kierunku, ruch zaznaczenia) jako czysty reduktor `paper-board-view.ts` w `packages/ui/src/game`, testowany jednostkowo; komponent tylko mapuje zdarzenia na akcje (100% pokrycia bez testów gestów w `renderToStaticMarkup`; zdarzenia wskaźnika — `@testing-library/react` + `jsdom`).
 - **Wynik i zegary:** licznik punktów przy każdym zegarze; w fazie automatu przy zegarze prowadzącego „Automat”, a w statusie „Automat stawia kamień…”. Baner końca: „Wygrana 7 : 5”, „Remis 4 : 4”, „Przegrana przez poddanie”.
 
 ### Studium rozmiaru pola na telefonie (weryfikacja sugestii R10)
@@ -170,7 +186,7 @@ Szerokość planszy = szerokość okna − 2 × 16 px (spec #181, R8); rozmiar p
 
 Wnioski:
 - **N = 15 to parytet z klasykiem** (te same piksele na pole), więc domyślne 15 nie pogarsza dzisiejszej gry; spec #181 odrzucił pola < 19 px jako „regres dla palców”.
-- WCAG 2.2 **SC 2.5.8 (AA)** wymaga celu ≥ 24×24 CSS px albo wyjątku; przylegające pola planszy nie spełniają wyjątku odstępu nawet przy N = 15 na większości telefonów (dotyczy też klasyka dziś). Spełniamy wyjątek **„Equivalent”**: tę samą funkcję (wybór pola) daje sterowanie ≥ 44 px — dwuetapowe stawianie z przyciskami „przesuń zaznaczenie”.
+- WCAG 2.2 **SC 2.5.8 (AA)** wymaga celu ≥ 24×24 CSS px albo wyjątku ([W3C Understanding 2.5.8](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html)); przylegające pola planszy nie spełniają wyjątku odstępu nawet przy N = 15 na większości telefonów (dotyczy też klasyka dziś). Spełniamy wyjątek **„Equivalent”**: tę samą funkcję (wybór pola) daje zawsze widoczne sterowanie ≥ 44 px — strzałki zaznaczenia ze startem na ostatnim kamieniu przeciwnika i „Postaw kamień”.
 - **N = 19–21 przy 320–360 px daje pola 14–17 px** — da się grać tylko dzięki dwuetapowemu stawianiu; to poziom „przeglądu sytuacji”, nie domyślny. Zakres 15–21 (sugestia właściciela) zostaje, domyślnie 15.
 - Nie ma danych o rzeczywistych urządzeniach graczy ani testu z palcem — kryterium akceptacji to zrzuty i test integracyjny na 320/360/390 px; do sprawdzenia w partiach testowych (A-17, A-18).
 
@@ -198,7 +214,7 @@ Prototype: brak (do decyzji przy przeglądzie; ekran można pokazać w Storybook
 - **Wspólne `CHECK`-i i `FINISH_SQL` klasyka** — błąd w rozgałęzieniu mógłby zakończyć partię „papier” klasyczną przegraną na czas albo odwrotnie. Mitygacja: `variant = 'classic'` w SQL klasyka, `CHECK`-i rozdzielające `end_reason` po wariancie (błąd = `500` w teście, nie cichy zły wynik), testy integracyjne obu wariantów.
 - **Kontrakty (`BACKWARD_COMPATIBILITY.md`)** — §2 API HTTP: tylko nowe pola opcjonalne i nowe kody błędów dla nowych sytuacji (dozwolone bez ograniczeń); §5 zasady gry w danych: `BOARD_SIZE`/`WIN_LENGTH` klasyka bez zmian, a parametry wariantu (`variant`, `time_control_ms`) zapisane w partii; MCP nie jest wymienione jako chroniona powierzchnia, ale zmiany i tak są addytywne. §1 API pakietów: nowe eksporty `@gomoku/core`/`@gomoku/ui`, żaden nie znika.
 - **Migracja (§4)** — addytywna: nowe tabele, kolumny z domyślnymi, `CHECK`-i spełnione przez istniejące wiersze (DROP/ADD w transakcji); PR dostaje etykietę `risk-high` i plan wycofania w opisie (`SDLC.md`); `down` możliwy tylko bez partii „papier”.
-- **Wydajność** — przeliczanie `scoreGame` i odtwarzanie planszy z `paper_moves` przy każdym ruchu: O(ruchy); ≤ ~600 ruchów w 5 min na gracza; host 2 GB (lekcja 2026-10-30) — pomijalne, sprawdzić pomiarem w teście integracyjnym (100 ruchów < 50 ms na ruch).
+- **Wydajność** — przeliczanie `scoreGame` i odtwarzanie planszy z `paper_moves` przy każdym ruchu: O(ruchy); ≤ ~600 ruchów w 5 min na gracza; host 2 GB (lekcja 2026-10-30) — pomijalne. Sprawdzenie: test jednostkowy liczby operacji (liniowo w liczbie ruchów) i jednorazowy pomiar poza bramką CI (pomiar czasu w CI byłby niestabilny).
 - **Kierunek produktu (nie defekt):** popyt niesprawdzony (A-16, Q-21); reguła automatu może nie zniechęcać do przeczekiwania (A-17); krawędź 101×101 osiągalna (A-18). Tańszy test przed budową: partie na papierze z zegarem (brief, „Następna niepewność”).
 
 ## 📝 Decisions in play
@@ -214,7 +230,7 @@ Opiera się na D-34, BR-46…BR-51, N-14 (Bartosz Wójcik, 2026-11-02). Zawęża
 5. **Ścieżki dodatkowe** — lobby, rewanż, historia, panel admina, MCP.
 6. **Domknięcie** — testy integracyjne end-to-end, dokumentacja, zrzuty.
 
-Fazy 1–2 są niewidoczne dla graczy; od fazy 3 wariant jest dostępny tylko przez API, dopóki faza 4 nie doda wyboru w UI.
+**Fazy to kolejność commitów w jednym PR-ze (R11, AGENTS.md pkt 11), nie osobne wdrożenia.** Stan pośredni (np. rewanż partii „papier” tworzący klasyka, bo `INSERT_GAME_SQL` bierze domyślne kolumny; MCP trafiający do ścieżki klasycznej) nie może trafić na `main`. Jeśli PR okaże się za duży do przeglądu, dopuszczalny jest tylko podział pionowy: PR 1 = fazy 1–4 + rewanż, historia, sprzątanie i **blokada** dołączania agenta/lobby do partii „papier” (`409`); PR 2 = lobby i MCP.
 
 ## 📋 Implementation Plan
 
@@ -226,12 +242,12 @@ Fazy 1–2 są niewidoczne dla graczy; od fazy 3 wariant jest dostępny tylko pr
 5. Schematy: `createGameSettingsSchema`, granice `moveCreateSchema` (0–100), `agent-tool-schema`.
 
 **Faza 2 — dane (`packages/db`)**
-6. Encje `PaperGameState`, `PaperMove`, pola `Game.variant`, `Game.timeControlMs`, `LobbySeeker` + `CHECK`-i; migracja przez `db:migration:create`, przegląd snapshotu; `tests/integration/game-schema.test.ts`: każdy nowy `CHECK` na PostgreSQL, `up`/`down`.
+6. Encje `PaperGameState`, `PaperMove`, pola `Game.variant`, `Game.timeControlMs`, `LobbySeeker` + `CHECK`-i; `END_REASONS` + `points` razem z `REASON_LABEL`, etykietami panelu i `finishedByEndReason`; migracja przez `db:migration:create`, przegląd snapshotu; `tests/integration/game-schema.test.ts`: każdy nowy `CHECK` na PostgreSQL, `up`/`down`.
 
 **Faza 3 — rozgrywka (`packages/app/src/server`)**
 7. `GameService.create` + `POST /api/games` (konto i gość) z ustawieniami; wiersz `paper_game_states`.
-8. `PaperSettler` + rozgałęzienie w `SqlTimeoutSettler` (`variant = 'classic'` w SQL klasyka) + rejestracja w `container.ts` (`random`).
-9. `PaperMoveService.play` + rozgałęzienie w `POST /moves`; `resign` dla „papier”.
+8. `PaperSettler` (`settle` pod blokadą, `settleDue` z podglądem bez blokady) + rozgałęzienie w `SqlTimeoutSettler` (`variant = 'classic'` w SQL klasyka) + rejestracja w `container.ts` (`random`).
+9. `PaperMoveService.play/resign` + rozgałęzienie w `GameMoveService` (HTTP i MCP jedną drogą); poddanie po `settle` — test: przegrywający po upływie czasu nie zmienia wyniku `points` poddaniem.
 10. `getState`/`stateOf`/`loadGameView`: `paperView`, `?after=`; test integracyjny API: pełna partia, upływ czasu przegrywającego, faza automatu, remis, poddanie (`game-paper-api.test.ts`, czas przez `turn_started_at` w bazie jak w `game-clock-api.test.ts`).
 
 **Faza 4 — ekran (`packages/ui`, `packages/app`)**
@@ -242,8 +258,8 @@ Fazy 1–2 są niewidoczne dla graczy; od fazy 3 wariant jest dostępny tylko pr
 **Faza 5 — ścieżki dodatkowe**
 14. Lobby (`lobby_seekers`, lista, `pick`) + test integracyjny.
 15. Rewanż (kopiowanie ustawień) + test.
-16. Historia (`variant`, `scores`, `REASON_LABEL.points`), panel admina (etykieta, licznik `points`), liczniki par.
-17. MCP: `agentGameView` dla „papier” (wycinek, `boardOrigin`, `scores`, `autoSeat`), zakres 0–100, opisy; `agent-play-api.test.ts` dla wariantu.
+16. Historia (`variant`, `scores`), panel admina, liczniki par; `db/src/cleanup/rules.ts` — termin partii „papier” w `GAME_DEADLINE_SQL` + test na PostgreSQL. (`REASON_LABEL.points` i `finishedByEndReason` już w kroku 6.)
+17. MCP: `agentGameView` dla „papier” (wycinek, `boardOrigin`, `scores`, `autoSeat`), `PEEK_SQL`/tura z `paper_game_states` w długim odpytywaniu, `afterMove` do 10201, zakres 0–100, opisy; `agent-play-api.test.ts` dla wariantu (agent wykrywa swoją turę i ruch automatu przed końcem `waitSeconds`).
 
 **Faza 6 — domknięcie**
 18. Dokumentacja: `README.md` (zasady wariantu), `docs/architektura.md` (model danych), `packages/ui/docs/design-system.md` (`PaperBoard`), teksty „plansza 15×15 · 10 minut” warunkowe po wariancie.
