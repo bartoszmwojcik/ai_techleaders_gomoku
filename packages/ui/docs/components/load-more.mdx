@@ -1,0 +1,56 @@
+import { ArgTypes, Canvas, Meta } from "@storybook/addon-docs/blocks";
+import { LoadMore } from "@gomoku/ui/game/load-more";
+import * as Stories from "./load-more.stories";
+
+<Meta of={Stories} />
+
+# Pokaż więcej
+
+## 1. Do czego służy
+
+Dopisuje kolejną stronę wierszy pod stronicowaną listą (kursor): historia partii, w przyszłości lobby.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Stany
+
+| Stan | Co widać |
+|---|---|
+| `idle` | Przycisk drugorzędny z etykietą („Pokaż starsze”). |
+| `loading` | Ten sam przycisk, `aria-busy`, spinner; kliknięcia są ignorowane. Przycisk **nie** dostaje `disabled`, więc nie traci fokusu klawiatury. |
+| `error` | `Alert` z `role="alert"` (tytuł + wskazówka) i przycisk ponowienia („Spróbuj ponownie”). |
+| `done` | Brak przycisku; opcjonalna notatka („To już wszystkie partie.”). Bez notatki nic nie jest renderowane. |
+
+<Canvas of={Stories.Ladowanie} />
+<Canvas of={Stories.BladZPonowieniem} />
+<Canvas of={Stories.KoniecListy} />
+
+## 3. Dostępność
+
+- Przycisk zostaje w kolejności tabulacji w stanach `idle`, `loading` i `error` — fokus nie ucieka po dopisaniu wierszy.
+- Nowe wiersze nie są ogłaszane po jednym: wywołujący ogłasza zbiorczo przez osobny `role="status"` (np. „Dodano 20 starszych partii.”).
+- Błąd ogłasza `role="alert"`.
+- Komponent nie ma wbudowanych tekstów; wszystkie etykiety są propsami. Stan i wywołanie sieciowe prowadzi wywołujący (ochrona przed podwójnym kliknięciem po jego stronie).
+
+## 4. Responsywność
+
+<Canvas of={Stories.BladNaWaskimEkranie} />
+
+## 5. API
+
+<ArgTypes of={LoadMore} />
+
+## 6. Kod
+
+```tsx
+import { LoadMore } from "@gomoku/ui/game/load-more";
+
+<LoadMore
+  status={status}
+  onLoadMore={() => void loadNext()}
+  label="Pokaż starsze"
+  retryLabel="Spróbuj ponownie"
+  errorTitle="Nie udało się wczytać starszych partii"
+  errorMessage="Sprawdź połączenie z internetem i spróbuj ponownie."
+/>;
+```
