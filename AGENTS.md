@@ -16,7 +16,7 @@ Ten plik jest jedynym źródłem instrukcji dla agentów AI. `CLAUDE.md` tylko g
 
 ## Stack i architektura (obowiązujące założenia)
 
-Gomoku to aplikacja webowa (gra 1:1 online, wymagania: `.ai/specs/product-brief.md`). Poniższe decyzje są wiążące — nie zmieniaj ich ani nie dodawaj alternatyw (inny ORM, inny kontener DI, inna biblioteka UI, inny menedżer pakietów) bez wyraźnej zgody użytkownika. Szczegóły i uzasadnienia: `.ai/specs/implemented/2026-10-18-monorepo-architecture.md`, opis dla ludzi: `README.md`.
+Gomoku to aplikacja webowa (gra 1:1 online, wymagania: `.ai/specs/product-brief.md`). Poniższe decyzje są wiążące — nie zmieniaj ich ani nie dodawaj alternatyw (inny ORM, inny kontener DI, inna biblioteka UI, inny menedżer pakietów) bez wyraźnej zgody użytkownika. Szczegóły i uzasadnienia: `.ai/specs/implemented/2026-10-18-monorepo-architecture.md`, opis dla ludzi: `README.md` (użytkownik, instalacja) i `docs/architektura.md` (stack, pakiety).
 
 | Obszar | Technologia |
 | --- | --- |
