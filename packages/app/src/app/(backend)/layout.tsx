@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-import { assertBackendEnabled } from "@/server/backend-gate";
+import { requireAdmin } from "@/server/http/admin-gate";
 
 import "@gomoku/ui/globals.css";
 
@@ -10,9 +10,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function BackendLayout({ children }: Readonly<{ children: ReactNode }>) {
-  // Interim production gate (issue 152, see backend-gate.ts); pages, route handlers and actions repeat it (a layout does not cover them).
-  assertBackendEnabled();
+export default async function BackendLayout({ children }: Readonly<{ children: ReactNode }>) {
+  // 404 for everybody but the installation administrator (E08-S02). Pages, route handlers and actions repeat it: a layout does not cover them.
+  await requireAdmin();
 
   return (
     <html lang="pl">

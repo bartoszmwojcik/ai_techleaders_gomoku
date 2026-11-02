@@ -157,6 +157,7 @@ describe("auth services", () => {
       expect(cradle.chatService).toBe(cradle.chatService);
       expect(cradle.chatConfig).toBe(cradle.serverConfig.chat);
       expect(cradle.adminEmail).toBe(cradle.serverConfig.adminEmail);
+      expect(cradle.adminOverviewService).toBe(cradle.adminOverviewService);
       expect(cradle.gameMoveService).toBe(cradle.gameMoveService);
       expect(cradle.rematchService).toBe(cradle.rematchService);
       expect(cradle.invitationCodes).toBe(cradle.invitationCodes);

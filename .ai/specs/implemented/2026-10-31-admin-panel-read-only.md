@@ -1,7 +1,7 @@
 # Panel `/backend` dla administratora: liczniki partii i lista kont (tylko odczyt)
 
-Status: draft (specyfikacja do zatwierdzenia). Zgłoszenie: E08-S02 (#158), epik E08 (#155).
-Zależności: E08-S01 (#157, konto administratora; specyfikacja w draft PR #161, `.ai/specs/implemented/2026-10-31-installation-admin-account.md`), #156 (`ADMIN_EMAIL`), PR #154 (bramka doraźna `assertBackendEnabled()`, którą ta historyjka zastępuje), E06-S03 (#129, licznik wg pary typów, tylko jedna sekcja panelu).
+Status: **wdrożona** (2026-11-02, PR implementacji E08-S02; para typów czyta `FinishedGameStatsService` z #129; strona kont używa zwykłych linków `<a>` zamiast `next/link`). Wcześniej: draft. Zgłoszenie: E08-S02 (#158), epik E08 (#155).
+Zależności: E08-S01 (#157, konto administratora; `.ai/specs/implemented/2026-10-31-installation-admin-account.md`), #156 (`ADMIN_EMAIL`), PR #154 (bramka doraźna `assertBackendEnabled()`, którą ta historyjka zastępuje), E06-S03 (#129, licznik wg pary typów, tylko jedna sekcja panelu).
 Decyzje: D-32, BR-35, BR-37, BR-14 (wyjątek), D-22, N-12, A-10, Q-14. Źródło decyzji: `.ai/specs/research/decisions/2026-10-31-admin.md` (osąd i potrzeba właściciela, nie wynik badania).
 
 ## 📝 TLDR

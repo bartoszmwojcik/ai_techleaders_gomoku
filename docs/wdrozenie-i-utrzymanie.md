@@ -149,3 +149,14 @@ docker compose --env-file .env.production -f compose.prod.yaml exec -it app npm 
 - Polecenie działa na bazie z `DATABASE_URL` procesu (w repozytorium: na bazie dev) i wypisuje jej adres przed pytaniem o hasło; wynik to jedna linia JSON bez sekretów.
 - Rejestracja przez stronę na `ADMIN_EMAIL` jest odrzucana tym samym komunikatem co zajęty e-mail, konta nie można usunąć (`403 ADMIN_ACCOUNT_PROTECTED`), a `db:cleanup` nie kasuje go jako niepotwierdzonego.
 - Zmiana `ADMIN_EMAIL` po wdrożeniu: stare konto staje się zwykłym graczem (traci ochronę przed usunięciem), nowy adres wymaga `admin:create` (Q-15 w briefie jest otwarte).
+
+## Panel administratora
+
+`/backend` (E08-S02, BR-37) jest panelem **tylko do odczytu** dla administratora instalacji. Otwiera się wyłącznie po zalogowaniu na konto z `ADMIN_EMAIL` z potwierdzonym e-mailem; każdy inny odwiedzający (brak sesji, sesja wygasła, zwykły gracz, niedostępna baza, nieustawiony `ADMIN_EMAIL`) dostaje zwykłe `404`, bez przekierowania i bez śladu istnienia panelu. Rola jest sprawdzana z konfiguracji przy każdym żądaniu (bramka `requireAdmin()` w `packages/app/src/server/http/admin-gate.ts`), więc po `admin:create` (unieważnienie sesji) lub zmianie `ADMIN_EMAIL` dostęp znika natychmiast. Bramka doraźna z #154 została zastąpiona; w środowisku dev panel też wymaga konta administratora.
+
+Panel pokazuje:
+
+- **Liczniki:** konta (wszystkie, potwierdzone, niepotwierdzone); partie w bazie teraz wg statusu, początku i zakończenia (to stan chwilowy: `db:cleanup` usuwa część zakończonych partii po ok. godzinie); zakończone partie dziś, w 7 dni i razem oraz wg pary typów uczestników z trwałego licznika (E06-S03, doba w `Europe/Warsaw`).
+- **Konta:** stronicowana lista (po 25) z nazwą, **e-mailem**, potwierdzeniem e-maila, datą założenia, liczbą zakończonych partii i rolą. Wyszukiwanie tylko po nazwie gracza (e-mail w adresie URL trafiłby do logów i nagłówka `Referer`), sortowanie po nazwie lub dacie założenia. E-mail jest wyjątkiem od BR-14 widocznym wyłącznie tutaj; wymagania prawne takiego dostępu (RODO, Q-14) trzeba sprawdzić przed udostępnieniem gry osobom z zewnątrz.
+
+Panel nie ma żadnej akcji zmieniającej dane: w grupie `(backend)` nie ma route handlerów ani server actions, a test strażnik `admin-gate.guard.test.ts` zawodzi, gdy któryś pojawi się bez `requireAdmin()` (lub w ogóle). Odpowiedź z danymi nie jest buforowana.
