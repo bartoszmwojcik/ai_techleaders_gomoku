@@ -5,11 +5,12 @@ import { join } from "node:path";
 import type { Orm } from "@gomoku/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { createOrm, entities, PasswordResetToken, GamePlayer } = vi.hoisted(
+const { createOrm, entities, PasswordResetToken, EmailChangeToken, GamePlayer } = vi.hoisted(
   () => ({
     createOrm: vi.fn(),
     entities: [] as unknown[],
     PasswordResetToken: { name: "PasswordResetToken" },
+    EmailChangeToken: { name: "EmailChangeToken" },
     GamePlayer: { name: "GamePlayer" },
   }),
 );
@@ -17,6 +18,7 @@ vi.mock("@gomoku/db", () => ({
   createOrm,
   entities,
   PasswordResetToken,
+  EmailChangeToken,
   GamePlayer,
 }));
 
@@ -98,6 +100,7 @@ describe("getContainer", () => {
       createOrm,
       entities: [],
       PasswordResetToken,
+      EmailChangeToken,
       GamePlayer,
     }));
     const { getContainer: forRoutes } = await loadContainer();
@@ -105,6 +108,7 @@ describe("getContainer", () => {
       createOrm,
       entities,
       PasswordResetToken,
+      EmailChangeToken,
       GamePlayer,
     }));
 
@@ -164,10 +168,16 @@ describe("auth services", () => {
       expect(cradle.finishedGameStatsService).toBe(cradle.finishedGameStatsService);
       expect(await cradle.timeoutSettler.settleFor("user")).toBeUndefined();
       expect(cradle.passwordResetService).toBe(cradle.passwordResetService);
+      expect(cradle.emailChangeService).toBe(cradle.emailChangeService);
       const nativeUpdate = vi.fn(async () => 1);
       await cradle.invalidateResetTokens("user", { nativeUpdate } as never);
       expect(nativeUpdate).toHaveBeenCalledWith(
         PasswordResetToken,
+        { user: "user", usedAt: null },
+        { usedAt: expect.any(Date) },
+      );
+      expect(nativeUpdate).toHaveBeenCalledWith(
+        EmailChangeToken,
         { user: "user", usedAt: null },
         { usedAt: expect.any(Date) },
       );
