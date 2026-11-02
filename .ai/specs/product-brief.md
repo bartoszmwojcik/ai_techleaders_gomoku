@@ -18,6 +18,7 @@
 > Zmiana 2026-10-31 (później tego dnia; osąd właściciela, nie wynik badania): D-29 zamyka Q-09 (tożsamość klienta MCP, token, transport, limity początkowe, deklarowana nazwa modelu agenta), BR-31 nadpisuje BR-30 (opcjonalna deklarowana nazwa modelu; rezerwacja nazwy konta „Agent”). Źródło: `research/decisions/2026-10-31-mcp-agent-identity.md`, specyfikacje `implemented/2026-10-31-mcp-agent-identity.md` i `implemented/2026-10-31-agent-joins-private-game.md`.
 > Zmiana 2026-10-31 (jeszcze później tego dnia; osąd właściciela, nie wynik badania): D-30 i BR-32…BR-34 wprowadzają czat tekstowy w partii (konto, gość, agent; wyłączenie per partia; limity jako wartości początkowe; kasowanie po zakończeniu partii), N-11 nadpisuje N-04, D-31 nadpisuje w części D-29/BR-31 (uprawnienia agenta: dochodzi `send_message`, czat w `get_state`), A-07…A-09 i Q-10…Q-12 opisują ryzyka i pytania. Źródło: `research/decisions/2026-10-31-chat.md`.
 > Zmiana 2026-10-31 (na końcu dnia; osąd i potrzeba właściciela, nie wynik badania): D-32 i BR-35…BR-38 wprowadzają rolę administratora (v1: administrator instalacyjny z `ADMIN_EMAIL` i panel `/backend` tylko do odczytu; nadawanie roli, dziennik audytowy, edycja nazwy i usuwanie cudzych kont jako kolejne historyjki E08), N-12 wyklucza resztę, BR-14 dostaje wyjątek (e-mail widoczny administratorowi), D-22 obejmuje dostęp administratora do danych, A-10…A-12 i Q-13…Q-15 opisują ryzyka i pytania. Źródło: `research/decisions/2026-10-31-admin.md`.
+> Zmiana 2026-11-02 (osąd właściciela, nie wynik badania): D-18 rozszerzone — zmiana adresu e-mail i nazwy gracza przechodzi z „Później” do zakresu (historyjka E05-S01, #190). Reguły rozstrzygnięte przez właściciela: nazwę wolno zmienić najwyżej raz na dobę, zmiana nazwy dotyczy tylko nowych partii (trwające zachowują nazwę), zmiana adresu unieważnia stare linki resetu hasła. Pozostałe decyzje bez zmian. Specyfikacja: `.ai/specs/2026-11-02-account-email-and-name-change.md`.
 
 ## Decision summary
 
@@ -31,7 +32,7 @@ do historii konta.
 
 Od 2026-10-24 MVP obejmuje też pełne zarządzanie kontem: rejestrację e-mailem i publiczną nazwą
 gracza, potwierdzenie e-maila jako osobną czynność asynchroniczną (D-24), reset i zmianę hasła oraz usunięcie konta z
-anonimizacją partii (D-13…D-18). To podnosi zakres MVP o wysyłkę poczty — koszt ograniczony do darmowego
+anonimizacją partii (D-13…D-18); od 2026-11-02 także zmianę e-maila i nazwy gracza (D-18). To podnosi zakres MVP o wysyłkę poczty — koszt ograniczony do darmowego
 planu (D-20), dostawca do wyboru w #38 (Q-02). Od 2026-10-26 konto jest aktywne bez potwierdzenia e-maila (D-24, BR-26), więc poczta nie blokuje gry; zaproszony znajomy może zagrać jako gość, bez konta (BR-22).
 Wysyłka ma się zmieścić w darmowym planie dostawcy (D-20), a gra ma działać także w przeglądarce
 telefonu (BR-20).
@@ -87,6 +88,7 @@ e-maila) da się sprawdzić dopiero pomiarem po udostępnieniu gry.
 - Dwóch użytkowników wykonuje naprzemienne ruchy, każdy pod własnym zegarem, i widzi stan partii oraz oba zegary (BR-04, BR-05). `[DOCUMENT]` tamże
 - Użytkownik wraca do historii zakończonych partii (BR-08). `[DOCUMENT]` tamże
 - Użytkownik, który zapomniał hasła, ustawia nowe przez link wysłany na e-mail; zalogowany może zmienić hasło (D-15, D-18). `[DOCUMENT]` `research/decisions/2026-10-24-accounts-and-data.md`
+- Zalogowany użytkownik poprawia adres e-mail (nowy adres potwierdza linkiem) albo nazwę gracza (najwyżej raz na dobę; dotyczy nowych partii), bez usuwania konta i historii (D-18, od 2026-11-02). `[DOCUMENT]` `.ai/specs/2026-11-02-account-email-and-name-change.md`
 - Użytkownik usuwa konto; jego partie zostają w historii przeciwników jako „Usunięty gracz” (BR-17, D-16). `[DOCUMENT]` tamże
 - Zalogowany użytkownik albo gość tworzy partię prywatną, przekazuje kod lub link własnemu agentowi LLM, który dołącza przez MCP jako „Agent” i gra do końca pod tym samym zegarem (D-28, BR-30). `[DOCUMENT]` `research/decisions/2026-10-31-agent-opponent.md`
 - Właściciel instancji (administrator instalacyjny) loguje się na konto z `ADMIN_EMAIL`, otwiera `/backend` i widzi liczniki partii oraz listę kont ze stanami (D-32, BR-35, BR-37). `[DOCUMENT]` `research/decisions/2026-10-31-admin.md`
@@ -114,6 +116,7 @@ Wpływ botów na odbiór gry: brak danych w żadnym z serwisów. Przeciwnik AI h
 - rejestracja (e-mail, nazwa gracza, hasło), logowanie i wylogowanie;
 - potwierdzenie e-maila linkiem, osobna czynność asynchroniczna bez blokad gry (D-24, BR-26);
 - reset hasła przez e-mail (D-15) i zmiana hasła po zalogowaniu (D-18);
+- zmiana adresu e-mail (nowy adres potwierdzany linkiem, unieważnia linki resetu) i nazwy gracza (najwyżej raz na dobę, tylko nowe partie) po zalogowaniu (D-18, od 2026-11-02; historyjka E05-S01);
 - usunięcie konta z anonimizacją partii (D-16), niedostępne w trakcie aktywnej partii (BR-21);
 - gra w przeglądarce na komputerze i na telefonie (BR-20);
 - tworzenie partii dla dwóch osób;
@@ -134,7 +137,6 @@ Wpływ botów na odbiór gry: brak danych w żadnym z serwisów. Przeciwnik AI h
 ### Później
 
 - rola administratora, kolejne historyjki E08 (każda za osobną decyzją, poza v1): nadawanie i odbieranie roli innemu kontu z dziennikiem audytowym (BR-36, BR-38; retencja i dostęp do dziennika: Q-13, blokujące przed tą historyjką), edycja nazwy gracza przez administratora (nowa funkcja względem D-18: `displayNameKey`, kolizje, rezerwacja „Agent”), usuwanie cudzego konta (nowa operacja bez hasła: kolejność blokad users→games, odmowa przy aktywnej partii BR-21, zamknięcie rewanżów, wpis audytu w tej samej transakcji; czy administrator może usunąć nadanego administratora — do decyzji); ponowne uwierzytelnienie przy działaniach niszczących i 2FA (Later);
-- zmiana adresu e-mail i nazwy gracza (D-18);
 - strona z informacją o przetwarzaniu danych — przed udostępnieniem gry osobom z zewnątrz (S3), nie dla znajomych (D-22);
 - zgłaszanie nadużyć i moderacja czatu (Q-10), historia czatu, gotowe frazy i emotki, zapamiętane ustawienie czatu na koncie;
 - interfejs CLI dla agenta, agent w lobby, przeciwnik hostowany przez nas (N-10; osobna decyzja po zobaczeniu licznika z D-28).
@@ -262,7 +264,7 @@ Właściciel wszystkich reguł: Bartosz Wójcik. Zmiana reguły: nowy wiersz nad
 | D-15 | Reset hasła przez e-mail jest w MVP (BR-19). Agent rekomendował odłożenie resetu; właściciel wybrał MVP. Wymaga dostawcy poczty (Q-02). | Bartosz Wójcik | Potwierdzona 2026-10-24 `[DOCUMENT]` |
 | D-16 | Usunięcie konta jest w MVP, z anonimizacją partii u przeciwników (BR-17). | Bartosz Wójcik | Potwierdzona 2026-10-24 `[DOCUMENT]` |
 | D-17 | ~~Potwierdzenie e-maila jest wymagane przed pierwszą grą; rejestracja od razu loguje (BR-23). Agent rekomendował weryfikację dopiero przed resetem; właściciel wybrał przed grą. | Bartosz Wójcik~~ **Nadpisane przez D-24.** | Bartosz Wójcik | Superseded 2026-10-26 |
-| D-18 | Zmiana hasła po zalogowaniu jest w MVP; zmiana e-maila i nazwy gracza — później. | Bartosz Wójcik | Potwierdzona 2026-10-24 `[DOCUMENT]` |
+| D-18 | Zmiana hasła po zalogowaniu jest w MVP; ~~zmiana e-maila i nazwy gracza — później~~. **Rozszerzone 2026-11-02:** zmiana adresu e-mail i nazwy gracza po zalogowaniu też jest w zakresie (historyjka E05-S01, #190), bo jedyną drogą poprawki była dotąd rezygnacja z konta i utrata historii (BR-17, BR-24). Reguły rozstrzygnięte przez właściciela: nazwę wolno zmienić najwyżej raz na dobę; zmiana nazwy dotyczy tylko nowych partii (trwające zachowują nazwę); zmiana adresu unieważnia stare linki resetu hasła. Osąd właściciela, bez dowodu popytu (A-01). Nowy adres nie obchodzi BR-26/BR-27: staje się adresem konta dopiero po kliknięciu linku wysłanego na niego. | Bartosz Wójcik | Potwierdzona 2026-10-24; rozszerzona 2026-11-02 `[DOCUMENT]` `.ai/specs/2026-11-02-account-email-and-name-change.md` |
 | D-19 | Gra jest „na razie” darmowa dla graczy; właściciel płaci za hosting. | Bartosz Wójcik | Potwierdzona 2026-10-20 `[DOCUMENT]` `research/2026-10-20-stakeholders.md` |
 | D-20 | Wysyłka poczty (potwierdzenie e-maila, reset) korzysta wyłącznie z darmowego planu dostawcy, z jego limitem wiadomości; wybór dostawcy w #38. | Bartosz Wójcik | Potwierdzona 2026-10-24 („A a”) `[DOCUMENT]` `research/decisions/2026-10-24-accounts-and-data.md` |
 | D-21 | Partia zapisuje sposób powstania (`invite` / `lobby`), żeby przyszły matchmaking był nową wartością, nie przebudową. | Bartosz Wójcik | Potwierdzona 2026-10-24 („D a”) `[DOCUMENT]` tamże |
