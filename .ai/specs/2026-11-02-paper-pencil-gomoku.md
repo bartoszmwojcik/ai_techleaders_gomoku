@@ -12,7 +12,7 @@ Dziś jest jeden wariant: swobodne gomoku 15×15, pierwsza piątka wygrywa, 10 m
 |---|---|---|---|
 | R1 | Odstęp kamieni | ≤ 3 pola (Chebyshev) od dowolnego kamienia; pierwszy kamień czarnych w środku | właściciel, BR-47 |
 | R2 | Zegar | Na gracza, 1/2/3/5 min, domyślnie 3; tylko ten wariant | właściciel, BR-49 |
-| R3 | Punkty | Liczone od nowa z bieżącego układu; rząd n → ⌊n/5⌋; krzyżowanie dozwolone; kamień w ≤ 2 kierunkach, pierwszeństwo wcześniejszej piątki | właściciel, BR-48 |
+| R3 | Punkty | Liczone od nowa z bieżącego układu; rząd n → ⌊n/5⌋; krzyżowanie dozwolone; kamień w ≤ 2 kierunkach, pierwszeństwo wcześniejszej piątki; punktujący rząd przekreślony w całości (także kamienie ponad pięć) | właściciel, BR-48, Q11 |
 | R4 | Koniec czasu | Przegrywający/remisujący pierwszy bez czasu → koniec; prowadzący → automat do końca czasu przeciwnika, zegar przeciwnika biegnie bez przerwy | właściciel, BR-50 |
 | R5 | Poddanie, domyślny wariant | Poddanie = przegrana bez względu na punkty; domyślnie klasyk | właściciel, Q-19, Q-20 |
 | R6 | Plansza | 101×101, środek (50, 50) | właściciel (rekomendacja przyjęta), BR-47 |
@@ -24,7 +24,7 @@ Dziś jest jeden wariant: swobodne gomoku 15×15, pierwsza piątka wygrywa, 10 m
 
 ## ⚠️ Open Questions (bramka ponownie otwarta tylko dla tych pytań — przegląd architektoniczny 2026-11-02)
 
-- **Q11.** Rząd 6–9 kamieni daje 1 punkt. Czy kamienie „nadwyżkowe” (poza pięcioma) są zużyte w tym kierunku? Ma to znaczenie tylko wtedy, gdy przez taki kamień przechodzą piątki w dwóch innych kierunkach. (a) **Cały rząd jest przekreślony**: każdy kamień rzędu ma zużyty ten kierunek. Reguła jest prosta i da się ją wytłumaczyć jednym zdaniem. (b) **Zużyte tylko pięć kamieni**, jak przy skreślaniu na papierze. Wtedy system musi sam wybrać, które pięć, np. od strony najstarszego kamienia, a gracz tego wyboru nie widzi przed ruchem. *(rekomendacja: a)*
+- ~~**Q11.**~~ **Rozstrzygnięte 2026-11-02 przez właściciela: (a) cały rząd jest przekreślony.** Rząd 6–9 kamieni daje 1 punkt. Czy kamienie „nadwyżkowe” (poza pięcioma) są zużyte w tym kierunku? Ma to znaczenie tylko wtedy, gdy przez taki kamień przechodzą piątki w dwóch innych kierunkach. (a) **Cały rząd jest przekreślony**: każdy kamień rzędu ma zużyty ten kierunek. Reguła jest prosta i da się ją wytłumaczyć jednym zdaniem. (b) **Zużyte tylko pięć kamieni**, jak przy skreślaniu na papierze. Wtedy system musi sam wybrać, które pięć, np. od strony najstarszego kamienia, a gracz tego wyboru nie widzi przed ruchem. *(rekomendacja: a)*
 - **Q12.** Jeden ruch tworzy piątki w trzech lub czterech kierunkach przez ten sam kamień, a kamień może należeć tylko do dwóch. Które dwa się liczą? (a) **Najkorzystniejsze dla gracza** (najwięcej punktów; przy remisie stała kolejność). (b) Stała kolejność: poziomo, pionowo, ukosy. *(rekomendacja: a)*
 
 ## 📝 Problem Statement
@@ -75,7 +75,7 @@ Wniosek: rozgałęzienie ruchu i poddania leży **w `GameMoveService`** (jedno m
 - `board.ts`: `PaperStone { x, y, seat, auto }`, `isOnBoard`, `isAllowed(stones, x, y)` — wolne, na planszy, przy `stones.length === 0` tylko środek, w przeciwnym razie istnieje kamień z `max(|dx|,|dy|) ≤ 3`. Indeks zajętości: `Map` po `y*101+x`.
 - `scoring.ts`: `scoreGame(moves): { scores: [s1, s2], fives: Five[] }`, deterministyczny algorytm BR-48:
   1. Przechodzi ruchy w kolejności. Każdy kamień ma listę `dirs` (kierunki, w których jest „w piątce”, najwyżej 2, w kolejności dodania).
-  2. *(Kroki 2–3 zależą od Q11 i Q12; tekst opisuje wariant „cały rząd przekreślony” i stałą kolejność, do poprawy po odpowiedzi.)* Po ruchu `m` gracza P, dla kierunków w stałej kolejności (poziomo, pionowo, ukos ↘, ukos ↗): bierze maksymalny rząd R kamieni P przez `m` w tym kierunku; dzieli R na odcinki na kamieniach **pełnych** (`dirs.length === 2` i kierunek ∉ `dirs`); każdemu kamieniowi odcinka o długości ≥ 5 dopisuje kierunek do `dirs` (jeśli brak).
+  2. *(Krok 2 zależy od Q12 — kolejność kierunków przy jednym ruchu; „cały rząd przekreślony” rozstrzyga Q11.)* Po ruchu `m` gracza P, dla kierunków w stałej kolejności (poziomo, pionowo, ukos ↘, ukos ↗): bierze maksymalny rząd R kamieni P przez `m` w tym kierunku; dzieli R na odcinki na kamieniach **pełnych** (`dirs.length === 2` i kierunek ∉ `dirs`); każdemu kamieniowi odcinka o długości ≥ 5 dopisuje kierunek do `dirs` (jeśli brak).
   3. Wynik gracza = suma po wszystkich jego rzędach i kierunkach ⌊długość odcinka / 5⌋, z podziałem na odcinkach według stanu `dirs` na końcu przebiegu.
   4. `fives` to odcinki punktujące pocięte na kolejne piątki (do rysowania kreski): `{ seat, from: {x,y}, to: {x,y} }`.
 
