@@ -47,6 +47,7 @@ Gra planszowa dla dwóch osób online: ciemna strona, drewniana plansza, jeden p
 | Baner potwierdzenia e-maila | `@gomoku/ui/game/verify-email-banner` | `/` i `/account` przy niepotwierdzonym e-mailu (nie blokuje gry; zamykalny, wraca po 7 dniach) | po potwierdzeniu, dla gościa |
 | Status szukania gry | `@gomoku/ui/game/seeking-status` | po oznaczeniu się jako szukający | zegar w partii, lista innych graczy |
 | Lista graczy | `@gomoku/ui/game/lobby-list` | strona lobby | historia partii |
+| Informacja rozwijana | `@gomoku/ui/game/info-toggle` | ikonka (i) przy nagłówku panelu czatu, rozwija krótką informację | komunikaty, które gracz musi zobaczyć |
 | Pokaż więcej | `@gomoku/ui/game/load-more` | pod stronicowaną listą (historia partii): przycisk, ładowanie, błąd z ponowieniem, koniec listy | lista bez stronicowania |
 | Skracana nazwa | `@gomoku/ui/game/truncated-name` | nick gościa i nazwa modelu agenta w wierszu listy (obcięcie z „…”, stały sufiks) | nazwy w nagłówkach i tekście ciągłym (zawijaj) |
 | Lista partii | `@gomoku/ui/game/history-list` | strona historii | lobby, trwające partie |

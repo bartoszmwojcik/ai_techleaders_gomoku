@@ -4,6 +4,7 @@ import { CHAT_MAX_LENGTH } from "@gomoku/core/chat/constants";
 import type { ChatMessageView } from "@gomoku/core/chat/types";
 import { Alert } from "@gomoku/ui/game/alert";
 import { Button } from "@gomoku/ui/game/button";
+import { InfoToggleButton, InfoToggleNote } from "@gomoku/ui/game/info-toggle";
 import { Panel } from "@gomoku/ui/game/panel";
 import { Skeleton, SkeletonRegion } from "@gomoku/ui/game/skeleton";
 import { useId, useState } from "react";
@@ -35,6 +36,10 @@ const TURN_ON_FAILED = "Nie udało się włączyć czatu. Spróbuj ponownie.";
 const DISABLED_BY_OPPONENT_TEXT = "Rozmówca wyłączył czat. Nie możesz teraz pisać.";
 const DISABLED_BY_OPPONENT_REASON = "Pisanie jest zablokowane: rozmówca wyłączył czat.";
 const LOADING_TEXT = "Wczytujemy czat…";
+const INFO_LABEL = "Informacja o wiadomościach czatu";
+// BR-34: the messages stay in the database until about an hour after the game ends, so "not saved" would be untrue.
+const INFO_TEXT =
+  "Wiadomości nie są trwale zapisywane: usuwamy je około godziny po zakończeniu partii, a przy usunięciu konta od razu. Widzą je tylko uczestnicy partii. Każdy z nich może wyłączyć czat w tej partii. Czat nie ma moderacji ani zgłaszania nadużyć.";
 
 /**
  * The chat of a game under the board and under the result (E07-S01). A game that waits shows only a
@@ -62,6 +67,8 @@ function LiveChat({ gameId, game, onGone }: Props) {
   // The setting the last failed change was meant to reach; cleared by the next attempt.
   const [failedChange, setFailedChange] = useState<boolean | null>(null);
   const loadingId = useId();
+  const infoId = useId();
+  const [infoOpen, setInfoOpen] = useState(false);
 
   const mySeat = game.you.seat;
   const opponent = game.players.find((player) => player.seat !== mySeat);
@@ -93,12 +100,21 @@ function LiveChat({ gameId, game, onGone }: Props) {
   return (
     <Panel title="Czat" data-testid="chat-panel">
       <div className="flex flex-wrap items-center justify-between gap-group">
-        <p className="m-0 flex min-w-0 items-baseline gap-group text-meta text-text-secondary">
-          <span className="shrink-0">z</span>
-          <span className="min-w-0 font-strong">
-            <PlayerLabel name={playerNameOf(opponent)} testId="chat-sender" />
-          </span>
-        </p>
+        <div className="flex min-w-0 items-center gap-group">
+          <p className="m-0 flex min-w-0 items-baseline gap-group text-meta text-text-secondary">
+            <span className="shrink-0">z</span>
+            <span className="min-w-0 font-strong">
+              <PlayerLabel name={playerNameOf(opponent)} testId="chat-sender" />
+            </span>
+          </p>
+          <InfoToggleButton
+            label={INFO_LABEL}
+            expanded={infoOpen}
+            controls={infoId}
+            onClick={() => setInfoOpen(!infoOpen)}
+            data-testid="chat-info-toggle"
+          />
+        </div>
         <div className="flex flex-wrap items-center gap-group">
           {switchable && (
             <Button
@@ -119,6 +135,9 @@ function LiveChat({ gameId, game, onGone }: Props) {
           </Button>
         </div>
       </div>
+      <InfoToggleNote id={infoId} open={infoOpen} data-testid="chat-info">
+        {INFO_TEXT}
+      </InfoToggleNote>
       {!chat.loaded && (
         <span id={loadingId} className="sr-only">
           {LOADING_TEXT}
