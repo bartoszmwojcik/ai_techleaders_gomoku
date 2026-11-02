@@ -11,6 +11,7 @@ import type { Seat } from "@gomoku/core/games/types";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { SpectatorChat } from "@/components/chat/spectator-chat";
+import { AudienceClosedScreen } from "@/components/games/audience-closed";
 import { GameClock } from "@/components/games/game-clock";
 import { PlayerLabel } from "@/components/games/player-label";
 import { PublicFlag } from "@/components/games/public-flag";
@@ -42,6 +43,8 @@ type Props = {
 export function SpectatorRoom({ gameId, initial }: Props) {
   const [game, setGame] = useState(initial);
   const [gone, setGone] = useState(false);
+  // The creator closed the audience (BR-43): the board and the chat are gone for good.
+  const [closed, setClosed] = useState(false);
   const [fails, setFails] = useState(0);
   // The newest state, so a poll asks only for the moves it does not know yet (`?after=`).
   const latest = useRef(initial);
@@ -68,6 +71,8 @@ export function SpectatorRoom({ gameId, initial }: Props) {
       setGame(merged);
     } else if (result.error.code === "NOT_FOUND") {
       setGone(true);
+    } else if (result.error.code === "AUDIENCE_CLOSED") {
+      setClosed(true);
     } else {
       setFails((count) => count + 1);
     }
@@ -91,7 +96,7 @@ export function SpectatorRoom({ gameId, initial }: Props) {
       void poll();
     },
   });
-  const needsPolling = !gone && !hidden && game.status === "active";
+  const needsPolling = !gone && !closed && !hidden && game.status === "active";
 
   useEffect(() => {
     if (!needsPolling) return;
@@ -121,6 +126,8 @@ export function SpectatorRoom({ gameId, initial }: Props) {
   const finished = game.status === "finished";
   // Only the server decides that the time is up: when the running clock reaches zero, it is asked at once.
   const clocks = useGameClock(game.clock, { finished: game.status !== "active", onExpire: () => void poll() });
+
+  if (closed) return <AudienceClosedScreen />;
 
   if (gone) {
     return (
@@ -202,7 +209,7 @@ export function SpectatorRoom({ gameId, initial }: Props) {
           readOnly
         />
       </div>
-      <SpectatorChat gameId={gameId} players={game.players} canWrite={game.canChat} onGone={() => setGone(true)} />
+      <SpectatorChat gameId={gameId} players={game.players} canWrite={game.canChat} onGone={() => void read()} />
       <TextLink href="/" placement="standalone">
         Wróć na stronę główną
       </TextLink>

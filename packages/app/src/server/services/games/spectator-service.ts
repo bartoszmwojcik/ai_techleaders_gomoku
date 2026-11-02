@@ -1,5 +1,6 @@
 import {
   ConflictError,
+  GoneError,
   NotFoundError,
   SPECTATORS_MAX,
   SPECTATOR_ACCESS_MS,
@@ -30,6 +31,7 @@ type Deps = {
 };
 
 export const SPECTATORS_FULL_MESSAGE = "Partia ma komplet widzów";
+export const AUDIENCE_CLOSED_MESSAGE = "Twórca zamknął publiczność tej partii.";
 
 /** Who asks to watch: the signed-in account (it wins) and/or the hash of the spectator token cookie. */
 export type SpectatorIdentity = { userId?: string; tokenHash?: string };
@@ -224,6 +226,9 @@ export class SpectatorService {
       const game = await tx.findOneOrFail(Game, gameId, {
         failHandler: () => new NotFoundError(GAME_NOT_FOUND_MESSAGE),
       });
+      // Kill-switch (BR-43): the spectator is known, so they are told - and get nothing of the game.
+      // The throw rolls back the slide of their access above.
+      if (!game.isPublic) throw new GoneError(AUDIENCE_CLOSED_MESSAGE, { code: "AUDIENCE_CLOSED" });
       const players = await tx.find(GamePlayer, { game: gameId }, { populate: ["user"], orderBy: { seat: "asc" } });
       const { players: seats, ...view } = watchableState(game, players, after, now);
       const audience = await readAudience(tx, game, now);

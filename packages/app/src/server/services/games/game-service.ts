@@ -64,6 +64,8 @@ export const ACTIVE_SLOT_CONSTRAINT = "game_players_user_id_active_unique";
 
 export const ACTIVE_GAME_EXISTS_MESSAGE =
   "Masz już partię. Dokończ ją albo anuluj oczekującą.";
+export const AUDIENCE_NOT_CLOSABLE_MESSAGE = "Publiczność można zamknąć tylko w trwającej albo zakończonej partii.";
+export const GAME_NOT_PUBLIC_MESSAGE = "Ta partia nie jest publiczna.";
 export const GAME_NOT_CANCELLABLE_MESSAGE =
   "Tej partii nie można już anulować.";
 export const OWN_WAITING_GAME_MESSAGE =
@@ -129,6 +131,13 @@ const GUEST_SLOT_SQL = `
 // The browser's token moves to its new game; the rows that held it are ended (no slot left).
 const RELEASE_TOKEN_SQL = `update game_players set guest_token_hash = null where guest_token_hash = ?`;
 
+// Closing the audience (BR-43): the game row is the lock, so a join under way sees the answer.
+const LOCK_FOR_CLOSING_SQL = `
+  select status, is_public, audience_closed_at is not null as closed from games where id = ? for update`;
+const CLOSE_AUDIENCE_SQL = `update games set is_public = false, audience_closed_at = ? where id = ?`;
+// The harassment the switch answers (Q-10): what the spectators wrote leaves the players' chat with them.
+const DELETE_SPECTATOR_MESSAGES_SQL = `delete from chat_messages where game_id = ? and spectator_id is not null`;
+
 const RELEASE_SLOTS_SQL = `update game_players set is_active = false where game_id = ? and is_active`;
 
 /**
@@ -185,6 +194,10 @@ export type GameState = BoardView & {
    * for a private game, so the flag disappears when the audience is closed.
    */
   audience?: Audience;
+  /** Only for the creator of a public game, in progress or finished: may close the audience (BR-43). */
+  canCloseAudience?: true;
+  /** Only after the creator closed the audience: both players are told (BR-43). */
+  audienceClosed?: true;
   /** Only for the creator, only while the game waits. */
   invitation?: { code: string; url: string; mcpUrl: string; expiresAt: Date };
   /**
@@ -516,6 +529,37 @@ export class GameService {
   }
 
   /**
+   * The kill-switch (E10-S05, BR-43): the creator (seat 1) of a public game in progress or finished
+   * closes the audience for good. `is_public` goes false, so spectators are turned away on their next
+   * read, nobody joins by the code and no one reviews the game with it; the spectators' chat messages
+   * are deleted. Repeating it is harmless (`200`); there is no way back.
+   * @throws AppError 404 for anybody but the creator; 409 `GAME_NOT_ACTIVE` (waiting or cancelled),
+   * 409 `GAME_NOT_PUBLIC` (private from the start)
+   */
+  async closeAudience(participant: GameParticipant, gameId: string): Promise<GameState> {
+    return this.#em.transactional(async (tx) => {
+      const creator = await tx.count(GamePlayer, { id: participant.playerId, game: gameId, seat: 1 });
+      if (creator === 0) throw new NotFoundError(GAME_NOT_FOUND_MESSAGE);
+      const [game] = await tx.execute<{ status: string; is_public: boolean; closed: boolean }[]>(
+        LOCK_FOR_CLOSING_SQL,
+        [gameId],
+      );
+      // The game row can vanish under the caller (the cleanup): a 404 like any game they do not have.
+      if (!game) throw new NotFoundError(GAME_NOT_FOUND_MESSAGE);
+      const now = this.#clock.now();
+      if (!game.closed) {
+        if (game.status !== "active" && game.status !== "finished") {
+          throw new ConflictError(AUDIENCE_NOT_CLOSABLE_MESSAGE, { code: "GAME_NOT_ACTIVE" });
+        }
+        if (!game.is_public) throw new ConflictError(GAME_NOT_PUBLIC_MESSAGE, { code: "GAME_NOT_PUBLIC" });
+        await tx.execute(CLOSE_AUDIENCE_SQL, [now, gameId], "run");
+        await tx.execute(DELETE_SPECTATOR_MESSAGES_SQL, [gameId], "run");
+      }
+      return this.stateOf(tx, participant, gameId, 0, now);
+    });
+  }
+
+  /**
    * The participant behind an identity in a game, or `null` (the caller answers `404`, so
    * nobody learns whether the game exists). Order: the signed-in account, then the guest
    * token (#21 step 6), then the agent token (BR-31, used by the MCP tools of E06-S02). A guest
@@ -624,6 +668,10 @@ export class GameService {
       ...(audience && { audience }),
       you: { seat: you.seat as Seat, kind: you.kind as ParticipantKind },
     };
+    if (game.audienceClosedAt) state.audienceClosed = true;
+    if (you.seat === 1 && game.isPublic && (game.status === "active" || game.status === "finished")) {
+      state.canCloseAudience = true;
+    }
     if (you.seat === 1 && game.status === "waiting") {
       const invitation = await tx.findOneOrFail(Invitation, { game: gameId });
       state.invitation = {
