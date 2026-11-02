@@ -92,8 +92,8 @@ const INSERT_LOBBY_GAME_SQL = `
   returning id`;
 
 const INSERT_LOBBY_PLAYER_SQL = `
-  insert into game_players (game_id, seat, kind, user_id, is_active, joined_at)
-  values (?, ?, 'account', ?, true, ?)`;
+  insert into game_players (game_id, seat, kind, user_id, is_active, joined_at, display_name)
+  values (?, ?, 'account', ?, true, ?, (select display_name from users where id = ?))`;
 
 type MeRow = { id: string; created_at: string | Date; expires_in_ms: number };
 type SeekerRow = { id: string; display_name: string; since_ms: number; expires_in_ms: number };
@@ -221,8 +221,8 @@ export class LobbyService {
         this.#colorDraw.drawBlackSeat(),
       ]);
       const gameId = created!.id;
-      await tx.execute(INSERT_LOBBY_PLAYER_SQL, [gameId, 1, pickerId, now], "run");
-      await tx.execute(INSERT_LOBBY_PLAYER_SQL, [gameId, 2, ownerId, now], "run");
+      await tx.execute(INSERT_LOBBY_PLAYER_SQL, [gameId, 1, pickerId, now, pickerId], "run");
+      await tx.execute(INSERT_LOBBY_PLAYER_SQL, [gameId, 2, ownerId, now, ownerId], "run");
       return { gameId };
     });
   }

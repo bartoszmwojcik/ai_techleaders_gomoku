@@ -127,8 +127,8 @@ const READ_GUEST_SLOT_SQL = `
   where p.guest_token_hash = ? and p.is_active`;
 
 const INSERT_PLAYER_SQL = `
-  insert into game_players (game_id, seat, kind, user_id, is_active, joined_at, seen_at)
-  values (?, 2, 'account', ?, true, ?, ?)
+  insert into game_players (game_id, seat, kind, user_id, is_active, joined_at, seen_at, display_name)
+  values (?, 2, 'account', ?, true, ?, ?, (select display_name from users where id = ?))
   returning id`;
 
 const INSERT_GUEST_SQL = `
@@ -388,7 +388,7 @@ export class InvitationService {
       now,
       insert: guestToken
         ? { sql: INSERT_GUEST_SQL, params: [gameId, hashOpaqueToken(guestToken), input.nickname ?? null, now, now] }
-        : { sql: INSERT_PLAYER_SQL, params: [gameId, userId, now, now] },
+        : { sql: INSERT_PLAYER_SQL, params: [gameId, userId, now, now, userId] },
       drawBlackSeat: () => this.#colorDraw.drawBlackSeat(),
     });
     // The joiner is in a game now: their "looking for a game" status goes with the same commit (#25 Q5).

@@ -83,6 +83,7 @@ describe("AccountService.delete", () => {
       "select g.id, g.status from",
       "select g.id from games",
       "delete from chat_messages where",
+      "update game_players set display_name",
       "delete from users where",
     ]);
     expect(calls.filter(({ via }) => via === "em")).toHaveLength(2);
@@ -93,7 +94,8 @@ describe("AccountService.delete", () => {
       "delete from chat_messages where game_id in (select game_id from game_players where user_id = ?)",
     );
     expect(txCalls(calls)[3]!.mode).toBe("run");
-    expect(txCalls(calls)[4]!.params).toEqual(["user-1", HASH]);
+    expect(txCalls(calls)[4]!.params).toEqual(["user-1"]);
+    expect(txCalls(calls)[5]!.params).toEqual(["user-1", HASH]);
   });
 
   it("answers 401 when the account is already gone and checks nothing else", async () => {
@@ -169,7 +171,7 @@ describe("AccountService.delete", () => {
   it("writes nothing extra without waiting games or offers", async () => {
     const { service, calls } = setup();
     await service.delete("user-1", "secret");
-    expect(txCalls(calls).some(({ sql }) => sql.startsWith("update") || sql.startsWith("delete from games"))).toBe(false);
+    expect(txCalls(calls).some(({ sql }) => (sql.startsWith("update") && !sql.startsWith("update game_players set display_name")) || sql.startsWith("delete from games"))).toBe(false);
   });
 
   it("answers INVALID_PASSWORD when the hash changed meanwhile, so the transaction rolls back", async () => {

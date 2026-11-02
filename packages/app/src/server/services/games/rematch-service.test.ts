@@ -212,8 +212,8 @@ describe("RematchService.accept", () => {
     expect(ran("insert into games")[0]!.params).toEqual([NOW, NOW, 2]);
     const inserted = ran("insert into game_players");
     expect(inserted.map(({ params }) => params)).toEqual([
-      ["game-2", 1, "account", "user-1", null, null, NOW],
-      ["game-2", 2, "account", "user-2", null, null, NOW],
+      ["game-2", 1, "account", "user-1", null, null, NOW, "user-1"],
+      ["game-2", 2, "account", "user-2", null, null, NOW, "user-2"],
     ]);
     expect(ran("rematch_state = 'accepted'")[0]!.params).toEqual(["game-2", "game-1"]);
     expect(ran("with expired")).toHaveLength(2);
@@ -240,12 +240,12 @@ describe("RematchService.accept", () => {
     const token = deriveRematchToken("old-token", "game-2");
     expect(result).toEqual({ gameId: "game-2", guestToken: token });
     expect(ran("insert into game_players").map(({ params }) => params)).toEqual([
-      ["game-2", 1, "guest", null, null, "Kasia", NOW],
-      ["game-2", 2, "guest", null, hashOpaqueToken(token), "Olek", NOW],
+      ["game-2", 1, "guest", null, null, "Kasia", NOW, null],
+      ["game-2", 2, "guest", null, hashOpaqueToken(token), "Olek", NOW, null],
     ]);
     expect(ran("insert into games")[0]!.params[2]).toBe(1);
     // No accounts: nothing to lock or check for BR-13.
-    expect(ran("from users")).toHaveLength(0);
+    expect(ran("for no key update")).toHaveLength(0);
     expect(ran("select game_id, user_id")).toHaveLength(0);
     expect(ran("delete from lobby_seekers")).toHaveLength(0);
   });
