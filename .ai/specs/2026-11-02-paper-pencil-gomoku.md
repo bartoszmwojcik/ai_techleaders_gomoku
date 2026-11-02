@@ -1,6 +1,6 @@
 # Gomoku „papier i ołówek”: wariant z punktami za piątki, planszą 101×101 i zegarem 1/2/3/5 min
 
-> Status: **szkic do przeglądu** (`om-spec-writing`, tryb interaktywny, 2026-11-02; bramka pytań Q1–Q10 zamknięta przez właściciela — Bartosz Wójcik; po przeglądzie architektonicznym 2026-11-02 poprawki naniesione, otwarte Q11–Q12). Źródła: `.ai/specs/product-brief.md` (D-34, BR-46…BR-51, N-14, A-16…A-18, Q-21), `research/decisions/2026-11-02-paper-pencil-variant.md`, mapa kodu (sesja 2026-11-02), wdrożone specyfikacje `2026-10-25-game-moves-win-detection.md`, `2026-10-26-game-clock.md`, `2026-11-01-mobile-game-view.md`, standardy `.ai/docs/2026-09-01-engineering-standards.md`.
+> Status: **szkic do przeglądu** (`om-spec-writing`, tryb interaktywny, 2026-11-02; bramka pytań Q1–Q10 zamknięta przez właściciela — Bartosz Wójcik; po przeglądzie architektonicznym 2026-11-02 poprawki naniesione, Q11–Q12 rozstrzygnięte). Źródła: `.ai/specs/product-brief.md` (D-34, BR-46…BR-51, N-14, A-16…A-18, Q-21), `research/decisions/2026-11-02-paper-pencil-variant.md`, mapa kodu (sesja 2026-11-02), wdrożone specyfikacje `2026-10-25-game-moves-win-detection.md`, `2026-10-26-game-clock.md`, `2026-11-01-mobile-game-view.md`, standardy `.ai/docs/2026-09-01-engineering-standards.md`.
 
 ## 📝 TLDR
 
@@ -12,7 +12,7 @@ Dziś jest jeden wariant: swobodne gomoku 15×15, pierwsza piątka wygrywa, 10 m
 |---|---|---|---|
 | R1 | Odstęp kamieni | ≤ 3 pola (Chebyshev) od dowolnego kamienia; pierwszy kamień czarnych w środku | właściciel, BR-47 |
 | R2 | Zegar | Na gracza, 1/2/3/5 min, domyślnie 3; tylko ten wariant | właściciel, BR-49 |
-| R3 | Punkty | Liczone od nowa z bieżącego układu; rząd n → ⌊n/5⌋; krzyżowanie dozwolone; kamień w ≤ 2 kierunkach, pierwszeństwo wcześniejszej piątki; punktujący rząd przekreślony w całości (także kamienie ponad pięć) | właściciel, BR-48, Q11 |
+| R3 | Punkty | Liczone od nowa z bieżącego układu; rząd n → ⌊n/5⌋; krzyżowanie dozwolone we wszystkich 4 kierunkach (kamień do 4 piątek, po jednej na kierunek) | właściciel, BR-48 (zmiana z Q12) |
 | R4 | Koniec czasu | Przegrywający/remisujący pierwszy bez czasu → koniec; prowadzący → automat do końca czasu przeciwnika, zegar przeciwnika biegnie bez przerwy | właściciel, BR-50 |
 | R5 | Poddanie, domyślny wariant | Poddanie = przegrana bez względu na punkty; domyślnie klasyk | właściciel, Q-19, Q-20 |
 | R6 | Plansza | 101×101, środek (50, 50) | właściciel (rekomendacja przyjęta), BR-47 |
@@ -22,10 +22,10 @@ Dziś jest jeden wariant: swobodne gomoku 15×15, pierwsza piątka wygrywa, 10 m
 | R10 | Widok | Plansza przesuwana i powiększana; telefon 15–21 pól w poprzek | sugestia właściciela 2026-11-02, zweryfikowana w „UI/UX — studium” |
 | R11 | Jeden PR | Jedna funkcja w fazach; brief i ta specyfikacja zatwierdzane przed kodem | właściciel (Q1, Q9) |
 
-## ⚠️ Open Questions (bramka ponownie otwarta tylko dla tych pytań — przegląd architektoniczny 2026-11-02)
+## Rozstrzygnięte po przeglądzie architektonicznym
 
-- ~~**Q11.**~~ **Rozstrzygnięte 2026-11-02 przez właściciela: (a) cały rząd jest przekreślony.** Rząd 6–9 kamieni daje 1 punkt. Czy kamienie „nadwyżkowe” (poza pięcioma) są zużyte w tym kierunku? Ma to znaczenie tylko wtedy, gdy przez taki kamień przechodzą piątki w dwóch innych kierunkach. (a) **Cały rząd jest przekreślony**: każdy kamień rzędu ma zużyty ten kierunek. Reguła jest prosta i da się ją wytłumaczyć jednym zdaniem. (b) **Zużyte tylko pięć kamieni**, jak przy skreślaniu na papierze. Wtedy system musi sam wybrać, które pięć, np. od strony najstarszego kamienia, a gracz tego wyboru nie widzi przed ruchem. *(rekomendacja: a)*
-- **Q12.** Jeden ruch tworzy piątki w trzech lub czterech kierunkach przez ten sam kamień, a kamień może należeć tylko do dwóch. Które dwa się liczą? (a) **Najkorzystniejsze dla gracza** (najwięcej punktów; przy remisie stała kolejność). (b) Stała kolejność: poziomo, pionowo, ukosy. *(rekomendacja: a)*
+- ~~**Q11.**~~ Rozstrzygnięte (a), potem bez znaczenia po Q12. Rząd 6–9 kamieni daje 1 punkt. Czy kamienie „nadwyżkowe” (poza pięcioma) są zużyte w tym kierunku? Ma to znaczenie tylko wtedy, gdy przez taki kamień przechodzą piątki w dwóch innych kierunkach. (a) **Cały rząd jest przekreślony**: każdy kamień rzędu ma zużyty ten kierunek. Reguła jest prosta i da się ją wytłumaczyć jednym zdaniem. (b) **Zużyte tylko pięć kamieni**, jak przy skreślaniu na papierze. Wtedy system musi sam wybrać, które pięć, np. od strony najstarszego kamienia, a gracz tego wyboru nie widzi przed ruchem. *(rekomendacja: a)*
+- ~~**Q12.**~~ **Rozstrzygnięte 2026-11-02 przez właściciela zmianą reguły: kamień może należeć do piątek we wszystkich 4 kierunkach** (limit 2 zniesiony). Pytanie brzmiało: jeden ruch tworzy piątki w trzech lub czterech kierunkach przez ten sam kamień, a kamień może należeć tylko do dwóch. Które dwa się liczą? (a) **Najkorzystniejsze dla gracza** (najwięcej punktów; przy remisie stała kolejność). (b) Stała kolejność: poziomo, pionowo, ukosy. *(rekomendacja: a)*
 
 ## 📝 Problem Statement
 
@@ -74,12 +74,10 @@ Wniosek: rozgałęzienie ruchu i poddania leży **w `GameMoveService`** (jedno m
 - `constants.ts`: `PAPER_BOARD_SIZE = 101`, `PAPER_CENTER = 50`, `PAPER_MAX_GAP = 3`, `PAPER_TIME_CONTROLS_MS = [60_000, 120_000, 180_000, 300_000]`, `PAPER_DEFAULT_TIME_MS = 180_000`, `AUTO_MOVE_DELAY_MS = 2_000`.
 - `board.ts`: `PaperStone { x, y, seat, auto }`, `isOnBoard`, `isAllowed(stones, x, y)` — wolne, na planszy, przy `stones.length === 0` tylko środek, w przeciwnym razie istnieje kamień z `max(|dx|,|dy|) ≤ 3`. Indeks zajętości: `Map` po `y*101+x`.
 - `scoring.ts`: `scoreGame(moves): { scores: [s1, s2], fives: Five[] }`, deterministyczny algorytm BR-48:
-  1. Przechodzi ruchy w kolejności. Każdy kamień ma listę `dirs` (kierunki, w których jest „w piątce”, najwyżej 2, w kolejności dodania).
-  2. *(Krok 2 zależy od Q12 — kolejność kierunków przy jednym ruchu; „cały rząd przekreślony” rozstrzyga Q11.)* Po ruchu `m` gracza P, dla kierunków w stałej kolejności (poziomo, pionowo, ukos ↘, ukos ↗): bierze maksymalny rząd R kamieni P przez `m` w tym kierunku; dzieli R na odcinki na kamieniach **pełnych** (`dirs.length === 2` i kierunek ∉ `dirs`); każdemu kamieniowi odcinka o długości ≥ 5 dopisuje kierunek do `dirs` (jeśli brak).
-  3. Wynik gracza = suma po wszystkich jego rzędach i kierunkach ⌊długość odcinka / 5⌋, z podziałem na odcinkach według stanu `dirs` na końcu przebiegu.
-  4. `fives` to odcinki punktujące pocięte na kolejne piątki (do rysowania kreski): `{ seat, from: {x,y}, to: {x,y} }`.
+  1. Wynik gracza = suma po 4 kierunkach (poziomo, pionowo, ukos ↘, ukos ↗) i po wszystkich maksymalnych rzędach jego kamieni w tym kierunku ⌊długość rzędu / 5⌋. Funkcja zależy tylko od bieżącego zbioru kamieni (bez kolejności ruchów i bez stanu pomocniczego).
+  2. `fives` to rzędy punktujące pocięte na kolejne piątki od końca o mniejszej współrzędnej (do rysowania kreski): `{ seat, from: {x,y}, to: {x,y} }`.
 
-  Niezmienniki testowane własnościowo: wynik nie maleje po żadnym ruchu; ⌊n/5⌋ dla pojedynczego rzędu; żaden kamień nie ma więcej niż 2 kierunków. Złożoność: pełne przeliczenie przy każdym ruchu (≤ kilkaset ruchów × 4 kierunki) — pomijalne.
+  Niezmienniki testowane własnościowo: wynik nie maleje po żadnym ruchu (dołożenie kamienia tylko wydłuża lub łączy rzędy: ⌊(a+b+1)/5⌋ ≥ ⌊a/5⌋ + ⌊b/5⌋); ⌊n/5⌋ dla pojedynczego rzędu; wynik nie zależy od kolejności ruchów. Złożoność: pełne przeliczenie przy każdym ruchu (≤ kilkaset ruchów × 4 kierunki) — pomijalne.
 - `auto-move.ts`: `pickAutoMove(stones, around, random)` — pierścienie Chebysheva 1, 2, … wokół ostatniego kamienia przeciwnika, pierwsze wolne pola na planszy; wybór `floor(random() * n)` z listy w ustalonej kolejności. Pole w pierścieniu 1–3 jest zawsze dozwolone (BR-47); `null`, gdy plansza pełna (nieosiągalne w 5 min, test).
 - `timeout.ts`: `resolvePaperClock(state, nowMs, random)` → lista zdarzeń `{ autoMoves[], finish? }` według BR-50 (tabela niżej).
 - `clock.ts` (klasyczny): `stored()` przycina do **`timeControlMs` partii**, nie do `INITIAL_CLOCK_MS`; dla klasyka wartość 600 000, więc zachowanie bez zmian.
@@ -202,7 +200,7 @@ Prototype: brak (do decyzji przy przeglądzie; ekran można pokazać w Storybook
 | Przegrywający dogania w fazie automatu | gra trwa do końca czasu O; wynik z punktów (może wygrać O) |
 | Zegar O kończy się w czasie 2 s oczekiwania | koniec w `deadline O`, ruch automatu nie powstaje |
 | Automat przy krawędzi | pola spoza planszy pomijane w pierścieniu |
-| Piątka w trzecim kierunku przez kamień pełny | odcinki dzielone na tym kamieniu (BR-48); test na przykładzie właściciela (13 kamieni w trzech kierunkach → 2 punkty) |
+| Piątki w 3–4 kierunkach przez jeden kamień | każda się liczy (BR-48): 13 kamieni w trzech kierunkach → 3 punkty, 17 w czterech → 4 |
 | Gracz celowo idzie do krawędzi | dozwolone; piątka nie może wyjść poza planszę (A-18) |
 | Agent MCP z czasem 1 min | ryzyko przegranej na czas (A-06); opis narzędzia ostrzega; bez zmian reguł |
 | Stary klient (cache) wysyła ruch do partii „papier” | ten sam endpoint, schemat 0–100, odpowiedź zawiera `variant` — klient klasyka bez `PaperBoard` pokazuje „Odśwież stronę” (sprawdzenie `variant` w `GameRoom`) |
@@ -236,7 +234,7 @@ Opiera się na D-34, BR-46…BR-51, N-14 (Bartosz Wójcik, 2026-11-02). Zawęża
 
 **Faza 1 — reguły (`packages/core/src/games/paper/`)**
 1. `constants.ts`, `board.ts` (`isOnBoard`, `isAllowed`, pierwszy ruch w środku) + testy (granice, odstęp 3 i 4, skosy).
-2. `scoring.ts` + testy przykładów właściciela (6 → 1, 10 → 2, krzyż 9 → 2, trzy kierunki 13 → 2, rząd złożony z dwóch połówek) i testy własnościowe (losowe partie: wynik nie maleje, ≤ 2 kierunki na kamień).
+2. `scoring.ts` + testy przykładów właściciela (6 → 1, 10 → 2, krzyż 9 → 2, trzy kierunki 13 → 3, cztery 17 → 4, rząd złożony z dwóch połówek) i testy własnościowe (losowe partie: wynik nie maleje, niezależny od kolejności ruchów).
 3. `auto-move.ts` (pierścienie, krawędź, wstrzyknięty `random`) + testy.
 4. `timeout.ts` (oś czasu BR-50, wszystkie wiersze tabeli) + `clock.ts`: przycinanie do `timeControlMs` (testy klasyka bez zmian).
 5. Schematy: `createGameSettingsSchema`, granice `moveCreateSchema` (0–100), `agent-tool-schema`.
