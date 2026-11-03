@@ -46,6 +46,7 @@
   --palette-wood-surface: #dcb35c;
   --palette-wood-line: #6b4a1b;
   --palette-wood-grain: #d3aa53;
+  --palette-wood-allowed: #e6c777; /* E11: fields within reach of a stone, lighter than the surface */
 
   /* Status colours: propozycja (Q4 accepted: warm shades, never the only carrier of meaning). */
   --palette-clay-300: #f2907a;
@@ -119,6 +120,10 @@
   --piece-outline: var(--palette-stone-900);
   /* Last move and winning line: dark wood tone, 4.06:1 on the board. The action colour reaches only about 2.5:1 on wood. */
   --board-marker: var(--palette-wood-line);
+  /* E11 PaperBoard: allowed fields (<= 3 from a stone), the pencil stroke through a five, the marker of an automatic move. */
+  --paper-allowed: var(--palette-wood-allowed);
+  --paper-pencil: var(--palette-stone-700);
+  --paper-auto: var(--palette-orange-400);
 
   /* Layer 3: component tokens. */
   --piece-size: 80%; /* R01.3: stone as a share of its cell */
@@ -250,6 +255,9 @@
   --color-board-line: var(--board-line);
   --color-board-grain: var(--board-grain);
   --color-board-marker: var(--board-marker);
+  --color-paper-allowed: var(--paper-allowed);
+  --color-paper-pencil: var(--paper-pencil);
+  --color-paper-auto: var(--paper-auto);
   --color-piece-black: var(--piece-black);
   --color-piece-white: var(--piece-white);
   --color-piece-outline: var(--piece-outline);
