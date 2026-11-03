@@ -1,6 +1,6 @@
 import { ChoiceGroup } from "@gomoku/ui/game/choice-group";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 
 import { Narrow } from "../../.storybook/blocks";
 
@@ -22,12 +22,12 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Playground: Story = {
-  render: (args) => {
-    const [value, setValue] = useState(args.value);
-    return <ChoiceGroup {...args} value={value} onValueChange={setValue} />;
-  },
-};
+function Controlled(args: ComponentProps<typeof ChoiceGroup>) {
+  const [value, setValue] = useState(args.value);
+  return <ChoiceGroup {...args} value={value} onValueChange={setValue} />;
+}
+
+export const Playground: Story = { render: (args) => <Controlled {...args} /> };
 
 export const CzasNaGracza: Story = {
   args: {
