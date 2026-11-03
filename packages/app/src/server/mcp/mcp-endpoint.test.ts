@@ -99,13 +99,13 @@ describe("handleMcpPost", () => {
       properties: {
         token: { type: "string", minLength: 43, maxLength: 43 },
         waitSeconds: { type: "integer", minimum: 0, maximum: 25 },
-        afterMove: { type: "integer", minimum: 0 },
+        afterMove: { type: "integer", minimum: 0, maximum: 10_201 },
         afterMessage: { type: "integer", minimum: 0, maximum: 2_147_483_647 },
       },
       required: ["token"],
     });
     expect(playMove!.inputSchema).toMatchObject({
-      properties: { x: { maximum: 14 }, y: { maximum: 14 }, moveNumber: { minimum: 1, maximum: 225 } },
+      properties: { x: { maximum: 100 }, y: { maximum: 100 }, moveNumber: { minimum: 1, maximum: 10_201 } },
       required: ["token", "x", "y", "moveNumber"],
     });
     expect(sendMessage!.inputSchema).toMatchObject({
@@ -122,6 +122,10 @@ describe("handleMcpPost", () => {
     }
     expect(playMove!.description).toContain("bez czatu");
     expect(playMove!.description).toContain("ILLEGAL_MOVE");
+    // Both variants are named in the descriptions (the list of tools is the same for every game).
+    expect(playMove!.inputSchema.properties.x.description).toMatch(/0–14.*0–100/);
+    expect(playMove!.description).toContain("0–100");
+    expect(getState!.description).toContain("boardOrigin");
   });
 
   it("calls get_state with the arguments as sent and the signal of the request", async () => {
