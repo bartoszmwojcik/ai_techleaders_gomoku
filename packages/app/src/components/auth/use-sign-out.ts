@@ -25,5 +25,8 @@ export function useSignOut() {
     return false;
   }
 
-  return { pending, failed, signOut };
+  /** Forgets a failed attempt, so a later question does not report it as new. */
+  const clearFailed = () => setFailed(false);
+
+  return { pending, failed, signOut, clearFailed };
 }

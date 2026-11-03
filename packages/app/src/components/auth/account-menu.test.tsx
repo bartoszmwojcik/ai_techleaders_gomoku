@@ -3,7 +3,7 @@ import { cleanup, render, screen, waitFor, within } from "@testing-library/react
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { assign, apiCall } = vi.hoisted(() => ({ assign: vi.fn(), apiCall: vi.fn() }));
+const { replace, apiCall } = vi.hoisted(() => ({ replace: vi.fn(), apiCall: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiCall }));
 
 import { AccountMenu } from "./account-menu";
@@ -25,8 +25,8 @@ async function chooseLogout() {
 }
 
 beforeEach(() => {
-  assign.mockReset();
-  vi.stubGlobal("location", { assign, origin: "https://gomoku.example" });
+  replace.mockReset();
+  vi.stubGlobal("location", { replace, origin: "https://gomoku.example" });
   apiCall.mockReset();
   answers(noGame);
 });
@@ -48,8 +48,8 @@ describe("AccountMenu", () => {
     render(<AccountMenu displayName="Ala_7" />);
     await chooseLogout();
 
-    await waitFor(() => expect(assign).toHaveBeenCalledWith("https://gomoku.example/"));
-    expect(apiCall).toHaveBeenCalledWith("/api/lobby", { method: "GET" });
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("https://gomoku.example/"));
+    expect(apiCall).toHaveBeenCalledWith("/api/lobby", { method: "GET", signal: expect.any(AbortSignal) });
     expect(apiCall).toHaveBeenCalledWith("/api/auth/logout");
     expect(screen.queryByRole("alertdialog")).toBeNull();
   });
@@ -58,7 +58,7 @@ describe("AccountMenu", () => {
     render(<AccountMenu displayName="Ala_7" />);
     await chooseLogout();
 
-    await waitFor(() => expect(assign).toHaveBeenCalledWith("https://gomoku.example/"));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("https://gomoku.example/"));
     expect(logoutCalls()).toBe(1);
   });
 
@@ -67,7 +67,7 @@ describe("AccountMenu", () => {
     render(<AccountMenu displayName="Ala_7" />);
     await chooseLogout();
 
-    await waitFor(() => expect(assign).toHaveBeenCalledWith("https://gomoku.example/"));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("https://gomoku.example/"));
   });
 
   it("asks during a running game, stays on cancel with focus on the button, and logs out on confirmation", async () => {
@@ -87,7 +87,7 @@ describe("AccountMenu", () => {
     await chooseLogout();
     const again = await screen.findByRole("alertdialog");
     await userEvent.click(within(again).getByRole("button", { name: "Wyloguj" }));
-    await waitFor(() => expect(assign).toHaveBeenCalledWith("https://gomoku.example/"));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("https://gomoku.example/"));
     expect(logoutCalls()).toBe(1);
   });
 
@@ -102,6 +102,21 @@ describe("AccountMenu", () => {
     expect(logoutCalls()).toBe(0);
   });
 
+  it("does not report an earlier failed logout when asking again", async () => {
+    answers(activeGame, { ok: false, error: { code: "network", message: "x" } });
+    render(<AccountMenu displayName="Ala_7" />);
+    await chooseLogout();
+    let dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Wyloguj" }));
+    await within(dialog).findByRole("alert");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Zostań zalogowany" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+
+    await chooseLogout();
+    dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).queryByRole("alert")).toBeNull();
+  });
+
   it("shows a failed logout in the dialog and retries from there", async () => {
     answers(noGame, { ok: false, error: { code: "network", message: "x" } });
     render(<AccountMenu displayName="Ala_7" />);
@@ -109,11 +124,11 @@ describe("AccountMenu", () => {
 
     const dialog = await screen.findByRole("alertdialog");
     expect(within(dialog).getByRole("alert").textContent).toBe("Nie udało się wylogować. Spróbuj ponownie.");
-    expect(assign).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
 
     answers(noGame);
     await userEvent.click(within(dialog).getByRole("button", { name: "Wyloguj" }));
-    await waitFor(() => expect(assign).toHaveBeenCalledWith("https://gomoku.example/"));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("https://gomoku.example/"));
   });
 
   it("forgets the running game once it ended: a later failure does not say it runs", async () => {
@@ -139,7 +154,7 @@ describe("AccountMenu", () => {
     await chooseLogout();
 
     finish(noGame);
-    await waitFor(() => expect(assign).toHaveBeenCalledOnce());
+    await waitFor(() => expect(replace).toHaveBeenCalledOnce());
     expect(apiCall.mock.calls.filter(([path]) => path === "/api/lobby")).toHaveLength(1);
   });
 });

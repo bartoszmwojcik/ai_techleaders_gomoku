@@ -3,7 +3,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { assign, apiCall } = vi.hoisted(() => ({ assign: vi.fn(), apiCall: vi.fn() }));
+const { replace, apiCall } = vi.hoisted(() => ({ replace: vi.fn(), apiCall: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiCall }));
 
 import { LoginForm } from "./login-form";
@@ -22,8 +22,8 @@ async function fillAndSubmit({ email = "ala@example.com", password = "secret123"
 }
 
 beforeEach(() => {
-  assign.mockReset();
-  vi.stubGlobal("location", { assign, origin: "https://gomoku.example" });
+  replace.mockReset();
+  vi.stubGlobal("location", { replace, origin: "https://gomoku.example" });
   apiCall.mockReset();
 });
 afterEach(cleanup);
@@ -71,7 +71,7 @@ describe("LoginForm", () => {
     expect(apiCall).toHaveBeenCalledWith("/api/auth/login", {
       body: { email: "ala@example.com", password: "secret123" },
     });
-    expect(assign).toHaveBeenCalledWith("https://gomoku.example/account");
+    expect(replace).toHaveBeenCalledWith("https://gomoku.example/account");
     expect((screen.getByRole("button", { name: "Logowanie…" }) as HTMLButtonElement).disabled).toBe(true);
   });
 

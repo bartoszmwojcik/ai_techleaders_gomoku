@@ -6,6 +6,7 @@ import { Alert } from "@gomoku/ui/game/alert";
 import { Button } from "@gomoku/ui/game/button";
 import { PasswordField } from "@gomoku/ui/game/password-field";
 import { TextLink } from "@gomoku/ui/game/text-link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { ErrorMessage } from "@/components/feedback/error-message";
@@ -23,6 +24,7 @@ type GeneralError = { title: string; details: string };
 const FOCUS_TARGET = "outline-none";
 
 export function ResetPasswordForm({ token }: { token: string | undefined }) {
+  const router = useRouter();
   // No token in the address is a broken link: the form could never succeed.
   const [phase, setPhase] = useState<Phase>(token ? "form" : "invalid");
   const [password, setPassword] = useState("");
@@ -65,6 +67,8 @@ export function ResetPasswordForm({ token }: { token: string | undefined }) {
       setPassword("");
       setPasswordKey((key) => key + 1);
       setPhase("done");
+      // Every session has just ended, also one in this browser: the bar in the shared layout must drop the menu.
+      router.refresh();
       return;
     }
 

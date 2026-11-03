@@ -1,6 +1,6 @@
 "use client";
 
-import type { GameVariant } from "@gomoku/core";
+import { GAME_VARIANTS, type GameVariant } from "@gomoku/core";
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
 import { homeRulesLabel } from "@/lib/games/settings";
@@ -19,12 +19,22 @@ export function HomeRulesProvider({ children }: { children: ReactNode }) {
 
 export const useHomeRules = () => useContext(HomeRulesContext);
 
-/** The rules line under the title; follows the chosen variant at once and is announced politely. */
+/**
+ * The rules line under the title; follows the chosen variant at once and is announced politely. Every variant's text
+ * sits hidden in the same grid cell, so the row keeps the height of the longest at any width and nothing below it jumps.
+ */
 export function HomeRulesLine() {
   const { variant } = useHomeRules();
   return (
-    <p className="text-meta text-text-muted" aria-live="polite" data-testid="home-rules">
-      {homeRulesLabel(variant)}
-    </p>
+    <div className="grid">
+      {GAME_VARIANTS.map((reserved) => (
+        <span key={reserved} aria-hidden="true" className="invisible col-start-1 row-start-1 text-meta">
+          {homeRulesLabel(reserved)}
+        </span>
+      ))}
+      <p className="col-start-1 row-start-1 text-meta text-text-muted" aria-live="polite" data-testid="home-rules">
+        {homeRulesLabel(variant)}
+      </p>
+    </div>
   );
 }

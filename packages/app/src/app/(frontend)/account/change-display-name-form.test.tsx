@@ -3,7 +3,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { apiCall, assign, refresh } = vi.hoisted(() => ({ apiCall: vi.fn(), assign: vi.fn(), refresh: vi.fn() }));
+const { apiCall, replace, refresh } = vi.hoisted(() => ({ apiCall: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiCall }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 
@@ -24,8 +24,8 @@ async function change(to: string) {
 
 beforeEach(() => {
   apiCall.mockReset();
-  assign.mockReset();
-  vi.stubGlobal("location", { assign, origin: "https://gomoku.example" });
+  replace.mockReset();
+  vi.stubGlobal("location", { replace, origin: "https://gomoku.example" });
   refresh.mockReset();
 });
 afterEach(cleanup);
@@ -103,6 +103,6 @@ describe("ChangeDisplayNameForm", () => {
     apiCall.mockResolvedValue(failure({ code: "UNAUTHORIZED" }));
     render(<ChangeDisplayNameForm displayName="Ala_7" availableAt={null} />);
     await change("Nowa_7");
-    await waitFor(() => expect(assign).toHaveBeenCalledWith("https://gomoku.example/login?next=%2Faccount"));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("https://gomoku.example/login?next=%2Faccount"));
   });
 });

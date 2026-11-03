@@ -19,7 +19,7 @@ type UserMenuProps = {
 };
 
 const itemClass =
-  "motion-fast flex min-h-target cursor-pointer items-center rounded-base px-stack text-body text-text-primary no-underline transition-colors outline-none select-none data-[highlighted]:bg-border-default";
+  "motion-fast flex min-h-target cursor-pointer items-center rounded-base px-stack text-body text-text-primary no-underline transition-colors outline-none select-none data-[highlighted]:bg-border-default data-[highlighted]:focus-ring";
 
 // Not modal: nothing on the page is locked, so a running game keeps its scroll position and a click outside just closes.
 // Radix gives the keyboard (Enter, Space, arrows, Esc returning focus to the button) and aria-haspopup/aria-expanded.

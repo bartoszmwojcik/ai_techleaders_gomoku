@@ -13,13 +13,16 @@ const REASON_TEXT = {
   unknown: "Nie udało się sprawdzić, czy trwa partia. Jeśli trwa, po wylogowaniu zegar biegnie dalej. Wylogować?",
 } as const;
 
+/** A read that hangs must not leave "Wyloguj" dead; after this long it counts as failed, and the menu asks. */
+const LOBBY_READ_TIMEOUT_MS = 5_000;
+
 /**
  * The menu in the top bar. Its "Wyloguj" asks first during a running game (Q4). The bar sits in the shared layout,
  * which does not render again when a game starts on the page below it, so the game is read when the player chooses
  * "Wyloguj"; a read that fails asks too, because asking costs less than leaving a running game unawares.
  */
 export function AccountMenu({ displayName }: { displayName: string }) {
-  const { pending, failed, signOut } = useSignOut();
+  const { pending, failed, signOut, clearFailed } = useSignOut();
   const [asking, setAsking] = useState(false);
   const [reason, setReason] = useState<keyof typeof REASON_TEXT | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -37,7 +40,11 @@ export function AccountMenu({ displayName }: { displayName: string }) {
   async function onLogout() {
     if (inFlight.current) return;
     inFlight.current = true;
-    const lobby = await apiCall<{ currentGame: { status: "waiting" | "active" } | null }>("/api/lobby", { method: "GET" });
+    clearFailed();
+    const lobby = await apiCall<{ currentGame: { status: "waiting" | "active" } | null }>("/api/lobby", {
+      method: "GET",
+      signal: AbortSignal.timeout(LOBBY_READ_TIMEOUT_MS),
+    });
     const unknown = !lobby.ok && lobby.error.code !== "UNAUTHORIZED";
     const nextReason = unknown ? "unknown" : lobby.ok && lobby.data.currentGame?.status === "active" ? "game" : null;
     setReason(nextReason);

@@ -86,6 +86,13 @@ describe("the paper and pencil game", () => {
     await creator.click("[data-testid=settings-variant-classic]");
     expect(await creator.text("[data-testid=home-rules]")).toBe(classicRules);
     expect(await creator.evaluate<number>(createTop)).toBe(topBefore);
+    // At a width where the two texts wrap differently (the longer one to 2 lines, the shorter to 1) nothing below them jumps either.
+    await creator.setViewport(393, 800);
+    const height393 = await creator.evaluate<number>(`${rules}.getBoundingClientRect().height`);
+    await creator.click("[data-testid=settings-variant-paper]");
+    await creator.waitFor("[data-testid=settings-time]");
+    expect(await creator.evaluate<number>(`${rules}.getBoundingClientRect().height`)).toBe(height393);
+    await creator.click("[data-testid=settings-variant-classic]");
     // On a 320 px phone both lines wrap to the same height, so nothing below them jumps.
     const rulesHeight = () => creator.evaluate<number>(`${rules}.getBoundingClientRect().height`);
     await creator.setViewport(320, 700);

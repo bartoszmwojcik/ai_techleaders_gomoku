@@ -3,14 +3,14 @@ import { cleanup, render, screen, waitFor, within } from "@testing-library/react
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { assign, apiCall } = vi.hoisted(() => ({ assign: vi.fn(), apiCall: vi.fn() }));
+const { replace, apiCall } = vi.hoisted(() => ({ replace: vi.fn(), apiCall: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiCall }));
 
 import { LogoutButton } from "./logout-button";
 
 beforeEach(() => {
-  assign.mockReset();
-  vi.stubGlobal("location", { assign, origin: "https://gomoku.example" });
+  replace.mockReset();
+  vi.stubGlobal("location", { replace, origin: "https://gomoku.example" });
   apiCall.mockReset().mockResolvedValue({ ok: true, data: null });
 });
 afterEach(cleanup);
@@ -21,7 +21,7 @@ describe("LogoutButton", () => {
     await userEvent.click(screen.getByRole("button", { name: "Wyloguj" }));
 
     expect(apiCall).toHaveBeenCalledWith("/api/auth/logout");
-    await waitFor(() => expect(assign).toHaveBeenCalledWith("https://gomoku.example/"));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("https://gomoku.example/"));
     expect(screen.queryByRole("alertdialog")).toBeNull();
   });
 
@@ -36,7 +36,7 @@ describe("LogoutButton", () => {
     expect(button.getAttribute("aria-busy")).toBe("true");
 
     finish({ ok: true, data: null });
-    await waitFor(() => expect(assign).toHaveBeenCalledWith("https://gomoku.example/"));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("https://gomoku.example/"));
   });
 
   it("shows an error and lets the player retry when logout fails", async () => {
@@ -45,12 +45,12 @@ describe("LogoutButton", () => {
     await userEvent.click(screen.getByRole("button", { name: "Wyloguj" }));
 
     expect((await screen.findByTestId("logout-error")).textContent).toContain("Nie udało się wylogować");
-    expect(assign).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
     const button = screen.getByRole("button", { name: "Wyloguj" }) as HTMLButtonElement;
     expect(button.disabled).toBe(false);
 
     await userEvent.click(button);
-    await waitFor(() => expect(assign).toHaveBeenCalledWith("https://gomoku.example/"));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("https://gomoku.example/"));
     expect(screen.queryByTestId("logout-error")).toBeNull();
   });
 
@@ -69,7 +69,7 @@ describe("LogoutButton", () => {
     await userEvent.click(screen.getByRole("button", { name: "Wyloguj" }));
     const confirm = within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Wyloguj" });
     await userEvent.click(confirm);
-    await waitFor(() => expect(assign).toHaveBeenCalledWith("https://gomoku.example/"));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("https://gomoku.example/"));
     expect(apiCall).toHaveBeenCalledOnce();
   });
 
@@ -78,7 +78,7 @@ describe("LogoutButton", () => {
     render(<LogoutButton />);
     await userEvent.click(screen.getByRole("button", { name: "Wyloguj" }));
 
-    await waitFor(() => expect(assign).toHaveBeenCalledWith("https://gomoku.example/"));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("https://gomoku.example/"));
     expect(screen.queryByTestId("logout-error")).toBeNull();
   });
 

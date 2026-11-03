@@ -55,6 +55,12 @@ describe("UserMenu", () => {
     expect(items[2]!.className).toContain("action-extra");
   });
 
+  it("marks the item reached with the keyboard by the focus ring, not only by its background", async () => {
+    renderMenu();
+    await userEvent.click(trigger());
+    expect((await screen.findByRole("menuitem", { name: "Wyloguj" })).className).toContain("data-[highlighted]:focus-ring");
+  });
+
   it("works from the keyboard: Enter opens, arrows move, Escape closes and returns focus to the button", async () => {
     renderMenu();
     trigger().focus();

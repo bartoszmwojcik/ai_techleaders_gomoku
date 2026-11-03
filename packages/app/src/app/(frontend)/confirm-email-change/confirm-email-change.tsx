@@ -2,6 +2,7 @@
 
 import { Alert } from "@gomoku/ui/game/alert";
 import { Button } from "@gomoku/ui/game/button";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { apiCall } from "@/lib/api-client";
@@ -12,6 +13,7 @@ type Phase = "before" | "confirming" | "done" | "invalid" | "server" | "network"
 const FOCUS_TARGET = "outline-none";
 
 export function ConfirmEmailChange({ token }: { token: string | undefined }) {
+  const router = useRouter();
   const [phase, setPhase] = useState<Phase>(token ? "before" : "invalid");
   const headingRef = useRef<HTMLHeadingElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
@@ -31,6 +33,8 @@ export function ConfirmEmailChange({ token }: { token: string | undefined }) {
     setFocusResult(true);
     if (result.ok) {
       setPhase("done");
+      // The change ended every session, this one too: the bar in the shared layout must drop the menu.
+      router.refresh();
       return;
     }
     const { code } = result.error;

@@ -88,7 +88,7 @@ export function DeleteAccountForm({ displayName, currentGame }: DeleteAccountFor
     if (result.ok) {
       // A full page load, not a client navigation: the layout reads the (now gone) session. An
       // absolute URL, because the session is meant to end the SPA state, not to be routed.
-      window.location.assign(new URL("/?notice=account-deleted", window.location.origin).href);
+      fullPageLoad("/?notice=account-deleted");
       return;
     }
     const { code, data, fieldErrors, retryAfterSeconds } = result.error;

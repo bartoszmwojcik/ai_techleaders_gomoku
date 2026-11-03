@@ -24,6 +24,12 @@ describe("HomeRulesLine", () => {
     expect(line.getAttribute("aria-live")).toBe("polite");
   });
 
+  it("reserves room for the text of every variant, hidden from assistive technology", () => {
+    const { container } = render(<HomeRulesLine />);
+    const reserved = [...container.querySelectorAll("span[aria-hidden=true].invisible")].map((span) => span.textContent);
+    expect(reserved).toEqual(["Swobodne zasady · plansza 15×15 · 10 minut na gracza", "Kółko i krzyżyk na kartce papieru, 5 w linii, gra na czas."]);
+  });
+
   it("ignores a choice made outside a provider", () => {
     render(<><Pick /><HomeRulesLine /></>);
     act(() => screen.getByText("paper").click());
