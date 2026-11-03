@@ -1,6 +1,6 @@
 # Gomoku „papier i ołówek”: wariant z punktami za piątki, planszą 101×101 i zegarem 1/2/3/5 min
 
-> Status: **szkic do przeglądu** (`om-spec-writing`, tryb interaktywny, 2026-11-02; bramka pytań Q1–Q10 zamknięta przez właściciela — Bartosz Wójcik; po przeglądzie architektonicznym 2026-11-02 poprawki naniesione, Q11–Q12 rozstrzygnięte). Źródła: `.ai/specs/product-brief.md` (D-34, BR-46…BR-51, N-14, A-16…A-18, Q-21), `research/decisions/2026-11-02-paper-pencil-variant.md`, mapa kodu (sesja 2026-11-02), wdrożone specyfikacje `2026-10-25-game-moves-win-detection.md`, `2026-10-26-game-clock.md`, `2026-11-01-mobile-game-view.md`, standardy `.ai/docs/2026-09-01-engineering-standards.md`.
+> Status: **wdrożona (E11, 2026-11-03)**; poprzednio: szkic do przeglądu (`om-spec-writing`, tryb interaktywny, 2026-11-02; bramka pytań Q1–Q10 zamknięta przez właściciela — Bartosz Wójcik; po przeglądzie architektonicznym 2026-11-02 poprawki naniesione, Q11–Q12 rozstrzygnięte). Źródła: `.ai/specs/product-brief.md` (D-34, BR-46…BR-51, N-14, A-16…A-18, Q-21), `research/decisions/2026-11-02-paper-pencil-variant.md`, mapa kodu (sesja 2026-11-02), wdrożone specyfikacje `2026-10-25-game-moves-win-detection.md`, `2026-10-26-game-clock.md`, `2026-11-01-mobile-game-view.md`, standardy `.ai/docs/2026-09-01-engineering-standards.md`.
 
 ## 📝 TLDR
 
