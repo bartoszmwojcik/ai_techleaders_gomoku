@@ -1,10 +1,11 @@
 import type { GameReview } from "@gomoku/core";
 import { describe, expect, it } from "vitest";
 
-import { isPaperReview, lastMoveAt, neutralOutcomeOf, reviewOutcomeOf, reviewVariant, stepStatus, stonesAt, winLineAt } from "./review";
+import { isPaperReview, lastMoveAt, neutralOutcomeOf, reviewOutcomeOf, stepStatus, stonesAt, winLineAt } from "./review";
 
 const review = (over: Partial<GameReview> = {}): GameReview => ({
   gameId: "g",
+  variant: "classic",
   finishedAt: "2026-11-02T10:00:00.000Z",
   blackSeat: 1,
   moves: [112, 113, 127],
@@ -78,8 +79,8 @@ describe("reviewOutcomeOf", () => {
 describe("the paper game", () => {
   const players = review().players;
 
-  it("recognises a review that has no moves to step through", () => {
-    expect(isPaperReview(review({ result: { winnerSeat: 1, reason: "points", winLine: null } }))).toBe(true);
+  it("recognises a paper game by its variant, however it ended", () => {
+    expect(isPaperReview(review({ variant: "paper", result: { winnerSeat: 1, reason: "resignation", winLine: null } }))).toBe(true);
     expect(isPaperReview(review())).toBe(false);
   });
 
@@ -96,13 +97,9 @@ describe("the paper game", () => {
     const result = { winnerSeat: 2 as const, reason: "points" as const, winLine: null, scores: [3, 7] as [number, number] };
     expect(neutralOutcomeOf({ result, blackSeat: 1, players, variant: "paper" }).title).toBe("Wygrało kółko: Bob (gość) · 7 : 3");
     expect(neutralOutcomeOf({ result, blackSeat: 2, players, variant: "paper" }).title).toBe("Wygrał krzyżyk: Bob (gość) · 7 : 3");
-    expect(reviewOutcomeOf(review({ viewerSeat: null, result }))).toMatchObject({ title: "Wygrało kółko: Bob (gość) · 7 : 3" });
+    expect(reviewOutcomeOf(review({ variant: "paper", viewerSeat: null, result }))).toMatchObject({ title: "Wygrało kółko: Bob (gość) · 7 : 3" });
   });
 
-  it("takes a review decided by points for a paper game, any other for a classic one", () => {
-    expect(reviewVariant(review({ result: { winnerSeat: 1, reason: "points", winLine: null } }))).toBe("paper");
-    expect(reviewVariant(review())).toBe("classic");
-  });
 
   it("tells a draw on points, with and without the points", () => {
     const result = { winnerSeat: null, reason: "points" as const, winLine: null };

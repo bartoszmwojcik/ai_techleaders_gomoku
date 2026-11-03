@@ -13,7 +13,7 @@ import { PlayerLabel } from "@/components/games/player-label";
 import { formatFinishedAt } from "@/lib/format-date-time";
 import { REASON_LABEL } from "@/lib/games/history";
 import { cellLabel, playerNameOf, sideWords } from "@/lib/games/play";
-import { isPaperReview, lastMoveAt, reviewOutcomeOf, reviewVariant, stepStatus, stonesAt, winLineAt } from "@/lib/games/review";
+import { isPaperReview, lastMoveAt, reviewOutcomeOf, stepStatus, stonesAt, winLineAt } from "@/lib/games/review";
 
 type Props = {
   review: GameReview;
@@ -32,7 +32,7 @@ export function ReviewView({ review, back }: Props) {
   const [step, setStep] = useState(total);
   const go = (to: number) => setStep(clampReviewStep(to, total));
   const outcome = reviewOutcomeOf(review);
-  const words = sideWords(reviewVariant(review));
+  const words = sideWords(review.variant);
 
   return (
     <main className="mx-auto flex w-full flex-1 max-w-xl flex-col gap-stack px-panel py-section">

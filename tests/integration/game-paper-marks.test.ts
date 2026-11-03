@@ -221,4 +221,16 @@ describe("the marks of the paper game", () => {
       }
     }
   }, 300_000);
+
+  it("reviews a paper game ended by resignation as a paper game, not as an empty classic board", async () => {
+    const game = await startedGame();
+    await play(game, "black", 50, 50, 1);
+    expect((await call("POST", `/api/games/${game.gameId}/resign`, {}, game.white)).status).toBe(200);
+    await mouse.setViewport(1280, 1100);
+    await visit(mouse, game.black, `/games/${game.gameId}/review`, "light");
+    await bodyHas(mouse, "Krzyżyk: Ty (");
+    await bodyHas(mouse, "Kółko: ");
+    expect(await mouse.count("[data-testid=review-paper-note]")).toBe(1);
+    expect(await textOf(mouse)).not.toMatch(/czarn|biał/i);
+  }, 120_000);
 });

@@ -39,10 +39,7 @@ const NEUTRAL_DETAIL = {
 } as const;
 
 /** The review of a paper game has no sheet to step through yet: its moves are not in the classic log (E11). */
-export const isPaperReview = (review: Pick<GameReview, "result">): boolean => review.result.reason === "points";
-
-/** The review carries no variant: a game decided by points can only be a paper one. */
-export const reviewVariant = (review: Pick<GameReview, "result">): GameVariant => (isPaperReview(review) ? "paper" : "classic");
+export const isPaperReview = (review: Pick<GameReview, "variant">): boolean => review.variant === "paper";
 
 /**
  * The banner of the review. A reader who played hears it as on the game screen ("Wygrałeś"); a
@@ -52,7 +49,7 @@ export function reviewOutcomeOf(review: GameReview): Outcome {
   if (review.viewerSeat !== null) {
     return outcomeOf({ result: review.result, you: { seat: review.viewerSeat } })!;
   }
-  return neutralOutcomeOf({ ...review, variant: reviewVariant(review) });
+  return neutralOutcomeOf(review);
 }
 
 /**
