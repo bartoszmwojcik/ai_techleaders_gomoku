@@ -100,3 +100,14 @@ describe("ReviewView", { timeout: 30_000 }, () => {
     expect((screen.getByRole("button", { name: "Poprzedni" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });
+
+describe("ReviewView, the paper game (E11)", () => {
+  it("shows the result and an explanation instead of an empty board", () => {
+    render(<ReviewView review={review({ moves: [], result: { winnerSeat: 1, reason: "points", winLine: null } })} back={back} />);
+
+    expect(screen.getByText("Wygrałeś na punkty")).toBeTruthy();
+    expect(screen.getByTestId("review-paper-note").textContent).toContain("Podgląd ruch po ruchu jest niedostępny");
+    expect(screen.queryByTestId("review-step")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Następny" })).toBeNull();
+  });
+});

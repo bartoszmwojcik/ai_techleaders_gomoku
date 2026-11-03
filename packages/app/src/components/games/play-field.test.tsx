@@ -636,3 +636,169 @@ describe("PlayField, the chat (E07-S01)", () => {
     expect(screen.getByTestId("chat-panel-stub").getAttribute("data-status")).toBe("finished");
   });
 });
+
+describe("PlayField, the paper game (E11)", () => {
+  const AT = "2026-11-03T10:00:00.000Z";
+  const clock = (remainingMs: [number, number], running: 1 | 2 | null = 1) => ({ remainingMs, running, now: 1_000_000 });
+  const stone = (n: number, x: number, y: number, seat: 1 | 2, auto = false) => ({ n, x, y, seat, auto, at: AT });
+  const OPENING = [stone(1, 50, 50, 1), stone(2, 51, 50, 2)];
+  type Sheet = NonNullable<GameView["paper"]>;
+  const paperGame = (over: Partial<GameView> = {}, sheet: Partial<Sheet> = {}): Partial<GameView> => {
+    const moves = sheet.moves ?? OPENING;
+    return {
+      variant: "paper",
+      timeControlMs: 180_000,
+      moveCount: moves.length,
+      turnSeat: 1,
+      moves: [],
+      clock: clock([180_000, 180_000]),
+      paper: { moveCount: moves.length, moves, scores: [0, 0], fives: [], autoSeat: null, autoMoveAt: null, ...sheet },
+      ...over,
+    };
+  };
+  // Screen coordinates: the start of the sheet is 0, 0.
+  const at = (x: number, y: number, state = "puste") => cell(`Pole ${x}, ${y}, ${state}`);
+
+  it("draws the sheet, not the 15×15 board, and sends the absolute coordinates on one click", async () => {
+    field(paperGame());
+    expect(document.querySelector('[aria-label="Plansza bez granic, papier i ołówek"]')).not.toBeNull();
+    expect(document.querySelector('[aria-label="Plansza 15 na 15"]')).toBeNull();
+    expect(screen.getByText("Twój ruch (czarne)")).toBeTruthy();
+    await press(at(2, 0));
+    expect(apiCall).toHaveBeenCalledWith("/api/games/g1/moves", { body: { x: 52, y: 50, moveNumber: 3 } });
+    expect(onState).toHaveBeenCalledWith(expect.anything(), 2);
+  });
+
+  it("does not send a field that is too far from every stone", async () => {
+    field(paperGame());
+    await press(cell("Pole 8, 0, puste, za daleko od kamieni"));
+    expect(apiCall).not.toHaveBeenCalled();
+  });
+
+  it("shows the stone at once while the move is on its way", async () => {
+    apiCall.mockReturnValue(new Promise(() => {}));
+    field(paperGame());
+    await press(at(0, 1));
+    expect(screen.getByText("Wysyłanie ruchu…")).toBeTruthy();
+    expect(document.querySelector('[aria-label^="Pole 0, 1, czarny kamień"]')).not.toBeNull();
+  });
+
+  it("shows the points at the clocks and who the automat plays for", () => {
+    field(paperGame({}, { scores: [3, 1], autoSeat: 2, autoMoveAt: AT }));
+    expect(screen.getByTestId("score-mine").textContent).toBe(" · punkty: 3");
+    expect(screen.getByTestId("score-theirs").textContent).toBe(" · punkty: 1 · Automat");
+  });
+
+  it("says the automat is putting the stone and keeps the board read-only", () => {
+    field(paperGame({ turnSeat: 2 }, { autoSeat: 2, autoMoveAt: AT }));
+    expect(screen.getByText("Automat stawia kamień…")).toBeTruthy();
+    expect(grid().getAttribute("aria-readonly")).toBe("true");
+  });
+
+  it("keeps the own clock running while the automat plays for the opponent", () => {
+    field(paperGame({ clock: { remainingMs: [100_000, 0], running: 1, now: 0 } }, { autoSeat: 2 }));
+    expect(screen.getByText("Twój ruch (czarne)")).toBeTruthy();
+    expect(document.querySelectorAll('[data-slot="clock"]')).toHaveLength(2);
+  });
+
+  it("tells a player whose own time ran out that the automat plays for them", () => {
+    field(paperGame({ turnSeat: 1, clock: { remainingMs: [0, 100_000], running: 2, now: 0 } }, { autoSeat: 1 }));
+    expect(screen.getByText("Twój czas minął — automat stawia kamienie za Ciebie")).toBeTruthy();
+    expect(grid().getAttribute("aria-readonly")).toBe("true");
+  });
+
+  it("flags low time against the budget of the game and announces it once", async () => {
+    field(paperGame({ timeControlMs: 60_000, clock: clock([14_000, 60_000]) }));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(2_000)));
+    expect(screen.getByTestId("low-live").textContent).toBe("Zostało mało czasu");
+  });
+
+  it("explains the refusals of the sheet", async () => {
+    apiCall.mockResolvedValue(failure("MOVE_TOO_FAR"));
+    field(paperGame());
+    await press(at(2, 0));
+    expect(screen.getByText("Za daleko od kamieni: najwyżej 3 pola od innego.")).toBeTruthy();
+    expect(onRefresh).toHaveBeenCalled();
+  });
+
+  it("does not guess the board of a variant it does not know", () => {
+    field({ variant: "future" as never });
+    expect(screen.getByRole("alert").textContent).toContain("Odśwież stronę");
+    expect(document.querySelector("[role=grid]")).toBeNull();
+  });
+
+  describe("on a touch screen", () => {
+    beforeEach(() => stubPointer(true));
+
+    it("starts the selection on the opponent's last stone and moves it with the arrows", async () => {
+      field(paperGame());
+      expect(screen.getByTestId("selection").textContent).toBe("Dotknij pola albo przesuń zaznaczenie strzałkami.");
+      expect(byText("Postaw kamień").hasAttribute("disabled")).toBe(true);
+      await press(screen.getByRole("button", { name: "Zaznaczenie w prawo" }));
+      expect(screen.getByTestId("selection").textContent).toBe("Zaznaczono pole 2, 0. Naciśnij „Postaw kamień”.");
+      expect(byText("Postaw kamień").hasAttribute("disabled")).toBe(false);
+      expect(apiCall).not.toHaveBeenCalled();
+      await press(byText("Postaw kamień"));
+      expect(apiCall).toHaveBeenCalledWith("/api/games/g1/moves", { body: { x: 52, y: 50, moveNumber: 3 } });
+    });
+
+    it("keeps the button off for a field that is too far or taken, and says why", async () => {
+      field(paperGame());
+      const right = screen.getByRole("button", { name: "Zaznaczenie w prawo" });
+      for (let step = 0; step < 4; step += 1) await press(right);
+      expect(screen.getByTestId("selection").textContent).toBe("Za daleko od kamieni: najwyżej 3 pola od innego.");
+      expect(byText("Postaw kamień").hasAttribute("disabled")).toBe(true);
+      await press(screen.getByRole("button", { name: "Zaznaczenie w lewo" }));
+      await press(screen.getByRole("button", { name: "Zaznaczenie w lewo" }));
+      await press(screen.getByRole("button", { name: "Zaznaczenie w lewo" }));
+      await press(screen.getByRole("button", { name: "Zaznaczenie w lewo" }));
+      expect(screen.getByTestId("selection").textContent).toBe("To pole jest już zajęte.");
+    });
+
+    it("selects the middle for the first stone of the game", async () => {
+      field(paperGame({ moveCount: 0 }, { moves: [] }));
+      expect(screen.getByTestId("selection").textContent).toBe("Zaznaczono pole 0, 0. Naciśnij „Postaw kamień”.");
+      await press(byText("Postaw kamień"));
+      expect(apiCall).toHaveBeenCalledWith("/api/games/g1/moves", { body: { x: 50, y: 50, moveNumber: 1 } });
+    });
+
+    it("lets the player pick a field with a tap and centre the view with a button next to the confirmation", async () => {
+      field(paperGame());
+      await press(at(0, 1));
+      expect(screen.getByTestId("selection").textContent).toContain("Zaznaczono pole 0, 1");
+      await press(screen.getByTestId("paper-recenter"));
+      expect(screen.getByTestId("selection").textContent).toContain("Zaznaczono pole 0, 1");
+    });
+
+    it("asks to wait while the automat plays", () => {
+      field(paperGame({ turnSeat: 2 }, { autoSeat: 2 }));
+      expect(screen.getByTestId("selection").textContent).toBe("Poczekaj, aż automat postawi kamień.");
+    });
+
+    it("asks to wait for the opponent", () => {
+      field(paperGame({ turnSeat: 2 }));
+      expect(screen.getByTestId("selection").textContent).toBe("Poczekaj na ruch przeciwnika.");
+    });
+  });
+
+  describe("finished", () => {
+    const over = (winnerSeat: 1 | 2 | null, reason: "points" | "resignation", scores: [number, number]) =>
+      paperGame({ status: "finished", turnSeat: null, result: { winnerSeat, reason, winLine: null, scores } }, { scores });
+
+    it("announces the points: a win, a loss and a draw", () => {
+      field(over(1, "points", [7, 5]));
+      expect(screen.getByText("Wygrana 7 : 5")).toBeTruthy();
+      cleanup();
+      field(over(2, "points", [5, 7]));
+      expect(screen.getByText("Przegrana 5 : 7")).toBeTruthy();
+      cleanup();
+      field(over(null, "points", [4, 4]));
+      expect(screen.getByText("Remis 4 : 4")).toBeTruthy();
+    });
+
+    it("announces a resignation without the points deciding", () => {
+      field(over(2, "resignation", [9, 1]));
+      expect(screen.getByText("Przegrana przez poddanie")).toBeTruthy();
+    });
+  });
+});

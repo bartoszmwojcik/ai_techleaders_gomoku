@@ -30,3 +30,12 @@ describe("GameClock", () => {
     expect(html(300_000)).not.toContain("Twój ruch");
   });
 });
+
+describe("GameClock, short games (E11)", () => {
+  it("is low below a quarter of the game's budget when that is under a minute", () => {
+    const at = (remainingMs: number) =>
+      renderToStaticMarkup(<GameClock name="Ala_7" remainingMs={remainingMs} active={false} activeLabel="x" timeControlMs={60_000} />);
+    expect(at(14_999)).toContain('data-low="true"');
+    expect(at(15_000)).not.toContain("data-low");
+  });
+});

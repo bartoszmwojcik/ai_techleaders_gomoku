@@ -129,3 +129,28 @@ describe("CreateGameButton", () => {
     expect(screen.queryByText("Nie udało się utworzyć partii")).toBeNull();
   });
 });
+
+describe("CreateGameButton, game settings (E11)", () => {
+  it("offers the variant, classic by default", () => {
+    render(<CreateGameButton heldGame={null} />);
+    expect(screen.getByRole("radio", { name: "Klasyczny" }).getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("sends the paper variant and the picked clock, with isPublic when ticked", async () => {
+    apiCall.mockResolvedValue({ ok: true, data: { gameId: "g2" } });
+    render(<CreateGameButton heldGame={null} />);
+    const u = userEvent.setup();
+    await u.click(screen.getByRole("radio", { name: "Papier i ołówek" }));
+    await u.click(screen.getByRole("radio", { name: "2 min" }));
+    await u.click(screen.getByRole("button", { name: "Utwórz zaproszenie" }));
+    expect(apiCall).toHaveBeenCalledWith("/api/games", { body: { variant: "paper", timeControlMs: 120_000 } });
+
+    apiCall.mockClear();
+    cleanup();
+    render(<CreateGameButton heldGame={null} />);
+    await u.click(screen.getByRole("radio", { name: "Papier i ołówek" }));
+    await u.click(screen.getByRole("checkbox", { name: /Partia publiczna/ }));
+    await u.click(screen.getByRole("button", { name: "Utwórz zaproszenie" }));
+    expect(apiCall).toHaveBeenCalledWith("/api/games", { body: { isPublic: true, variant: "paper", timeControlMs: 180_000 } });
+  });
+});

@@ -217,3 +217,18 @@ describe("GuestCreateForm", () => {
     expect(screen.getByText("Nick może zawierać litery, cyfry, spacje oraz znaki _ i -.")).toBeTruthy();
   });
 });
+
+describe("GuestCreateForm, game settings (E11)", () => {
+  it("sends the paper variant with the clock next to the acknowledgement", async () => {
+    apiCall.mockResolvedValue(ok);
+    render(<GuestCreateForm />);
+    const u = userEvent.setup();
+    expect(screen.getByRole("radio", { name: "Klasyczny" }).getAttribute("aria-checked")).toBe("true");
+    await u.click(screen.getByRole("radio", { name: "Papier i ołówek" }));
+    await u.click(screen.getByRole("radio", { name: "1 min" }));
+    await u.click(create());
+    expect(apiCall).toHaveBeenCalledWith("/api/games", {
+      body: { acknowledgedGuestWarning: true, variant: "paper", timeControlMs: 60_000 },
+    });
+  });
+});

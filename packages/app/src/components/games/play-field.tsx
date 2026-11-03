@@ -137,7 +137,7 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
   // Classic: the selected intersection (a cell). Paper: the selected field; the first stone starts in the middle.
   const classicSelected = myTurn && pick?.moveCount === game.moveCount ? cellOf(pick.x, pick.y) : null;
   const paperSelected = !paper || !myTurn ? null : pick?.moveCount === game.moveCount ? pick : stonesOnSheet.length === 0 ? FIRST_STONE : null;
-  const selected = paper ? paperSelected : classicSelected;
+  const target = paperSelected ?? (classicSelected === null ? null : coordsOf(classicSelected));
   const selectedRefusal = paperSelected ? refusalText(rules, paperSelected) : "";
 
   async function submit(attempt: Attempt) {
@@ -226,7 +226,7 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
         : autoTurn
           ? "Automat stawia kamień…"
           : "Ruch przeciwnika";
-  const scoreOf = (seat: 1 | 2) => (paper ? ` · punkty: ${paper.scores[seat - 1]}` : "");
+  const scoreOf = (seat: 1 | 2) => ` · punkty: ${paper!.scores[seat - 1]}`;
   const autoNote = (seat: 1 | 2) => (paper?.autoSeat === seat ? " · Automat" : "");
   const nameWith = (name: ReturnType<typeof playerNameOf>, seat: 1 | 2, you = false) => (
     <>
@@ -343,11 +343,8 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
             {/* LUKA D01: no pattern for "selected intersection + confirm"; the Board's `selected` and a Button stand in. */}
             <div className="flex flex-wrap items-center gap-group">
               <Button
-                disabled={selected === null || busy || selectedRefusal !== ""}
-                onClick={() => {
-                  if (paperSelected) void submit({ ...paperSelected, moveNumber: game.moveCount + 1 });
-                  else if (classicSelected !== null) void submit({ ...coordsOf(classicSelected), moveNumber: game.moveCount + 1 });
-                }}
+                disabled={target === null || busy || selectedRefusal !== ""}
+                onClick={() => void submit({ x: target!.x, y: target!.y, moveNumber: game.moveCount + 1 })}
               >
                 Postaw kamień
               </Button>

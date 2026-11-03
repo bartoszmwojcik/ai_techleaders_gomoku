@@ -495,3 +495,25 @@ describe("LobbyPanel: picking an opponent (#26)", () => {
     expect(push).not.toHaveBeenCalled();
   });
 });
+
+describe("LobbyPanel: variant (E11)", () => {
+  it("names the variant and the clock of every seeker", () => {
+    const seekers = [seeker("Alicja_99", 60_000, 240_000, "paper", 180_000), seeker("Bob", 190_000, 48_000)];
+    render(<LobbyPanel initial={lobby({ seekers })} />);
+    expect(screen.getByText("Papier i ołówek · 3 min · szuka od 1 min")).toBeTruthy();
+    expect(screen.getByText("Klasyczny · 10 min · szuka od 3 min")).toBeTruthy();
+  });
+
+  it("marks oneself with the paper variant and the picked clock", async () => {
+    apiCall.mockImplementation(async (path: string) =>
+      path === "/api/lobby/seeking" ? ok({ me: { id: "me", createdAt: "2026-10-31T12:00:00Z", expiresInMs: 300_000 } }) : ok(lobby()),
+    );
+    render(<LobbyPanel initial={lobby()} />);
+
+    await click(screen.getAllByRole("radio", { name: "Papier i ołówek" })[0]!);
+    await click(screen.getByRole("radio", { name: "1 min" }));
+    await click(mark());
+
+    expect(apiCall).toHaveBeenCalledWith("/api/lobby/seeking", { method: "PUT", body: { variant: "paper", timeControlMs: 60_000 } });
+  });
+});
