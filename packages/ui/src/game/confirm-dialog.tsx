@@ -29,6 +29,11 @@ type ConfirmDialogProps = {
   /** Shows the confirm button as busy and blocks a second click while the server answers. */
   confirming?: boolean;
   tone?: "danger" | "primary";
+  /**
+   * A dialog without a trigger has nowhere to return focus to: pass this to send it somewhere
+   * (call `event.preventDefault()`, then focus the element that opened the dialog).
+   */
+  onCloseAutoFocus?: (event: Event) => void;
   className?: string;
 };
 
@@ -46,6 +51,7 @@ function ConfirmDialog({
   onConfirm,
   confirming = false,
   tone = "danger",
+  onCloseAutoFocus,
   className,
 }: ConfirmDialogProps) {
   return (
@@ -55,6 +61,7 @@ function ConfirmDialog({
         <AlertDialogPrimitive.Overlay className={dialogOverlayClass}>
           <AlertDialogPrimitive.Content
             className={cn(dialogContentClass, className)}
+            onCloseAutoFocus={onCloseAutoFocus}
             {...(description ? {} : { "aria-describedby": undefined })}
           >
             <AlertDialogPrimitive.Title className={dialogTitleClass}>{title}</AlertDialogPrimitive.Title>

@@ -15,6 +15,10 @@ vi.mock("next/headers", () => ({
   }),
 }));
 
+vi.mock("@/components/auth/session-menu", () => ({
+  SessionMenu: () => <button data-testid="session-menu">menu</button>,
+}));
+
 import FrontendLayout, { metadata } from "./layout";
 
 async function render(cookie: string | undefined) {
@@ -54,19 +58,33 @@ describe("FrontendLayout", () => {
     },
   );
 
-  it("places the theme switch in the corner with the cookie theme as its server state", async () => {
+  it("puts the home link and the theme switch on the left, with the cookie theme as the switch's server state", async () => {
     const light = await render("light");
     const unset = await render(undefined);
 
-    expect(light).toMatch(/<div class="flex justify-end[^"]*"><button[^>]*><svg[^>]*lucide-sun/);
-    expect(unset).toMatch(/<div class="flex justify-end[^"]*"><button[^>]*><svg[^>]*lucide-moon/);
+    for (const html of [light, unset]) {
+      expect(html).toMatch(/<header class="flex items-center justify-between[^"]*"><div[^>]*><a [^>]*href="\/"[^>]*>Gomoku<\/a><button/);
+      expect(html).toContain('data-testid="home-link"');
+      expect(html).toContain("min-h-target");
+    }
+    expect(light).toMatch(/<button[^>]*><svg[^>]*lucide-sun/);
+    expect(unset).toMatch(/<button[^>]*><svg[^>]*lucide-moon/);
   });
 
-  it("lets the switch float over the corner below sm only for a page that marks its main (issue 181)", async () => {
+  it("puts the session menu on the right, apart from the theme switch", async () => {
+    const html = await render("dark");
+
+    expect(html.indexOf('data-testid="theme-switch"')).toBeLessThan(html.indexOf('data-testid="session-menu"'));
+    expect(html).toMatch(/<\/button><\/div><div class="flex min-w-0 justify-end[^"]*"><button data-testid="session-menu"/);
+  });
+
+  it("lets the bar float over the heading's row below sm only for a page that marks its main, without the home link (issue 181)", async () => {
     const html = await render("dark");
 
     expect(html).toMatch(/<body class="group\/body /);
     expect(html).toContain("group-has-[[data-theme-overlay]]/body:max-sm:absolute");
+    expect(html).toContain("group-has-[[data-theme-overlay]]/body:max-sm:hidden");
+    expect(html).toContain("group-has-[[data-theme-overlay]]/body:max-sm:max-w-28");
   });
 
   it("describes the game for search engines", () => {

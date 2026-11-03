@@ -4,12 +4,12 @@ import { toValidationError } from "@gomoku/core/http/zod-error";
 import { passwordChangeSchema } from "@gomoku/core/validators/auth/password-change-schema";
 import { Alert } from "@gomoku/ui/game/alert";
 import { PasswordField } from "@gomoku/ui/game/password-field";
-import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { ErrorMessage } from "@/components/feedback/error-message";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { apiCall } from "@/lib/api-client";
+import { fullPageLoad } from "@/lib/full-page-load";
 
 type FieldName = "currentPassword" | "newPassword";
 type FieldMessages = Partial<Record<FieldName, string>>;
@@ -41,7 +41,6 @@ function rateLimitedError(retryAfterSeconds: number | undefined): GeneralError {
 }
 
 export function ChangePasswordForm() {
-  const router = useRouter();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   // Remounting a password field hides the password again.
@@ -94,7 +93,7 @@ export function ChangePasswordForm() {
     const { code, retryAfterSeconds, fieldErrors } = result.error;
     if (code === "UNAUTHORIZED") {
       // The session expired while the form was open: sign in again and come back here.
-      router.replace(`/login?next=${encodeURIComponent("/account")}`);
+      fullPageLoad(`/login?next=${encodeURIComponent("/account")}`);
       return;
     }
     const messages = firstMessages(fieldErrors);

@@ -9,6 +9,7 @@ import { ErrorMessage } from "@/components/feedback/error-message";
 import { FormField } from "@/components/forms/form-field";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { apiCall } from "@/lib/api-client";
+import { fullPageLoad } from "@/lib/full-page-load";
 import { formatValidUntil } from "@/lib/format-date-time";
 
 type Props = {
@@ -62,7 +63,7 @@ export function ChangeDisplayNameForm({ displayName, availableAt }: Props) {
     }
     const { code, retryAfterSeconds, fieldErrors } = result.error;
     if (code === "UNAUTHORIZED") {
-      router.replace(`/login?next=${encodeURIComponent("/account")}`);
+      fullPageLoad(`/login?next=${encodeURIComponent("/account")}`);
       return;
     }
     const fieldMessage = fieldErrors?.displayName?.[0];

@@ -1,0 +1,84 @@
+import { ArgTypes, Canvas, Meta } from "@storybook/addon-docs/blocks";
+import { UserMenu } from "@gomoku/ui/game/user-menu";
+import * as Stories from "./user-menu.stories";
+
+<Meta of={Stories} />
+
+# Menu użytkownika
+
+## 1. Do czego służy
+
+Przycisk z nazwą gracza w prawym górnym rogu paska. Rozwija akcje poboczne konta, żeby nie zasłaniały głównych akcji strony.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Kiedy używać
+
+- **W górnym pasku stron gracza, dla zalogowanego:** pozycje Konto, Historia, Wyloguj.
+
+## 3. Kiedy nie używać
+
+- **Główna akcja strony:** [Przycisk](?path=/docs/komponenty-przycisk--docs).
+- **Gość:** menu nie ma, bo nie ma konta.
+- **Wybór jednej z kilku opcji:** Grupa wyboru albo Lista wyboru.
+
+## 4. Anatomia
+
+1. **Przycisk:** nazwa (Skracana nazwa) i strzałka.
+2. **Lista pozycji:** `UserMenuLink` (inna strona), `UserMenuAction` (akcja na tej stronie).
+
+## 5. Warianty
+
+Brak wariantów wyglądu.
+
+## 6. Stany
+
+Zamknięte, otwarte, najechanie, fokus, wciśnięcie. Pozycja podświetlona ma tło `border-default`. Akcja wymagająca pytania otwiera Dialog potwierdzenia po zamknięciu menu; `triggerRef` pozwala oddać potem fokus na przycisk.
+
+## 7. Zachowanie i dostępność
+
+- **Rola:** przycisk z `aria-haspopup="menu"` i `aria-expanded`, lista `menu`, pozycje `menuitem`.
+- **Czytnik:** `label` to całe zdanie, np. „Zalogowano jako Ala_7, menu konta”; pełna nazwa jest też w `title`.
+- **Klawiatura:** Enter, Spacja i strzałka w dół otwierają, strzałki poruszają, Esc zamyka i zwraca fokus na przycisk.
+- **Cel dotyku:** przycisk i pozycje mają co najmniej 44 px.
+- **Niemodalne:** menu nie blokuje strony; kliknięcie obok zamyka.
+
+<Canvas of={Stories.KlawiaturaStrzalkiIEsc} />
+
+## 8. Treść
+
+- **Przycisk:** sama nazwa, bez „Zalogowano jako” (zdanie jest dla czytnika).
+- **Pozycje:** „Konto”, „Historia”, „Wyloguj”. Komponent nie ma wbudowanych tekstów.
+
+<Canvas of={Stories.MenuOtwarteMyszka} />
+
+## 9. Responsywność
+
+Długa nazwa skraca się wielokropkiem, gdy rodzic ogranicza szerokość (`min-w-0`); strzałka zostaje. Przy 320 px bez poziomego przewijania.
+
+<Canvas of={Stories.DlugaNazwaNaWaskimEkranie320} />
+
+## 10. API
+
+<ArgTypes of={UserMenu} />
+
+## 11. Kod
+
+```tsx
+import { UserMenu, UserMenuAction, UserMenuLink } from "@gomoku/ui/game/user-menu";
+
+<UserMenu name={name} label={`Zalogowano jako ${name}, menu konta`}>
+  <UserMenuLink href="/account">Konto</UserMenuLink>
+  <UserMenuLink href="/history">Historia</UserMenuLink>
+  <UserMenuAction onSelect={logOut}>Wyloguj</UserMenuAction>
+</UserMenu>;
+```
+
+## 12. Dobrze i źle
+
+**Dobrze:** krótkie pozycje, potwierdzenie przy wylogowaniu w trakcie partii. **Źle:** główna akcja strony schowana w menu, sama strzałka bez nazwy, menu w menu.
+
+## 13. Powiązane
+
+- **Mylony z:** Grupą wyboru (wybór opcji) i Dialogiem (czynność w kontekście).
+- **Składa się z:** Skracanej nazwy.

@@ -247,7 +247,7 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
 
   return (
     <>
-      <h1 className="m-0 flex min-h-target items-center pr-12 text-section font-strong sm:pr-0">{finished ? "Koniec partii" : "Partia w toku"}</h1>
+      <h1 className="m-0 flex min-h-target items-center pl-11 text-lead font-strong sm:pl-0 sm:text-section">{finished ? "Koniec partii" : "Partia w toku"}</h1>
       <PublicFlag audience={game.audience} />
       <CloseAudience gameId={gameId} game={game} onState={onState} onRefresh={onRefresh} onGone={onGone} />
       <div className="flex max-w-(--layout-width-board) flex-col gap-stack">

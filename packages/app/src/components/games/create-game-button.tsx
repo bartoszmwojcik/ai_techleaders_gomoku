@@ -101,10 +101,14 @@ export function CreateGameButton({ heldGame }: { heldGame: HeldGame | null }) {
           {retry}
         </Alert>
       )}
-      <GameSettingsPicker value={settings} onChange={(next) => {
+      <GameSettingsPicker
+        value={settings}
+        onChange={(next) => {
           setSettings(next);
           setVariant(next.variant);
-        }} disabled={busy} />
+        }}
+        disabled={busy}
+      />
       <Checkbox
         label="Partia publiczna"
         hint="Po rozpoczęciu partii każdy z kodem lub linkiem będzie mógł ją oglądać."
@@ -113,7 +117,7 @@ export function CreateGameButton({ heldGame }: { heldGame: HeldGame | null }) {
         disabled={busy}
         data-testid="create-game-public"
       />
-      <Button data-testid="create-game" loading={busy} onClick={() => void onCreate()}>
+      <Button data-testid="create-game" className="w-full md:w-auto" loading={busy} onClick={() => void onCreate()}>
         {busy ? "Tworzenie zaproszenia…" : "Utwórz zaproszenie"}
       </Button>
     </>

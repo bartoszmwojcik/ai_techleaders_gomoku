@@ -42,10 +42,10 @@ const view = async (gameId: string, cookie: string) =>
   ((await (await api("GET", `/api/games/${gameId}`, undefined, cookie)).json()) as { data: View }).data;
 
 /** A started game of two accounts, both have opened the page (so the board is on); `mover` is on turn. */
-async function startedGame() {
+async function startedGame(body: Record<string, unknown> = {}) {
   const alice = await signedUp();
   const bob = await signedUp();
-  const created = await api("POST", "/api/games", {}, alice);
+  const created = await api("POST", "/api/games", body, alice);
   const { data } = (await created.json()) as { data: { gameId: string; invitation: { code: string } } };
   expect((await api("POST", `/api/invitations/${data.invitation.code}/accept`, { as: "user" }, bob)).status).toBe(200);
   for (const cookie of [alice, bob]) await fetch(`${baseUrl}/games/${data.gameId}`, { headers: { cookie } });
@@ -104,19 +104,31 @@ describe("the board on a phone", () => {
     }
   });
 
-  it("keeps the theme switch off the heading and the board at 320 px", async () => {
-    const { gameId, mover } = await startedGame();
+  it.each([
+    ["classic", {}],
+    ["paper", { variant: "paper" }],
+  ])("keeps the top bar off the heading, the clocks and the board at 320 px (%s)", async (_label, body) => {
+    const { gameId, mover } = await startedGame(body);
     await touch.setViewport(320, 568);
     await visit(touch, mover, gameId, "dark");
-    const overlap = await touch.evaluate<boolean>(
-      `(() => { const s = document.querySelector("[data-testid=theme-switch]").getBoundingClientRect(); return [...document.querySelectorAll("h1, [role=grid]")].some((e) => { const r = e.getBoundingClientRect(); const t = e.tagName === "H1" ? (() => { const g = document.createRange(); g.selectNodeContents(e); return g.getBoundingClientRect(); })() : r; return t.left < s.right && t.right > s.left && t.top < s.bottom && t.bottom > s.top; }); })()`,
+    const overlaps = await touch.evaluate<string[]>(
+      `(() => {
+        const ink = (e) => { if (e.tagName !== "H1") return e.getBoundingClientRect(); const g = document.createRange(); g.selectNodeContents(e); return g.getBoundingClientRect(); };
+        const hit = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+        const bar = [...document.querySelectorAll("[data-testid=theme-switch], [data-testid=signed-in-as]")];
+        const below = [...document.querySelectorAll("h1, [role=grid], [data-testid*=clock]")];
+        return bar.flatMap((s) => below.filter((e) => hit(ink(s), ink(e))).map((e) => s.dataset.testid + " on " + e.tagName));
+      })()`,
     );
-    expect(overlap).toBe(false);
-    const size = await touch.evaluate<{ width: number; height: number }>(
-      `(() => { const r = document.querySelector("[data-testid=theme-switch]").getBoundingClientRect(); return { width: r.width, height: r.height }; })()`,
+    expect(overlaps).toEqual([]);
+    const sizes = await touch.evaluate<{ width: number; height: number; overflow: boolean; bar: number; menuLeft: number; toggleRight: number }>(
+      `(() => { const r = document.querySelector("[data-testid=theme-switch]").getBoundingClientRect(); const m = document.querySelector("[data-testid=signed-in-as]").getBoundingClientRect(); return { width: r.width, height: r.height, overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth, bar: m.height, menuLeft: m.left, toggleRight: r.right }; })()`,
     );
-    expect(size.width).toBeGreaterThanOrEqual(44);
-    expect(size.height).toBeGreaterThanOrEqual(44);
+    expect(sizes.width).toBeGreaterThanOrEqual(44);
+    expect(sizes.height).toBeGreaterThanOrEqual(44);
+    expect(sizes.bar).toBeGreaterThanOrEqual(44);
+    expect(sizes.menuLeft).toBeGreaterThan(sizes.toggleRight);
+    expect(sizes.overflow).toBe(false);
   });
 
   it("keeps the button in the first screen for a guest, whose permanent warning sits below it", async () => {

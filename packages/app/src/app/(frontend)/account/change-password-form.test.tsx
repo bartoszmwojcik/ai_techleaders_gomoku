@@ -4,9 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { apiCall } = vi.hoisted(() => ({ apiCall: vi.fn() }));
-const { replace } = vi.hoisted(() => ({ replace: vi.fn() }));
+const { assign } = vi.hoisted(() => ({ assign: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiCall }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
 
 import { ChangePasswordForm } from "./change-password-form";
 
@@ -28,7 +27,8 @@ async function fillAndSubmit({ currentPassword = "secret123", newPassword = "bra
 
 beforeEach(() => {
   apiCall.mockReset();
-  replace.mockReset();
+  assign.mockReset();
+  vi.stubGlobal("location", { assign, origin: "https://gomoku.example" });
 });
 afterEach(cleanup);
 
@@ -65,7 +65,7 @@ describe("ChangePasswordForm", () => {
     apiCall.mockResolvedValue(failure({ code: "UNAUTHORIZED" }));
     render(<ChangePasswordForm />);
     await fillAndSubmit();
-    expect(replace).toHaveBeenCalledExactlyOnceWith("/login?next=%2Faccount");
+    expect(assign).toHaveBeenCalledExactlyOnceWith("https://gomoku.example/login?next=%2Faccount");
     expect(screen.queryByTestId("change-password-error")).toBeNull();
   });
 

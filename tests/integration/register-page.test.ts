@@ -56,7 +56,7 @@ describe("registration page", () => {
 
     await browser.waitFor("[data-testid=signed-in-as]");
     expect(await browser.url()).toBe(`${baseUrl}/`);
-    expect(await browser.text("[data-testid=signed-in-as]")).toBe(`Zalogowano jako ${user.displayName}`);
+    expect(await browser.text("[data-testid=signed-in-as]")).toBe(user.displayName);
     expect(await browser.count("a[href='/register']")).toBe(0);
   });
 
