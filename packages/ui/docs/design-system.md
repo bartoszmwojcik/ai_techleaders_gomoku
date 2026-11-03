@@ -41,6 +41,7 @@ Gra planszowa dla dwóch osób online: ciemna strona, drewniana plansza, jeden p
 | Plansza „papier i ołówek” | `@gomoku/ui/game/paper-board` | ekran partii wariantu `paper` (okno 15–31 pól, przesuwanie, powiększanie, kreski piątek, pasek dotykowy) | partia klasyczna (Plansza), ozdoba |
 | Zegar gracza | `@gomoku/ui/game/player-clock` | nad i pod planszą w partii | odliczanie statusu w lobby, odmierzanie czasu w komponencie |
 | Status tury | `@gomoku/ui/game/turn-status` | nad planszą w trakcie partii | wynik partii (Baner wyniku), czas (Zegar) |
+| Grupa wyboru | `@gomoku/ui/game/choice-group` | 2–5 krótkich opcji (wariant, czas na gracza) | długa lista (Select), wiele wyborów naraz (Checkbox) |
 | Baner wyniku | `@gomoku/ui/game/game-result-banner` | po zakończeniu partii | w trakcie partii, lista historii (Znacznik statusu) |
 | Karta kodu zaproszenia | `@gomoku/ui/game/invite-code-card` | strona oczekującej partii | wpisywanie kodu przez zaproszonego (Pole formularza) |
 | Karta podłączenia agenta | `@gomoku/ui/game/agent-connect-card` | strona oczekującej partii prywatnej, pod kartą zaproszenia (adres MCP, polecenie, kod) | pomoc w trakcie partii, ogólne zwijane sekcje (patrz „Czego brakuje”) |

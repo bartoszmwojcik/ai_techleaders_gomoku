@@ -1,0 +1,75 @@
+import { ArgTypes, Canvas, Meta } from "@storybook/addon-docs/blocks";
+import { ChoiceGroup } from "@gomoku/ui/game/choice-group";
+import * as Stories from "./choice-group.stories";
+
+<Meta of={Stories} />
+
+# Grupa wyboru
+
+## 1. Do czego służy
+
+Wybór jednej opcji z kilku krótkich (wariant gry, czas na gracza) jako rząd przycisków radiowych o celu 44 px.
+
+<Canvas of={Stories.Playground} />
+
+## 2. Kiedy używać
+
+- **Przy tworzeniu partii:** „Wariant”, „Czas na gracza” (E11).
+- Gdy opcji jest 2–5 i każda mieści się w jednym słowie lub dwóch.
+
+## 3. Kiedy nie używać
+
+- **Długa lista:** [Lista rozwijana](?path=/docs/prymitywy-lista-rozwijana--docs) (natywny `select`).
+- **Wiele opcji naraz:** pole wyboru.
+
+## 4. Anatomia
+
+1. **Nazwa grupy** (wymagana, widoczna).
+2. **Przyciski radiowe** (min. 2), zaznaczony wypełniony i pogrubiony.
+
+## 5. Warianty
+
+Brak wariantów wyglądu.
+
+<Canvas of={Stories.CzasNaGracza} />
+
+## 6. Stany
+
+Zaznaczony, niezaznaczony, fokus (obrys), zablokowany. Zaznaczenie niesie wypełnienie i grubość pisma, nie sam kolor.
+
+<Canvas of={Stories.Zablokowana} />
+
+## 7. Zachowanie i dostępność
+
+- **Rola:** `radiogroup` z nazwą z widocznej etykiety, opcje `radio` (Radix): strzałki zmieniają wybór, Tab wchodzi i wychodzi z grupy.
+- **Cel dotyku:** co najmniej 44 × 44 px (`--target-min`).
+
+## 8. Treść
+
+Komponent nie ma wbudowanych tekstów; etykiety przez propsy.
+
+## 9. Responsywność
+
+Opcje zawijają się do kolejnych wierszy.
+
+<Canvas of={Stories.NaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={ChoiceGroup} />
+
+## 11. Kod
+
+```tsx
+import { ChoiceGroup } from "@gomoku/ui/game/choice-group";
+
+<ChoiceGroup label="Wariant" options={options} value={variant} onValueChange={setVariant} />;
+```
+
+## 12. Dobrze i źle
+
+**Dobrze:** krótkie etykiety, domyślna opcja zaznaczona. **Źle:** brak wartości domyślnej, etykiety w kilku zdaniach.
+
+## 13. Powiązane
+
+- **Mylony z:** Polem wyboru (wiele opcji) i listą rozwijaną (dużo opcji).
