@@ -241,7 +241,7 @@ describe("what a spectator sees", () => {
     expect(initial.clock.remainingMs[initial.blackSeat - 1]).toBeLessThanOrEqual(600_000);
     expect(initial.players).toHaveLength(2);
     expect(initial.players.map((player: Json) => player.kind)).toEqual(["account", "account"]);
-    expect(Object.keys(initial).sort()).toEqual(["audience", "blackSeat", "canChat", "clock", "moveCount", "moves", "players", "result", "status", "turnSeat"]);
+    expect(Object.keys(initial).sort()).toEqual(["audience", "blackSeat", "canChat", "clock", "moveCount", "moves", "players", "result", "status", "timeControlMs", "turnSeat", "variant"]);
 
     expect((await move(game, game.black, 7, 7, 1)).status).toBe(200);
     expect((await move(game, game.white, 8, 7, 2)).status).toBe(200);
