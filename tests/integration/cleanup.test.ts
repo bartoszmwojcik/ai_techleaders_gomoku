@@ -496,6 +496,42 @@ describe("guest-only games rules (#102, spec 2026-10-30-guest-only-games-cleanup
     expect(await exists(alive)).toBe(true);
   });
 
+  it("active paper game (E11): the deadline is the clock of the seat on turn, or of the opponent of the automat seat", async () => {
+    const now = new Date();
+    const TIME = 60_000;
+    /** A guests-only paper game; `moveCount` (in `paper_game_states`) decides the seat on turn, black is seat 1. */
+    async function insertPaper(moveCount: number, clocks: [number, number], turnStartedAt: Date, autoSeat: Seat | null) {
+      const [game] = await orm.em.fork().execute<{ id: string }[]>(
+        `insert into games (origin, status, created_at, started_at, black_seat, variant, time_control_ms, clock_ms_1, clock_ms_2, turn_started_at)
+         values ('invite', 'active', ?, ?, 1, 'paper', ?, ?, ?, ?) returning id`,
+        [ago(now, 30 * HOUR), ago(now, 29 * HOUR), TIME, clocks[0], clocks[1], turnStartedAt],
+      );
+      const id = game!.id;
+      await sql(`insert into paper_game_states (game_id, move_count, auto_seat) values (?, ?, ?)`, [id, moveCount, autoSeat]);
+      for (const seat of [1, 2]) {
+        await sql(`insert into game_players (game_id, seat, kind, guest_token_hash, is_active) values (?, ?, 'guest', ?, false)`, [id, seat, hash()]);
+      }
+      return id;
+    }
+    const started = ago(now, HOUR + 11 * SECOND);
+    // Seat 2 is on turn with 10 s left: its deadline is 1 s past the 1 h window.
+    const turnClock = await insertPaper(1, [TIME, 10_000], started, null);
+    // Seat 1 is on turn with 60 s: its deadline is still inside the window.
+    const otherClock = await insertPaper(0, [TIME, 10_000], started, null);
+    // Automat phase for seat 1 (clock 0): the clock holder is seat 2 whatever the parity says.
+    const autoPhase = await insertPaper(0, [0, 10_000], started, 1);
+    // Automat phase for seat 2: the clock holder is seat 1 with 60 s, inside the window.
+    const autoAlive = await insertPaper(1, [TIME, 0], started, 2);
+
+    await cleanupExpired({ em: orm.em.fork(), now });
+
+    expect(await exists(turnClock)).toBe(false);
+    expect(await exists(otherClock)).toBe(true);
+    expect(await exists(autoPhase)).toBe(false);
+    expect(await exists(autoAlive)).toBe(true);
+    expect(await rows("paper_game_states", `game_id = '${turnClock}'`)).toBe("0"); // cascade
+  });
+
   it("active: a clock that never started uses the ready deadline (15 min) plus 1 h", async () => {
     const now = new Date();
     const gone = await insertDuel(now, { turnStartedAt: null, startedAt: ago(now, HOUR + READY_DEADLINE_MS + SECOND) });
