@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_SETTINGS, rulesLabel, settingsBody, settingsLabel, TIME_OPTIONS, VARIANT_OPTIONS, variantOf } from "./settings";
+import { DEFAULT_SETTINGS, homeRulesLabel, rulesLabel, settingsBody, settingsLabel, TIME_OPTIONS, VARIANT_OPTIONS, variantOf } from "./settings";
 
 describe("game settings", () => {
   it("defaults to the classic game and a three minute paper clock", () => {
@@ -35,5 +35,10 @@ describe("game settings", () => {
   it("words the rules of an invitation per variant", () => {
     expect(rulesLabel("classic", 600_000)).toBe("Swobodne zasady · plansza 15×15 · 10 minut na gracza");
     expect(rulesLabel("paper", 120_000)).toBe("Papier i ołówek · 2 min na gracza");
+  });
+
+  it("words the home page rules line per variant", () => {
+    expect(homeRulesLabel("classic")).toBe("Swobodne zasady · plansza 15×15 · 10 minut na gracza");
+    expect(homeRulesLabel("paper")).toBe("Kółko i krzyżyk na kartce papieru, 5 w linii, gra na czas.");
   });
 });

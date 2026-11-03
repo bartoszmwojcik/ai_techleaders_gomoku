@@ -7,6 +7,7 @@ import { connection } from "next/server";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { VerifyEmailNotice } from "@/components/auth/verify-email-banner";
 import { CreateGameButton } from "@/components/games/create-game-button";
+import { HomeRulesLine, HomeRulesProvider } from "@/components/games/home-rules";
 import { DismissibleNotice } from "@/components/games/dismissible-notice";
 import { getCurrentUserWith } from "@/server/http/auth";
 import { loadGuestCurrentGame } from "@/server/http/guest-game";
@@ -68,6 +69,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         <VerifyEmailNotice userId={user.id} email={user.email} />
       )}
       <div className="flex w-full flex-col items-center justify-center gap-section md:flex-row">
+        <HomeRulesProvider>
         <section className="max-w-sm space-y-4 text-center md:text-left">
           <h1 className="text-title font-strong tracking-(--letter-spacing-title)">
             Gomoku
@@ -76,10 +78,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             Pięć w linii wygrywa. Zagraj ze znajomym albo znajdź przeciwnika w
             lobby.
           </p>
-          <p className="text-meta text-text-muted">
-            Swobodne zasady · plansza {BOARD_SIZE}×{BOARD_SIZE} · 10 minut na
-            gracza
-          </p>
+          <HomeRulesLine />
           {user ? (
             <div className="flex flex-col items-center gap-stack md:items-start">
               <p
@@ -147,6 +146,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             </div>
           )}
         </section>
+        </HomeRulesProvider>
 
         <div
           aria-hidden="true"

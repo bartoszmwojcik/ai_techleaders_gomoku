@@ -3,6 +3,9 @@ import { PAPER_DEFAULT_TIME_MS, PAPER_TIME_CONTROLS_MS, type GameVariant } from 
 /** What the creator of a game picks: the variant and, for the paper game, the clock of each player (E11, BR-46). */
 export type GameSettingsChoice = { variant: GameVariant; timeControlMs: number };
 
+/** The classic game's clock per player. */
+const CLASSIC_TIME_MS = 600_000;
+
 export const DEFAULT_SETTINGS: GameSettingsChoice = { variant: "classic", timeControlMs: PAPER_DEFAULT_TIME_MS };
 
 export const VARIANT_NAME: Record<GameVariant, string> = { classic: "Klasyczny", paper: "Papier i ołówek" };
@@ -30,4 +33,11 @@ export function rulesLabel(variant: GameVariant, timeControlMs: number): string 
   return variant === "paper"
     ? `${settingsLabel(variant, timeControlMs)} na gracza`
     : `Swobodne zasady · plansza 15×15 · ${timeControlMs / 60_000} minut na gracza`;
+}
+
+/** The rules line under the variant choice on the home page: the classic text as it was, the paper game's approved sentence. */
+export function homeRulesLabel(variant: GameVariant): string {
+  return variant === "paper"
+    ? "Kółko i krzyżyk na kartce papieru, 5 w linii, gra na czas."
+    : rulesLabel("classic", CLASSIC_TIME_MS);
 }

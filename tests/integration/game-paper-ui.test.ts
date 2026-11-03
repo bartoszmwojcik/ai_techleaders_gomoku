@@ -73,6 +73,27 @@ describe("the paper and pencil game", () => {
     await creator.open(`${baseUrl}/`);
     await creator.waitFor("[data-testid=create-game]");
     expect(await creator.count("[data-testid=settings-time]")).toBe(0);
+    // The rules line follows the choice at once (a polite live region) and the layout below it stays put.
+    const rules = "document.querySelector('[data-testid=home-rules]')";
+    const classicRules = "Swobodne zasady · plansza 15×15 · 10 minut na gracza";
+    expect(await creator.evaluate<string>(`${rules}.getAttribute('aria-live')`)).toBe("polite");
+    expect(await creator.text("[data-testid=home-rules]")).toBe(classicRules);
+    const createTop = "Math.round(document.querySelector('[data-testid=create-game]').getBoundingClientRect().top + window.scrollY)";
+    const topBefore = await creator.evaluate<number>(createTop);
+    await creator.click("[data-testid=settings-variant-paper]");
+    await creator.waitFor("[data-testid=settings-time]");
+    expect(await creator.text("[data-testid=home-rules]")).toBe("Kółko i krzyżyk na kartce papieru, 5 w linii, gra na czas.");
+    await creator.click("[data-testid=settings-variant-classic]");
+    expect(await creator.text("[data-testid=home-rules]")).toBe(classicRules);
+    expect(await creator.evaluate<number>(createTop)).toBe(topBefore);
+    // On a 320 px phone both lines wrap to the same height, so nothing below them jumps.
+    const rulesHeight = () => creator.evaluate<number>(`${rules}.getBoundingClientRect().height`);
+    await creator.setViewport(320, 700);
+    const classicHeight = await rulesHeight();
+    await creator.click("[data-testid=settings-variant-paper]");
+    expect(await rulesHeight()).toBe(classicHeight);
+    await creator.click("[data-testid=settings-variant-classic]");
+    await creator.setViewport(1280, 900);
     await creator.click("[data-testid=settings-variant-paper]");
     await creator.waitFor("[data-testid=settings-time]");
     expect(await creator.evaluate<string>("document.querySelector('[data-testid=settings-time-180000]').getAttribute('aria-checked')")).toBe("true");

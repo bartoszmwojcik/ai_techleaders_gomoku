@@ -10,6 +10,7 @@ import { useRef, useState } from "react";
 
 import { rateLimitedError } from "@/components/feedback/rate-limited-error";
 import { GameSettingsPicker } from "@/components/games/game-settings-picker";
+import { useHomeRules } from "@/components/games/home-rules";
 import { apiCall } from "@/lib/api-client";
 import { DEFAULT_SETTINGS, settingsBody, type GameSettingsChoice } from "@/lib/games/settings";
 
@@ -29,6 +30,7 @@ export function CreateGameButton({ heldGame }: { heldGame: HeldGame | null }) {
   const [busy, setBusy] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
   const [settings, setSettings] = useState<GameSettingsChoice>(DEFAULT_SETTINGS);
+  const { setVariant } = useHomeRules();
   const [failure, setFailure] = useState<Failure | null>(null);
   // State alone lags a double click by one render; the ref closes that gap (two games would be a 409).
   const inFlight = useRef(false);
@@ -99,7 +101,10 @@ export function CreateGameButton({ heldGame }: { heldGame: HeldGame | null }) {
           {retry}
         </Alert>
       )}
-      <GameSettingsPicker value={settings} onChange={setSettings} disabled={busy} />
+      <GameSettingsPicker value={settings} onChange={(next) => {
+          setSettings(next);
+          setVariant(next.variant);
+        }} disabled={busy} />
       <Checkbox
         label="Partia publiczna"
         hint="Po rozpoczęciu partii każdy z kodem lub linkiem będzie mógł ją oglądać."
