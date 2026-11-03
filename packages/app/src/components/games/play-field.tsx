@@ -1,11 +1,13 @@
 "use client";
 
+import { cellOf, coordsOf } from "@gomoku/core/games/board";
 import { isLow } from "@gomoku/core/games/clock";
 import { Alert } from "@gomoku/ui/game/alert";
 import { Board } from "@gomoku/ui/game/board";
 import { Button } from "@gomoku/ui/game/button";
 import { ConfirmDialog } from "@gomoku/ui/game/confirm-dialog";
 import { GameResultBanner } from "@gomoku/ui/game/game-result-banner";
+import { PaperBoard } from "@gomoku/ui/game/paper-board";
 import { TurnStatus } from "@gomoku/ui/game/turn-status";
 import { useRef, useState, useSyncExternalStore } from "react";
 
@@ -19,11 +21,12 @@ import {
   colorOfSeat,
   COLOR_NAME,
   COLOR_PLAYS,
-  moveOf,
   outcomeOf,
   playerNameOf,
+  paperStonesOf,
   stonesOf,
 } from "@/lib/games/play";
+import { FIRST_STONE, lastPaperMove, opponentPaperMove, PAPER_LABELS, paperColors, paperRules, refusalText } from "@/lib/games/paper";
 import type { GameView } from "@/server/http/game-view";
 
 import { GameClock } from "./game-clock";
@@ -45,6 +48,8 @@ const REFUSALS: Record<string, string> = {
   CELL_OCCUPIED: "To pole jest już zajęte",
   GAME_FINISHED: "Partia jest już zakończona. Plansza została odświeżona.",
   GAME_NOT_ACTIVE: "Partia jest już zakończona. Plansza została odświeżona.",
+  MOVE_TOO_FAR: "Za daleko od kamieni: najwyżej 3 pola od innego.",
+  FIRST_MOVE_CENTER: "Pierwszy kamień trafia na środek planszy.",
 };
 
 type Props = {
@@ -66,7 +71,7 @@ type Props = {
   onGone: () => void;
 };
 
-type Attempt = { cell: number; moveNumber: number };
+type Attempt = { x: number; y: number; moveNumber: number };
 
 // The pointer device decides between one click and two steps (#22 Q7). The server cannot know it.
 const subscribePointer = (notify: () => void) => {
@@ -78,6 +83,8 @@ const isTouch = () => window.matchMedia("(pointer: coarse)").matches;
 const notTouchOnServer = () => false;
 
 const LOW_TIME_ANNOUNCEMENT = "Zostało mniej niż minuta";
+const PAPER_LOW_TIME_ANNOUNCEMENT = "Zostało mało czasu";
+const REFRESH_NOTICE = "Ta partia jest w wariancie, którego ta wersja strony nie obsługuje. Odśwież stronę.";
 
 /**
  * The board of a game in progress or finished (p05, p06). It owns what the player is doing (the
@@ -89,7 +96,9 @@ const LOW_TIME_ANNOUNCEMENT = "Zostało mniej niż minuta";
 export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onState, onRefresh, onAccepting, onGone }: Props) {
   const touch = useSyncExternalStore(subscribePointer, isTouch, notTouchOnServer);
   // A selection belongs to the move it was made for: it lapses with the next move or the end of the turn.
-  const [pick, setPick] = useState<{ cell: number; moveCount: number } | null>(null);
+  const [pick, setPick] = useState<{ x: number; y: number; moveCount: number } | null>(null);
+  // "Wyśrodkuj" on the phone (the paper board has no toolbar there): each press changes the board's recentre token.
+  const [recentered, setRecentered] = useState(0);
   const [pending, setPending] = useState<Attempt | null>(null);
   const [failed, setFailed] = useState<{ attempt: Attempt; message: string } | null>(null);
   const [refusal, setRefusal] = useState<string | null>(null);
@@ -108,19 +117,28 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
   const mine = game.players.find((player) => player.seat === game.you.seat);
   const other = game.players.find((player) => player.seat !== game.you.seat);
   const myColor = colorOfSeat(game.blackSeat, game.you.seat)!;
-  const myTurn = !finished && game.turnSeat === game.you.seat;
+  const paper = game.paper;
+  // The automat plays for the leading player whose time ran out (BR-50): a turn that belongs to the automat is nobody's.
+  const autoTurn = paper !== undefined && paper.autoSeat !== null && game.turnSeat === paper.autoSeat;
+  const myTurn = !finished && game.turnSeat === game.you.seat && !autoTurn;
   const busy = pending !== null;
   const clocks = useGameClock(game.clock, { finished, onExpire: onRefresh });
   // p05.3: a visually hidden live region says it once, when the player's own clock first drops below a minute.
   // It starts after mount (`live`), so the text is inserted into a page the reader already has, and it stays:
   // a read that corrects the time around the threshold does not say it again.
-  const myLow = clocks.live && !finished && isLow(clocks.remainingMs[game.you.seat - 1]!);
+  const myLow = clocks.live && !finished && isLow(clocks.remainingMs[game.you.seat - 1]!, game.timeControlMs);
   const [announced, setAnnounced] = useState(false);
   if (myLow && !announced) setAnnounced(true);
   const outcome = outcomeOf(game);
   const lastMove = game.moves.at(-1);
+  const stonesOnSheet = paper ? paperStonesOf(paper) : [];
+  const rules = paperRules(stonesOnSheet);
 
-  const selected = myTurn && pick?.moveCount === game.moveCount ? pick.cell : null;
+  // Classic: the selected intersection (a cell). Paper: the selected field; the first stone starts in the middle.
+  const classicSelected = myTurn && pick?.moveCount === game.moveCount ? cellOf(pick.x, pick.y) : null;
+  const paperSelected = !paper || !myTurn ? null : pick?.moveCount === game.moveCount ? pick : stonesOnSheet.length === 0 ? FIRST_STONE : null;
+  const target = paperSelected ?? (classicSelected === null ? null : coordsOf(classicSelected));
+  const selectedRefusal = paperSelected ? refusalText(rules, paperSelected) : "";
 
   async function submit(attempt: Attempt) {
     if (inFlight.current) return;
@@ -131,7 +149,7 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
     setPending(attempt);
     const after = attempt.moveNumber - 1;
     const result = await apiCall<GameView>(`/api/games/${gameId}/moves`, {
-      body: moveOf(attempt.cell, attempt.moveNumber),
+      body: attempt,
     });
     inFlight.current = false;
     setPending(null);
@@ -179,18 +197,53 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
   }
 
   function onCellSelect(cell: number) {
+    onPointSelect(coordsOf(cell));
+  }
+
+  function onPointSelect({ x, y }: { x: number; y: number }) {
     // A mouse places the stone at once. On touch only "Postaw kamień" sends a move (issue 181): a tap selects or moves
     // the selection, and tapping the selected intersection again changes nothing.
-    if (!touch) void submit({ cell, moveNumber: game.moveCount + 1 });
+    if (!touch) void submit({ x, y, moveNumber: game.moveCount + 1 });
     else {
       setRefusal(null);
       setFailed(null);
-      setPick({ cell, moveCount: game.moveCount });
+      setPick({ x, y, moveCount: game.moveCount });
     }
   }
 
-  const stones = pending ? [...stonesOf(game.moves), { cell: pending.cell, color: myColor }] : stonesOf(game.moves);
-  const status = busy ? "Wysyłanie ruchu…" : myTurn ? `Twój ruch (${COLOR_NAME[myColor]})` : "Ruch przeciwnika";
+  // The clock that runs: the player's on turn, and while the automat plays for one player the other's, without a break.
+  const myClockRuns = !finished && (myTurn || paper?.autoSeat === 3 - game.you.seat);
+  const otherClockRuns = !finished && !myClockRuns;
+  const pendingCell = pending ? cellOf(pending.x, pending.y) : undefined;
+  const stones = pendingCell === undefined ? stonesOf(game.moves) : [...stonesOf(game.moves), { cell: pendingCell, color: myColor }];
+  const sheetStones = pending && paper ? [...stonesOnSheet, { x: pending.x, y: pending.y, seat: game.you.seat, auto: false }] : stonesOnSheet;
+  const status = busy
+    ? "Wysyłanie ruchu…"
+    : myTurn
+      ? `Twój ruch (${COLOR_NAME[myColor]})`
+      : paper?.autoSeat === game.you.seat
+        ? "Twój czas minął — automat stawia kamienie za Ciebie"
+        : autoTurn
+          ? "Automat stawia kamień…"
+          : "Ruch przeciwnika";
+  const scoreOf = (seat: 1 | 2) => ` · punkty: ${paper!.scores[seat - 1]}`;
+  const autoNote = (seat: 1 | 2) => (paper?.autoSeat === seat ? " · Automat" : "");
+  const nameWith = (name: ReturnType<typeof playerNameOf>, seat: 1 | 2, you = false) => (
+    <>
+      <PlayerLabel name={name} you={you} />
+      {paper && (
+        <span data-testid={`score-${you ? "mine" : "theirs"}`}>
+          {scoreOf(seat)}
+          {autoNote(seat)}
+        </span>
+      )}
+    </>
+  );
+
+  if ((game.variant as string) !== "classic" && (game.variant as string) !== "paper") {
+    // A state of a variant this page does not know (a stale page after a release): do not guess the board.
+    return <Alert status="warning" title={REFRESH_NOTICE} role="alert" />;
+  }
 
   return (
     <>
@@ -241,25 +294,45 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
           </p>
         )}
         <span role="status" className="sr-only" data-testid="low-live">
-          {announced ? LOW_TIME_ANNOUNCEMENT : ""}
+          {announced ? (paper ? PAPER_LOW_TIME_ANNOUNCEMENT : LOW_TIME_ANNOUNCEMENT) : ""}
         </span>
         <GameClock
-          name={<PlayerLabel name={playerNameOf(other)} />}
+          name={nameWith(playerNameOf(other), (3 - game.you.seat) as 1 | 2)}
           remainingMs={clocks.remainingMs[2 - game.you.seat]!}
-          active={!myTurn && !finished}
+          active={otherClockRuns}
           activeLabel="Ruch przeciwnika"
+          timeControlMs={game.timeControlMs}
         />
-        <Board
-          label="Plansza 15 na 15"
-          cellLabel={cellLabel}
-          stones={stones}
-          lastMove={pending?.cell ?? lastMove}
-          winLine={game.result?.winLine ?? undefined}
-          selected={touch && selected !== null && !busy ? { cell: selected, color: myColor } : undefined}
-          readOnly={!myTurn || busy}
-          onCellSelect={onCellSelect}
-        />
-        {myTurn && lastMove !== undefined && (
+        {paper ? (
+          <PaperBoard
+            stones={sheetStones}
+            colors={paperColors(game.blackSeat)}
+            fives={paper.fives}
+            lastMove={pending ? { x: pending.x, y: pending.y } : lastPaperMove(paper)}
+            opponentMove={opponentPaperMove(paper, game.you.seat)}
+            selection={touch && paperSelected && !busy ? paperSelected : undefined}
+            selectionSeat={game.you.seat}
+            onSelect={onPointSelect}
+            allowed={rules.allowed}
+            disabled={!myTurn || busy}
+            labels={PAPER_LABELS}
+            layout={touch ? "phone" : "desktop"}
+            toolbar={!touch}
+            recenterToken={`${sheetStones.filter((stone) => stone.seat === game.you.seat).length}:${recentered}`}
+          />
+        ) : (
+          <Board
+            label="Plansza 15 na 15"
+            cellLabel={cellLabel}
+            stones={stones}
+            lastMove={pendingCell ?? lastMove}
+            winLine={game.result?.winLine ?? undefined}
+            selected={touch && classicSelected !== null && !busy ? { cell: classicSelected, color: myColor } : undefined}
+            readOnly={!myTurn || busy}
+            onCellSelect={onCellSelect}
+          />
+        )}
+        {!paper && myTurn && lastMove !== undefined && (
           // The opponent's stone appears on its own; a screen reader hears where (visually hidden).
           <p role="status" className="sr-only" data-testid="opponent-move">
             Przeciwnik: {cellName(lastMove).replace(/^K/, "k")}
@@ -268,18 +341,31 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
         {touch && !finished && (
           <div className="flex flex-col items-start gap-group">
             {/* LUKA D01: no pattern for "selected intersection + confirm"; the Board's `selected` and a Button stand in. */}
-            <Button
-              disabled={selected === null || busy}
-              onClick={() => selected !== null && void submit({ cell: selected, moveNumber: game.moveCount + 1 })}
-            >
-              Postaw kamień
-            </Button>
+            <div className="flex flex-wrap items-center gap-group">
+              <Button
+                disabled={target === null || busy || selectedRefusal !== ""}
+                onClick={() => void submit({ x: target!.x, y: target!.y, moveNumber: game.moveCount + 1 })}
+              >
+                Postaw kamień
+              </Button>
+              {paper && (
+                <Button variant="secondary" onClick={() => setRecentered((count) => count + 1)} data-testid="paper-recenter">
+                  Wyśrodkuj
+                </Button>
+              )}
+            </div>
             <p role="status" className="m-0 text-meta text-text-secondary" data-testid="selection">
-              {selected !== null
-                ? `Zaznaczono: ${cellName(selected)}. Naciśnij „Postaw kamień”.`
-                : myTurn
-                  ? "Dotknij przecięcia, żeby je zaznaczyć."
-                  : "Poczekaj na ruch przeciwnika."}
+              {paperSelected
+                ? selectedRefusal || `Zaznaczono pole ${paperSelected.x - 50}, ${paperSelected.y - 50}. Naciśnij „Postaw kamień”.`
+                : classicSelected !== null
+                  ? `Zaznaczono: ${cellName(classicSelected)}. Naciśnij „Postaw kamień”.`
+                  : myTurn
+                    ? paper
+                      ? "Dotknij pola albo przesuń zaznaczenie strzałkami."
+                      : "Dotknij przecięcia, żeby je zaznaczyć."
+                    : autoTurn || paper?.autoSeat === game.you.seat
+                      ? "Poczekaj, aż automat postawi kamień."
+                      : "Poczekaj na ruch przeciwnika."}
             </p>
           </div>
         )}
@@ -311,10 +397,11 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
           />
         )}
         <GameClock
-          name={<PlayerLabel name={playerNameOf(mine)} you />}
+          name={nameWith(playerNameOf(mine), game.you.seat, true)}
           remainingMs={clocks.remainingMs[game.you.seat - 1]!}
-          active={myTurn}
+          active={myClockRuns}
           activeLabel="Twój ruch"
+          timeControlMs={game.timeControlMs}
         />
         <p className="m-0 text-body text-text-secondary" data-testid="my-color">
           {finished ? "Grałeś" : "Grasz"} {COLOR_PLAYS[myColor]}.

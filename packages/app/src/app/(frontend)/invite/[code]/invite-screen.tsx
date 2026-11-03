@@ -2,6 +2,9 @@ import { Alert } from "@gomoku/ui/game/alert";
 import { Button } from "@gomoku/ui/game/button";
 import { TextLink } from "@gomoku/ui/game/text-link";
 
+import type { GameVariant } from "@gomoku/core";
+
+import { rulesLabel } from "@/lib/games/settings";
 import type { InvitationView } from "@/server/http/invitation-view";
 
 import { JoinActions } from "./join-actions";
@@ -27,6 +30,8 @@ function heading(view: Props["view"]): string {
 /** s07: the invitation page in each of its states (map s07.1-s07.9). */
 export function InviteScreen({ code, view }: Props) {
   const open = view.kind !== "invalid" && view.kind !== "limit";
+  // The variant of the game, once the view carries it; an older view means the classic game.
+  const { variant = "classic", timeControlMs = 600_000 } = view as { variant?: GameVariant; timeControlMs?: number };
   return (
     <main
       className="mx-auto flex w-full flex-1 max-w-md flex-col justify-center gap-stack px-panel py-section"
@@ -36,7 +41,7 @@ export function InviteScreen({ code, view }: Props) {
       <h1 className="m-0 text-section font-strong">{heading(view)}</h1>
       {open && (
         <p className="m-0 text-meta text-text-muted">
-          Kod zaproszenia: {code}. Swobodne zasady · plansza 15×15 · 10 minut na gracza.
+          Kod zaproszenia: {code}. {rulesLabel(variant, timeControlMs)}.
         </p>
       )}
 

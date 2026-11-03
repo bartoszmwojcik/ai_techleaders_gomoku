@@ -20,6 +20,7 @@ import {
   ACTIVE_SLOT_CONSTRAINT,
   GAME_NOT_FOUND_MESSAGE,
   type GameParticipant,
+  INSERT_PAPER_STATE_SQL,
 } from "./game-service";
 import { closeStaleSlotsOfUser } from "./lazy-closing";
 import { deleteSeekersSql } from "./lobby-seeker-sql";
@@ -53,6 +54,8 @@ const PLAYERS_SQL = `
   from game_players where game_id = ? order by seat`;
 
 type GameRow = {
+  variant: string;
+  time_control_ms: number;
   status: string;
   black_seat: Seat | null;
   rematch_state: string | null;
@@ -76,7 +79,7 @@ type GameRow = {
 const TOKEN_MARGIN_MS = GUEST_TOKEN_GRACE_MS - REMATCH_TTL_MS;
 
 const READ_GAME_SQL = `
-  select status, black_seat, rematch_state, rematch_offered_by_seat, rematch_game_id,
+  select variant, time_control_ms, status, black_seat, rematch_state, rematch_offered_by_seat, rematch_game_id,
     coalesce(rematch_expires_at <= ?, false) as expired,
     coalesce(finished_at > ?, false) as token_fresh
   from games where id = ?`;
@@ -106,8 +109,8 @@ const ACTIVE_SLOTS_SQL_OF = (count: number) =>
   `select game_id, user_id from game_players where user_id in (${placeholders(count)}) and is_active`;
 
 const INSERT_GAME_SQL = `
-  insert into games (origin, status, created_at, started_at, black_seat)
-  values ('rematch', 'active', ?, ?, ?)
+  insert into games (origin, status, created_at, started_at, black_seat, variant, time_control_ms, clock_ms_1, clock_ms_2)
+  values ('rematch', 'active', ?, ?, ?, ?, ?, ?, ?)
   returning id`;
 
 // `seen_at` stays NULL: the clock starts when both open the page (#21 Q20), Q21 applies.
@@ -289,8 +292,14 @@ export class RematchService {
       now,
       now,
       rematchBlackSeat(game.black_seat!),
+      game.variant,
+      game.time_control_ms,
+      game.time_control_ms,
+      game.time_control_ms,
     ]);
     const newGameId = created!.id;
+    // The rematch keeps the variant and the clock of the game it follows (E11, BR-46).
+    if (game.variant === "paper") await tx.execute(INSERT_PAPER_STATE_SQL, [newGameId], "run");
     for (const player of players) {
       await tx.execute(
         INSERT_PLAYER_SQL,

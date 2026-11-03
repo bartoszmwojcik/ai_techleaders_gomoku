@@ -110,7 +110,7 @@ describe("marking and the list", () => {
     const seenByBob = await lobby(bob);
     expect(seenByBob.me).toBeNull();
     expect(seenByBob.seekers).toEqual([
-      { id: me.id, displayName: alice.name, sinceMs: expect.any(Number), expiresInMs: expect.any(Number) },
+      { id: me.id, displayName: alice.name, sinceMs: expect.any(Number), expiresInMs: expect.any(Number), variant: "classic", timeControlMs: 600_000 },
     ]);
     // Nothing that identifies the account beyond the public name (BR-14).
     const raw = JSON.stringify(seenByBob);

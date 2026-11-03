@@ -13,7 +13,9 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
 
 import { rateLimitedError } from "@/components/feedback/rate-limited-error";
+import { GameSettingsPicker } from "@/components/games/game-settings-picker";
 import { apiCall } from "@/lib/api-client";
+import { DEFAULT_SETTINGS, settingsBody, type GameSettingsChoice } from "@/lib/games/settings";
 
 type Failure =
   | { kind: "limit"; retryAfterSeconds: number | undefined }
@@ -36,6 +38,7 @@ export function GuestCreateForm() {
   const [failure, setFailure] = useState<Failure | null>(null);
   const [busy, setBusy] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
+  const [settings, setSettings] = useState<GameSettingsChoice>(DEFAULT_SETTINGS);
   const [asking, setAsking] = useState(false);
   // State alone lags a double click by one render; the ref closes that gap (a second game would be a 409).
   const inFlight = useRef(false);
@@ -66,6 +69,7 @@ export function GuestCreateForm() {
         ...(checked.data === undefined ? {} : { nickname: checked.data }),
         ...(cancelOwnWaitingGame ? { cancelOwnWaitingGame: true } : {}),
         ...(isPublic ? { isPublic: true } : {}),
+        ...settingsBody(settings),
       },
     });
     if (result.ok) {
@@ -137,6 +141,7 @@ export function GuestCreateForm() {
             />
           )}
         </Field>
+        <GameSettingsPicker value={settings} onChange={setSettings} disabled={busy} />
         <Checkbox
           label="Partia publiczna"
           hint="Po rozpoczęciu partii każdy z kodem lub linkiem będzie mógł ją oglądać."
@@ -159,7 +164,7 @@ export function GuestCreateForm() {
             </Button>
           )}
           {failure?.kind === "waiting" && (
-            <Button variant="secondary" onClick={() => setAsking(true)}>
+            <Button variant="secondary" data-testid="guest-cancel-own" onClick={() => setAsking(true)}>
               Anuluj i utwórz nową
             </Button>
           )}

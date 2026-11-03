@@ -74,7 +74,7 @@ describe("POST /api/games/[id]/moves", () => {
     expect(play).not.toHaveBeenCalled();
   });
 
-  it.each([["not json"], [{ x: 15, y: 0, moveNumber: 1 }], [{ x: 1, y: 1 }]])(
+  it.each([["not json"], [{ x: 101, y: 0, moveNumber: 1 }], [{ x: 1, y: 1 }]])(
     "answers 400 to invalid input %j before looking the game up",
     async (body) => {
       const response = await POST(request(body), context);

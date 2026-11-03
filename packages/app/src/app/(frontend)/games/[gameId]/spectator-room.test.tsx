@@ -24,6 +24,8 @@ vi.setConfig({ testTimeout: 20_000 });
 const NO_RESULT = null;
 const live = (over: Partial<SpectatorView> = {}): SpectatorView => ({
   status: "active",
+  variant: "classic",
+  timeControlMs: 600_000,
   moveCount: 1,
   blackSeat: 1,
   turnSeat: 2,
@@ -347,5 +349,48 @@ describe("SpectatorRoom", () => {
     );
     expect(document.body.textContent).toContain("Agent · Claude (deklarowane)");
     expect(document.body.textContent).not.toMatch(/@|token|kod zaproszenia/i);
+  });
+});
+
+describe("SpectatorRoom, the paper game (E11)", () => {
+  const at = "2026-11-03T10:00:00.000Z";
+  const sheet = (over: Partial<NonNullable<SpectatorView["paper"]>> = {}) => ({
+    moveCount: 2,
+    moves: [
+      { n: 1, x: 50, y: 50, seat: 1 as const, auto: false, at },
+      { n: 2, x: 51, y: 50, seat: 2 as const, auto: false, at },
+    ],
+    scores: [2, 1] as [number, number],
+    fives: [],
+    autoSeat: null,
+    autoMoveAt: null,
+    ...over,
+  });
+  const paperLive = (over: Partial<SpectatorView> = {}, paper = sheet()) =>
+    live({ variant: "paper", timeControlMs: 180_000, moveCount: 2, moves: [], turnSeat: 1, paper, clock: { remainingMs: [100_000, 90_000], running: 1, now: 5_000_000 }, ...over });
+
+  it("draws the sheet with the points at the clocks and the automat marked", () => {
+    room(paperLive({}, sheet({ autoSeat: 2 })));
+    expect(document.querySelector('[aria-label="Plansza bez granic, papier i ołówek"]')).not.toBeNull();
+    expect(document.querySelector('[aria-label="Plansza 15 na 15"]')).toBeNull();
+    expect(screen.getByText(/Czarne: Ala_7/).textContent).toContain("punkty: 2");
+    expect(screen.getByText(/Białe:/).parentElement?.textContent).toContain("punkty: 1 · Automat");
+  });
+
+  it("announces the result with the points, the winner's first", () => {
+    room(paperLive({ status: "finished", turnSeat: null, result: { winnerSeat: 1, reason: "points", winLine: null, scores: [7, 5] } }));
+    expect(screen.getByText("Wygrały czarne: Ala_7 · 7 : 5")).toBeTruthy();
+  });
+
+  it("reads on from the number of paper moves", async () => {
+    room(paperLive());
+    apiCall.mockResolvedValue(read(paperLive()));
+    await tick(SPECTATOR_POLL_INTERVAL_MS);
+    expect(apiCall.mock.calls[0]![0]).toBe("/api/games/g1/spectate?after=2");
+  });
+
+  it("does not guess the board of a variant it does not know", () => {
+    room(live({ variant: "future" as never }));
+    expect(screen.getByRole("alert").textContent).toContain("Odśwież stronę");
   });
 });

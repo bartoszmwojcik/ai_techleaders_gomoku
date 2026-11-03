@@ -5,6 +5,7 @@ import {
   HISTORY_PAGE_SIZE,
   historyResultOf,
   type EndReason,
+  type GameVariant,
   type HistoryEntry,
   type HistoryPage,
   type ParticipantKind,
@@ -18,6 +19,9 @@ type Deps = { em: EntityManager; timeoutSettler: TimeoutSettler };
 
 type Row = {
   id: string;
+  variant: GameVariant;
+  score_1: number | null;
+  score_2: number | null;
   /** UTC with microseconds (`2026-10-31T15:04:05.123456Z`): the cursor keeps all of it. */
   finished_at: string;
   end_reason: EndReason;
@@ -36,7 +40,7 @@ type Row = {
 // because raw `em.execute` returns dates as text and a JavaScript date would lose the
 // microseconds the cursor needs. One row more than a page tells whether there is a next one.
 export const historySql = (afterCursor: boolean) => `
-  select g.id,
+  select g.id, g.variant, ps.score_1, ps.score_2,
     to_char(g.finished_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as finished_at,
     g.end_reason, g.winner_seat, me.seat as my_seat,
     op.kind as opponent_kind, op.seat as opponent_seat, op.nickname as opponent_nickname,
@@ -45,6 +49,7 @@ export const historySql = (afterCursor: boolean) => `
   join games g on g.id = me.game_id and g.status = 'finished'
   join game_players op on op.game_id = g.id and op.seat <> me.seat
   left join users u on u.id = op.user_id
+  left join paper_game_states ps on ps.game_id = g.id
   where me.user_id = ?${afterCursor ? "\n    and (g.finished_at, g.id) < (?::timestamptz, ?::uuid)" : ""}
   order by g.finished_at desc, g.id desc
   limit ?`;
@@ -69,6 +74,10 @@ function toEntry(row: Row): HistoryEntry {
     result: historyResultOf(row.winner_seat, row.my_seat),
     reason: row.end_reason,
     opponent: { kind: row.opponent_kind, name: opponentNameOf(row) },
+    variant: row.variant,
+    ...(row.variant === "paper" && {
+      scores: (row.my_seat === 1 ? [row.score_1!, row.score_2!] : [row.score_2!, row.score_1!]) as [number, number],
+    }),
   };
 }
 

@@ -36,7 +36,11 @@ const NEUTRAL_DETAIL = {
   timeout: "Przeciwnikowi skończył się czas.",
   resignation: "Przeciwnik poddał partię.",
   draw: "Plansza jest pełna, nikt nie ułożył pięciu kamieni.",
+  points: "Wygrał wyższy wynik punktowy.",
 } as const;
+
+/** The review of a paper game has no sheet to step through yet: its moves are not in the classic log (E11). */
+export const isPaperReview = (review: Pick<GameReview, "result">): boolean => review.result.reason === "points";
 
 /**
  * The banner of the review. A reader who played hears it as on the game screen ("Wygrałeś"); a
@@ -53,11 +57,23 @@ export function reviewOutcomeOf(review: GameReview): Outcome {
  * The banner for somebody who did not play (a reader with a code, a spectator): who won, by colour and
  * name, never "Wygrałeś". `result` is the finished game's result, `players` its seats.
  */
-export function neutralOutcomeOf(game: Pick<GameReview, "result" | "blackSeat" | "players">): Outcome {
-  const { winnerSeat, reason } = game.result;
-  if (winnerSeat === null) return { result: "draw", title: "Remis", detail: NEUTRAL_DETAIL.draw };
+export function neutralOutcomeOf(game: {
+  result: GameReview["result"] & { scores?: [number, number] };
+  blackSeat: Seat;
+  players: GameReview["players"];
+}): Outcome {
+  const { winnerSeat, reason, scores } = game.result;
+  if (winnerSeat === null) {
+    return {
+      result: "draw",
+      title: scores ? `Remis ${scores[0]} : ${scores[1]}` : "Remis",
+      detail: reason === "points" ? "Punkty były równe." : NEUTRAL_DETAIL.draw,
+    };
+  }
   const color = colorOfSeat(game.blackSeat, winnerSeat)!;
-  return { result: "win", title: `${COLOR_WINS[color]}: ${seatName(game, winnerSeat)}`, detail: NEUTRAL_DETAIL[reason] };
+  // The winner's points first: "Wygrały czarne: Ala · 7 : 5".
+  const score = scores ? ` · ${scores[winnerSeat - 1]} : ${scores[2 - winnerSeat]}` : "";
+  return { result: "win", title: `${COLOR_WINS[color]}: ${seatName(game, winnerSeat)}${score}`, detail: NEUTRAL_DETAIL[reason] };
 }
 
 /** The colour as the legend names it: "Czarne: Ala". */

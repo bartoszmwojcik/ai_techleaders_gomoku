@@ -24,7 +24,7 @@ const agent = (seat: 1 | 2): Row => ({
   id: `p${seat}`, seat, kind: "agent", user_id: null, guest_token_hash: null, nickname: null,
 });
 const finished = (extra: Row = {}): Row => ({
-  status: "finished", black_seat: 1, rematch_state: null, rematch_offered_by_seat: null,
+  variant: "classic", time_control_ms: 600_000, status: "finished", black_seat: 1, rematch_state: null, rematch_offered_by_seat: null,
   rematch_game_id: null, expired: false, token_fresh: true, ...extra,
 });
 const pending = (extra: Row = {}) => finished({ rematch_state: "pending", rematch_offered_by_seat: 1, ...extra });
@@ -195,6 +195,18 @@ describe("RematchService.decline", () => {
 });
 
 describe("RematchService.accept", () => {
+  it("keeps the variant and the clock of a paper game and opens an empty sheet for the new one (E11)", async () => {
+    const { service, ran, log } = setup({ game: pending({ black_seat: 1, variant: "paper", time_control_ms: 120_000 }) });
+
+    expect(await service.accept(me("p2"), "game-1")).toEqual({ gameId: "game-2" });
+
+    expect(ran("insert into games")[0]!.params).toEqual([NOW, NOW, 2, "paper", 120_000, 120_000, 120_000]);
+    expect(ran("insert into paper_game_states")[0]).toMatchObject({ params: ["game-2"], mode: "run" });
+    const order = (marker: string) => log.findIndex(({ sql }) => sql.includes(marker));
+    expect(order("insert into games")).toBeLessThan(order("insert into paper_game_states"));
+    expect(order("insert into paper_game_states")).toBeLessThan(order("insert into game_players"));
+  });
+
   it("creates the game in one transaction: users, then the game, BR-13, rows, mark", async () => {
     const { service, em, log, timeoutSettler, ran } = setup({ game: pending({ black_seat: 1 }) });
 
@@ -209,7 +221,8 @@ describe("RematchService.accept", () => {
     expect(order("from games where id = ? for update")).toBeLessThan(order("insert into games"));
     expect(order("select game_id, user_id from game_players")).toBeLessThan(order("insert into games"));
     // The colours are swapped: seat 1 played black, so seat 2 does now.
-    expect(ran("insert into games")[0]!.params).toEqual([NOW, NOW, 2]);
+    expect(ran("insert into games")[0]!.params).toEqual([NOW, NOW, 2, "classic", 600_000, 600_000, 600_000]);
+    expect(ran("insert into paper_game_states")).toHaveLength(0);
     const inserted = ran("insert into game_players");
     expect(inserted.map(({ params }) => params)).toEqual([
       ["game-2", 1, "account", "user-1", null, null, NOW, "user-1"],

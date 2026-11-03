@@ -18,6 +18,7 @@ import { PasswordHasher } from "../../packages/app/src/server/services/auth/pass
 import { systemClock } from "../../packages/app/src/server/services/email/email-sender";
 import { ChatService } from "../../packages/app/src/server/services/chat/chat-service";
 import { SqlTimeoutSettler } from "../../packages/app/src/server/services/games/timeout-settler";
+import { PaperSettler } from "../../packages/app/src/server/services/games/paper-settler";
 import { hashOpaqueToken } from "../../packages/app/src/server/http/opaque-token";
 import { SERVER_LOG } from "./global-setup";
 
@@ -282,7 +283,7 @@ describe("the chat goes with the account (BR-34, exception to BR-18)", () => {
     return new AccountService({
       em,
       passwordHasher: (overrides.passwordHasher ?? hasher) as PasswordHasher,
-      timeoutSettler: new SqlTimeoutSettler({ em, clock: systemClock }),
+      timeoutSettler: new SqlTimeoutSettler({ em, clock: systemClock, paperSettler: new PaperSettler({ clock: systemClock, random: Math.random }) }),
       clock: systemClock,
     });
   }
@@ -387,7 +388,7 @@ describe("the read window against the deletion (R9 vs BR-34)", () => {
     const dead = await game(now, { status: "active", agoMs: 30 * 60 * SECOND, messages: 2 });
     await run("update game_players set is_active = true where game_id = ?", [dead.gameId]);
     const em = orm.em.fork();
-    await new SqlTimeoutSettler({ em, clock: systemClock }).settleFor(dead.users[0]!);
+    await new SqlTimeoutSettler({ em, clock: systemClock, paperSettler: new PaperSettler({ clock: systemClock, random: Math.random }) }).settleFor(dead.users[0]!);
 
     const [row] = await run("select status, finished_at from games where id = ?", [dead.gameId]);
     expect(row!.status).toBe("finished");
@@ -432,7 +433,7 @@ describe("no content outside the database (#148)", () => {
     await new AccountService({
       em,
       passwordHasher: hasher,
-      timeoutSettler: new SqlTimeoutSettler({ em, clock: systemClock }),
+      timeoutSettler: new SqlTimeoutSettler({ em, clock: systemClock, paperSettler: new PaperSettler({ clock: systemClock, random: Math.random }) }),
       clock: systemClock,
     }).delete(users[1]!, PASSWORD);
 

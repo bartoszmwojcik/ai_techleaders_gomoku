@@ -2,6 +2,7 @@
 
 import { Alert } from "@gomoku/ui/game/alert";
 import { Board } from "@gomoku/ui/game/board";
+import { PaperBoard } from "@gomoku/ui/game/paper-board";
 import { Button } from "@gomoku/ui/game/button";
 import { ErrorState } from "@gomoku/ui/game/error-state";
 import { GameResultBanner } from "@gomoku/ui/game/game-result-banner";
@@ -18,7 +19,8 @@ import { PublicFlag } from "@/components/games/public-flag";
 import { useGameClock } from "@/components/games/use-game-clock";
 import { usePageVisibility } from "@/components/games/use-page-visibility";
 import { apiCall } from "@/lib/api-client";
-import { cellLabel, colorOfSeat, mergeState, playerNameOf, stonesOf } from "@/lib/games/play";
+import { lastPaperMove, PAPER_LABELS, paperColors } from "@/lib/games/paper";
+import { cellLabel, colorOfSeat, knownMoves, mergeState, paperStonesOf, playerNameOf, stonesOf } from "@/lib/games/play";
 import { COLOR_TITLE, neutralOutcomeOf } from "@/lib/games/review";
 import { SPECTATOR_FAILURES_BEFORE_BANNER, spectatorPollDelay } from "@/lib/games/spectate";
 import type { SpectatorView } from "@/server/http/spectator-view";
@@ -55,7 +57,7 @@ export function SpectatorRoom({ gameId, initial }: Props) {
   const reschedule = useRef<(() => void) | null>(null);
 
   const read = useCallback(async () => {
-    const after = latest.current.moves.length;
+    const after = knownMoves(latest.current);
     // One controller for the timeout; a hung read ends as a failed one.
     const controller = new AbortController();
     AbortSignal.timeout(SPECTATOR_POLL_TIMEOUT_MS).addEventListener("abort", () => controller.abort(), { once: true });
@@ -162,6 +164,16 @@ export function SpectatorRoom({ gameId, initial }: Props) {
   const seats = game.blackSeat === 2 ? [...game.players].reverse() : game.players;
   const outcome = game.result ? neutralOutcomeOf({ result: game.result, blackSeat: game.blackSeat!, players: game.players }) : null;
   const lastMove = game.moves.at(-1);
+  const paper = game.paper;
+
+  if ((game.variant as string) !== "classic" && (game.variant as string) !== "paper") {
+    // A variant this page does not know (a stale page after a release): do not guess the board.
+    return (
+      <Shell>
+        <Alert status="warning" title="Ta partia jest w wariancie, którego ta wersja strony nie obsługuje. Odśwież stronę." role="alert" />
+      </Shell>
+    );
+  }
 
   return (
     <Shell>
@@ -194,20 +206,32 @@ export function SpectatorRoom({ gameId, initial }: Props) {
         {seats.map((player) => (
           <GameClock
             key={player.seat}
-            name={<ColorName player={player} blackSeat={game.blackSeat} />}
+            name={<ColorName player={player} blackSeat={game.blackSeat} score={paper?.scores[player.seat - 1]} auto={paper?.autoSeat === player.seat} />}
             remainingMs={clocks.remainingMs[player.seat - 1]!}
-            active={!finished && game.turnSeat === player.seat}
+            active={!finished && (paper ? game.clock.running : game.turnSeat) === player.seat}
             activeLabel="Ruch"
+            timeControlMs={game.timeControlMs}
           />
         ))}
-        <Board
-          label="Plansza 15 na 15"
-          cellLabel={cellLabel}
-          stones={stonesOf(game.moves)}
-          lastMove={lastMove}
-          winLine={game.result?.winLine ?? undefined}
-          readOnly
-        />
+        {paper ? (
+          <PaperBoard
+            stones={paperStonesOf(paper)}
+            colors={paperColors(game.blackSeat)}
+            fives={paper.fives}
+            lastMove={lastPaperMove(paper)}
+            disabled
+            labels={PAPER_LABELS}
+          />
+        ) : (
+          <Board
+            label="Plansza 15 na 15"
+            cellLabel={cellLabel}
+            stones={stonesOf(game.moves)}
+            lastMove={lastMove}
+            winLine={game.result?.winLine ?? undefined}
+            readOnly
+          />
+        )}
       </div>
       <SpectatorChat gameId={gameId} players={game.players} canWrite={game.canChat} onGone={() => void read()} />
       <TextLink href="/" placement="standalone">
@@ -217,12 +241,25 @@ export function SpectatorRoom({ gameId, initial }: Props) {
   );
 }
 
-function ColorName({ player, blackSeat }: { player: SpectatorView["players"][number]; blackSeat: Seat | null }) {
+function ColorName({
+  player,
+  blackSeat,
+  score,
+  auto,
+}: {
+  player: SpectatorView["players"][number];
+  blackSeat: Seat | null;
+  /** Points of the paper game; `undefined` in the classic one. */
+  score?: number | undefined;
+  auto?: boolean | undefined;
+}) {
   const color = colorOfSeat(blackSeat, player.seat);
   return (
     <>
       {color && `${COLOR_TITLE[color]}: `}
       <PlayerLabel name={playerNameOf(player)} />
+      {score !== undefined && ` · punkty: ${score}`}
+      {auto && " · Automat"}
     </>
   );
 }

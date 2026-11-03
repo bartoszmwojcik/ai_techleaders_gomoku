@@ -11,22 +11,34 @@ export function stonesOf(moves: readonly number[]): PlacedStone[] {
   return moves.map((cell, index) => ({ cell, color: turnColor(index) }));
 }
 
+/** How many moves of the sheet the client holds: the paper game keeps them in `paper.moves`, the classic one in `moves`. */
+export function knownMoves(game: Pick<GameView, "moves" | "paper">): number {
+  return game.paper ? game.paper.moves.length : game.moves.length;
+}
+
 /**
  * Puts a state read with `?after=<after>` on top of the one the client holds. The server sends
- * only the moves after the first `after`, so the known ones are kept and the new ones appended.
+ * only the moves after the first `after`, so the known ones are kept and the new ones appended
+ * (the classic `moves`, or `paper.moves` of the paper game).
  * A stale response (older than what the client holds) never moves the board back, and a finished
  * game never reopens: a game can end without a move (timeout, resignation), so a late `active`
  * response with the same move count must not undo `finished`.
  */
-export function mergeState<T extends Pick<GameView, "moves" | "moveCount" | "status">>(current: T, next: T, after: number): T {
-  if (next.moveCount < current.moves.length) return current;
+export function mergeState<T extends Pick<GameView, "moves" | "moveCount" | "status" | "paper">>(current: T, next: T, after: number): T {
+  if (next.moveCount < knownMoves(current)) return current;
   if (current.status === "finished" && next.status !== "finished") return current;
-  return { ...next, moves: [...current.moves.slice(0, after), ...next.moves] };
+  const merged = { ...next, moves: [...current.moves.slice(0, after), ...next.moves] };
+  if (next.paper) {
+    merged.paper = { ...next.paper, moves: [...(current.paper?.moves ?? []).slice(0, after), ...next.paper.moves] };
+  }
+  return merged;
 }
 
-/** Body of `POST /api/games/[id]/moves` for a cell (#22 Q4); `moveNumber` is `moveCount + 1` of the state the player saw. */
-export function moveOf(cell: number, moveNumber: number) {
-  return { ...coordsOf(cell), moveNumber };
+/** A stone of the paper game for `PaperBoard`. */
+export type PaperPlaced = { x: number; y: number; seat: Seat; auto: boolean };
+
+export function paperStonesOf(paper: NonNullable<GameView["paper"]>): PaperPlaced[] {
+  return paper.moves.map(({ x, y, seat, auto }) => ({ x, y, seat, auto }));
 }
 
 /** The colour a seat plays, or `null` before the draw (a waiting game). */
@@ -97,6 +109,18 @@ export function playerName(player: GameView["players"][number] | undefined): str
 
 export type Outcome = { result: "win" | "loss" | "draw"; title: string; detail: string };
 
+/** "7 : 5" with the viewer's points first. */
+const scoreText = (scores: [number, number], seat: Seat) => `${scores[seat - 1]} : ${scores[2 - seat]}`;
+
+function pointsOutcome(winnerSeat: Seat | null, seat: Seat, scores: [number, number] | undefined): Outcome {
+  const text = scores ? ` ${scoreText(scores, seat)}` : "";
+  const detail = scores ? "Wynik końcowy według punktów za piątki." : "";
+  if (winnerSeat === null) return { result: "draw", title: `Remis${text}`, detail };
+  return winnerSeat === seat
+    ? { result: "win", title: scores ? `Wygrana${text}` : "Wygrałeś na punkty", detail }
+    : { result: "loss", title: scores ? `Przegrana${text}` : "Przegrałeś na punkty", detail };
+}
+
 /** The banner of a finished game from the point of view of the viewer (p06.1, p06.2, p06.4; texts of the prototype). */
 export function outcomeOf(game: { result: GameView["result"]; you: { seat: Seat } }): Outcome | null {
   const { result } = game;
@@ -115,8 +139,17 @@ export function outcomeOf(game: { result: GameView["result"]; you: { seat: Seat 
         ? { result: "win", title: "Wygrałeś — przeciwnikowi skończył się czas", detail: "" }
         : { result: "loss", title: "Przegrałeś — skończył się Twój czas", detail: "" };
     case "resignation":
+      if (result.scores) {
+        // The paper game: the points are shown, the resignation decided anyway (R5).
+        const detail = `Wynik w chwili poddania: ${scoreText(result.scores, game.you.seat)}.`;
+        return won
+          ? { result: "win", title: "Wygrana — przeciwnik poddał partię", detail }
+          : { result: "loss", title: "Przegrana przez poddanie", detail };
+      }
       return won
         ? { result: "win", title: "Wygrałeś, przeciwnik poddał partię", detail: "" }
         : { result: "loss", title: "Przegrałeś, poddałeś partię", detail: "" };
+    case "points":
+      return pointsOutcome(result.winnerSeat, game.you.seat, result.scores);
   }
 }

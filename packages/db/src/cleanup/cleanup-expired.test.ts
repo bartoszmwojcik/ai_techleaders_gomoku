@@ -107,6 +107,9 @@ describe("cleanupExpired", () => {
     }
     expect(active).toContain(`started_at + ${READY_DEADLINE_MS} * interval '1 millisecond'`);
     expect(active).toContain("turn_started_at + ");
+    // Paper games (E11): the count and the automat seat come from `paper_game_states`.
+    expect(active).toContain("from paper_game_states s where s.game_id = games.id");
+    expect(active).toContain("3 - s.auto_seat");
     expect(finished).toContain("finished_at < ?");
   });
 
@@ -140,7 +143,8 @@ describe("cleanupExpired", () => {
     // The clock term is the one of the guest-only rule (no second copy of the formula).
     const active = CLEANUP_RULES.find((rule) => rule.key === "guestOnlyActiveGames")!.condition;
     const deadline = active.slice(active.indexOf("coalesce("), active.lastIndexOf(" < ?"));
-    expect(sql).toContain(deadline);
+    // ... except for how it names `games` in the paper branch (`g` here, `games` in the delete from games).
+    expect(sql).toContain(deadline.replace("s.game_id = games.id", "s.game_id = g.id"));
     expect(sql).not.toContain("game_players");
     expect(call[1]).toEqual([...Array.from({ length: 3 }, () => new Date(NOW.getTime() - HOUR)), 1000]);
   });

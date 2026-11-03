@@ -22,6 +22,8 @@ const meRow = (over: Row = {}): Row => ({
   id: "seeker-1",
   created_at: "2026-10-31 12:00:00+00",
   expires_in_ms: 300_000,
+  variant: "classic",
+  time_control_ms: 600_000,
   ...over,
 });
 
@@ -94,14 +96,36 @@ describe("LobbyService.markSeeking", () => {
       cursor = index;
     }
     expect(calls.find(({ sql }) => sql.includes("insert into lobby_seekers"))).toMatchObject({
-      params: [USER, NOW, expiresAt, NOW],
+      params: [USER, NOW, expiresAt, "classic", 600_000, NOW],
       mode: "run",
     });
     // A live status is not renewed (Q3): the conflict branch only replaces a dead one.
     expect(calls.find(({ sql }) => sql.includes("insert into lobby_seekers"))!.sql).toContain(
       "where lobby_seekers.expires_at <= ?",
     );
-    expect(me).toEqual({ id: "seeker-1", createdAt: new Date("2026-10-31T12:00:00Z"), expiresInMs: 300_000 });
+    expect(me).toEqual({
+      id: "seeker-1",
+      createdAt: new Date("2026-10-31T12:00:00Z"),
+      expiresInMs: 300_000,
+      variant: "classic",
+      timeControlMs: 600_000,
+    });
+  });
+
+  it("stores the offered paper settings (E11)", async () => {
+    const { service, calls } = setup({ me: [meRow({ variant: "paper", time_control_ms: 120_000 })] });
+
+    const me = await service.markSeeking(USER, { variant: "paper", timeControlMs: 120_000 });
+
+    expect(calls.find(({ sql }) => sql.includes("insert into lobby_seekers"))!.params).toEqual([
+      USER,
+      NOW,
+      new Date(NOW.getTime() + SEEKING_TTL_MS),
+      "paper",
+      120_000,
+      NOW,
+    ]);
+    expect(me).toMatchObject({ variant: "paper", timeControlMs: 120_000 });
   });
 
   it("returns the status the database holds, also an older one (idempotent)", async () => {
@@ -158,8 +182,8 @@ describe("LobbyService.view", () => {
     const { service, calls, gameParticipation } = setup({
       currentGame: { gameId: "game-1", status: "waiting", seat: 1 },
       list: [
-        { id: "s2", display_name: "Alicja_99", since_ms: 60_000, expires_in_ms: 240_000 },
-        { id: "s3", display_name: "czarny_kamień", since_ms: 0, expires_in_ms: 1000 },
+        { id: "s2", display_name: "Alicja_99", since_ms: 60_000, expires_in_ms: 240_000, variant: "paper", time_control_ms: 120_000 },
+        { id: "s3", display_name: "czarny_kamień", since_ms: 0, expires_in_ms: 1000, variant: "classic", time_control_ms: 600_000 },
       ],
     });
 
@@ -167,11 +191,17 @@ describe("LobbyService.view", () => {
 
     expect(gameParticipation.currentGame).toHaveBeenCalledExactlyOnceWith(USER);
     expect(view).toEqual({
-      me: { id: "seeker-1", createdAt: new Date("2026-10-31T12:00:00Z"), expiresInMs: 300_000 },
+      me: {
+        id: "seeker-1",
+        createdAt: new Date("2026-10-31T12:00:00Z"),
+        expiresInMs: 300_000,
+        variant: "classic",
+        timeControlMs: 600_000,
+      },
       currentGame: { gameId: "game-1", status: "waiting" },
       seekers: [
-        { id: "s2", displayName: "Alicja_99", sinceMs: 60_000, expiresInMs: 240_000 },
-        { id: "s3", displayName: "czarny_kamień", sinceMs: 0, expiresInMs: 1000 },
+        { id: "s2", displayName: "Alicja_99", sinceMs: 60_000, expiresInMs: 240_000, variant: "paper", timeControlMs: 120_000 },
+        { id: "s3", displayName: "czarny_kamień", sinceMs: 0, expiresInMs: 1000, variant: "classic", timeControlMs: 600_000 },
       ],
     });
     const list = calls.find(({ sql }) => sql.includes("from lobby_seekers s join users"))!;
@@ -210,8 +240,8 @@ function setupPick(
   const calls: { sql: string; params: unknown[]; mode?: string }[] = [];
   const execute = vi.fn(async (sql: string, params: unknown[] = [], mode?: string) => {
     calls.push({ sql: sql.trim().replace(/\s+/g, " "), params, mode });
-    if (sql.includes("select user_id from lobby_seekers where id")) {
-      return options.owner ?? [{ user_id: OWNER }];
+    if (sql.includes("select user_id, variant, time_control_ms from lobby_seekers where id")) {
+      return options.owner ?? [{ user_id: OWNER, variant: "classic", time_control_ms: 600_000 }];
     }
     if (sql.includes("for no key update")) return options.locked ?? [{ id: PICKER }, { id: OWNER }];
     if (sql.includes("delete from lobby_seekers where id")) return options.taken ?? [{ id: SEEKER }];
@@ -252,7 +282,7 @@ describe("LobbyService.pick", () => {
     expect(timeoutSettler.settleFor).toHaveBeenCalledExactlyOnceWith(PICKER);
     expect(em.transactional).toHaveBeenCalledOnce();
     const order = [
-      "select user_id from lobby_seekers where id",
+      "select user_id, variant, time_control_ms from lobby_seekers where id",
       "for no key update",
       "delete from lobby_seekers where id",
       "from game_players where user_id in",
@@ -285,7 +315,8 @@ describe("LobbyService.pick", () => {
     });
     const game = calls.find(({ sql }) => sql.includes("insert into games"))!;
     expect(game.sql).toContain("'lobby', 'active'");
-    expect(game.params).toEqual([NOW, NOW, 2]);
+    expect(game.params).toEqual([NOW, NOW, 2, "classic", 600_000, 600_000, 600_000]);
+    expect(wrote(calls, "insert into paper_game_states")).toBe(false);
     const players = calls.filter(({ sql }) => sql.includes("insert into game_players"));
     expect(players.map(({ params }) => params)).toEqual([
       ["game-new", 1, PICKER, NOW, PICKER],
@@ -293,6 +324,29 @@ describe("LobbyService.pick", () => {
     ]);
     expect(players[0]!.sql).toContain("true");
     expect(players[0]!.sql).not.toContain("seen_at");
+  });
+
+  it("copies the variant and the clock of a paper seeker to the game and gives it an empty sheet (E11)", async () => {
+    const { service, calls } = setupPick({ owner: [{ user_id: OWNER, variant: "paper", time_control_ms: 120_000 }] });
+
+    expect(await service.pick(PICKER, SEEKER)).toEqual({ gameId: "game-new" });
+
+    expect(calls.find(({ sql }) => sql.includes("insert into games"))!.params).toEqual([
+      NOW,
+      NOW,
+      2,
+      "paper",
+      120_000,
+      120_000,
+      120_000,
+    ]);
+    expect(calls.find(({ sql }) => sql.includes("insert into paper_game_states"))).toMatchObject({
+      params: ["game-new"],
+      mode: "run",
+    });
+    const order = ["insert into games", "insert into paper_game_states", "insert into game_players"];
+    const indexes = order.map((part) => calls.findIndex(({ sql }) => sql.includes(part)));
+    expect(indexes).toEqual([...indexes].sort((a, b) => a - b));
   });
 
   it("closes the stale slots of the picker before looking at anything", async () => {

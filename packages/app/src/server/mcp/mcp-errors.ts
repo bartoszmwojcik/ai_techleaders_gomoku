@@ -24,7 +24,7 @@ export const INTERNAL_MESSAGE = "Wystąpił nieoczekiwany błąd.";
 export const INVALID_TOKEN_MESSAGE = "Nieprawidłowy lub wygasły token.";
 
 /** Why a move is illegal (`ILLEGAL_MOVE` only). */
-export type IllegalMoveReason = "cell_occupied" | "out_of_board";
+export type IllegalMoveReason = "cell_occupied" | "out_of_board" | "too_far" | "first_move_center";
 
 /** Why a chat message is refused (`INVALID_INPUT` of `send_message` only); `secret` is the token guard. */
 export type ChatErrorReason = ChatRejection | "secret";
@@ -68,6 +68,15 @@ const RETRYABLE: Partial<Record<string, boolean>> = {
   CHAT_FULL: false,
 };
 
+// Codes of the game that are an illegal move for the agent, with the reason it is told (the two of
+// the paper variant, E11, are `MOVE_TOO_FAR` and `FIRST_MOVE_CENTER`).
+const ILLEGAL_MOVE_REASON: Partial<Record<string, IllegalMoveReason>> = {
+  CELL_OCCUPIED: "cell_occupied",
+  ILLEGAL_MOVE: "out_of_board",
+  MOVE_TOO_FAR: "too_far",
+  FIRST_MOVE_CENTER: "first_move_center",
+};
+
 /**
  * The tool error for an error of the service: always a result with `isError`, never a protocol
  * error, so every tool answers in the one shape. Messages never echo the input (a name, a code or
@@ -108,13 +117,9 @@ export function toolErrorOf(error: unknown): CallToolResult {
         retryable: RETRYABLE[error.code]!,
       });
     }
-    if (error.code === "CELL_OCCUPIED" || error.code === "ILLEGAL_MOVE") {
-      return toolFailure({
-        code: "ILLEGAL_MOVE",
-        message: error.message,
-        retryable: false,
-        reason: error.code === "CELL_OCCUPIED" ? "cell_occupied" : "out_of_board",
-      });
+    const reason = ILLEGAL_MOVE_REASON[error.code];
+    if (reason) {
+      return toolFailure({ code: "ILLEGAL_MOVE", message: error.message, retryable: false, reason });
     }
   }
   console.error("Unhandled MCP error", describeError(error));

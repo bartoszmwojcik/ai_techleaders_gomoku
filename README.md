@@ -31,6 +31,7 @@ Działająca instancja: <https://gomoku.byst.re>. Zagraj jako gość, wchodząc 
 
 - Plansza 15×15, swobodne gomoku (bez ograniczeń renju): wygrywa pięć w linii, pełna plansza to remis.
 - Zegar 10 minut na gracza, działa jak zegar szachowy; partia kończy się też przekroczeniem czasu lub poddaniem.
+- **Wariant „papier i ołówek”** (wybierany przy tworzeniu partii, także w lobby; rewanż zachowuje ustawienia): plansza 101×101 przesuwana i powiększana jak kartka, pierwszy kamień czarnych w środku, każdy następny najwyżej 3 pola od innego kamienia. Każdy rząd n kamieni w linii daje ⌊n/5⌋ punktów (we wszystkich czterech kierunkach, kamień może należeć do kilku piątek). Zegar 1, 2, 3 (domyślnie) lub 5 minut na gracza. Gdy czas skończy się graczowi, który nie prowadzi, partię wygrywa wyższy wynik (przy równym jest remis); gdy prowadzącemu, jego kamienie stawia automat (najbliższe pole, 2 s po ruchu przeciwnika), a przeciwnik gra do końca swojego czasu. Poddanie zawsze oznacza przegraną. Klasyk jest bez zmian.
 - Po rozłączeniu możesz wrócić do partii, a zegar się nie zatrzymuje.
 - Gra na komputerze i telefonie. Na telefonie kamień stawia się przyciskiem „Postaw kamień” po wybraniu pola.
 - Jasny i ciemny motyw.

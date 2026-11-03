@@ -1,18 +1,20 @@
+import { createGameSettingsSchema, resolveGameSettings } from "@gomoku/core";
 import { connection } from "next/server";
 
 import { withRequestScope } from "@/server/container";
-import { apiHandler } from "@/server/http/api-handler";
+import { apiHandler, readOptionalJsonBody } from "@/server/http/api-handler";
 import { requireSession } from "@/server/http/auth";
 
 /**
- * Marks the signed-in user as looking for a game for 5 minutes (#25, BR-12). No body. Repeating
+ * Marks the signed-in user as looking for a game for 5 minutes (#25, BR-12). Optional body `{ variant?, timeControlMs? }` (E11, BR-46): what the user offers to play; the classic game by default. Repeating
  * it returns the same status; after it expired a new one starts. Order: session (401), the
  * 30-per-hour limit (429), BR-13 (409 `ACTIVE_GAME_EXISTS` with `data.gameId`).
  */
-const markSeeking = apiHandler(async () => {
+const markSeeking = apiHandler(async (request: Request) => {
   const user = await requireSession();
+  const settings = resolveGameSettings(createGameSettingsSchema.parse(await readOptionalJsonBody(request)));
   return withRequestScope(async ({ cradle }) => ({
-    data: { me: await cradle.lobbyService.markSeeking(user.id) },
+    data: { me: await cradle.lobbyService.markSeeking(user.id, settings) },
   }));
 });
 

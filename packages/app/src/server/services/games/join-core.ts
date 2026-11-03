@@ -1,4 +1,4 @@
-import { GoneError, INVITATION_LOOKUP_WINDOW_MS, type Seat } from "@gomoku/core";
+import { GoneError, INVITATION_LOOKUP_WINDOW_MS, type GameVariant, type Seat } from "@gomoku/core";
 import type { EntityManager } from "@gomoku/db";
 
 import type { RateLimiter } from "../rate-limit/rate-limiter";
@@ -33,12 +33,15 @@ export type InvitationRow = {
   creator_kind: string;
   creator_nickname: string | null;
   is_public: boolean;
+  variant: GameVariant;
+  time_control_ms: number;
 };
 
 export const READ_INVITATION_SQL = `
   select i.id, i.game_id, i.consumed_at, i.expires_at <= ? as expired, g.status,
     c.user_id as creator_id, coalesce(c.display_name, u.display_name) as creator_name,
-    c.kind as creator_kind, c.nickname as creator_nickname, g.is_public
+    c.kind as creator_kind, c.nickname as creator_nickname, g.is_public,
+    g.variant, g.time_control_ms
   from invitations i
   join games g on g.id = i.game_id
   join game_players c on c.game_id = g.id and c.seat = 1

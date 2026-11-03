@@ -1,4 +1,4 @@
-import { createAccountGameSchema, createGuestGameSchema } from "@gomoku/core";
+import { createAccountGameSchema, createGuestGameSchema, resolveGameSettings } from "@gomoku/core";
 import { connection } from "next/server";
 
 import { withRequestScope } from "@/server/container";
@@ -21,7 +21,9 @@ import { createOpaqueToken, hashOpaqueToken } from "@/server/http/opaque-token";
  * then the service: the 10-per-hour limit per address (429), BR-13 (`409 ACTIVE_GAME_EXISTS`,
  * `OWN_WAITING_GAME`) and the lazy closing of stale games. The guest fields are ignored for a
  * signed-in user. Both kinds may send `isPublic: true` to make the game public (D-33, BR-40); the
- * default is private, and a signed-in user's body is optional.
+ * default is private, and a signed-in user's body is optional. Both may choose the variant and
+ * the clock: `{ variant?: 'classic' | 'paper', timeControlMs?: 60000 | 120000 | 180000 | 300000 }`
+ * (E11); no variant is the classic game, a missing time in the paper game is three minutes.
  */
 const createGame = apiHandler(async (request: Request) => {
   const user = await getCurrentUser();
@@ -33,6 +35,7 @@ const createGame = apiHandler(async (request: Request) => {
           kind: "account",
           userId: user.id,
           isPublic: input.isPublic,
+          settings: resolveGameSettings(input),
         }),
         status: 201,
       };
@@ -47,6 +50,7 @@ const createGame = apiHandler(async (request: Request) => {
       limitKey,
       cancelOwnWaitingGame: input.cancelOwnWaitingGame,
       isPublic: input.isPublic,
+      settings: resolveGameSettings(input),
     });
     await setGuestCookie(
       cradle.serverConfig,

@@ -445,3 +445,166 @@ describe("invitations", () => {
     expect(await run(`select 1 from game_players where game_id = ?`, [game])).toHaveLength(0);
   });
 });
+
+describe("paper variant (E11)", () => {
+  const PAPER = { variant: "paper", time_control_ms: 180000, clock_ms_1: 180000, clock_ms_2: 180000 };
+  const PAPER_FINISHED = { ...PAPER, ...FINISHED, end_reason: "points" };
+
+  async function insertPaperMove(gameId: string, extra: Record<string, unknown> = {}) {
+    const columns = { game_id: gameId, move_number: 1, x: 50, y: 50, seat: 1, played_at: new Date(), ...extra };
+    const names = Object.keys(columns);
+    await run(
+      `insert into paper_moves (${names.join(", ")}) values (${names.map(() => "?").join(", ")})`,
+      Object.values(columns),
+    );
+  }
+
+  it("defaults a game to the classic variant with the 10-minute clock", async () => {
+    const id = await insertGame();
+    const [row] = await run(`select variant, time_control_ms from games where id = ?`, [id]);
+    expect(row).toEqual({ variant: "classic", time_control_ms: 600000 });
+  });
+
+  it("accepts only the two variants", async () => {
+    // PostgreSQL reports the checks alphabetically and an unknown variant also fails the time control check.
+    await expectViolation(insertGame({ variant: "gomoku" }), "games_time_control_check");
+    expect(await run(`select 1 from pg_constraint where conname = 'games_variant_check'`)).toHaveLength(1);
+    await expect(insertGame(PAPER)).resolves.toBeTruthy();
+  });
+
+  it("ties the time control to the variant", async () => {
+    await expectViolation(insertGame({ time_control_ms: 300000, clock_ms_1: 300000, clock_ms_2: 300000 }), "games_time_control_check");
+    await expectViolation(insertGame({ ...PAPER, time_control_ms: 600000, clock_ms_1: 600000, clock_ms_2: 600000 }), "games_time_control_check");
+    await expectViolation(insertGame({ ...PAPER, time_control_ms: 90000, clock_ms_1: 90000, clock_ms_2: 90000 }), "games_time_control_check");
+    for (const ms of [60000, 120000, 180000, 300000]) {
+      await expect(insertGame({ variant: "paper", time_control_ms: ms, clock_ms_1: ms, clock_ms_2: ms })).resolves.toBeTruthy();
+    }
+  });
+
+  it("keeps each clock within the time control of the game", async () => {
+    await expectViolation(insertGame({ ...PAPER, clock_ms_1: 180001 }), "games_clock_ms_check");
+    await expectViolation(insertGame({ ...PAPER, clock_ms_2: -1 }), "games_clock_ms_check");
+    // The default clock of a classic game would not fit a shorter paper game.
+    await expectViolation(insertGame({ variant: "paper", time_control_ms: 60000 }), "games_clock_ms_check");
+    await expect(insertGame({ ...PAPER, clock_ms_1: 0, clock_ms_2: 180000 })).resolves.toBeTruthy();
+  });
+
+  it("keeps the classic board and log empty for a paper game", async () => {
+    await expectViolation(
+      insertGame({ ...PAPER, move_count: 1, ...board([112], []), moves: Buffer.from([112]) }),
+      "games_paper_board_empty_check",
+    );
+    await expect(
+      insertGame({ variant: "classic", move_count: 1, ...board([112], []), moves: Buffer.from([112]) }),
+    ).resolves.toBeTruthy();
+  });
+
+  it("keeps the end reasons of one variant out of the other", async () => {
+    for (const reason of ["five_in_row", "timeout"]) {
+      await expectViolation(
+        insertGame({ ...PAPER, ...FINISHED, end_reason: reason, winner_seat: 1 }),
+        "games_classic_end_reason_check",
+      );
+    }
+    await expectViolation(insertGame({ ...PAPER, ...FINISHED, end_reason: "draw" }), "games_classic_end_reason_check");
+    await expectViolation(
+      insertGame({ ...FINISHED, end_reason: "points", winner_seat: 1 }),
+      "games_points_end_reason_check",
+    );
+    // A resignation is possible in both variants.
+    await expect(insertGame({ ...PAPER, ...FINISHED, end_reason: "resignation", winner_seat: 1 })).resolves.toBeTruthy();
+  });
+
+  it("lets a paper game end on points with a winner or as a draw, but not without a reason", async () => {
+    await expect(insertGame({ ...PAPER_FINISHED, winner_seat: 2 })).resolves.toBeTruthy();
+    await expect(insertGame({ ...PAPER_FINISHED, winner_seat: null })).resolves.toBeTruthy();
+    // Every other ending still needs its winner.
+    await expectViolation(
+      insertGame({ ...PAPER, ...FINISHED, end_reason: "resignation" }),
+      "games_winner_required_check",
+    );
+  });
+
+  it("stores the paper state of one game once, with zero points by default", async () => {
+    const id = await insertGame(PAPER);
+    await run(`insert into paper_game_states (game_id) values (?)`, [id]);
+    const [row] = await run(`select * from paper_game_states where game_id = ?`, [id]);
+    expect(row).toMatchObject({ move_count: 0, score_1: 0, score_2: 0, auto_seat: null, pending_auto_at: null, last_move_at: null });
+    await expect(run(`insert into paper_game_states (game_id) values (?)`, [id])).rejects.toThrow("paper_game_states_pkey");
+  });
+
+  it("checks the counters, the automat seat and the pending move of the paper state", async () => {
+    const state = (columns: Record<string, unknown>) => async () => {
+      const id = await insertGame(PAPER);
+      const all = { game_id: id, ...columns };
+      const names = Object.keys(all);
+      await run(
+        `insert into paper_game_states (${names.join(", ")}) values (${names.map(() => "?").join(", ")})`,
+        Object.values(all),
+      );
+    };
+    await expectViolation(state({ move_count: -1 })(), "paper_game_states_move_count_check");
+    await expectViolation(state({ score_1: -1 })(), "paper_game_states_score_check");
+    await expectViolation(state({ score_2: -1 })(), "paper_game_states_score_check");
+    await expectViolation(state({ auto_seat: 3 })(), "paper_game_states_auto_seat_check");
+    await expectViolation(state({ pending_auto_at: new Date() })(), "paper_game_states_pending_auto_check");
+    await expect(state({ auto_seat: 2, pending_auto_at: new Date(), last_move_at: new Date() })()).resolves.toBeUndefined();
+    await expect(state({ auto_seat: 1 })()).resolves.toBeUndefined();
+  });
+
+  it("refuses a paper state without a game", async () => {
+    await expect(
+      run(`insert into paper_game_states (game_id) values (gen_random_uuid())`),
+    ).rejects.toThrow("paper_game_states_game_id_foreign");
+  });
+
+  it("keeps the moves of a game numbered, on the sheet and on one stone per field", async () => {
+    const id = await insertGame(PAPER);
+    await insertPaperMove(id);
+    await expect(insertPaperMove(id, { x: 51 })).rejects.toThrow("paper_moves_pkey");
+    await expect(insertPaperMove(id, { move_number: 2 })).rejects.toThrow("paper_moves_game_id_x_y_unique");
+    await expectViolation(insertPaperMove(id, { move_number: 0, x: 1 }), "paper_moves_move_number_check");
+    for (const [x, y] of [[-1, 0], [101, 0], [0, -1], [0, 101]]) {
+      await expectViolation(insertPaperMove(id, { move_number: 3, x, y }), "paper_moves_coordinates_check");
+    }
+    await expectViolation(insertPaperMove(id, { move_number: 3, x: 1, seat: 3 }), "paper_moves_seat_check");
+    await expect(insertPaperMove(id, { move_number: 2, x: 0, y: 100, seat: 2, is_auto: true })).resolves.toBeUndefined();
+    await expect(insertPaperMove(id, { move_number: 3, x: 100, y: 0 })).resolves.toBeUndefined();
+    const rows = await run(`select move_number, is_auto from paper_moves where game_id = ? order by move_number`, [id]);
+    expect(rows).toEqual([
+      { move_number: 1, is_auto: false },
+      { move_number: 2, is_auto: true },
+      { move_number: 3, is_auto: false },
+    ]);
+    // The same field in another game is free.
+    await expect(insertPaperMove(await insertGame(PAPER))).resolves.toBeUndefined();
+  });
+
+  it("deletes the paper state and the moves with their game", async () => {
+    const id = await insertGame(PAPER);
+    await run(`insert into paper_game_states (game_id) values (?)`, [id]);
+    await insertPaperMove(id);
+    await run(`delete from games where id = ?`, [id]);
+    expect(await run(`select 1 from paper_game_states where game_id = ?`, [id])).toHaveLength(0);
+    expect(await run(`select 1 from paper_moves where game_id = ?`, [id])).toHaveLength(0);
+  });
+
+  it("gives a lobby seeker the same variant and time control rules", async () => {
+    const seek = async (extra: Record<string, unknown>) => {
+      const columns = { user_id: await insertUser(), expires_at: new Date(Date.now() + 300000), ...extra };
+      const names = Object.keys(columns);
+      await run(
+        `insert into lobby_seekers (${names.join(", ")}) values (${names.map(() => "?").join(", ")})`,
+        Object.values(columns),
+      );
+    };
+    await expect(seek({})).resolves.toBeUndefined();
+    await expect(seek({ variant: "paper", time_control_ms: 120000 })).resolves.toBeUndefined();
+    await expectViolation(seek({ variant: "gomoku" }), "lobby_seekers_time_control_check");
+    expect(await run(`select 1 from pg_constraint where conname = 'lobby_seekers_variant_check'`)).toHaveLength(1);
+    await expectViolation(seek({ time_control_ms: 60000 }), "lobby_seekers_time_control_check");
+    await expectViolation(seek({ variant: "paper", time_control_ms: 600000 }), "lobby_seekers_time_control_check");
+    const [row] = await run(`select variant, time_control_ms from lobby_seekers order by created_at limit 1`);
+    expect(row).toEqual({ variant: "classic", time_control_ms: 600000 });
+  });
+});

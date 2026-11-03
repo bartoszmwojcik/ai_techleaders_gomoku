@@ -105,3 +105,12 @@ describe("InviteScreen", () => {
     expect(render({ kind: "invalid" })).toContain('data-state="invalid"');
   });
 });
+
+describe("InviteScreen, variant (E11)", () => {
+  it("names the paper variant and its clock instead of the classic rules", () => {
+    const view = { kind: "joinable", creatorName: "Ala_7", creatorKind: "account", isPublic: false, signedIn: false, variant: "paper", timeControlMs: 180_000 } as View;
+    const html = render(view);
+    expect(html).toContain("Papier i ołówek · 3 min na gracza.");
+    expect(html).not.toContain("plansza 15×15");
+  });
+});

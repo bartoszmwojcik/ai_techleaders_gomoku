@@ -1,4 +1,5 @@
 import {
+  ConflictError,
   cellOf,
   createBitboard,
   encodeBitboard,
@@ -15,6 +16,7 @@ const NOW = new Date("2026-10-29T12:00:00Z");
 const bits = (cells: number[]) => encodeBitboard(cells.reduce(withStone, createBitboard()));
 
 type Row = {
+  variant?: string;
   status?: string;
   black_seat?: number | null;
   move_count?: number;
@@ -32,6 +34,7 @@ type Row = {
 function lockedRow(row: Row) {
   const moves = row.moves ?? [];
   return {
+    variant: row.variant ?? "classic",
     status: row.status ?? "active",
     black_seat: row.black_seat === undefined ? 1 : row.black_seat,
     move_count: row.move_count ?? moves.length,
@@ -47,7 +50,10 @@ function lockedRow(row: Row) {
   };
 }
 
-function setup(row: Row | null, options: { written?: { id: string }[]; settled?: boolean } = {}) {
+function setup(
+  row: Row | null,
+  options: { written?: { id: string }[]; settled?: boolean; paper?: unknown } = {},
+) {
   const calls: { sql: string; params: unknown[]; mode?: string }[] = [];
   const execute = vi.fn(async (sql: string, params: unknown[] = [], mode?: string) => {
     calls.push({ sql: sql.trim().replace(/\s+/g, " "), params, mode });
@@ -67,13 +73,15 @@ function setup(row: Row | null, options: { written?: { id: string }[]; settled?:
     settleGame: vi.fn(async () => options.settled ?? false),
     settleExpired: vi.fn(async () => false),
   };
+  const paperMoveService = { play: vi.fn(async () => options.paper ?? state) };
   const service = new GameMoveService({
     em: em as unknown as EntityManager,
     clock: { now: () => NOW },
     gameService: gameService as never,
     timeoutSettler,
+    paperMoveService: paperMoveService as never,
   });
-  return { service, calls, gameService, timeoutSettler, state, em };
+  return { service, calls, gameService, timeoutSettler, state, em, paperMoveService };
 }
 
 const P = { playerId: "player-1" };
@@ -271,7 +279,41 @@ describe("GameMoveService.play", () => {
 
   it("rejects coordinates that are not on the board", async () => {
     const { service } = setup({});
-    expect(await code(service.play(P, "game-1", move(20, 14, 1)))).toMatchObject({ status: 400 });
+    // The shared schema now allows the paper sheet; the classic bounds still refuse x > 14 (same ZodError → 400).
+    expect(await code(service.play(P, "game-1", move(20, 14, 1)))).toMatchObject({ name: "ZodError" });
+    expect(await code(service.play(P, "game-1", move(15, 0, 1)))).toMatchObject({ name: "ZodError" });
+    expect(await code(service.play(P, "game-1", move(0, 15, 1)))).toMatchObject({ name: "ZodError" });
+  });
+
+  describe("the paper variant (E11)", () => {
+    it("hands the move to PaperMoveService under the same lock, with the seat and the clock read once, and returns its state", async () => {
+      const { service, paperMoveService, em, calls, timeoutSettler } = setup({ variant: "paper", seat: 2 });
+
+      const result = await service.play(P, "game-1", move(60, 99, 1));
+
+      expect(result).toEqual({ status: "active" });
+      expect(paperMoveService.play).toHaveBeenCalledExactlyOnceWith(em, {
+        participant: P,
+        gameId: "game-1",
+        seat: 2,
+        now: NOW,
+        input: move(60, 99, 1),
+      });
+      // None of the classic path runs: no settler of the classic clock, no write of the bitboards.
+      expect(timeoutSettler.settleGame).not.toHaveBeenCalled();
+      expect(calls).toHaveLength(1);
+    });
+
+    it("throws GAME_FINISHED after the commit when the paper settler finished the game", async () => {
+      const { service } = setup({ variant: "paper" }, { paper: "settled" });
+      expect(await code(service.play(P, "game-1", move(50, 50, 1)))).toMatchObject({ status: 409, code: "GAME_FINISHED" });
+    });
+
+    it("throws the refusal the paper service returned, after the commit", async () => {
+      const refusal = new ConflictError("Teraz ruch przeciwnika.", { code: "NOT_YOUR_TURN" });
+      const { service } = setup({ variant: "paper" }, { paper: { refusal } });
+      expect(await service.play(P, "game-1", move(50, 50, 1)).catch((e: unknown) => e)).toBe(refusal);
+    });
   });
 
   it("answers 409 instead of 500 when the conditional update loses a race", async () => {

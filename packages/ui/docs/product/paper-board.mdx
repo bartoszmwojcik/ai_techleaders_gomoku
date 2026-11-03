@@ -1,0 +1,94 @@
+import { ArgTypes, Canvas, Meta } from "@storybook/addon-docs/blocks";
+import { PaperBoard } from "@gomoku/ui/game/paper-board";
+import * as Stories from "./paper-board.stories";
+
+<Meta of={Stories} />
+
+# Plansza „papier i ołówek”
+
+## 1. Do czego służy
+
+Pokazuje partię wariantu „papier i ołówek” na planszy 101 × 101 pól przez okno N × N, które gracz przesuwa i powiększa, i pozwala wskazać pole na następny kamień. Klasyczna plansza 15 × 15 zostaje w komponencie Plansza.
+
+<Canvas of={Stories.PiatkaPrzekreslonaOlowkiem} />
+
+## 2. Kiedy używać
+
+- **Ekran partii wariantu** (`variant = paper`): gracze i widzowie (spec 2026-11-02-paper-pencil-gomoku, D-34).
+
+## 3. Kiedy nie używać
+
+- **Partia klasyczna 15 × 15:** Plansza.
+- **Ozdoba lub odtwarzanie ruch po ruchu:** poza zakresem.
+
+## 4. Anatomia
+
+1. **Okno** N × N pól; renderowane są tylko widoczne pola (najwyżej 31² przycisków).
+2. **Pasek narzędzi** nad planszą: cztery strzałki przesuwające okno o ⌊N/3⌋, „Wyśrodkuj”, na komputerze „−”/„+” i poziom.
+3. **Pola dozwolone** (najwyżej 3 pola od kamienia) w jaśniejszym tonie drewna (`paper-allowed`); pozostałe są nieaktywne i mają opis dla czytnika.
+4. **Kamienie** w kolorze miejsca; ostatni ruch z pełnym obrysem, ruch automatu z przerywanym obrysem i pomarańczową kropką (`paper-auto`).
+5. **Kreska ołówkiem** (SVG, `paper-pencil`) przez każdą policzoną piątkę.
+6. **Krawędź planszy** (0 i 100): pogrubiony ostatni rząd siatki, linie kończą się w jego środku.
+7. **Znacznik kierunku** ruchu przeciwnika poza oknem, na krawędzi planszy.
+8. **Pasek dotykowy** pod planszą (telefon): cztery strzałki zaznaczenia i „−”/„+”, 6 × 44 px + 5 × 4 px = 284 px.
+
+<Canvas of={Stories.RuchPrzeciwnikaPozaOknem} />
+
+## 5. Warianty
+
+| Układ | Poziomy N | Domyślnie | Pasek dotykowy |
+|---|---|---|---|
+| `phone` (wskaźnik dotykowy lub ekran do 480 px) | 15, 17, 19, 21 | 15 | tak |
+| `desktop` | 15–31 co 2 | 21 | nie |
+
+Układ wykrywa komponent (`layout` go wymusza). Poziom pamięta `localStorage` (klucz `storageKey`), błędy dostępu do pamięci są ignorowane.
+
+## 6. Stany
+
+Pusta, trwająca, z piątką, ruch automatu, ruch przeciwnika poza oknem, tylko do odczytu (`disabled`: nawigacja działa, wybór nie), przy krawędzi planszy.
+
+<Canvas of={Stories.RuchAutomatu} />
+
+## 7. Zachowanie i dostępność
+
+- **Przesuwanie:** przeciąganie (próg 8 px odróżnia je od stuknięcia), strzałki paska, klawiatura. Plansza ma `touch-action: none`; powiększanie strony działa poza planszą.
+- **Powiększanie:** przyciski „−”/„+” (44 px), Ctrl + kółko, szczypanie dwoma palcami.
+- **Klawiatura:** jeden punkt `Tab`, strzałki przenoszą fokus, na krawędzi okna okno przesuwa się o 1; `Enter` lub `Spacja` wybiera.
+- **Dotyk:** stuknięcie zaznacza (`onSelect`), pasek przesuwa zaznaczenie o jedno pole (okno idzie za zaznaczeniem), „Postaw kamień” steruje rodzic. Pola mają 14–19 px, mniej niż 24 × 24 px z WCAG 2.5.8: spełniamy wyjątek „Equivalent” (zawsze widoczne sterowanie 44 px).
+- **Czytnik:** każde pole ma nazwę i stan; pole niedozwolone ma `aria-describedby`; ruch automatu ogłasza `role="status"`.
+- **Okno nie skacze samo:** ruch przeciwnika poza oknem tylko pokazuje znacznik. Wyjątki: zmiana `recenterToken` (start, własny ruch) i zaznaczenie poza widokiem.
+
+<Canvas of={Stories.WaskiEkran320ZPaskiemDotykowym} />
+
+## 8. Treść
+
+Wszystkie teksty przychodzą z propsu `labels`. Współrzędne na ekranie są względem startu (środek planszy = 0, 0; od −50 do 50), w API absolutne 0–100.
+
+## 9. Responsywność
+
+Plansza zajmuje szerokość kontenera do `layout-width-board` (448 px). Rozmiar pola = szerokość / N (przy 320 px i N = 15 około 19 px).
+
+## 10. API
+
+<ArgTypes of={PaperBoard} />
+
+## 11. Kod
+
+```tsx
+import { PaperBoard } from "@gomoku/ui/game/paper-board";
+
+<PaperBoard
+  stones={stones}            // [{ x, y, seat: 1 | 2, auto? }]
+  colors={{ 1: "black", 2: "white" }}
+  fives={fives}              // [{ seat, from: { x, y }, to: { x, y } }]
+  lastMove={lastMove}
+  opponentMove={opponentMove}
+  selection={selection}
+  allowed={(point) => nearAStone(point)}
+  onSelect={setSelection}
+  recenterToken={ownMoveCount}
+  labels={labels}
+/>;
+```
+
+Logika widoku (poziomy, przesuwanie, próg 8 px, znacznik kierunku, ruch zaznaczenia) leży w czystym module `paper-board-view.ts` i ma własne testy.

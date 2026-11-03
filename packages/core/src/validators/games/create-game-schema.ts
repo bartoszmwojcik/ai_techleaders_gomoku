@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { nicknameSchema } from "../../games/nickname";
+import { checkGameSettings, gameSettingsShape } from "./create-game-settings-schema";
 
 export const GUEST_WARNING_REQUIRED_MESSAGE = "Potwierdź, że rozumiesz ograniczenia gry bez konta.";
 
@@ -15,7 +16,9 @@ export const createGuestGameSchema = z
     cancelOwnWaitingGame: z.boolean().optional(),
     isPublic: z.boolean().optional(),
     nickname: nicknameSchema.optional(),
+    ...gameSettingsShape,
   })
+  .superRefine(checkGameSettings)
   .refine((input) => input.acknowledgedGuestWarning === true, {
     path: ["acknowledgedGuestWarning"],
     error: GUEST_WARNING_REQUIRED_MESSAGE,
@@ -27,6 +30,8 @@ export type CreateGuestGameInput = z.infer<typeof createGuestGameSchema>;
  * Optional body of `POST /api/games` for a signed-in user (E10-S01): an absent body means a
  * private game. Unknown keys are ignored, as before the body existed.
  */
-export const createAccountGameSchema = z.object({ isPublic: z.boolean().optional() });
+export const createAccountGameSchema = z
+  .object({ isPublic: z.boolean().optional(), ...gameSettingsShape })
+  .superRefine(checkGameSettings);
 
 export type CreateAccountGameInput = z.infer<typeof createAccountGameSchema>;

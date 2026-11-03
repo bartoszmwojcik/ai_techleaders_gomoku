@@ -38,8 +38,10 @@ Gra planszowa dla dwóch osób online: ciemna strona, drewniana plansza, jeden p
 | Stan błędu | `@gomoku/ui/game/error-state` | lista, która się nie wczytała, partia, której nie ma | błąd pola, komunikat obok działającej treści (Alert) |
 | Nagłówek strony | `@gomoku/ui/game/page-header` | każda strona gracza | nagłówek sekcji (Panel) |
 | Plansza | `@gomoku/ui/game/board` | ekran partii, podgląd na stronie głównej (z podpisem) | odtwarzanie ruch po ruchu, inne rozmiary |
+| Plansza „papier i ołówek” | `@gomoku/ui/game/paper-board` | ekran partii wariantu `paper` (okno 15–31 pól, przesuwanie, powiększanie, kreski piątek, pasek dotykowy) | partia klasyczna (Plansza), ozdoba |
 | Zegar gracza | `@gomoku/ui/game/player-clock` | nad i pod planszą w partii | odliczanie statusu w lobby, odmierzanie czasu w komponencie |
 | Status tury | `@gomoku/ui/game/turn-status` | nad planszą w trakcie partii | wynik partii (Baner wyniku), czas (Zegar) |
+| Grupa wyboru | `@gomoku/ui/game/choice-group` | 2–5 krótkich opcji (wariant, czas na gracza) | długa lista (Select), wiele wyborów naraz (Checkbox) |
 | Baner wyniku | `@gomoku/ui/game/game-result-banner` | po zakończeniu partii | w trakcie partii, lista historii (Znacznik statusu) |
 | Karta kodu zaproszenia | `@gomoku/ui/game/invite-code-card` | strona oczekującej partii | wpisywanie kodu przez zaproszonego (Pole formularza) |
 | Karta podłączenia agenta | `@gomoku/ui/game/agent-connect-card` | strona oczekującej partii prywatnej, pod kartą zaproszenia (adres MCP, polecenie, kod) | pomoc w trakcie partii, ogólne zwijane sekcje (patrz „Czego brakuje”) |
@@ -72,6 +74,7 @@ Nie ma jeszcze: radio, przełącznika, pola wielowierszowego, menu, popovera, po
 | `border-control` | `border-border-control` | brzeg pól i przycisków drugorzędnych (≥ 3:1) |
 | `status-success / -warning / -danger / -info` | `text-status-*, border-status-*` | stan: zawsze z ikoną i słowem |
 | `board-surface, board-line, board-grain, board-marker` | `bg-board-surface, bg-board-line, board-texture, outline-board-marker` | plansza, siatka, słoje, ostatni ruch i linia wygrywająca |
+| `paper-allowed, paper-pencil, paper-auto` | `bg-paper-allowed, stroke-paper-pencil, bg-paper-auto` | plansza wariantu: pola dozwolone, kreska przez piątkę, znacznik ruchu automatu |
 | `piece-black, piece-white, piece-outline` | `bg-piece-black, bg-piece-white, border-piece-outline` | kamienie |
 | `space-group / -stack / -panel / -section` | `gap-group (8), gap-stack (16), p-panel (24), py-section (48)` | odstępy według relacji |
 | `radius-base, radius-piece` | `rounded-base, rounded-piece` | 6 px; okrąg tylko dla kamieni |

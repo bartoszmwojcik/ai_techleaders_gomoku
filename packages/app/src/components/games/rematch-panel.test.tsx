@@ -26,6 +26,8 @@ type Rematch = NonNullable<GameView["rematch"]>;
 
 const finished = (over: Partial<GameView> = {}): GameView => ({
   status: "finished",
+  variant: "classic",
+  timeControlMs: 600_000,
   you: { seat: 1, kind: "account" },
   players: [
     { seat: 1, kind: "account", displayName: "Ala_7", seen: true },

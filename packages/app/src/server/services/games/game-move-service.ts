@@ -1,8 +1,8 @@
 import {
   ConflictError,
   NotFoundError,
-  ValidationError,
   applyMove,
+  classicMoveCreateSchema,
   cellOf,
   decodeBitboard,
   decodeMoves,
@@ -24,6 +24,7 @@ import {
   type GameState,
 } from "./game-service";
 import { recordFinishedGame } from "./finished-game-counter";
+import type { PaperMoveService } from "./paper-move-service";
 import type { TimeoutSettler } from "./timeout-settler";
 
 type Deps = {
@@ -31,6 +32,7 @@ type Deps = {
   clock: Clock;
   gameService: GameService;
   timeoutSettler: TimeoutSettler;
+  paperMoveService: PaperMoveService;
 };
 
 export const GAME_NOT_ACTIVE_MESSAGE = "Ta partia nie jest w toku.";
@@ -48,6 +50,7 @@ type ResignRow = {
 };
 
 type GameRow = {
+  variant: string;
   status: string;
   black_seat: number | null;
   move_count: number;
@@ -64,7 +67,7 @@ type GameRow = {
 // The game row is the lock target of every mutation (#22): one locked read with the caller's
 // seat. `for no key update` does not block the foreign-key checks of inserts into game_players.
 const LOCK_GAME_SQL = `
-  select g.status, g.black_seat, g.move_count, g.stones_black::text as stones_black,
+  select g.variant, g.status, g.black_seat, g.move_count, g.stones_black::text as stones_black,
     g.stones_white::text as stones_white, g.moves, g.clock_ms_1, g.clock_ms_2,
     (extract(epoch from g.turn_started_at) * 1000)::float8 as turn_started_ms, p.seat
   from games g join game_players p on p.game_id = g.id
@@ -110,8 +113,10 @@ export class GameMoveService {
   readonly #clock: Clock;
   readonly #gameService: GameService;
   readonly #timeoutSettler: TimeoutSettler;
+  readonly #paperMoveService: PaperMoveService;
 
-  constructor({ em, clock, gameService, timeoutSettler }: Deps) {
+  constructor({ em, clock, gameService, timeoutSettler, paperMoveService }: Deps) {
+    this.#paperMoveService = paperMoveService;
     this.#em = em;
     this.#clock = clock;
     this.#gameService = gameService;
@@ -132,13 +137,19 @@ export class GameMoveService {
     gameId: string,
     input: MoveCreateInput,
   ): Promise<GameState> {
-    const cell = cellOf(input.x, input.y);
+    let cell = 0;
     const played = await this.#em.transactional(async (tx) => {
       const [row] = await tx.execute<GameRow[]>(LOCK_GAME_SQL, [gameId, participant.playerId]);
       if (!row) throw new NotFoundError(GAME_NOT_FOUND_MESSAGE);
 
       const now = this.#clock.now();
       const seat = row.seat as Seat;
+      if (row.variant === "paper") {
+        return this.#paperMoveService.play(tx, { participant, gameId, seat, now, input });
+      }
+      // The classic game keeps its own bounds (0–14); the shared schema allows the paper sheet.
+      classicMoveCreateSchema.parse(input);
+      cell = cellOf(input.x, input.y);
       const moves = decodeMoves(row.moves);
       const blackSeat = row.black_seat as Seat | null;
       const after = input.moveNumber - 1;
@@ -176,12 +187,8 @@ export class GameMoveService {
         },
         cell,
       );
-      if (!outcome.ok) {
-        if (outcome.reason === "occupied") {
-          throw new ConflictError(CELL_OCCUPIED_MESSAGE, { code: "CELL_OCCUPIED" });
-        }
-        throw new ValidationError("Pole jest poza planszą.");
-      }
+      // The classic bounds were checked above, so the only refusal left is an occupied cell.
+      if (!outcome.ok) throw new ConflictError(CELL_OCCUPIED_MESSAGE, { code: "CELL_OCCUPIED" });
 
       const { state, result } = outcome;
       const left = spend(
@@ -222,7 +229,8 @@ export class GameMoveService {
 
       return this.#gameService.stateOf(tx, participant, gameId, after, now);
     });
-    if (played === SETTLED_BY_TIME) throw gameFinished();
+    if (played === SETTLED_BY_TIME || played === "settled") throw gameFinished();
+    if ("refusal" in played) throw played.refusal;
     return played;
   }
 

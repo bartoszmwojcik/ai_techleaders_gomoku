@@ -104,8 +104,8 @@ describe("the lobby page", () => {
     await shot(second, "lobby-pusto-320");
 
     await first.open(`${baseUrl}/lobby`);
-    await first.waitFor("[data-testid=lobby-mark] button");
-    await first.click("[data-testid=lobby-mark] button");
+    await first.waitFor("[data-testid=lobby-mark] > button");
+    await first.click("[data-testid=lobby-mark] > button");
     await first.waitFor("[data-testid=lobby-seeking]");
     await bodyHas(first, "Szukasz gry");
     await bodyHas(first, "Status wygasa za 4:5");
@@ -124,7 +124,7 @@ describe("the lobby page", () => {
     expect(await rowCount(first)).toBe(0);
 
     await first.click("[data-testid=lobby-seeking] button");
-    await first.waitFor("[data-testid=lobby-mark] button");
+    await first.waitFor("[data-testid=lobby-mark] > button");
     await bodyLacks(second, alice.name);
     expect(await rowCount(second)).toBe(0);
     expect(await run(`select 1 from lobby_seekers where user_id = ?`, [alice.id])).toHaveLength(0);
@@ -135,14 +135,14 @@ describe("the lobby page", () => {
     const [alice] = [await signedUp(first), await signedUp(second)];
     await second.open(`${baseUrl}/lobby`);
     await first.open(`${baseUrl}/lobby`);
-    await first.click("[data-testid=lobby-mark] button");
+    await first.click("[data-testid=lobby-mark] > button");
     await first.waitFor("[data-testid=lobby-seeking]");
     await bodyHas(second, alice.name);
 
     // The status ends in 3 s: the page counts down (or its next read finds none) and says so.
     await run(`update lobby_seekers set created_at = now() - interval '298 seconds', expires_at = now() + interval '3 seconds' where user_id = ?`, [alice.id]);
     await bodyHas(first, "Status wygasł");
-    await first.waitFor("[data-testid=lobby-mark] button");
+    await first.waitFor("[data-testid=lobby-mark] > button");
     expect(await first.count("[data-testid=lobby-seeking]")).toBe(0);
     await shot(first, "lobby-wygasl-320");
     await bodyLacks(second, alice.name);
@@ -163,7 +163,7 @@ describe("the lobby page", () => {
   it("shows the marked status again after a reload (it lives on the server)", async () => {
     const alice = await signedUp(first);
     await first.open(`${baseUrl}/lobby`);
-    await first.click("[data-testid=lobby-mark] button");
+    await first.click("[data-testid=lobby-mark] > button");
     await first.waitFor("[data-testid=lobby-seeking]");
 
     await first.open(`${baseUrl}/lobby`);
@@ -171,7 +171,7 @@ describe("the lobby page", () => {
     await first.waitFor("[data-testid=lobby-seeking]");
     await bodyHas(first, "Szukasz gry");
     await first.click("[data-testid=lobby-seeking] button");
-    await first.waitFor("[data-testid=lobby-mark] button");
+    await first.waitFor("[data-testid=lobby-mark] > button");
     expect(await run(`select 1 from lobby_seekers where user_id = ?`, [alice.id])).toHaveLength(0);
   });
 
@@ -179,7 +179,7 @@ describe("the lobby page", () => {
     const [alice, bob] = [await signedUp(first), await signedUp(second)];
     for (const browser of [first, second]) await browser.setViewport(1280, 800);
     await first.open(`${baseUrl}/lobby`);
-    await first.click("[data-testid=lobby-mark] button");
+    await first.click("[data-testid=lobby-mark] > button");
     await first.waitFor("[data-testid=lobby-seeking]");
     await second.open(`${baseUrl}/lobby`);
     await bodyHas(second, alice.name);
@@ -211,7 +211,7 @@ describe("the lobby page", () => {
     })();
     for (const browser of [first, second]) await browser.setViewport(320, 800);
     await first.open(`${baseUrl}/lobby`);
-    await first.click("[data-testid=lobby-mark] button");
+    await first.click("[data-testid=lobby-mark] > button");
     await first.waitFor("[data-testid=lobby-seeking]");
     await second.open(`${baseUrl}/lobby`);
     await bodyHas(second, alice.name);
@@ -235,7 +235,7 @@ describe("the lobby page", () => {
     const [alice] = [await signedUp(first), await signedUp(second)];
     for (const browser of [first, second]) await browser.setViewport(360, 800);
     await first.open(`${baseUrl}/lobby`);
-    await first.click("[data-testid=lobby-mark] button");
+    await first.click("[data-testid=lobby-mark] > button");
     await first.waitFor("[data-testid=lobby-seeking]");
     await second.open(`${baseUrl}/lobby`);
     await bodyHas(second, alice.name);

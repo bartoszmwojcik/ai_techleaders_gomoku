@@ -46,7 +46,28 @@ describe("PUT /api/lobby/seeking", () => {
       data: { me: { ...me, createdAt: "2026-10-31T12:00:00.000Z" } },
     });
     expect(connection).toHaveBeenCalledOnce();
-    expect(markSeeking).toHaveBeenCalledExactlyOnceWith("user-1");
+    expect(markSeeking).toHaveBeenCalledExactlyOnceWith("user-1", { variant: "classic", timeControlMs: 600_000 });
+  });
+
+  it("marks the offered paper settings (E11)", async () => {
+    const body = JSON.stringify({ variant: "paper", timeControlMs: 300_000 });
+    const request = new Request("https://gomoku.example/api/lobby/seeking", {
+      method: "PUT",
+      headers: { origin: serverConfig.appOrigin, "x-gomoku-request": "1" },
+      body,
+    });
+    expect((await PUT(request)).status).toBe(200);
+    expect(markSeeking).toHaveBeenCalledExactlyOnceWith("user-1", { variant: "paper", timeControlMs: 300_000 });
+  });
+
+  it("answers 400 for a clock in the classic game", async () => {
+    const request = new Request("https://gomoku.example/api/lobby/seeking", {
+      method: "PUT",
+      headers: { origin: serverConfig.appOrigin, "x-gomoku-request": "1" },
+      body: JSON.stringify({ timeControlMs: 60_000 }),
+    });
+    expect((await PUT(request)).status).toBe(400);
+    expect(markSeeking).not.toHaveBeenCalled();
   });
 
   it("answers 401 without a session", async () => {

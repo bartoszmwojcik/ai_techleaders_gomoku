@@ -11,6 +11,13 @@ import {
   boardView,
   defaultNickname,
   clockView,
+  paperView,
+  seatOnTurn,
+  resolveGameSettings,
+  type GameSettings,
+  type GameVariant,
+  type PaperSnapshot,
+  type PaperView,
   type BoardView,
   type ClockView,
   type EndReason,
@@ -48,6 +55,7 @@ import {
   closeStaleSlotsOfUser,
 } from "./lazy-closing";
 import { deleteSeekersSql } from "./lobby-seeker-sql";
+import { loadPaperSnapshot } from "./paper-state";
 import type { TimeoutSettler } from "./timeout-settler";
 
 type Deps = {
@@ -96,7 +104,9 @@ const FIND_AGENT_SQL = `
 
 // First successful read of the page by a participant (#21 Q20); only while the game is open.
 const MEMBER_MOVE_COUNT_SQL = `
-  select g.move_count from game_players p join games g on g.id = p.game_id
+  select coalesce(s.move_count, g.move_count) as move_count
+  from game_players p join games g on g.id = p.game_id
+  left join paper_game_states s on s.game_id = g.id
   where p.id = ? and g.id = ?`;
 
 const MARK_SEEN_SQL = `
@@ -138,6 +148,9 @@ const CLOSE_AUDIENCE_SQL = `update games set is_public = false, audience_closed_
 // The harassment the switch answers (Q-10): what the spectators wrote leaves the players' chat with them.
 const DELETE_SPECTATOR_MESSAGES_SQL = `delete from chat_messages where game_id = ? and spectator_id is not null`;
 
+// The sheet of a paper game (E11): empty until the first stone.
+export const INSERT_PAPER_STATE_SQL = `insert into paper_game_states (game_id) values (?)`;
+
 const RELEASE_SLOTS_SQL = `update game_players set is_active = false where game_id = ? and is_active`;
 
 /**
@@ -147,7 +160,7 @@ const RELEASE_SLOTS_SQL = `update game_players set is_active = false where game_
  * rate-limit key of the client address (`games-create-guest:ip:...`).
  */
 export type GameCreator =
-  | { kind: "account"; userId: string; isPublic?: boolean }
+  | { kind: "account"; userId: string; isPublic?: boolean; settings?: GameSettings }
   | GuestCreator;
 
 export type GuestCreator = {
@@ -158,6 +171,8 @@ export type GuestCreator = {
   cancelOwnWaitingGame?: boolean;
   /** A public game (D-33, BR-40); only an invitation can make one. */
   isPublic?: boolean;
+  /** Variant and clock of the game (E11); the classic game when absent. */
+  settings?: GameSettings;
 };
 
 export type CreatedGame = {
@@ -170,6 +185,11 @@ export type GameParticipant = { playerId: string };
 
 export type GameState = BoardView & {
   status: GameStatus;
+  /** The game's variant and the clock budget of each player (E11). */
+  variant: GameVariant;
+  timeControlMs: number;
+  /** Only for the paper game: the sheet, scores, fives and the automat (E11 API Contracts). */
+  paper?: PaperView;
   /** Time left to each player, computed by the server at the moment of the answer (#23). */
   clock: ClockView;
   you: { seat: Seat; kind: ParticipantKind };
@@ -242,10 +262,13 @@ export function displayNameOf(player: {
 }
 
 /** What every reader of a game sees: see `watchableState`. */
-export type WatchableState = BoardView & Pick<GameState, "status" | "clock" | "players" | "audience">;
+export type WatchableState = BoardView &
+  Pick<GameState, "status" | "clock" | "players" | "audience" | "variant" | "timeControlMs" | "paper">;
 
 /** The part of a game row the shared state view reads (a row of `games`). */
 type StateGame = {
+  variant: string;
+  timeControlMs: number;
   status: string;
   blackSeat?: number | null;
   moveCount: number;
@@ -274,7 +297,9 @@ export function watchableState(
   players: readonly StatePlayer[],
   after: number,
   now: Date,
+  paper: PaperSnapshot | null = null,
 ): WatchableState {
+  if (game.variant === "paper" && paper) return paperWatchableState(game, players, after, now, paper);
   if (after > game.moveCount) {
     throw new ValidationError(AFTER_MESSAGE);
   }
@@ -298,17 +323,70 @@ export function watchableState(
         clockMs: [game.clockMs1, game.clockMs2],
         turnStartedAtMs: game.turnStartedAt?.getTime() ?? null,
         turnSeat: board.turnSeat,
+        timeControlMs: game.timeControlMs,
       },
       now.getTime(),
     ),
-    players: players.map((player) => ({
-      seat: player.seat as Seat,
-      kind: player.kind as ParticipantKind,
-      displayName: displayNameOf(player),
-      ...(player.kind === "agent" && { agentName: player.agentName ?? null }),
-      seen: player.seenAt != null,
-    })),
+    players: playersOf(players),
+    variant: "classic",
+    timeControlMs: game.timeControlMs,
     ...board,
+  };
+}
+
+function playersOf(players: readonly StatePlayer[]): WatchableState["players"] {
+  return players.map((player) => ({
+    seat: player.seat as Seat,
+    kind: player.kind as ParticipantKind,
+    displayName: displayNameOf(player),
+    ...(player.kind === "agent" && { agentName: player.agentName ?? null }),
+    seen: player.seenAt != null,
+  }));
+}
+
+// The paper game (E11) keeps its sheet in `paper_*`; the `games` row only carries the header.
+// While the automat plays for a player, the clock that runs is the opponent's.
+function paperWatchableState(
+  game: StateGame,
+  players: readonly StatePlayer[],
+  after: number,
+  now: Date,
+  paper: PaperSnapshot,
+): WatchableState {
+  if (after > paper.moveCount) throw new ValidationError(AFTER_MESSAGE);
+  const blackSeat = (game.blackSeat ?? null) as Seat | null;
+  const active = game.status === "active" && blackSeat !== null;
+  const turnSeat = active ? seatOnTurn(paper.moveCount, blackSeat) : null;
+  const view = paperView(paper, after);
+  const clockSeat = paper.autoSeat === null || turnSeat === null ? turnSeat : paper.autoSeat === 1 ? 2 : 1;
+  const finished = game.status === "finished" && game.endReason;
+  return {
+    status: game.status as GameStatus,
+    clock: clockView(
+      {
+        clockMs: [game.clockMs1, game.clockMs2],
+        turnStartedAtMs: game.turnStartedAt?.getTime() ?? null,
+        turnSeat: clockSeat,
+        timeControlMs: game.timeControlMs,
+      },
+      now.getTime(),
+    ),
+    players: playersOf(players),
+    variant: "paper",
+    timeControlMs: game.timeControlMs,
+    paper: view,
+    moveCount: paper.moveCount,
+    blackSeat,
+    turnSeat,
+    moves: [],
+    result: finished
+      ? {
+          winnerSeat: (game.winnerSeat ?? null) as Seat | null,
+          reason: game.endReason as EndReason,
+          winLine: null,
+          scores: view.scores,
+        }
+      : null,
   };
 }
 
@@ -359,7 +437,7 @@ export class GameService {
     await this.#timeoutSettler.settleFor(userId);
 
     const now = this.#clock.now();
-    const draft = this.#draft(now, creator.isPublic);
+    const draft = this.#draft(now, creator.isPublic, creator.settings);
     try {
       const gameId = await this.#em.transactional(async (tx) => {
         const locked = await tx.execute<{ id: string; display_name: string }[]>(LOCK_USER_SQL, [userId]);
@@ -404,7 +482,7 @@ export class GameService {
     await this.#timeoutSettler.settleForGuest(creator.tokenHash);
 
     const now = this.#clock.now();
-    const draft = this.#draft(now, creator.isPublic);
+    const draft = this.#draft(now, creator.isPublic, creator.settings);
     const outcome = await this.#em.transactional(
       async (tx): Promise<{ gameId: string } | { refusal: ConflictError }> => {
         await tx.execute(ADVISORY_LOCK_SQL, [creator.tokenHash], "run");
@@ -451,9 +529,10 @@ export class GameService {
     return this.#created(outcome.gameId, draft);
   }
 
-  #draft(now: Date, isPublic = false) {
+  #draft(now: Date, isPublic = false, settings?: GameSettings) {
     return {
       isPublic,
+      settings: resolveGameSettings(settings),
       code: this.#invitationCodes.generate(),
       expiresAt: new Date(now.getTime() + INVITATION_TTL_MS),
     };
@@ -462,7 +541,7 @@ export class GameService {
   /** Writes the game, its seat-1 player and the invitation through `tx`; returns the game id. */
   async #insertGame(
     tx: EntityManager,
-    { code, expiresAt, isPublic }: { code: string; expiresAt: Date; isPublic: boolean },
+    { code, expiresAt, isPublic, settings }: { code: string; expiresAt: Date; isPublic: boolean; settings: GameSettings },
     now: Date,
     creator:
       | { kind: "account"; userId: string; displayName: string }
@@ -472,6 +551,10 @@ export class GameService {
       origin: "invite",
       isPublic,
       status: "waiting",
+      variant: settings.variant,
+      timeControlMs: settings.timeControlMs,
+      clockMs1: settings.timeControlMs,
+      clockMs2: settings.timeControlMs,
       createdAt: now,
     });
     tx.create(GamePlayer, {
@@ -485,6 +568,7 @@ export class GameService {
     });
     tx.create(Invitation, { game, code, createdAt: now, expiresAt });
     await tx.flush();
+    if (settings.variant === "paper") await tx.execute(INSERT_PAPER_STATE_SQL, [game.id], "run");
     return game.id;
   }
 
@@ -661,7 +745,8 @@ export class GameService {
       { populate: ["user"], orderBy: { seat: "asc" } },
     );
     const you = players.find(({ id }) => id === participant.playerId)!;
-    const watchable = watchableState(game, players, after, now);
+    const paper = game.variant === "paper" ? await loadPaperSnapshot(tx, gameId) : null;
+    const watchable = watchableState(game, players, after, now, paper);
     const audience = await readAudience(tx, game, now);
     const state: GameState = {
       ...watchable,

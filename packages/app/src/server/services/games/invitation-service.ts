@@ -9,6 +9,7 @@ import {
   normalizeInvitationCode,
   type AcceptInvitationInput,
   type CreatorKind,
+  type GameVariant,
 } from "@gomoku/core";
 import type { EntityManager } from "@gomoku/db";
 
@@ -93,6 +94,9 @@ export type InvitationPreview = {
   creatorKind: CreatorKind;
   /** Whether anyone with the code may watch the game (D-33, BR-45): shown before joining. */
   isPublic: boolean;
+  /** The variant and the clock budget of the game (E11): the page says what is being played. */
+  variant: GameVariant;
+  timeControlMs: number;
   state:
     /** Free to join (a guest option may still apply to the anonymous visitor). */
     | "joinable"
@@ -196,6 +200,8 @@ export class InvitationService {
     if (invitation && member) {
       const known = (state: InvitationPreview["state"]): InvitationPreview => ({
         creatorName: creatorNameOf(invitation),
+        variant: invitation.variant,
+        timeControlMs: invitation.time_control_ms,
         creatorKind: invitation.creator_kind as CreatorKind,
         isPublic: invitation.is_public,
         state,
@@ -210,6 +216,8 @@ export class InvitationService {
     if (invitation && invitation.status === "finished" && invitation.is_public) {
       return {
         creatorName: creatorNameOf(invitation),
+        variant: invitation.variant,
+        timeControlMs: invitation.time_control_ms,
         creatorKind: invitation.creator_kind as CreatorKind,
         isPublic: true,
         state: "reviewable",
@@ -220,6 +228,8 @@ export class InvitationService {
       // Watching takes no slot (BR-13), so a viewer who plays elsewhere may watch too.
       return {
         creatorName: creatorNameOf(invitation),
+        variant: invitation.variant,
+        timeControlMs: invitation.time_control_ms,
         creatorKind: invitation.creator_kind as CreatorKind,
         isPublic: true,
         state: "watchable",
@@ -239,6 +249,8 @@ export class InvitationService {
     const slot = await this.#slotOf(this.#em, viewer);
     const creator = {
       creatorName: creatorNameOf(invitation),
+        variant: invitation.variant,
+        timeControlMs: invitation.time_control_ms,
       creatorKind: invitation.creator_kind as CreatorKind,
       isPublic: invitation.is_public,
     };

@@ -17,6 +17,8 @@ type Script = {
   present?: number;
   alive?: { id: string } | undefined;
   stale?: { stale: boolean; can_chat?: boolean } | undefined;
+  paperState?: Record<string, unknown>[];
+  paperMoves?: Record<string, unknown>[];
 };
 
 type FakeEm = {
@@ -31,6 +33,8 @@ function setup(script: Script = {}) {
   const calls: { sql: string; params: unknown[] }[] = [];
   const execute = vi.fn(async (sql: string, params: unknown[] = []) => {
     calls.push({ sql, params });
+    if (sql.includes("from paper_game_states where")) return script.paperState ?? [];
+    if (sql.includes("from paper_moves where")) return script.paperMoves ?? [];
     if (sql.includes("from invitations i join games g")) return script.target ? [script.target] : [];
     if (sql.includes("select status, is_public from games")) return script.game ? [script.game] : [];
     if (sql.includes("from game_players where game_id")) return script.player ? [{ one: 1 }] : [];
@@ -195,6 +199,8 @@ describe("SpectatorService.find", () => {
 const bits = (cells: number[]) => Array.from({ length: 225 }, (_, cell) => (cells.includes(cell) ? "1" : "0")).join("");
 const gameRow = (over: Record<string, unknown> = {}) => ({
   id: GAME,
+  variant: "classic",
+  timeControlMs: 600_000,
   status: "active",
   blackSeat: 1,
   moveCount: 2,
@@ -241,7 +247,7 @@ describe("SpectatorService.getState", () => {
       ],
     });
     expect(state.clock).toMatchObject({ remainingMs: [580_000, 585_000], running: 1, now: NOW.getTime() });
-    expect(Object.keys(state).sort()).toEqual(["audience", "blackSeat", "canChat", "clock", "moveCount", "moves", "players", "result", "status", "turnSeat"]);
+    expect(Object.keys(state).sort()).toEqual(["audience", "blackSeat", "canChat", "clock", "moveCount", "moves", "players", "result", "status", "timeControlMs", "turnSeat", "variant"]);
     for (const player of state.players) expect(Object.keys(player)).not.toContain("seen");
     expect(JSON.stringify(state)).not.toMatch(/secret|ala@example|invitation|code|rematch|you/i);
     expect(timeoutSettler.settleExpired).toHaveBeenCalledWith(GAME, em, NOW);
@@ -266,6 +272,39 @@ describe("SpectatorService.getState", () => {
       code: "AUDIENCE_CLOSED",
     });
     expect(closed.em.find).not.toHaveBeenCalled();
+  });
+
+  it("serves the sheet of a paper game instead of the bitboards, with the variant and the clock budget (E11)", async () => {
+    const at = NOW.getTime() - 5000;
+    const paper = readSetup(gameRow({ variant: "paper", timeControlMs: 120_000, moveCount: 99, moves: Uint8Array.from([]) }), {
+      stale: { stale: false },
+      paperState: [{ move_count: 2, auto_seat: null, pending_ms: null }],
+      paperMoves: [
+        { move_number: 1, x: 50, y: 50, seat: 1, is_auto: false, at_ms: at },
+        { move_number: 2, x: 51, y: 50, seat: 2, is_auto: false, at_ms: at + 1000 },
+      ],
+    });
+
+    const state = await paper.service.getState({ spectatorId: "s1" }, GAME, 1);
+
+    expect(state).toMatchObject({
+      variant: "paper",
+      timeControlMs: 120_000,
+      moveCount: 2,
+      turnSeat: 1,
+      paper: { moveCount: 2, scores: [0, 0], autoSeat: null },
+    });
+    expect(state.paper!.moves.map(({ n }) => n)).toEqual([2]);
+    expect(JSON.stringify(state)).not.toMatch(/secret|ala@example|invitation|rematch|you/i);
+  });
+
+  it("rejects `after` beyond the moves of a paper sheet with 400", async () => {
+    const paper = readSetup(gameRow({ variant: "paper", timeControlMs: 120_000 }), {
+      stale: { stale: false },
+      paperState: [{ move_count: 1, auto_seat: null, pending_ms: null }],
+      paperMoves: [{ move_number: 1, x: 50, y: 50, seat: 1, is_auto: false, at_ms: NOW.getTime() }],
+    });
+    await expect(paper.service.getState({ spectatorId: "s1" }, GAME, 2)).rejects.toMatchObject({ status: 400 });
   });
 
   it("has no audience for a finished game", async () => {

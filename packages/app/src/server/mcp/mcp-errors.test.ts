@@ -69,6 +69,15 @@ describe("toolErrorOf", () => {
     });
   });
 
+  it("maps the rules of the paper variant (too far, first stone off the middle) to ILLEGAL_MOVE with a reason", () => {
+    expect(toolErrorOf(new ValidationError("Za daleko", { code: "MOVE_TOO_FAR" })).structuredContent).toEqual({
+      error: { code: "ILLEGAL_MOVE", message: "Za daleko", retryable: false, reason: "too_far" },
+    });
+    expect(toolErrorOf(new ValidationError("Środek", { code: "FIRST_MOVE_CENTER" })).structuredContent).toEqual({
+      error: { code: "ILLEGAL_MOVE", message: "Środek", retryable: false, reason: "first_move_center" },
+    });
+  });
+
   it("maps a missing game to the one INVALID_TOKEN, whatever the message said", () => {
     expect(toolErrorOf(new NotFoundError("Nie znaleziono partii.")).structuredContent).toEqual({
       error: { code: "INVALID_TOKEN", message: INVALID_TOKEN_MESSAGE, retryable: false },

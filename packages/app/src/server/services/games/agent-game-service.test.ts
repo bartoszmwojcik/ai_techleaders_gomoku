@@ -60,7 +60,7 @@ const stateOf = (over: Partial<GameState> = {}): GameState =>
 
 function setup(
   options: {
-    seat?: { id: string; game_id: string } | null;
+    seat?: { id: string; game_id: string; variant?: string } | null;
     peeks?: (PeekRow | null)[];
     state?: GameState;
     chat?: ChatReadData;
@@ -273,6 +273,155 @@ describe("AgentGameService.getState", () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+  });
+});
+
+describe("AgentGameService, paper variant (E11)", () => {
+  const PAPER_SEAT = { id: "agent-1", game_id: "game-1", variant: "paper" };
+  const AT = "2026-10-31T12:00:00.000Z";
+  const paperState = (over: Partial<GameState> = {}, paper: Record<string, unknown> = {}): GameState =>
+    stateOf({
+      variant: "paper",
+      timeControlMs: 180_000,
+      moveCount: 2,
+      moves: [],
+      paper: {
+        moveCount: 2,
+        moves: [
+          { n: 1, x: 50, y: 50, seat: 1, auto: false, at: AT },
+          { n: 2, x: 51, y: 50, seat: 2, auto: false, at: AT },
+        ],
+        scores: [0, 0],
+        fives: [],
+        autoSeat: null,
+        autoMoveAt: null,
+        ...paper,
+      },
+      ...over,
+    } as Partial<GameState>);
+  const paperPeek = (over: PeekRow = {}) => peekRow({ variant: "paper", black_seat: 1, move_count: 1, auto_seat: null, pending_ms: null, ...over });
+
+  it("shows the cut-out of the sheet with the origin, the scores and the automat", async () => {
+    const { service } = setup({ seat: PAPER_SEAT, state: paperState() });
+
+    const view = await service.getState({ token: TOKEN });
+
+    expect(view).toMatchObject({ variant: "paper", boardOrigin: { x: 47, y: 47 }, scores: { you: 0, opponent: 0 }, autoSeat: null });
+    expect(view.board).toHaveLength(7);
+  });
+
+  it("accepts afterMove up to the number of moves of the sheet, beyond the classic 225", async () => {
+    const big = paperState({ moveCount: 300 }, { moveCount: 300 });
+    const { service } = setup({ seat: PAPER_SEAT, state: big });
+
+    await expect(service.getState({ token: TOKEN, afterMove: 300 })).resolves.toMatchObject({ variant: "paper" });
+    const error = await failure(service.getState({ token: TOKEN, afterMove: 301 }));
+    expect(error.message).toBe("Nieprawidłowe pole: afterMove.");
+  });
+
+  it.each([
+    [0, 0],
+    [100, 100],
+    [50, 100],
+  ])("accepts the cell (%i, %i) of the sheet", async (x, y) => {
+    const { service, gameMoveService } = setup({ seat: PAPER_SEAT, state: paperState() });
+
+    await service.playMove({ token: TOKEN, x, y, moveNumber: 3 });
+
+    expect(gameMoveService.play).toHaveBeenCalledExactlyOnceWith({ playerId: "agent-1" }, "game-1", { x, y, moveNumber: 3 });
+  });
+
+  it.each([
+    [-1, 0],
+    [101, 0],
+    [0, -1],
+    [0, 101],
+  ])("refuses the cell (%i, %i) off the sheet naming 0–100", async (x, y) => {
+    const { service, gameMoveService } = setup({ seat: PAPER_SEAT });
+
+    const error = await failure(service.playMove({ token: TOKEN, x, y, moveNumber: 1 }));
+
+    expect(error.code).toBe("ILLEGAL_MOVE");
+    expect(error.message).toBe("Pole jest poza planszą (współrzędne 0–100).");
+    expect(gameMoveService.play).not.toHaveBeenCalled();
+  });
+
+  it("keeps refusing the cells 15..100 on a classic game", async () => {
+    const { service } = setup({ seat: { id: "agent-1", game_id: "game-1", variant: "classic" } });
+
+    const error = await failure(service.playMove({ token: TOKEN, x: 15, y: 0, moveNumber: 1 }));
+
+    expect(error.message).toBe("Pole jest poza planszą (współrzędne 0–14).");
+  });
+
+  describe("waiting", () => {
+    // Seat 2 is the agent; black is seat 1, so with one stone (move_count 1) it is the agent's turn.
+    it("reads the count and the automat from the sheet's state", async () => {
+      const { service, execute, sleep } = setup({ seat: PAPER_SEAT, state: paperState(), peeks: [paperPeek()] });
+
+      await service.getState({ token: TOKEN, waitSeconds: 5 }, { sleep });
+
+      expect(String(execute.mock.calls[1]![0])).toContain("left join paper_game_states");
+      expect(sleep).not.toHaveBeenCalled(); // seat 2 is on turn at move_count 1
+    });
+
+    it("keeps waiting while the automat plays for the agent, though the turn is nominally its own", async () => {
+      const { service, sleep } = setup({ seat: PAPER_SEAT, state: paperState(), peeks: [paperPeek({ auto_seat: 2, pending_ms: NOW.getTime() + 60_000 })] });
+
+      await service.getState({ token: TOKEN, waitSeconds: 2 }, { sleep });
+
+      expect(sleep).toHaveBeenCalledTimes(2);
+    });
+
+    it("stops when the pending stone of the automat is due, even if the sheet is not settled yet", async () => {
+      const { service, sleep, gameService } = setup({
+        seat: PAPER_SEAT,
+        state: paperState(),
+        peeks: [paperPeek({ move_count: 2, auto_seat: 1, pending_ms: NOW.getTime() - 1 })],
+      });
+
+      await service.getState({ token: TOKEN, waitSeconds: 25 }, { sleep });
+
+      expect(sleep).not.toHaveBeenCalled();
+      expect(gameService.getState).toHaveBeenCalledOnce();
+    });
+
+    it("keeps waiting while the stone of the automat is not due yet", async () => {
+      const { service, sleep } = setup({
+        seat: PAPER_SEAT,
+        state: paperState(),
+        peeks: [paperPeek({ move_count: 2, auto_seat: 1, pending_ms: NOW.getTime() + 1500 })],
+      });
+
+      await service.getState({ token: TOKEN, waitSeconds: 1 }, { sleep });
+
+      expect(sleep).toHaveBeenCalledOnce();
+    });
+
+    it("counts the time of the player against the automat, not of the automat's seat", async () => {
+      // Automat plays for seat 1; seat 2 (the agent) is the one whose clock runs, and it ran out.
+      const { service, sleep } = setup({
+        seat: PAPER_SEAT,
+        state: paperState(),
+        peeks: [paperPeek({ move_count: 2, auto_seat: 1, clock_ms_1: 0, clock_ms_2: 500, turn_started_ms: NOW.getTime() - 1000 })],
+      });
+
+      await service.getState({ token: TOKEN, waitSeconds: 25 }, { sleep });
+
+      expect(sleep).not.toHaveBeenCalled();
+    });
+
+    it("does not stop for the zero clock of the automat's seat while the player still has time", async () => {
+      const { service, sleep } = setup({
+        seat: PAPER_SEAT,
+        state: paperState(),
+        peeks: [paperPeek({ move_count: 2, auto_seat: 1, clock_ms_1: 0, clock_ms_2: 100_000, turn_started_ms: NOW.getTime() - 1000, pending_ms: NOW.getTime() + 60_000 })],
+      });
+
+      await service.getState({ token: TOKEN, waitSeconds: 1 }, { sleep });
+
+      expect(sleep).toHaveBeenCalledOnce();
     });
   });
 });

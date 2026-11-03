@@ -134,10 +134,10 @@ describe("what is on the list", () => {
     const forBob = await page(bob);
 
     expect(forAlice.entries).toEqual([
-      { gameId, finishedAt: "2026-10-30T10:00:00.000Z", result: "win", reason: "five_in_row", opponent: { kind: "account", name: bob.name } },
+      { gameId, finishedAt: "2026-10-30T10:00:00.000Z", result: "win", reason: "five_in_row", opponent: { kind: "account", name: bob.name }, variant: "classic" },
     ]);
     expect(forBob.entries).toEqual([
-      { gameId, finishedAt: "2026-10-30T10:00:00.000Z", result: "loss", reason: "five_in_row", opponent: { kind: "account", name: alice.name } },
+      { gameId, finishedAt: "2026-10-30T10:00:00.000Z", result: "loss", reason: "five_in_row", opponent: { kind: "account", name: alice.name }, variant: "classic" },
     ]);
     expect((await page(carol)).entries).toEqual([]);
   });

@@ -11,6 +11,8 @@ import { GamePlayer } from "./games/game-player";
 import { GameSpectator } from "./games/game-spectator";
 import { Invitation } from "./games/invitation";
 import { LobbySeeker } from "./games/lobby-seeker";
+import { PaperGameState } from "./games/paper-game-state";
+import { PaperMove } from "./games/paper-move";
 
 describe("entities registry", () => {
   it("lists the account entities with their tables", () => {
@@ -29,6 +31,8 @@ describe("entities registry", () => {
       "game_pair_counters",
       "chat_messages",
       "game_spectators",
+      "paper_game_states",
+      "paper_moves",
     ]);
   });
 
@@ -104,6 +108,8 @@ describe("lobby seekers", () => {
     expect(expiresAt.nullable).toBeFalsy();
     expect(LobbySeeker.meta.checks.map((check) => check.name)).toEqual([
       "lobby_seekers_expiry_check",
+      "lobby_seekers_variant_check",
+      "lobby_seekers_time_control_check",
     ]);
   });
 });
@@ -166,6 +172,45 @@ describe("game spectators", () => {
 
   it("has no seat: it is not a participant of the game", () => {
     expect(Object.keys(GameSpectator.meta.properties)).not.toContain("seat");
+  });
+});
+
+describe("paper variant", () => {
+  it("defaults a game and a seeker to the classic variant and the 10-minute clock", () => {
+    for (const entity of [Game, LobbySeeker]) {
+      const { variant, timeControlMs } = entity.meta.properties;
+      expect(variant.default).toBe("classic");
+      expect(timeControlMs.default).toBe(600000);
+    }
+  });
+
+  it("checks the variant, the time control, the clocks and the end reasons of a game", () => {
+    const checks = Object.fromEntries(Game.meta.checks.map((check) => [check.name, String(check.expression)]));
+    expect(checks.games_variant_check).toBe("variant in ('classic', 'paper')");
+    expect(checks.games_time_control_check).toContain("time_control_ms in (60000, 120000, 180000, 300000)");
+    expect(checks.games_clock_ms_check).toContain("time_control_ms");
+    expect(checks.games_paper_board_empty_check).toBe("variant = 'classic' or move_count = 0");
+    expect(checks.games_classic_end_reason_check).toContain("'timeout'");
+    expect(checks.games_points_end_reason_check).toContain("variant = 'paper'");
+    expect(checks.games_end_reason_check).toContain("'points'");
+    expect(checks.games_winner_required_check).toContain("'points'");
+    expect(LobbySeeker.meta.checks.map((check) => check.name)).toContain("lobby_seekers_time_control_check");
+  });
+
+  it("keys the paper state by its game and the moves by game and number, both leaving with the game", () => {
+    const state = PaperGameState.meta.properties;
+    expect(state.game.primary).toBe(true);
+    expect(state.game.deleteRule).toBe("cascade");
+    expect([state.moveCount, state.score1, state.score2].map((property) => property.default)).toEqual([0, 0, 0]);
+    expect([state.autoSeat, state.pendingAutoAt, state.lastMoveAt].every((property) => property.nullable)).toBe(true);
+    expect(PaperGameState.meta.checks).toHaveLength(4);
+    const move = PaperMove.meta.properties;
+    expect([move.game, move.moveNumber].every((property) => property.primary)).toBe(true);
+    expect(move.game.deleteRule).toBe("cascade");
+    expect(PaperMove.meta.uniques.map((unique) => unique.name)).toEqual(["paper_moves_game_id_x_y_unique"]);
+    expect(PaperMove.meta.checks.map((check) => check.expression)).toContain(
+      "x between 0 and 100 and y between 0 and 100",
+    );
   });
 });
 

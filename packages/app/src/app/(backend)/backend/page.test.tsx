@@ -41,7 +41,7 @@ beforeEach(() => {
   m.gameCounters.mockResolvedValue({
     byStatus: { waiting: 0, active: 0, finished: 0, cancelled: 0 },
     finishedByOrigin: { invite: 0, lobby: 0, rematch: 0 },
-    finishedByEndReason: { five_in_row: 0, draw: 0, timeout: 0, resignation: 0 },
+    finishedByEndReason: { five_in_row: 0, draw: 0, timeout: 0, resignation: 0, points: 0 },
   });
   m.accountTotals.mockResolvedValue({ total: 1, verified: 1, unverified: 0 });
   m.finishedByPair.mockResolvedValue(stats);

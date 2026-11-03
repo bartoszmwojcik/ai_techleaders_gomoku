@@ -10,6 +10,8 @@ import { GamePlayer } from "./games/game-player";
 import { GameSpectator } from "./games/game-spectator";
 import { Invitation } from "./games/invitation";
 import { LobbySeeker } from "./games/lobby-seeker";
+import { PaperGameState } from "./games/paper-game-state";
+import { PaperMove } from "./games/paper-move";
 import { RateLimitBucket } from "./rate-limit/rate-limit-bucket";
 
 // Registry of all MikroORM entities. Entities are defined with `defineEntity`
@@ -29,4 +31,6 @@ export const entities = [
   GamePairCounter,
   ChatMessage,
   GameSpectator,
+  PaperGameState,
+  PaperMove,
 ] as const;

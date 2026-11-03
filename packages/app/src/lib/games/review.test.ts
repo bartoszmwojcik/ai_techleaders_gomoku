@@ -1,7 +1,7 @@
 import type { GameReview } from "@gomoku/core";
 import { describe, expect, it } from "vitest";
 
-import { COLOR_TITLE, lastMoveAt, reviewOutcomeOf, stepStatus, stonesAt, winLineAt } from "./review";
+import { COLOR_TITLE, isPaperReview, lastMoveAt, neutralOutcomeOf, reviewOutcomeOf, stepStatus, stonesAt, winLineAt } from "./review";
 
 const review = (over: Partial<GameReview> = {}): GameReview => ({
   gameId: "g",
@@ -78,5 +78,36 @@ describe("reviewOutcomeOf", () => {
 describe("COLOR_TITLE", () => {
   it("names both colours for the legend", () => {
     expect(COLOR_TITLE).toEqual({ black: "Czarne", white: "Białe" });
+  });
+});
+
+describe("the paper game", () => {
+  const players = review().players;
+
+  it("recognises a review that has no moves to step through", () => {
+    expect(isPaperReview(review({ result: { winnerSeat: 1, reason: "points", winLine: null } }))).toBe(true);
+    expect(isPaperReview(review())).toBe(false);
+  });
+
+  it("tells a win on points to the reader who did not play, with the winner's points first", () => {
+    const result = { winnerSeat: 2 as const, reason: "points" as const, winLine: null, scores: [3, 7] as [number, number] };
+    expect(neutralOutcomeOf({ result, blackSeat: 1, players })).toEqual({
+      result: "win",
+      title: "Wygrały białe: Bob (gość) · 7 : 3",
+      detail: "Wygrał wyższy wynik punktowy.",
+    });
+  });
+
+  it("tells a draw on points, with and without the points", () => {
+    const result = { winnerSeat: null, reason: "points" as const, winLine: null };
+    expect(neutralOutcomeOf({ result, blackSeat: 1, players })).toEqual({ result: "draw", title: "Remis", detail: "Punkty były równe." });
+    expect(neutralOutcomeOf({ result: { ...result, scores: [4, 4] }, blackSeat: 1, players }).title).toBe("Remis 4 : 4");
+  });
+
+  it("keeps the classic texts for a classic draw and a classic win", () => {
+    expect(neutralOutcomeOf({ result: { winnerSeat: null, reason: "draw", winLine: null }, blackSeat: 1, players }).detail).toBe(
+      "Plansza jest pełna, nikt nie ułożył pięciu kamieni.",
+    );
+    expect(neutralOutcomeOf({ result: { winnerSeat: 1, reason: "five_in_row", winLine: [1] }, blackSeat: 1, players }).title).toBe("Wygrały czarne: Ala");
   });
 });

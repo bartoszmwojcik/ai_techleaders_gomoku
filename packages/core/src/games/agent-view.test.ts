@@ -144,3 +144,114 @@ describe("agentGameView", () => {
     expect(text).not.toMatch(/name|email|user/i);
   });
 });
+
+describe("agentGameView, paper variant (E11)", () => {
+  const AT = "2026-11-03T12:00:01.000Z";
+  const NOW_MS = Date.parse("2026-11-03T12:00:00.000Z");
+  const paperMoves = [
+    { n: 1, x: 50, y: 50, seat: 2 as const, auto: false, at: AT },
+    { n: 2, x: 52, y: 49, seat: 1 as const, auto: false, at: AT },
+    { n: 3, x: 51, y: 51, seat: 2 as const, auto: true, at: AT },
+  ];
+  const paperInput = (over: Partial<AgentViewInput> = {}, paper: Partial<NonNullable<AgentViewInput["paper"]>> = {}) =>
+    input({
+      variant: "paper",
+      moveCount: 3,
+      turnSeat: 1,
+      clock: { remainingMs: [100_000, 90_000], running: 1, now: NOW_MS },
+      paper: { moves: paperMoves, scores: [2, 1], autoSeat: null, autoMoveAt: null, ...paper },
+      ...over,
+    });
+
+  it("shows a cut-out around the stones with a margin of three, its origin and the scores", () => {
+    const view = agentGameView(paperInput());
+
+    expect(view.variant).toBe("paper");
+    expect(view.boardOrigin).toEqual({ x: 47, y: 46 });
+    // x 50..52 + 3 -> 47..55 (9 columns); y 49..51 + 3 -> 46..54 (9 rows).
+    expect(view.board).toHaveLength(9);
+    expect(view.board.every((row) => row.length === 9)).toBe(true);
+    expect(view.board[50 - 46]![50 - 47]).toBe("B"); // seat 2 is black
+    expect(view.board[49 - 46]![52 - 47]).toBe("W");
+    expect(view.board[51 - 46]![51 - 47]).toBe("B");
+    expect(view.scores).toEqual({ you: 1, opponent: 2 });
+    expect(view.autoSeat).toBeNull();
+    expect(view.autoMoveAt).toBeNull();
+    expect(view.nextMoveNumber).toBe(4);
+    expect(view.moves).toEqual([
+      { n: 1, x: 50, y: 50, color: "black", auto: false },
+      { n: 2, x: 52, y: 49, color: "white", auto: false },
+      { n: 3, x: 51, y: 51, color: "black", auto: true },
+    ]);
+    expect(view.turn).toBe("opponent");
+    expect(view.clock).toEqual({ youMs: 90_000, opponentMs: 100_000, runningSide: "opponent", serverNow: NOW_MS });
+    expect(view.retryAfterMs).toBe(MCP_RETRY_HINT_MS);
+  });
+
+  it("lists only the moves after afterMove and cuts the window at the edge of the sheet", () => {
+    const moves = [
+      { n: 1, x: 0, y: 100, seat: 2 as const, auto: false, at: AT },
+      { n: 2, x: 1, y: 99, seat: 1 as const, auto: false, at: AT },
+    ];
+    const view = agentGameView(paperInput({ moveCount: 2 }, { moves }), 1);
+
+    expect(view.boardOrigin).toEqual({ x: 0, y: 96 });
+    expect(view.board).toHaveLength(5);
+    expect(view.board[4]![0]).toBe("B");
+    expect(view.board[3]![1]).toBe("W");
+    expect(view.board[0]!.length).toBe(5);
+    expect(view.moves).toEqual([{ n: 2, x: 1, y: 99, color: "white", auto: false }]);
+  });
+
+  it("shows the margin around the middle while the sheet is empty", () => {
+    const view = agentGameView(paperInput({ moveCount: 0, turnSeat: 2 }, { moves: [], scores: [0, 0] }));
+
+    expect(view.boardOrigin).toEqual({ x: 47, y: 47 });
+    expect(view.board).toEqual(Array(7).fill(".......")); // 47..53
+    expect(view.turn).toBe("you");
+    expect(view.retryAfterMs).toBe(0);
+    expect(view.nextMoveNumber).toBe(1);
+  });
+
+  it("is not the agent's turn while the automat plays for it, and hints when the stone is due", () => {
+    const autoMoveAt = new Date(NOW_MS + 500).toISOString();
+    const view = agentGameView(paperInput({ turnSeat: 2 }, { autoSeat: 2, autoMoveAt }));
+
+    expect(view.turn).toBe("opponent");
+    expect(view.autoSeat).toBe(2);
+    expect(view.autoMoveAt).toBe(autoMoveAt);
+    expect(view.retryAfterMs).toBe(500);
+  });
+
+  it("caps the hint at the usual one and floors an overdue stone at zero", () => {
+    const later = new Date(NOW_MS + 60_000).toISOString();
+    const earlier = new Date(NOW_MS - 60_000).toISOString();
+    expect(agentGameView(paperInput({ turnSeat: 2 }, { autoSeat: 2, autoMoveAt: later })).retryAfterMs).toBe(MCP_RETRY_HINT_MS);
+    expect(agentGameView(paperInput({ turnSeat: 2 }, { autoSeat: 2, autoMoveAt: earlier })).retryAfterMs).toBe(0);
+  });
+
+  it("is the agent's turn on its own move while the automat plays for the opponent", () => {
+    const view = agentGameView(paperInput({ turnSeat: 2 }, { autoSeat: 1 }));
+    expect(view.turn).toBe("you");
+    expect(view.autoSeat).toBe(1);
+  });
+
+  it("has no colour before the seats are drawn and no turn or hint after the end; reports the result by points", () => {
+    const pending = agentGameView(paperInput({ blackSeat: null, status: "waiting", turnSeat: null, moveCount: 0 }, { moves: [] }));
+    expect(pending.you.color).toBeNull();
+    expect(pending.turn).toBeNull();
+
+    const finished = agentGameView(
+      paperInput({ status: "finished", result: { winnerSeat: 1, reason: "points", winLine: null } }),
+    );
+    expect(finished.turn).toBeNull();
+    expect(finished.retryAfterMs).toBeNull();
+    expect(finished.result).toEqual({ outcome: "loss", reason: "points" });
+  });
+
+  it("falls back to the classic view when a paper variant comes without its sheet", () => {
+    const view = agentGameView(input({ variant: "paper" }));
+    expect(view.variant).toBeUndefined();
+    expect(view.board).toHaveLength(15);
+  });
+});

@@ -24,7 +24,7 @@ describe("agentGetStateSchema", () => {
     [{ token, waitSeconds: 1.5 }, "waitSeconds"],
     [{ token, waitSeconds: "5" }, "waitSeconds"],
     [{ token, afterMove: -1 }, "afterMove"],
-    [{ token, afterMove: 226 }, "afterMove"],
+    [{ token, afterMove: 10202 }, "afterMove"],
     [{ token, afterMessage: -1 }, "afterMessage"],
     [{ token, afterMessage: 2_147_483_648 }, "afterMessage"],
     [{ token, afterMessage: 1.5 }, "afterMessage"],
@@ -49,7 +49,7 @@ describe("agentPlayMoveSchema", () => {
     [{ token, x: "1", y: 1, moveNumber: 1 }, "x"],
     [{ token, x: 1, y: null, moveNumber: 1 }, "y"],
     [{ token, x: 1, y: 1, moveNumber: 0 }, "moveNumber"],
-    [{ token, x: 1, y: 1, moveNumber: 226 }, "moveNumber"],
+    [{ token, x: 1, y: 1, moveNumber: 10202 }, "moveNumber"],
     [{ token, x: 1, y: 1 }, "moveNumber"],
     [{ x: 1, y: 1, moveNumber: 1 }, "token"],
   ])("rejects %j naming the field %s", (value, field) => {

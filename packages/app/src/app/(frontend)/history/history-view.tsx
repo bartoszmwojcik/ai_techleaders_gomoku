@@ -13,7 +13,7 @@ import { CreateGameButton } from "@/components/games/create-game-button";
 import { PlayerLabel } from "@/components/games/player-label";
 import { apiCall } from "@/lib/api-client";
 import { formatFinishedAt } from "@/lib/format-date-time";
-import { opponentNameOf, REASON_LABEL, RESULT_LABEL } from "@/lib/games/history";
+import { historyDetailOf, opponentNameOf, RESULT_LABEL } from "@/lib/games/history";
 
 type Problem = "signed-out" | "failed";
 
@@ -70,7 +70,7 @@ export function HistoryView({ initial }: { initial: HistoryPage }) {
                 result={entry.result}
                 resultLabel={RESULT_LABEL[entry.result]}
                 date={formatFinishedAt(entry.finishedAt)}
-                reason={REASON_LABEL[entry.reason]}
+                reason={historyDetailOf(entry)}
                 action={
                   <TextLink href={`/games/${entry.gameId}/review`} data-testid="history-review">
                     Przejrzyj partię

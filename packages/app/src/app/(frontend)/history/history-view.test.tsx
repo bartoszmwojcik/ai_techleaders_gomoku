@@ -15,6 +15,7 @@ const entry = (over: Partial<HistoryEntry> = {}): HistoryEntry => ({
   result: "win",
   reason: "five_in_row",
   opponent: { kind: "account", name: "Alicja_99" },
+  variant: "classic",
   ...over,
 });
 const ok = (data: unknown) => ({ ok: true, data });
@@ -149,5 +150,21 @@ describe("HistoryView: older games", () => {
     await click(more());
 
     expect(screen.getByRole("link", { name: "Zaloguj się ponownie" }).getAttribute("href")).toBe("/login?next=%2Fhistory");
+  });
+});
+
+describe("HistoryView, the paper game (E11)", () => {
+  it("names the variant and the points next to the date", () => {
+    render(
+      <HistoryView
+        initial={{
+          entries: [entry({ variant: "paper", reason: "points", scores: [7, 5] }), entry({ gameId: "g2", variant: "paper", reason: "resignation", result: "loss", scores: [1, 3] })],
+          nextCursor: null,
+        }}
+      />,
+    );
+    const rows = screen.getAllByRole("listitem").map((row) => row.textContent);
+    expect(rows[0]).toContain("Papier i ołówek · 7 : 5");
+    expect(rows[1]).toContain("Papier i ołówek · 1 : 3 · Poddanie");
   });
 });

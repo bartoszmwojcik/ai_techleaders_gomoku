@@ -26,7 +26,7 @@ import { usePageVisibility } from "@/components/games/use-page-visibility";
 import { apiCall } from "@/lib/api-client";
 import { AGENT_CLIENT_COPY } from "@/lib/games/agent-clients";
 import { formatValidUntil } from "@/lib/format-date-time";
-import { mergeState, playerName, playerNameOf } from "@/lib/games/play";
+import { knownMoves, mergeState, playerName, playerNameOf } from "@/lib/games/play";
 import type { GameView } from "@/server/http/game-view";
 
 /** Polling of a waiting game (#21 Q6): short polling every 3 s until a transport from #30 exists. */
@@ -53,8 +53,6 @@ export const REMATCH_IDLE_POLL_INTERVAL_MS = 12_000;
  * earlier instead of running into the sudden "Brak dostępu" (the rematch margin of the backend is the same).
  */
 export const GUEST_RESULT_WINDOW_MS = 55 * 60 * 1000;
-
-const TEN_MINUTES_MS = 10 * 60 * 1000;
 
 type Props = {
   gameId: string;
@@ -173,7 +171,7 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
   const readOnce = useCallback(async () => {
     const startedAt = Date.now();
     const startedVersion = version.current;
-    const after = latest.current.moves.length;
+    const after = knownMoves(latest.current);
     // One controller for the timeout and for calling the read off.
     const controller = new AbortController();
     AbortSignal.timeout(POLL_TIMEOUT_MS).addEventListener("abort", () => controller.abort(), { once: true });
@@ -594,8 +592,8 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
         <TurnStatus>
           {`Czekamy, aż ${nameOf(other)} otworzy partię — zegar ruszy, gdy obaj będziecie na stronie (do 15 min)`}
         </TurnStatus>
-        <PlayerClock name={<PlayerLabel name={playerNameOf(other)} />} remainingMs={TEN_MINUTES_MS} />
-        <PlayerClock name={<PlayerLabel name={playerNameOf(mine)} you />} remainingMs={TEN_MINUTES_MS} />
+        <PlayerClock name={<PlayerLabel name={playerNameOf(other)} />} remainingMs={game.timeControlMs} />
+        <PlayerClock name={<PlayerLabel name={playerNameOf(mine)} you />} remainingMs={game.timeControlMs} />
         <TextLink href="/" placement="standalone">
           Wróć na stronę główną
         </TextLink>

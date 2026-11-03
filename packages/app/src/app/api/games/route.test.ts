@@ -73,14 +73,43 @@ describe("POST /api/games with a session", () => {
     expect(connection).toHaveBeenCalledOnce();
     expect(response.status).toBe(201);
     expect(JSON.parse(JSON.stringify(await response.json())).data.gameId).toBe("game-1");
-    expect(create).toHaveBeenCalledWith({ kind: "account", userId: "user-1", isPublic: undefined });
+    expect(create).toHaveBeenCalledWith({ kind: "account", userId: "user-1", isPublic: undefined, settings: { variant: "classic", timeControlMs: 600_000 } });
     expect(setGuestCookie).not.toHaveBeenCalled();
   });
 
   it("ignores the guest fields, even an invalid nickname", async () => {
     const response = await POST(post({ nickname: "<>", cancelOwnWaitingGame: true }));
     expect(response.status).toBe(201);
-    expect(create).toHaveBeenCalledWith({ kind: "account", userId: "user-1", isPublic: undefined });
+    expect(create).toHaveBeenCalledWith({ kind: "account", userId: "user-1", isPublic: undefined, settings: { variant: "classic", timeControlMs: 600_000 } });
+  });
+});
+
+describe("POST /api/games variant settings (E11)", () => {
+  const paper = { kind: "account", userId: "user-1", isPublic: undefined, settings: { variant: "paper", timeControlMs: 120_000 } };
+
+  it("passes the paper variant and its clock for a signed-in user", async () => {
+    expect((await POST(post({ variant: "paper", timeControlMs: 120_000 }))).status).toBe(201);
+    expect(create).toHaveBeenCalledWith(paper);
+  });
+
+  it("defaults the paper clock to three minutes", async () => {
+    await POST(post({ variant: "paper" }));
+    expect(create).toHaveBeenCalledWith({ ...paper, settings: { variant: "paper", timeControlMs: 180_000 } });
+  });
+
+  it("passes the settings of a guest", async () => {
+    getCurrentUser.mockResolvedValue(null);
+    await POST(post({ acknowledgedGuestWarning: true, variant: "paper", timeControlMs: 60_000 }));
+    expect(create.mock.calls[0]![0].settings).toEqual({ variant: "paper", timeControlMs: 60_000 });
+  });
+
+  it.each([
+    ["a clock in the classic game", { timeControlMs: 60_000 }],
+    ["an unknown variant", { variant: "renju" }],
+    ["an unknown clock", { variant: "paper", timeControlMs: 90_000 }],
+  ])("answers 400 for %s, creating nothing", async (_name, body) => {
+    expect((await POST(post(body))).status).toBe(400);
+    expect(create).not.toHaveBeenCalled();
   });
 });
 
@@ -88,7 +117,7 @@ describe("POST /api/games with a session, public flag (BR-40)", () => {
   it("passes isPublic from the body to the service", async () => {
     const response = await POST(post({ isPublic: true }));
     expect(response.status).toBe(201);
-    expect(create).toHaveBeenCalledWith({ kind: "account", userId: "user-1", isPublic: true });
+    expect(create).toHaveBeenCalledWith({ kind: "account", userId: "user-1", isPublic: true, settings: { variant: "classic", timeControlMs: 600_000 } });
   });
 
   it.each([["a non-boolean flag", { isPublic: "yes" }], ["garbage", "{nope"]])(
@@ -123,6 +152,7 @@ describe("POST /api/games without a session (guest)", () => {
       tokenHash: expect.stringMatching(/^[0-9a-f]{64}$/),
       limitKey: "games-create-guest:ip:abc",
       cancelOwnWaitingGame: undefined,
+      settings: { variant: "classic", timeControlMs: 600_000 },
     });
     const [config, token, maxAge] = setGuestCookie.mock.calls[0]!;
     expect(config).toBe(serverConfig);

@@ -11,6 +11,7 @@ import { GameService } from "../../packages/app/src/server/services/games/game-s
 import { InvitationCodes } from "../../packages/app/src/server/services/games/invitation-codes";
 import { RematchService } from "../../packages/app/src/server/services/games/rematch-service";
 import { SqlTimeoutSettler } from "../../packages/app/src/server/services/games/timeout-settler";
+import { PaperSettler } from "../../packages/app/src/server/services/games/paper-settler";
 import { RateLimiter } from "../../packages/app/src/server/services/rate-limit/rate-limiter";
 import { deriveRematchToken, hashOpaqueToken } from "../../packages/app/src/server/http/opaque-token";
 
@@ -68,7 +69,7 @@ type Em = ReturnType<Orm["em"]["fork"]>;
 function scope(configure?: (em: Em) => void) {
   const em = orm.em.fork();
   configure?.(em);
-  const timeoutSettler = new SqlTimeoutSettler({ em, clock: systemClock });
+  const timeoutSettler = new SqlTimeoutSettler({ em, clock: systemClock, paperSettler: new PaperSettler({ clock: systemClock, random: Math.random }) });
   const rateLimiter = new RateLimiter({ em });
   return {
     rematch: new RematchService({ em, clock: systemClock, rateLimiter, timeoutSettler }),
