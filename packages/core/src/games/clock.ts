@@ -15,6 +15,8 @@ export type ClockState = {
   clockMs: readonly [number, number];
   turnStartedAtMs: number | null;
   turnSeat: Seat | null;
+  /** The budget of the game; the classic game's ten minutes when omitted (E11). */
+  timeControlMs?: number;
 };
 
 /** What the API tells a client about the clock (#23 API Contracts). */
@@ -30,7 +32,7 @@ export type ClockView = {
 };
 
 const stored = (state: ClockState, seat: Seat): number =>
-  Math.min(Math.max(state.clockMs[seat - 1]!, 0), INITIAL_CLOCK_MS);
+  Math.min(Math.max(state.clockMs[seat - 1]!, 0), state.timeControlMs ?? INITIAL_CLOCK_MS);
 
 /** Time spent in the current turn; never negative, so a clock set back (NTP) costs nothing. */
 export function elapsedMs(state: ClockState, nowMs: number): number {
@@ -83,7 +85,15 @@ export function clockView(state: ClockState, nowMs: number): ClockView {
   };
 }
 
+/**
+ * Below this a clock is shown as low on time: a minute, but at most a quarter of the game's
+ * budget, so a one-minute paper game is not "low" from the first move (E11).
+ */
+export function lowTimeMs(timeControlMs: number = INITIAL_CLOCK_MS): number {
+  return Math.min(LOW_TIME_MS, timeControlMs / 4);
+}
+
 /** Whether a clock with `remaining` ms left is shown as low on time. */
-export function isLow(remaining: number): boolean {
-  return remaining < LOW_TIME_MS;
+export function isLow(remaining: number, timeControlMs: number = INITIAL_CLOCK_MS): boolean {
+  return remaining < lowTimeMs(timeControlMs);
 }

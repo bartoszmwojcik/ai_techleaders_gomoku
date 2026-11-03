@@ -6,6 +6,7 @@ import {
   deadlineMs,
   elapsedMs,
   isLow,
+  lowTimeMs,
   remainingMs,
   seatOutOfTime,
   spend,
@@ -111,5 +112,22 @@ describe("game clock", () => {
     }
     expect(spent).toBeLessThanOrEqual(INITIAL_CLOCK_MS);
     expect(clockMs).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("game clock with a custom budget (E11)", () => {
+  it("clamps the stored time to the budget of the game, not to ten minutes", () => {
+    const state = running({ clockMs: [90_000, 90_000], timeControlMs: 60_000, turnSeat: 2 });
+    expect(remainingMs(state, 1, T0)).toBe(60_000);
+    expect(deadlineMs(state)).toBe(T0 + 60_000);
+  });
+
+  it("scales the low-time threshold with the budget", () => {
+    expect(lowTimeMs()).toBe(60_000);
+    expect(lowTimeMs(600_000)).toBe(60_000);
+    expect(lowTimeMs(60_000)).toBe(15_000);
+    expect(isLow(14_999, 60_000)).toBe(true);
+    expect(isLow(15_000, 60_000)).toBe(false);
+    expect(isLow(59_999)).toBe(true);
   });
 });
