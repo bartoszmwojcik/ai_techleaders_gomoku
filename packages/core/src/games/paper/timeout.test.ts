@@ -70,9 +70,10 @@ describe("resolvePaperClock", () => {
 
   it("ends the game when the sheet leaves the automat no cell", () => {
     const stones: PaperStone[] = [];
-    for (let y = 0; y < 101; y += 1) for (let x = 0; x < 101; x += 1) stones.push(stone(x, y, (x + 2 * y) % 3 === 0 ? 1 : 2));
+    for (let y = 0; y < 101; y += 1) for (let x = 0; x < 101; x += 1) stones.push(stone(x, y, y <= 70 ? 1 : 2));
     const result = resolvePaperClock({ ...leaderOnTurn(), stones }, T0 + 31_000, first);
-    expect(result.finish?.atMs).toBe(T0 + 30_000);
+    expect(result.finish).toEqual({ atMs: T0 + 30_000, winnerSeat: 1 });
+    expect(result.autoMoves).toEqual([]);
   });
 
   it("in the automat phase plays the pending stone when due and keeps the opponent's clock", () => {
