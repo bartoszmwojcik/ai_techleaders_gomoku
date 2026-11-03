@@ -14,6 +14,7 @@ import { GameService } from "../../packages/app/src/server/services/games/game-s
 import { InvitationCodes } from "../../packages/app/src/server/services/games/invitation-codes";
 import { InvitationService, type LookupGuard } from "../../packages/app/src/server/services/games/invitation-service";
 import { SqlTimeoutSettler } from "../../packages/app/src/server/services/games/timeout-settler";
+import { PaperSettler } from "../../packages/app/src/server/services/games/paper-settler";
 import { RateLimiter } from "../../packages/app/src/server/services/rate-limit/rate-limiter";
 
 let orm: Orm;
@@ -34,7 +35,7 @@ const guard = (): LookupGuard => ({ key: `invitation-lookup:guest-slot:${Date.no
 function scope() {
   const em = orm.em.fork();
   const rateLimiter = new RateLimiter({ em });
-  const timeoutSettler = new SqlTimeoutSettler({ em, clock: systemClock });
+  const timeoutSettler = new SqlTimeoutSettler({ em, clock: systemClock, paperSettler: new PaperSettler({ clock: systemClock, random: Math.random }) });
   return {
     timeoutSettler,
     invitations: new InvitationService({ em, clock: systemClock, rateLimiter, timeoutSettler, colorDraw: new ColorDraw() }),

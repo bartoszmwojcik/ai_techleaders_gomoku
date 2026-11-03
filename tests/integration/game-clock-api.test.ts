@@ -10,6 +10,7 @@ import { systemClock, type Clock } from "../../packages/app/src/server/services/
 import { GameService } from "../../packages/app/src/server/services/games/game-service";
 import { InvitationCodes } from "../../packages/app/src/server/services/games/invitation-codes";
 import { SqlTimeoutSettler } from "../../packages/app/src/server/services/games/timeout-settler";
+import { PaperSettler } from "../../packages/app/src/server/services/games/paper-settler";
 import { RateLimiter } from "../../packages/app/src/server/services/rate-limit/rate-limiter";
 
 const baseUrl = inject("baseUrl");
@@ -265,13 +266,13 @@ describe("with an injected clock", () => {
     const em = orm.em.fork();
     return {
       em,
-      settler: new SqlTimeoutSettler({ em, clock }),
+      settler: new SqlTimeoutSettler({ em, clock, paperSettler: new PaperSettler({ clock, random: Math.random }) }),
       games: new GameService({
         em,
         clock,
         rateLimiter: new RateLimiter({ em }),
         invitationCodes: new InvitationCodes(),
-        timeoutSettler: new SqlTimeoutSettler({ em, clock }),
+        timeoutSettler: new SqlTimeoutSettler({ em, clock, paperSettler: new PaperSettler({ clock, random: Math.random }) }),
         serverConfig: { appOrigin: "https://gomoku.test" } as never,
       }),
     };

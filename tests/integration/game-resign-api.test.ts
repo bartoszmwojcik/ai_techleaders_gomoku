@@ -9,6 +9,8 @@ import { GameMoveService } from "../../packages/app/src/server/services/games/ga
 import { GameService } from "../../packages/app/src/server/services/games/game-service";
 import { InvitationCodes } from "../../packages/app/src/server/services/games/invitation-codes";
 import { SqlTimeoutSettler } from "../../packages/app/src/server/services/games/timeout-settler";
+import { PaperMoveService } from "../../packages/app/src/server/services/games/paper-move-service";
+import { PaperSettler } from "../../packages/app/src/server/services/games/paper-settler";
 import { RateLimiter } from "../../packages/app/src/server/services/rate-limit/rate-limiter";
 
 const baseUrl = inject("baseUrl");
@@ -278,7 +280,7 @@ describe("the write is all or nothing", () => {
     const game = await joinedGame();
     const em = orm.em.fork();
     const clock = systemClock;
-    const timeoutSettler = new SqlTimeoutSettler({ em, clock });
+    const timeoutSettler = new SqlTimeoutSettler({ em, clock, paperSettler: new PaperSettler({ clock, random: Math.random }) });
     const gameService = new GameService({
       em,
       clock,
@@ -291,7 +293,13 @@ describe("the write is all or nothing", () => {
     gameService.stateOf = async () => {
       throw new Error("boom");
     };
-    const service = new GameMoveService({ em, clock, gameService, timeoutSettler });
+    const service = new GameMoveService({
+      em,
+      clock,
+      gameService,
+      timeoutSettler,
+      paperMoveService: new PaperMoveService({ clock, gameService, paperSettler: new PaperSettler({ clock, random: Math.random }) }),
+    });
     const [player] = await run(`select id from game_players where game_id = ? and seat = 1`, [game.gameId]);
 
     await expect(service.resign({ playerId: player!.id as string } as never, game.gameId)).rejects.toThrow("boom");

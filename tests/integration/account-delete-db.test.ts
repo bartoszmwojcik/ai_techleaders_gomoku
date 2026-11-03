@@ -16,6 +16,7 @@ import { GameService } from "../../packages/app/src/server/services/games/game-s
 import { InvitationCodes } from "../../packages/app/src/server/services/games/invitation-codes";
 import { InvitationService } from "../../packages/app/src/server/services/games/invitation-service";
 import { SqlTimeoutSettler } from "../../packages/app/src/server/services/games/timeout-settler";
+import { PaperSettler } from "../../packages/app/src/server/services/games/paper-settler";
 import { RematchService } from "../../packages/app/src/server/services/games/rematch-service";
 import { RateLimiter } from "../../packages/app/src/server/services/rate-limit/rate-limiter";
 
@@ -48,7 +49,7 @@ async function connect(): Promise<Client> {
 function scope(overrides: { passwordHasher?: Pick<PasswordHasher, "verify"> } = {}) {
   const em = orm.em.fork();
   const rateLimiter = new RateLimiter({ em });
-  const timeoutSettler = new SqlTimeoutSettler({ em, clock: systemClock });
+  const timeoutSettler = new SqlTimeoutSettler({ em, clock: systemClock, paperSettler: new PaperSettler({ clock: systemClock, random: Math.random }) });
   return {
     accounts: new AccountService({
       em,

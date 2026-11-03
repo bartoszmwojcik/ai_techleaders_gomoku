@@ -17,6 +17,7 @@ import { GameService } from "../../packages/app/src/server/services/games/game-s
 import { InvitationCodes } from "../../packages/app/src/server/services/games/invitation-codes";
 import { InvitationService } from "../../packages/app/src/server/services/games/invitation-service";
 import { SqlTimeoutSettler } from "../../packages/app/src/server/services/games/timeout-settler";
+import { PaperSettler } from "../../packages/app/src/server/services/games/paper-settler";
 import { RateLimiter } from "../../packages/app/src/server/services/rate-limit/rate-limiter";
 
 let orm: Orm;
@@ -54,7 +55,7 @@ const guard = (over: { lookupLimit?: number; joinLimit?: number } = {}): AgentJo
 function scope() {
   const em = orm.em.fork();
   const rateLimiter = new RateLimiter({ em });
-  const timeoutSettler = new SqlTimeoutSettler({ em, clock: systemClock });
+  const timeoutSettler = new SqlTimeoutSettler({ em, clock: systemClock, paperSettler: new PaperSettler({ clock: systemClock, random: Math.random }) });
   return {
     agents: new AgentSeatService({ em, clock: systemClock, rateLimiter, colorDraw: new ColorDraw() }),
     invitations: new InvitationService({ em, clock: systemClock, rateLimiter, timeoutSettler, colorDraw: new ColorDraw() }),
