@@ -4,6 +4,7 @@ import {
   gameIdSchema,
   type EndReason,
   type GameReview,
+  type GameVariant,
   type ParticipantKind,
   type Seat,
 } from "@gomoku/core";
@@ -82,6 +83,7 @@ export class GameReviewService {
         : null;
     return {
       gameId: game.id,
+      variant: game.variant as GameVariant,
       finishedAt: game.finishedAt!.toISOString(),
       blackSeat: board.blackSeat!,
       moves: board.moves,

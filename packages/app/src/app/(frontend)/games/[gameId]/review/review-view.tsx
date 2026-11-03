@@ -5,14 +5,15 @@ import { Alert } from "@gomoku/ui/game/alert";
 import { Board } from "@gomoku/ui/game/board";
 import { Button } from "@gomoku/ui/game/button";
 import { GameResultBanner } from "@gomoku/ui/game/game-result-banner";
+import { PaperMark } from "@gomoku/ui/game/paper-mark";
 import { TextLink } from "@gomoku/ui/game/text-link";
 import { useState } from "react";
 
 import { PlayerLabel } from "@/components/games/player-label";
 import { formatFinishedAt } from "@/lib/format-date-time";
 import { REASON_LABEL } from "@/lib/games/history";
-import { cellLabel, playerNameOf } from "@/lib/games/play";
-import { COLOR_TITLE, isPaperReview, lastMoveAt, reviewOutcomeOf, stepStatus, stonesAt, winLineAt } from "@/lib/games/review";
+import { cellLabel, playerNameOf, sideWords } from "@/lib/games/play";
+import { isPaperReview, lastMoveAt, reviewOutcomeOf, stepStatus, stonesAt, winLineAt } from "@/lib/games/review";
 
 type Props = {
   review: GameReview;
@@ -31,6 +32,7 @@ export function ReviewView({ review, back }: Props) {
   const [step, setStep] = useState(total);
   const go = (to: number) => setStep(clampReviewStep(to, total));
   const outcome = reviewOutcomeOf(review);
+  const words = sideWords(review.variant);
 
   return (
     <main className="mx-auto flex w-full flex-1 max-w-xl flex-col gap-stack px-panel py-section">
@@ -42,12 +44,15 @@ export function ReviewView({ review, back }: Props) {
         Zakończona: {formatFinishedAt(review.finishedAt)}
       </p>
       <ul className="m-0 flex list-none flex-col gap-group p-0" aria-label="Gracze" data-testid="review-players">
-        {review.players.map((player) => (
-          <li key={player.seat} className="text-body">
-            {COLOR_TITLE[player.seat === review.blackSeat ? "black" : "white"]}:{" "}
-            <PlayerLabel name={playerNameOf(player)} you={player.seat === review.viewerSeat} />
-          </li>
-        ))}
+        {review.players.map((player) => {
+          const color = player.seat === review.blackSeat ? "black" : "white";
+          return (
+            <li key={player.seat} className="text-body">
+              {isPaperReview(review) && <PaperMark framed color={color} className="mr-1" />}
+              {words.title[color]}: <PlayerLabel name={playerNameOf(player)} you={player.seat === review.viewerSeat} />
+            </li>
+          );
+        })}
       </ul>
       {isPaperReview(review) ? (
         // E11: the sheet of a paper game is not in the classic move log, so there is nothing to step through yet.

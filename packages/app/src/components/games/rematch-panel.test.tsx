@@ -188,6 +188,11 @@ describe("RematchPanel, no offer yet (p06.10)", () => {
     expect(screen.getByTestId("rematch-info").textContent).toContain("zagrasz czarnymi");
   });
 
+  it("speaks of marks in the paper game", () => {
+    panel(finished({ variant: "paper" }));
+    expect(screen.getByTestId("rematch-info").textContent).toBe("Rewanż to nowa partia z zamienionymi znakami: zagrasz kółkiem.");
+  });
+
   it("tells a guest about the new access (p06.15)", () => {
     panel(guestMe());
     expect(screen.getByTestId("guest-rematch-note").textContent).toBe("Jako gość dostaniesz nowy dostęp do nowej partii w tej przeglądarce.");

@@ -13,6 +13,7 @@ vi.mock("@gomoku/core", async (importOriginal) => ({
 }));
 
 import { CreateGameButton } from "./create-game-button";
+import { HomeRulesLine, HomeRulesProvider } from "./home-rules";
 
 const failure = (error: { code: string; retryAfterSeconds?: number }) => ({
   ok: false,
@@ -134,6 +135,21 @@ describe("CreateGameButton, game settings (E11)", () => {
   it("offers the variant, classic by default", () => {
     render(<CreateGameButton heldGame={null} />);
     expect(screen.getByRole("radio", { name: "Klasyczny" }).getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("switches the rules line next to the picker with the chosen variant", async () => {
+    render(
+      <HomeRulesProvider>
+        <HomeRulesLine />
+        <CreateGameButton heldGame={null} />
+      </HomeRulesProvider>,
+    );
+    const u = userEvent.setup();
+    expect(screen.getByTestId("home-rules").textContent).toContain("Swobodne zasady");
+    await u.click(screen.getByRole("radio", { name: "Papier i ołówek" }));
+    expect(screen.getByTestId("home-rules").textContent).toBe("Kółko i krzyżyk na kartce papieru, 5 w linii, gra na czas.");
+    await u.click(screen.getByRole("radio", { name: "Klasyczny" }));
+    expect(screen.getByTestId("home-rules").textContent).toContain("Swobodne zasady");
   });
 
   it("sends the paper variant and the picked clock, with isPublic when ticked", async () => {

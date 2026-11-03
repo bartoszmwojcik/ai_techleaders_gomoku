@@ -373,13 +373,23 @@ describe("SpectatorRoom, the paper game (E11)", () => {
     room(paperLive({}, sheet({ autoSeat: 2 })));
     expect(document.querySelector('[aria-label="Plansza bez granic, papier i ołówek"]')).not.toBeNull();
     expect(document.querySelector('[aria-label="Plansza 15 na 15"]')).toBeNull();
-    expect(screen.getByText(/Czarne: Ala_7/).textContent).toContain("punkty: 2");
-    expect(screen.getByText(/Białe:/).parentElement?.textContent).toContain("punkty: 1 · Automat");
+    expect(screen.getByText(/Krzyżyk: Ala_7/).textContent).toContain("punkty: 2");
+    expect(screen.getByText(/Kółko:/).parentElement?.textContent).toContain("punkty: 1 · Automat");
+  });
+
+  it("names the turn and the sides by mark, with the marks on screen and no colours or stones", () => {
+    room(paperLive());
+    expect(screen.getByText("Ruch krzyżyka: Ala_7")).toBeTruthy();
+    expect(document.querySelectorAll('[role="grid"] svg path, [role="grid"] svg circle').length).toBeGreaterThanOrEqual(2);
+    expect(document.querySelector('[role="status"] svg')).not.toBeNull();
+    expect(document.querySelector('[aria-label="Pole 0, 0, krzyżyk, ostatni ruch"], [aria-label^="Pole 0, 0, krzyżyk"]')).not.toBeNull();
+    expect(document.querySelector('[aria-label^="Pole 1, 0, kółko"]')).not.toBeNull();
+    expect(document.querySelector("main")?.textContent).not.toMatch(/kamie|czarn|biał/i);
   });
 
   it("announces the result with the points, the winner's first", () => {
     room(paperLive({ status: "finished", turnSeat: null, result: { winnerSeat: 1, reason: "points", winLine: null, scores: [7, 5] } }));
-    expect(screen.getByText("Wygrały czarne: Ala_7 · 7 : 5")).toBeTruthy();
+    expect(screen.getByText("Wygrał krzyżyk: Ala_7 · 7 : 5")).toBeTruthy();
   });
 
   it("reads on from the number of paper moves", async () => {

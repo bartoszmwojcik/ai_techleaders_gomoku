@@ -46,7 +46,16 @@
   --palette-wood-surface: #dcb35c;
   --palette-wood-line: #6b4a1b;
   --palette-wood-grain: #d3aa53;
-  --palette-wood-allowed: #e6c777; /* E11: fields within reach of a stone, lighter than the surface */
+
+  /* The paper variant: a yellowed sheet; the dark theme dims the paper, it does not invert it (measured in POSTEP.md). */
+  --palette-parchment-light: #f4e8c8;
+  --palette-parchment-light-grain: #ead9ad;
+  --palette-parchment-light-allowed: #fbf5e0;
+  --palette-parchment-light-line: #85744f;
+  --palette-parchment-dim: #b8a67c;
+  --palette-parchment-dim-grain: #ab9970;
+  --palette-parchment-dim-allowed: #c9b98f;
+  --palette-parchment-dim-line: #4f4630;
 
   /* Status colours: propozycja (Q4 accepted: warm shades, never the only carrier of meaning). */
   --palette-clay-300: #f2907a;
@@ -56,6 +65,7 @@
   --palette-clay-750: #a8341f;
   --palette-clay-800: #9f2d1a;
   --palette-clay-900: #8f2616; /* danger pressed, light theme (propozycja) */
+  --palette-clay-950: #7a1f10; /* red pencil on the dimmed paper of the dark theme */
   --palette-amber-400: #fbbf24;
   --palette-amber-800: #92400e;
   --palette-olive-300: #b5c47a;
@@ -120,15 +130,17 @@
   --piece-outline: var(--palette-stone-900);
   /* Last move and winning line: dark wood tone, 4.06:1 on the board. The action colour reaches only about 2.5:1 on wood. */
   --board-marker: var(--palette-wood-line);
-  /* E11 PaperBoard: allowed fields (<= 3 from a stone), the pencil stroke through a five, the marker of an automatic move. */
-  --paper-allowed: var(--palette-wood-allowed);
-  --paper-pencil: var(--palette-stone-700);
-  --paper-auto: var(--palette-orange-400);
+  /* The marks of the paper variant, the same in both themes: × is dark ink, ○ a light fill inside the same ink. */
+  --paper-ink: var(--palette-stone-900);
+  --paper-mark-fill: var(--palette-stone-50);
 
   /* Layer 3: component tokens. */
   --piece-size: 80%; /* R01.3: stone as a share of its cell */
   --board-padding: var(--space-3); /* R01.3 */
   --board-line-width: 1px; /* R01.3 */
+  --paper-mark-size: 84%; /* a mark as a share of its square */
+  --paper-mark-stroke: 3; /* in the 24-unit box of the mark, so it follows the zoom */
+  --paper-mark-dash: 4 2.5; /* the broken line of a mark placed by the automaton */
 
   /* R02.3, R01.8: white label on the action fill, same in both themes. */
   --action-primary-text: var(--palette-white);
@@ -161,6 +173,12 @@
   --status-warning: var(--palette-amber-400); /* propozycja (Q4) */
   --status-danger: var(--palette-clay-300); /* propozycja (Q4) */
   --status-info: var(--palette-stone-300); /* propozycja (Q4) */
+  --paper-surface: var(--palette-parchment-dim);
+  --paper-grain: var(--palette-parchment-dim-grain);
+  --paper-line: var(--palette-parchment-dim-line);
+  --paper-allowed: var(--palette-parchment-dim-allowed); /* fields within reach (<= 3 from a mark) */
+  --paper-auto: var(--palette-stone-700); /* lighter ink of a mark placed by the automaton, and of the preview */
+  --paper-pencil: var(--palette-clay-950); /* red pencil: the stroke through a five, the frame of the last move */
 }
 
 /* ---- Meaning tokens, light theme ---- */
@@ -183,6 +201,12 @@
   --status-warning: var(--palette-amber-800);
   --status-danger: var(--palette-clay-800);
   --status-info: var(--palette-stone-600);
+  --paper-surface: var(--palette-parchment-light);
+  --paper-grain: var(--palette-parchment-light-grain);
+  --paper-line: var(--palette-parchment-light-line);
+  --paper-allowed: var(--palette-parchment-light-allowed);
+  --paper-auto: var(--palette-stone-600);
+  --paper-pencil: var(--palette-clay-800);
 }
 
 /* ---- Tailwind: only tokens exist as utilities ---- */
@@ -255,8 +279,12 @@
   --color-board-line: var(--board-line);
   --color-board-grain: var(--board-grain);
   --color-board-marker: var(--board-marker);
+  --color-paper-surface: var(--paper-surface);
+  --color-paper-line: var(--paper-line);
   --color-paper-allowed: var(--paper-allowed);
   --color-paper-pencil: var(--paper-pencil);
+  --color-paper-ink: var(--paper-ink);
+  --color-paper-mark-fill: var(--paper-mark-fill);
   --color-paper-auto: var(--paper-auto);
   --color-piece-black: var(--piece-black);
   --color-piece-white: var(--piece-white);
@@ -275,6 +303,31 @@
   background-image:
     repeating-linear-gradient(91deg, var(--board-grain) 0 2px, transparent 2px 9px),
     repeating-linear-gradient(89deg, var(--board-grain) 0 1px, transparent 1px 5px);
+}
+
+/*
+ * The paper variant: parchment with a soft tone change, drawn in code. Only the padding fades (--board-padding on every
+ * side), so a fragment of a bigger sheet shows while every cell stays on solid paper and keeps its contrast.
+ * Forced colours: the system palette replaces the theme and the fade goes away. The sheet has no animation,
+ * so prefers-reduced-motion changes nothing here.
+ */
+@utility paper-sheet {
+  background-color: var(--paper-surface);
+  background-image: radial-gradient(ellipse at 30% 20%, var(--paper-surface) 30%, var(--paper-grain) 100%);
+  mask-image:
+    linear-gradient(to right, transparent, black var(--board-padding), black calc(100% - var(--board-padding)), transparent),
+    linear-gradient(to bottom, transparent, black var(--board-padding), black calc(100% - var(--board-padding)), transparent);
+  mask-composite: intersect;
+
+  @media (forced-colors: active) {
+    forced-color-adjust: none;
+    background-image: none;
+    mask-image: none;
+    --piece-outline: Highlight;
+    --surface-raised: ButtonFace;
+    --text-primary: ButtonText;
+    --border-control: ButtonText;
+  }
 }
 
 /* Opening a dialog (200 ms, removed by prefers-reduced-motion). */
@@ -304,6 +357,21 @@
 @utility motion-base {
   transition-duration: var(--duration-base);
   transition-timing-function: var(--easing-standard);
+}
+
+/* Forced colours: the marks and the squares keep their shape in the system palette, on and off the sheet. */
+@media (forced-colors: active) {
+  :root,
+  [data-theme="dark"],
+  [data-theme="light"] {
+    --paper-surface: Canvas;
+    --paper-line: CanvasText;
+    --paper-allowed: Canvas;
+    --paper-pencil: CanvasText;
+    --paper-ink: CanvasText;
+    --paper-auto: CanvasText;
+    --paper-mark-fill: Canvas;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

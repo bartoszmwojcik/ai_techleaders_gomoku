@@ -38,7 +38,8 @@ Gra planszowa dla dwóch osób online: ciemna strona, drewniana plansza, jeden p
 | Stan błędu | `@gomoku/ui/game/error-state` | lista, która się nie wczytała, partia, której nie ma | błąd pola, komunikat obok działającej treści (Alert) |
 | Nagłówek strony | `@gomoku/ui/game/page-header` | każda strona gracza | nagłówek sekcji (Panel) |
 | Plansza | `@gomoku/ui/game/board` | ekran partii, podgląd na stronie głównej (z podpisem) | odtwarzanie ruch po ruchu, inne rozmiary |
-| Plansza „papier i ołówek” | `@gomoku/ui/game/paper-board` | ekran partii wariantu `paper` (okno 15–31 pól, przesuwanie, powiększanie, kreski piątek, pasek dotykowy) | partia klasyczna (Plansza), ozdoba |
+| Plansza „papier i ołówek” | `@gomoku/ui/game/paper-board` | ekran partii wariantu `paper` (kartka w kratkę, okno 15–31 pól, przesuwanie, powiększanie, kreski piątek, pasek dotykowy) | partia klasyczna (Plansza), ozdoba |
+| Znak „papier i ołówek” | `@gomoku/ui/game/paper-mark` | × i ○ wariantu `paper` poza planszą: obok imienia, w statusie tury (`framed`) | partia klasyczna, ozdoba |
 | Zegar gracza | `@gomoku/ui/game/player-clock` | nad i pod planszą w partii | odliczanie statusu w lobby, odmierzanie czasu w komponencie |
 | Status tury | `@gomoku/ui/game/turn-status` | nad planszą w trakcie partii | wynik partii (Baner wyniku), czas (Zegar) |
 | Grupa wyboru | `@gomoku/ui/game/choice-group` | 2–5 krótkich opcji (wariant, czas na gracza) | długa lista (Select), wiele wyborów naraz (Checkbox) |
@@ -53,8 +54,9 @@ Gra planszowa dla dwóch osób online: ciemna strona, drewniana plansza, jeden p
 | Pokaż więcej | `@gomoku/ui/game/load-more` | pod stronicowaną listą (historia partii): przycisk, ładowanie, błąd z ponowieniem, koniec listy | lista bez stronicowania |
 | Skracana nazwa | `@gomoku/ui/game/truncated-name` | nick gościa i nazwa modelu agenta w wierszu listy (obcięcie z „…”, stały sufiks) | nazwy w nagłówkach i tekście ciągłym (zawijaj) |
 | Lista partii | `@gomoku/ui/game/history-list` | strona historii | lobby, trwające partie |
+| Menu użytkownika | `@gomoku/ui/game/user-menu` | prawy górny róg paska zalogowanego: Konto, Historia, Wyloguj (`UserMenuLink`, `UserMenuAction`) | główna akcja strony, gość, wybór opcji |
 
-Nie ma jeszcze: radio, przełącznika, pola wielowierszowego, menu, popovera, podpowiedzi, zakładek, panelu bocznego, awatara, toasta, linku „przejdź do treści”. Użyj zamienników z „Jak wybrać komponent” i wpisz lukę do „Czego brakuje”.
+Nie ma jeszcze: radio, przełącznika, pola wielowierszowego, popovera, podpowiedzi, zakładek, panelu bocznego, awatara, toasta, linku „przejdź do treści”. Użyj zamienników z „Jak wybrać komponent” i wpisz lukę do „Czego brakuje”.
 
 ## Tokeny znaczeniowe
 
@@ -74,7 +76,9 @@ Nie ma jeszcze: radio, przełącznika, pola wielowierszowego, menu, popovera, po
 | `border-control` | `border-border-control` | brzeg pól i przycisków drugorzędnych (≥ 3:1) |
 | `status-success / -warning / -danger / -info` | `text-status-*, border-status-*` | stan: zawsze z ikoną i słowem |
 | `board-surface, board-line, board-grain, board-marker` | `bg-board-surface, bg-board-line, board-texture, outline-board-marker` | plansza, siatka, słoje, ostatni ruch i linia wygrywająca |
-| `paper-allowed, paper-pencil, paper-auto` | `bg-paper-allowed, stroke-paper-pencil, bg-paper-auto` | plansza wariantu: pola dozwolone, kreska przez piątkę, znacznik ruchu automatu |
+| `paper-surface, paper-grain, paper-line` | `paper-sheet, bg-paper-line` | kartka wariantu: pergamin z tonem, wygaszone brzegi, kratka (zależne od motywu) |
+| `paper-allowed, paper-pencil` | `bg-paper-allowed, stroke-paper-pencil, outline-paper-pencil` | plansza wariantu: pola dozwolone, kreska przez piątkę i ramka ostatniego ruchu |
+| `paper-ink, paper-mark-fill, paper-auto` | `stroke-paper-ink, fill-paper-mark-fill, stroke-paper-auto` | znaki: × i kontur ○, wypełnienie ○, jaśniejsza kreska automatu i podglądu |
 | `piece-black, piece-white, piece-outline` | `bg-piece-black, bg-piece-white, border-piece-outline` | kamienie |
 | `space-group / -stack / -panel / -section` | `gap-group (8), gap-stack (16), p-panel (24), py-section (48)` | odstępy według relacji |
 | `radius-base, radius-piece` | `rounded-base, rounded-piece` | 6 px; okrąg tylko dla kamieni |
@@ -107,7 +111,7 @@ Surowe wartości (`palette-*`, `space-*`) są tylko w `packages/ui/src/styles/ga
 
 ## Czego unikać
 
-Gradienty, szkło i rozmycie, poświata, emoji zamiast ikon, iskierki AI, trzy identyczne karty z ikoną, wszystko w pigułkach, karta w karcie, cień jako jedyny separator, wszystko wyśrodkowane, indygo jako akcja, wymyślone liczby i opinie, `div` zamiast przycisku, placeholder zamiast etykiety, status samym kolorem, zablokowany przycisk bez wyjaśnienia, toast z błędem, podpowiedź z informacją niezbędną, plansza z `aria-hidden`, ukrywanie elementu siatki przez `display: none`, niebieski tekst, font pikselowy, ukryte czekanie w lobby. Rozpoznawanie w kodzie: strona „Czego unikać” w Storybooku.
+Gradienty (wyjątki: słoje planszy i kartka wariantu, rysowane w kodzie), szkło i rozmycie, poświata, emoji zamiast ikon, iskierki AI, trzy identyczne karty z ikoną, wszystko w pigułkach, karta w karcie, cień jako jedyny separator, wszystko wyśrodkowane, indygo jako akcja, wymyślone liczby i opinie, `div` zamiast przycisku, placeholder zamiast etykiety, status samym kolorem, zablokowany przycisk bez wyjaśnienia, toast z błędem, podpowiedź z informacją niezbędną, plansza z `aria-hidden`, ukrywanie elementu siatki przez `display: none`, niebieski tekst, font pikselowy, ukryte czekanie w lobby. Rozpoznawanie w kodzie: strona „Czego unikać” w Storybooku.
 
 ## Komendy
 

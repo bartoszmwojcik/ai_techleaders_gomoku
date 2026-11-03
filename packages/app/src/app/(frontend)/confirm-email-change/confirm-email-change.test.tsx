@@ -3,15 +3,19 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { apiCall } = vi.hoisted(() => ({ apiCall: vi.fn() }));
+const { apiCall, refresh } = vi.hoisted(() => ({ apiCall: vi.fn(), refresh: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiCall }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 
 import { ConfirmEmailChange } from "./confirm-email-change";
 
 const failure = (code: string) => ({ ok: false, error: { code, message: "x" } });
 const confirm = () => userEvent.setup().click(screen.getByRole("button", { name: "Potwierdź nowy adres" }));
 
-beforeEach(() => apiCall.mockReset());
+beforeEach(() => {
+  apiCall.mockReset();
+  refresh.mockReset();
+});
 afterEach(cleanup);
 
 describe("ConfirmEmailChange", () => {
@@ -26,6 +30,7 @@ describe("ConfirmEmailChange", () => {
     render(<ConfirmEmailChange token="raw" />);
     await confirm();
     const done = await screen.findByTestId("change-confirm-done");
+    expect(refresh).toHaveBeenCalledOnce();
     expect(apiCall).toHaveBeenCalledWith("/api/auth/email-change/confirm", { body: { token: "raw" } });
     expect(done.textContent).toContain("Adres e-mail został zmieniony");
     expect(screen.getByRole("link", { name: "Zaloguj się" }).getAttribute("href")).toBe("/login");

@@ -150,7 +150,9 @@ describe("theme switch: choosing a theme", () => {
 describe("theme switch: keyboard and layout", () => {
   it("is reachable with Tab and toggles with Enter and Space, focus stays on the button", async () => {
     await browser.open(`${baseUrl}/`);
-    // The switch is the first focusable element of every page.
+    // The "Gomoku" link stands before the switch in the top bar.
+    await browser.press("Tab");
+    expect(await browser.evaluate<string | null>(`document.activeElement?.dataset?.testid ?? null`)).toBe("home-link");
     await browser.press("Tab");
     const isSwitchFocused = `document.activeElement === document.querySelector("${SWITCH}")`;
     expect(await browser.evaluate<boolean>(isSwitchFocused)).toBe(true);

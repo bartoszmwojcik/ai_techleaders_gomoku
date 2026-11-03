@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { apiCall, replace } = vi.hoisted(() => ({ apiCall: vi.fn(), replace: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiCall }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
 
 import { ChangeEmailForm } from "./change-email-form";
 
@@ -26,6 +25,7 @@ async function submit({ newEmail = "nowy@example.com", currentPassword = "secret
 beforeEach(() => {
   apiCall.mockReset();
   replace.mockReset();
+  vi.stubGlobal("location", { replace, origin: "https://gomoku.example" });
 });
 afterEach(cleanup);
 
@@ -100,6 +100,6 @@ describe("ChangeEmailForm", () => {
     apiCall.mockResolvedValue(failure({ code: "UNAUTHORIZED" }));
     render(<ChangeEmailForm />);
     await submit();
-    await waitFor(() => expect(replace).toHaveBeenCalledWith("/login?next=%2Faccount"));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("https://gomoku.example/login?next=%2Faccount"));
   });
 });

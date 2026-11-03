@@ -12,15 +12,15 @@ describe("PAPER_LABELS", () => {
 
   it("names a cell with every property that matters", () => {
     expect(cell()).toBe("Pole 1, -2, puste");
-    expect(cell({ allowed: false })).toBe("Pole 1, -2, puste, za daleko od kamieni");
+    expect(cell({ allowed: false })).toBe("Pole 1, -2, puste, za daleko od znaków");
     expect(cell({ state: "black", last: true, auto: true, selected: true, allowed: false })).toBe(
-      "Pole 1, -2, czarny kamień, ostatni ruch, postawiony przez automat, zaznaczone",
+      "Pole 1, -2, krzyżyk, ostatni ruch, postawiony przez automat, zaznaczone",
     );
-    expect(cell({ state: "white" })).toBe("Pole 1, -2, biały kamień");
+    expect(cell({ state: "white" })).toBe("Pole 1, -2, kółko");
   });
 
   it("announces the automat and the opponent marker", () => {
-    expect(PAPER_LABELS.autoMoved({ x: 3, y: 4 })).toBe("Automat postawił kamień na polu 3, 4");
+    expect(PAPER_LABELS.autoMoved({ x: 3, y: 4 })).toBe("Automat postawił znak na polu 3, 4");
     expect(PAPER_LABELS.opponentMarker({ dx: 1, dy: -1 })).toBe("Ruch przeciwnika ↗");
     expect(PAPER_LABELS.opponentMarker({ dx: -1, dy: 0 })).toBe("Ruch przeciwnika ←");
     expect(PAPER_LABELS.level(15)).toBe("15 × 15 pól");
@@ -60,9 +60,9 @@ describe("rules of the sheet", () => {
   it("explains a refusal in words", () => {
     expect(refusalText(rules, { x: 53, y: 53 })).toBe("");
     expect(refusalText(rules, { x: 50, y: 50 })).toBe("To pole jest już zajęte.");
-    expect(refusalText(rules, { x: 60, y: 50 })).toBe("Za daleko od kamieni: najwyżej 3 pola od innego.");
+    expect(refusalText(rules, { x: 60, y: 50 })).toBe("Za daleko od znaków: najwyżej 3 pola od innego.");
     expect(refusalText(rules, { x: 101, y: 50 })).toBe("To pole jest poza planszą.");
-    expect(refusalText(paperRules([]), { x: 10, y: 10 })).toBe("Pierwszy kamień trafia na środek planszy.");
+    expect(refusalText(paperRules([]), { x: 10, y: 10 })).toBe("Pierwszy znak trafia na środek planszy.");
     expect(refusalText(paperRules([]), FIRST_STONE)).toBe("");
   });
 });

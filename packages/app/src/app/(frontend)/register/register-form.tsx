@@ -4,13 +4,13 @@ import { toValidationError } from "@gomoku/core/http/zod-error";
 import { registerSchema } from "@gomoku/core/validators/auth/register-schema";
 import { PasswordField } from "@gomoku/ui/game/password-field";
 import { TextLink } from "@gomoku/ui/game/text-link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import { ErrorMessage } from "@/components/feedback/error-message";
 import { FormField } from "@/components/forms/form-field";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { apiCall } from "@/lib/api-client";
+import { fullPageLoad } from "@/lib/full-page-load";
 
 type FieldName = "email" | "displayName" | "password";
 type FieldMessages = Partial<Record<FieldName, string>>;
@@ -47,7 +47,6 @@ function rateLimitedError(retryAfterSeconds: number | undefined): GeneralError {
 }
 
 export function RegisterForm({ nextPath }: { nextPath: string }) {
-  const router = useRouter();
   const loginHref = nextPath === "/" ? "/login" : `/login?next=${encodeURIComponent(nextPath)}`;
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -90,7 +89,7 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
     });
     if (result.ok) {
       // Stay pending while the page navigates, so a second submit is impossible.
-      router.replace(nextPath);
+      fullPageLoad(nextPath);
       return;
     }
 

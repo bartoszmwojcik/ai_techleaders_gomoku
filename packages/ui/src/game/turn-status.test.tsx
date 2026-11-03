@@ -23,4 +23,10 @@ describe("TurnStatus", () => {
     expect(renderToStaticMarkup(<TurnStatus color="black">Twój ruch (czarne)</TurnStatus>)).toContain("bg-piece-black");
     expect(renderToStaticMarkup(<TurnStatus color="white" className="mt-4">Twój ruch (białe)</TurnStatus>)).toContain("bg-piece-white");
   });
+
+  it("shows a given marker in place of the stone", () => {
+    const html = renderToStaticMarkup(<TurnStatus marker={<i data-testid="mark" />}>Twój ruch (krzyżyk)</TurnStatus>);
+    expect(html).toContain('data-testid="mark"');
+    expect(html).not.toContain("rounded-piece");
+  });
 });

@@ -3,6 +3,7 @@
 import { Alert } from "@gomoku/ui/game/alert";
 import { Board } from "@gomoku/ui/game/board";
 import { PaperBoard } from "@gomoku/ui/game/paper-board";
+import { PaperMark } from "@gomoku/ui/game/paper-mark";
 import { Button } from "@gomoku/ui/game/button";
 import { ErrorState } from "@gomoku/ui/game/error-state";
 import { GameResultBanner } from "@gomoku/ui/game/game-result-banner";
@@ -20,15 +21,13 @@ import { useGameClock } from "@/components/games/use-game-clock";
 import { usePageVisibility } from "@/components/games/use-page-visibility";
 import { apiCall } from "@/lib/api-client";
 import { lastPaperMove, PAPER_LABELS, paperColors } from "@/lib/games/paper";
-import { cellLabel, colorOfSeat, knownMoves, mergeState, paperStonesOf, playerNameOf, stonesOf } from "@/lib/games/play";
-import { COLOR_TITLE, neutralOutcomeOf } from "@/lib/games/review";
+import { cellLabel, colorOfSeat, knownMoves, mergeState, paperStonesOf, playerNameOf, sideWords, stonesOf } from "@/lib/games/play";
+import { neutralOutcomeOf } from "@/lib/games/review";
 import { SPECTATOR_FAILURES_BEFORE_BANNER, spectatorPollDelay } from "@/lib/games/spectate";
 import type { SpectatorView } from "@/server/http/spectator-view";
 
 /** A read that takes longer is abandoned, so one hung request cannot stop the polling for good. */
 export const SPECTATOR_POLL_TIMEOUT_MS = 8000;
-
-const COLOR_GENITIVE = { black: "czarnych", white: "białych" } as const;
 
 type Props = {
   gameId: string;
@@ -162,9 +161,12 @@ export function SpectatorRoom({ gameId, initial }: Props) {
 
   // The server lists the seats in order; the clocks go by colour, black first.
   const seats = game.blackSeat === 2 ? [...game.players].reverse() : game.players;
-  const outcome = game.result ? neutralOutcomeOf({ result: game.result, blackSeat: game.blackSeat!, players: game.players }) : null;
+  const outcome = game.result ? neutralOutcomeOf({ result: game.result, blackSeat: game.blackSeat!, players: game.players, variant: game.variant }) : null;
   const lastMove = game.moves.at(-1);
   const paper = game.paper;
+  const words = sideWords(game.variant);
+  const turnText = () =>
+    `Ruch ${words.genitive[colorOfSeat(game.blackSeat, game.turnSeat!)!]}: ${playerNameOf(game.players.find((player) => player.seat === game.turnSeat)).label}`;
 
   if ((game.variant as string) !== "classic" && (game.variant as string) !== "paper") {
     // A variant this page does not know (a stale page after a release): do not guess the board.
@@ -196,17 +198,17 @@ export function SpectatorRoom({ gameId, initial }: Props) {
         <GameResultBanner result={outcome.result} title={outcome.title}>
           {outcome.detail}
         </GameResultBanner>
-      ) : (
+      ) : paper ? (
         // An unfinished game that is not void is in progress: a turn is set (CHECKs of `games`).
-        <TurnStatus color={colorOfSeat(game.blackSeat, game.turnSeat!)!}>
-          {`Ruch ${COLOR_GENITIVE[colorOfSeat(game.blackSeat, game.turnSeat!)!]}: ${playerNameOf(game.players.find((player) => player.seat === game.turnSeat)).label}`}
-        </TurnStatus>
+        <TurnStatus marker={<PaperMark framed color={colorOfSeat(game.blackSeat, game.turnSeat!)!} />}>{turnText()}</TurnStatus>
+      ) : (
+        <TurnStatus color={colorOfSeat(game.blackSeat, game.turnSeat!)!}>{turnText()}</TurnStatus>
       )}
       <div className="flex max-w-(--layout-width-board) flex-col gap-stack">
         {seats.map((player) => (
           <GameClock
             key={player.seat}
-            name={<ColorName player={player} blackSeat={game.blackSeat} score={paper?.scores[player.seat - 1]} auto={paper?.autoSeat === player.seat} />}
+            name={<ColorName player={player} blackSeat={game.blackSeat} variant={game.variant} score={paper?.scores[player.seat - 1]} auto={paper?.autoSeat === player.seat} />}
             remainingMs={clocks.remainingMs[player.seat - 1]!}
             active={!finished && (paper ? game.clock.running : game.turnSeat) === player.seat}
             activeLabel="Ruch"
@@ -244,19 +246,23 @@ export function SpectatorRoom({ gameId, initial }: Props) {
 function ColorName({
   player,
   blackSeat,
+  variant,
   score,
   auto,
 }: {
   player: SpectatorView["players"][number];
   blackSeat: Seat | null;
+  variant: SpectatorView["variant"];
   /** Points of the paper game; `undefined` in the classic one. */
   score?: number | undefined;
   auto?: boolean | undefined;
 }) {
   const color = colorOfSeat(blackSeat, player.seat);
+  const words = sideWords(variant);
   return (
     <>
-      {color && `${COLOR_TITLE[color]}: `}
+      {color && variant === "paper" && <PaperMark framed color={color} className="mr-1" />}
+      {color && `${words.title[color]}: `}
       <PlayerLabel name={playerNameOf(player)} />
       {score !== undefined && ` · punkty: ${score}`}
       {auto && " · Automat"}

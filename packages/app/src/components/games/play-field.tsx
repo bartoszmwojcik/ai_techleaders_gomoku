@@ -8,6 +8,7 @@ import { Button } from "@gomoku/ui/game/button";
 import { ConfirmDialog } from "@gomoku/ui/game/confirm-dialog";
 import { GameResultBanner } from "@gomoku/ui/game/game-result-banner";
 import { PaperBoard } from "@gomoku/ui/game/paper-board";
+import { PaperMark } from "@gomoku/ui/game/paper-mark";
 import { TurnStatus } from "@gomoku/ui/game/turn-status";
 import { useRef, useState, useSyncExternalStore } from "react";
 
@@ -19,11 +20,10 @@ import {
   cellLabel,
   cellName,
   colorOfSeat,
-  COLOR_NAME,
-  COLOR_PLAYS,
   outcomeOf,
   playerNameOf,
   paperStonesOf,
+  sideWords,
   stonesOf,
 } from "@/lib/games/play";
 import { FIRST_STONE, lastPaperMove, opponentPaperMove, PAPER_LABELS, paperColors, paperRules, refusalText } from "@/lib/games/paper";
@@ -48,8 +48,9 @@ const REFUSALS: Record<string, string> = {
   CELL_OCCUPIED: "To pole jest już zajęte",
   GAME_FINISHED: "Partia jest już zakończona. Plansza została odświeżona.",
   GAME_NOT_ACTIVE: "Partia jest już zakończona. Plansza została odświeżona.",
-  MOVE_TOO_FAR: "Za daleko od kamieni: najwyżej 3 pola od innego.",
-  FIRST_MOVE_CENTER: "Pierwszy kamień trafia na środek planszy.",
+  // Both come only from the paper game: the classic board has no such rule.
+  MOVE_TOO_FAR: "Za daleko od znaków: najwyżej 3 pola od innego.",
+  FIRST_MOVE_CENTER: "Pierwszy znak trafia na środek planszy.",
 };
 
 type Props = {
@@ -118,6 +119,8 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
   const other = game.players.find((player) => player.seat !== game.you.seat);
   const myColor = colorOfSeat(game.blackSeat, game.you.seat)!;
   const paper = game.paper;
+  const words = sideWords(game.variant);
+  const placeLabel = words.place[myColor];
   // The automat plays for the leading player whose time ran out (BR-50): a turn that belongs to the automat is nobody's.
   const autoTurn = paper !== undefined && paper.autoSeat !== null && game.turnSeat === paper.autoSeat;
   const myTurn = !finished && game.turnSeat === game.you.seat && !autoTurn;
@@ -220,16 +223,17 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
   const status = busy
     ? "Wysyłanie ruchu…"
     : myTurn
-      ? `Twój ruch (${COLOR_NAME[myColor]})`
+      ? `Twój ruch (${words.name[myColor]})`
       : paper?.autoSeat === game.you.seat
-        ? "Twój czas minął — automat stawia kamienie za Ciebie"
+        ? "Twój czas minął — automat stawia znaki za Ciebie"
         : autoTurn
-          ? "Automat stawia kamień…"
+          ? "Automat stawia znak…"
           : "Ruch przeciwnika";
   const scoreOf = (seat: 1 | 2) => ` · punkty: ${paper!.scores[seat - 1]}`;
   const autoNote = (seat: 1 | 2) => (paper?.autoSeat === seat ? " · Automat" : "");
   const nameWith = (name: ReturnType<typeof playerNameOf>, seat: 1 | 2, you = false) => (
     <>
+      {paper && <PaperMark framed color={colorOfSeat(game.blackSeat, seat)!} label={words.name[colorOfSeat(game.blackSeat, seat)!]} className="mr-1" />}
       <PlayerLabel name={name} you={you} />
       {paper && (
         <span data-testid={`score-${you ? "mine" : "theirs"}`}>
@@ -247,7 +251,7 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
 
   return (
     <>
-      <h1 className="m-0 flex min-h-target items-center pr-12 text-section font-strong sm:pr-0">{finished ? "Koniec partii" : "Partia w toku"}</h1>
+      <h1 className="m-0 flex min-h-target items-center pl-11 text-lead font-strong sm:pl-0 sm:text-section">{finished ? "Koniec partii" : "Partia w toku"}</h1>
       <PublicFlag audience={game.audience} />
       <CloseAudience gameId={gameId} game={game} onState={onState} onRefresh={onRefresh} onGone={onGone} />
       <div className="flex max-w-(--layout-width-board) flex-col gap-stack">
@@ -278,6 +282,8 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
           <GameResultBanner result={outcome.result} title={outcome.title}>
             {outcome.detail}
           </GameResultBanner>
+        ) : paper ? (
+          <TurnStatus marker={<PaperMark framed color={colorOfSeat(game.blackSeat, game.turnSeat!)!} />}>{status}</TurnStatus>
         ) : (
           <TurnStatus color={colorOfSeat(game.blackSeat, game.turnSeat!)!}>{status}</TurnStatus>
         )}
@@ -346,7 +352,7 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
                 disabled={target === null || busy || selectedRefusal !== ""}
                 onClick={() => void submit({ x: target!.x, y: target!.y, moveNumber: game.moveCount + 1 })}
               >
-                Postaw kamień
+                {placeLabel}
               </Button>
               {paper && (
                 <Button variant="secondary" onClick={() => setRecentered((count) => count + 1)} data-testid="paper-recenter">
@@ -356,15 +362,15 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
             </div>
             <p role="status" className="m-0 text-meta text-text-secondary" data-testid="selection">
               {paperSelected
-                ? selectedRefusal || `Zaznaczono pole ${paperSelected.x - 50}, ${paperSelected.y - 50}. Naciśnij „Postaw kamień”.`
+                ? selectedRefusal || `Zaznaczono pole ${paperSelected.x - 50}, ${paperSelected.y - 50}. Naciśnij „${placeLabel}”.`
                 : classicSelected !== null
-                  ? `Zaznaczono: ${cellName(classicSelected)}. Naciśnij „Postaw kamień”.`
+                  ? `Zaznaczono: ${cellName(classicSelected)}. Naciśnij „${placeLabel}”.`
                   : myTurn
                     ? paper
                       ? "Dotknij pola albo przesuń zaznaczenie strzałkami."
                       : "Dotknij przecięcia, żeby je zaznaczyć."
                     : autoTurn || paper?.autoSeat === game.you.seat
-                      ? "Poczekaj, aż automat postawi kamień."
+                      ? "Poczekaj, aż automat postawi znak."
                       : "Poczekaj na ruch przeciwnika."}
             </p>
           </div>
@@ -390,8 +396,8 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
             status="info"
             title={
               game.fromRematch
-                ? `Rewanż: kolory zostały zamienione. Grasz ${COLOR_PLAYS[myColor]}.`
-                : `Wylosowano: Ty grasz ${COLOR_PLAYS[myColor]}.`
+                ? `${words.rematchSwapped} Grasz ${words.plays[myColor]}.`
+                : `Wylosowano: Ty grasz ${words.plays[myColor]}.`
             }
             role="status"
           />
@@ -404,7 +410,7 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
           timeControlMs={game.timeControlMs}
         />
         <p className="m-0 text-body text-text-secondary" data-testid="my-color">
-          {finished ? "Grałeś" : "Grasz"} {COLOR_PLAYS[myColor]}.
+          {finished ? "Grałeś" : "Grasz"} {words.plays[myColor]}.
         </p>
         {!finished && (
           // p05.13, p05.14: any time in a game in progress, also out of turn (resignation Q1).

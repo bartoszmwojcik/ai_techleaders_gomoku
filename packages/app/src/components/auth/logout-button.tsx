@@ -2,11 +2,11 @@
 
 import { Button } from "@gomoku/ui/game/button";
 import { ConfirmDialog } from "@gomoku/ui/game/confirm-dialog";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { ErrorMessage } from "@/components/feedback/error-message";
-import { apiCall } from "@/lib/api-client";
+
+import { useSignOut } from "./use-sign-out";
 
 type LogoutButtonProps = {
   /** From the server (`gameParticipation`): a running game asks for confirmation first (Q4). */
@@ -15,25 +15,11 @@ type LogoutButtonProps = {
 };
 
 export function LogoutButton({ hasActiveGame = false, className }: LogoutButtonProps) {
-  const router = useRouter();
+  const { pending, failed, signOut } = useSignOut();
   const [asking, setAsking] = useState(false);
-  const [pending, setPending] = useState(false);
-  const [failed, setFailed] = useState(false);
 
-  async function signOut() {
-    setPending(true);
-    setFailed(false);
-    const result = await apiCall("/api/auth/logout");
-    // A 500 means the database failed to revoke the session, but the server has already
-    // cleared the cookie, so this browser is logged out all the same (login-logout L1).
-    if (result.ok || result.error.code === "INTERNAL") {
-      // Stay pending while the page navigates, so a second click is impossible.
-      router.replace("/");
-      return;
-    }
-    setPending(false);
-    setAsking(false);
-    setFailed(true);
+  async function confirmSignOut() {
+    if (!(await signOut())) setAsking(false);
   }
 
   // With a running game the button is the dialog's trigger, so Radix returns focus to it on close.
@@ -66,7 +52,7 @@ export function LogoutButton({ hasActiveGame = false, className }: LogoutButtonP
         confirmLabel="Wyloguj"
         cancelLabel="Zostań zalogowany"
         confirming={pending}
-        onConfirm={() => void signOut()}
+        onConfirm={() => void confirmSignOut()}
       />
     </div>
   );

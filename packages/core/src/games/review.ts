@@ -1,3 +1,4 @@
+import type { GameVariant } from "./paper/constants";
 import type { EndReason, ParticipantKind, Seat } from "./types";
 
 /**
@@ -7,6 +8,8 @@ import type { EndReason, ParticipantKind, Seat } from "./types";
  */
 export type GameReview = {
   gameId: string;
+  /** A paper game ended by resignation or time is told apart only by this. */
+  variant: GameVariant;
   /** ISO 8601, UTC. */
   finishedAt: string;
   blackSeat: Seat;

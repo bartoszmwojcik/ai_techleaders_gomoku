@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { replace, apiCall } = vi.hoisted(() => ({ replace: vi.fn(), apiCall: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
 vi.mock("@/lib/api-client", () => ({ apiCall }));
 
 import { RegisterForm } from "./register-form";
@@ -29,6 +28,7 @@ async function fillAndSubmit({
 
 beforeEach(() => {
   replace.mockReset();
+  vi.stubGlobal("location", { replace, origin: "https://gomoku.example" });
   apiCall.mockReset();
 });
 afterEach(cleanup);
@@ -76,7 +76,7 @@ describe("RegisterForm", () => {
     expect(apiCall).toHaveBeenCalledWith("/api/auth/register", {
       body: { email: "ala@example.com", displayName: "Ala_7", password: "secret123" },
     });
-    expect(replace).toHaveBeenCalledWith("/invite/abc");
+    expect(replace).toHaveBeenCalledWith("https://gomoku.example/invite/abc");
     const button = screen.getByRole("button", { name: "Zakładanie konta…" }) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
   });
@@ -107,7 +107,7 @@ describe("RegisterForm", () => {
     await user.click(screen.getByRole("button", { name: "Załóż konto" }));
 
     expect(screen.queryByText(/Nazwa gracza musi mieć/)).toBeNull();
-    expect(replace).toHaveBeenCalledWith("/");
+    expect(replace).toHaveBeenCalledWith("https://gomoku.example/");
   });
 
   it("shows a taken name at its field, keeps e-mail and name and clears the password", async () => {

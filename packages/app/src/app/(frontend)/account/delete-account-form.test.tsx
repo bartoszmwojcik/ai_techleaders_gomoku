@@ -3,9 +3,8 @@ import { act, cleanup, render, screen, waitFor, within } from "@testing-library/
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { apiCall, replace, assign } = vi.hoisted(() => ({ apiCall: vi.fn(), replace: vi.fn(), assign: vi.fn() }));
+const { apiCall, replace } = vi.hoisted(() => ({ apiCall: vi.fn(), replace: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiCall }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
 
 import { DeleteAccountForm } from "./delete-account-form";
 
@@ -40,8 +39,7 @@ async function openDialog(text = "secret123") {
 beforeEach(() => {
   apiCall.mockReset();
   replace.mockReset();
-  assign.mockReset();
-  vi.stubGlobal("location", { assign, origin: "https://gomoku.example" });
+  vi.stubGlobal("location", { replace, origin: "https://gomoku.example" });
 });
 afterEach(() => {
   cleanup();
@@ -177,7 +175,7 @@ describe("DeleteAccountForm: the dialog and the answers", () => {
     renderForm();
     const user = await openDialog();
     await user.click(confirmButton());
-    await waitFor(() => expect(assign).toHaveBeenCalledExactlyOnceWith("https://gomoku.example/?notice=account-deleted"));
+    await waitFor(() => expect(replace).toHaveBeenCalledExactlyOnceWith("https://gomoku.example/?notice=account-deleted"));
   });
 
   it("sends once for a double click (a ref, not state)", async () => {
@@ -268,7 +266,7 @@ describe("DeleteAccountForm: the dialog and the answers", () => {
 
     apiCall.mockResolvedValueOnce({ ok: true, data: null });
     await user.click(confirmButton());
-    await waitFor(() => expect(assign).toHaveBeenCalled());
+    await waitFor(() => expect(replace).toHaveBeenCalled());
     expect(apiCall).toHaveBeenCalledTimes(2);
   });
 
@@ -288,8 +286,7 @@ describe("DeleteAccountForm: the dialog and the answers", () => {
     renderForm();
     const user = await openDialog();
     await user.click(confirmButton());
-    await waitFor(() => expect(replace).toHaveBeenCalledExactlyOnceWith("/login?next=%2Faccount"));
-    expect(assign).not.toHaveBeenCalled();
+    await waitFor(() => expect(replace).toHaveBeenCalledExactlyOnceWith("https://gomoku.example/login?next=%2Faccount"));
   });
 
   it("hides and shows the password", async () => {

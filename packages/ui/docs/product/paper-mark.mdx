@@ -1,0 +1,38 @@
+import { ArgTypes, Canvas, Meta } from "@storybook/addon-docs/blocks";
+import { PaperMark } from "@gomoku/ui/game/paper-mark";
+import * as Stories from "./paper-mark.stories";
+
+<Meta of={Stories} />
+
+# Znak „papier i ołówek”
+
+## 1. Do czego służy
+
+× albo ○ wariantu „papier i ołówek”: na kartce w Planszy „papier i ołówek” oraz obok imion, zegarów i statusu tury. Czarne (pierwszy gracz) to ×, białe (drugi gracz) to ○.
+
+<Canvas of={Stories.ObokImienia} />
+
+## 2. Kiedy używać
+
+- **Plansza wariantu:** rysuje znaki sama.
+- **Poza kartką:** z `framed`, na małym kawałku papieru, bo ciemny tusz zniknąłby na ciemnej stronie.
+
+## 3. Kiedy nie używać
+
+Partia klasyczna (kamienie), ikona ogólnego przeznaczenia.
+
+## 4. Stany
+
+Pełny, automat (`auto`: jaśniejsza, przerywana kreska), podgląd (`preview`: jaśniejsza kreska).
+
+<Canvas of={Stories.Krzyzyk} />
+
+<Canvas of={Stories.Kolko} />
+
+## 5. Dostępność
+
+Z `label` znak jest obrazem z nazwą (`role="img"`), bez niego dekoracją. Znaczenie niesie kształt, nie kolor. Kontrast: `POSTEP.md`.
+
+## 6. API
+
+<ArgTypes of={PaperMark} />

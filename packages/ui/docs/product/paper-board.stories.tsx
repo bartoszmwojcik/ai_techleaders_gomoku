@@ -6,7 +6,7 @@ import { expect, fn, userEvent, within } from "storybook/test";
 
 import { Narrow } from "../../.storybook/blocks";
 
-const STATE_WORD = { empty: "puste", black: "czarny kamień", white: "biały kamień" } as const;
+const STATE_WORD = { empty: "puste", black: "krzyżyk", white: "kółko" } as const;
 
 const labels: PaperBoardLabels = {
   board: "Plansza bez granic",
@@ -21,8 +21,8 @@ const labels: PaperBoardLabels = {
     ]
       .filter(Boolean)
       .join(", "),
-  notAllowed: "Za daleko od kamieni: kamień można postawić najwyżej 3 pola od innego.",
-  autoMoved: ({ x, y }) => `Automat postawił kamień na polu ${x}, ${y}`,
+  notAllowed: "Za daleko od znaków: znak można postawić najwyżej 3 pola od innego.",
+  autoMoved: ({ x, y }) => `Automat postawił znak na polu ${x}, ${y}`,
   opponentMarker: ({ dx, dy }) => `Ruch przeciwnika ${dx < 0 ? "←" : dx > 0 ? "→" : ""}${dy < 0 ? "↑" : dy > 0 ? "↓" : ""}`,
   toolbar: "Przesuwanie i powiększanie planszy",
   level: (level) => `${level} × ${level} pól`,
@@ -93,6 +93,25 @@ export const RuchPrzeciwnikaPozaOknem: Story = {
   args: { stones: [...OPENING, stone(70, 48, 2)], opponentMove: { x: 70, y: 48 }, lastMove: { x: 70, y: 48 } },
 };
 
+/** Measured against the sheet, in both themes (the stories run once per theme). */
+export const ZnakiZaznaczoneNaKartce: Story = {
+  args: {
+    stones: [stone(50, 50, 1), stone(51, 50, 2), stone(50, 51, 1, true), stone(51, 51, 2, true)],
+    lastMove: { x: 51, y: 51 },
+    selection: { x: 52, y: 50 },
+    selectionSeat: 1,
+    allowed: nearAStone([stone(50, 50, 1)]),
+    layout: "phone",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("button", { name: /Pole 0, 0, krzyżyk/ }).querySelector("path")).toBeTruthy();
+    await expect(canvas.getByRole("button", { name: /Pole 1, 0, kółko/ }).querySelector("circle")).toBeTruthy();
+    await expect(canvas.getByRole("button", { name: /Pole 1, 1, kółko, ostatni ruch, ruch automatu/ })).toBeTruthy();
+    await expect(canvas.getByRole("button", { name: /Pole 2, 0, puste.*zaznaczone/ }).querySelector("path")).toBeTruthy();
+  },
+};
+
 export const TylkoDoOdczytu: Story = { args: { disabled: true } };
 
 export const KrawedzPlanszy: Story = {
@@ -126,7 +145,7 @@ function TwoStepPhone() {
             setSelection(undefined);
           }}
         >
-          Postaw kamień
+          Postaw kółko
         </Button>
       </div>
     </Narrow>
@@ -155,7 +174,7 @@ export const ZaznaczenieRuszaSiePrzyciskami: Story = {
   render: () => <TwoStepPhone />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const place = canvas.getByRole("button", { name: "Postaw kamień" });
+    const place = canvas.getByRole("button", { name: "Postaw kółko" });
     // The selection starts on the opponent's last stone, which is occupied: nothing to confirm yet.
     await expect(place).toBeDisabled();
     await userEvent.click(canvas.getByRole("button", { name: "Zaznaczenie w prawo" }));
@@ -163,8 +182,49 @@ export const ZaznaczenieRuszaSiePrzyciskami: Story = {
     await userEvent.click(canvas.getByRole("button", { name: "Zaznaczenie w dół" }));
     await expect(canvas.getByRole("button", { name: /Pole 3, 3, .*zaznaczone/ })).toBeTruthy();
     await userEvent.click(place);
-    await expect(canvas.getByRole("button", { name: "Pole 3, 3, biały kamień" })).toBeTruthy();
+    await expect(canvas.getByRole("button", { name: "Pole 3, 3, kółko" })).toBeTruthy();
   },
+};
+
+/** Measured, not assumed: the word stays inside its button and the bar does not scroll sideways at 320 px. */
+export const PasekNarzedziWaski320: Story = {
+  render: (args) => (
+    <Narrow>
+      <PaperBoard {...args} />
+    </Narrow>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const toolbar = canvas.getByRole("toolbar");
+    const center = canvas.getByRole("button", { name: "Wyśrodkuj" });
+    await expect(center.scrollWidth).toBeLessThanOrEqual(center.clientWidth);
+    const box = center.getBoundingClientRect();
+    await expect(box.height).toBeGreaterThanOrEqual(44);
+    for (const other of within(toolbar).getAllByRole("button")) {
+      if (other === center) continue;
+      const rect = other.getBoundingClientRect();
+      const overlaps = rect.left < box.right && rect.right > box.left && rect.top < box.bottom && rect.bottom > box.top;
+      await expect(overlaps).toBe(false);
+    }
+    await expect(toolbar.scrollWidth).toBeLessThanOrEqual(toolbar.clientWidth);
+  },
+};
+
+export const KartkaNajwiekszyPoziom: Story = {
+  args: { storageKey: "story.paper-board.level-31" },
+  beforeEach: () => {
+    window.localStorage.setItem("story.paper-board.level-31", "31");
+    return () => window.localStorage.removeItem("story.paper-board.level-31");
+  },
+};
+
+export const KartkaNajmniejszyPoziomWaska: Story = {
+  args: { layout: "phone" },
+  render: (args) => (
+    <Narrow>
+      <PaperBoard {...args} />
+    </Narrow>
+  ),
 };
 
 export const PrzyciskiPowiekszania: Story = {

@@ -186,6 +186,9 @@ describe("account forms in the browser", () => {
     expect(await browser.count("[data-testid=change-confirm-done]")).toBe(0);
     await browser.click("[data-testid=change-confirm-button]");
     await browser.waitFor("[data-testid=change-confirm-done]");
+    // Every session ended, this one too: the bar drops the menu, and the result stays on the page.
+    await expect.poll(() => browser.count("[data-testid=signed-in-as]"), { timeout: 10_000 }).toBe(0);
+    expect(await browser.count("[data-testid=change-confirm-done]")).toBe(1);
 
     await browser.open(link.replace(/^https?:\/\/[^/]+/, baseUrl));
     await browser.click("[data-testid=change-confirm-button]");

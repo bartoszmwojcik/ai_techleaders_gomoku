@@ -7,6 +7,7 @@ import { ReviewView } from "./review-view";
 
 const review = (over: Partial<GameReview> = {}): GameReview => ({
   gameId: "g1",
+  variant: "classic",
   finishedAt: "2026-11-02T10:00:00.000Z",
   blackSeat: 1,
   moves: [112, 113, 127],
@@ -92,6 +93,22 @@ describe("ReviewView", { timeout: 30_000 }, () => {
     expect(screen.getByTestId("review-players").textContent).toBe("Czarne: AlaBiałe: Bob (gość)");
   });
 
+  it("names the players by mark, with the marks, in a paper game", () => {
+    render(<ReviewView review={review({ variant: "paper", moves: [], viewerSeat: null, result: { winnerSeat: 2, reason: "points", winLine: null } })} back={back} />);
+    expect(screen.getByTestId("review-players").textContent).toBe("Krzyżyk: AlaKółko: Bob (gość)");
+    expect(screen.getByTestId("review-players").querySelectorAll("path")).toHaveLength(1);
+    expect(screen.getByTestId("review-players").querySelectorAll("circle")).toHaveLength(1);
+    expect(screen.getByText("Wygrało kółko: Bob (gość)")).toBeTruthy();
+    expect(document.querySelector("main")?.textContent).not.toMatch(/czarn|biał/i);
+  });
+
+  it("treats a paper game ended by resignation as a paper game, not as an empty classic board", () => {
+    render(<ReviewView review={review({ variant: "paper", moves: [], result: { winnerSeat: 2, reason: "resignation", winLine: null } })} back={back} />);
+    expect(screen.getByTestId("review-players").textContent).toBe("Krzyżyk: Ty (Ala)Kółko: Bob (gość)");
+    expect(screen.getByTestId("review-paper-note")).toBeTruthy();
+    expect(document.querySelector("main")?.textContent).not.toMatch(/czarn|biał/i);
+  });
+
   it("reviews a game that ended without a move on the board", () => {
     render(<ReviewView review={review({ moves: [], result: { winnerSeat: 2, reason: "resignation", winLine: null } })} back={back} />);
 
@@ -103,7 +120,7 @@ describe("ReviewView", { timeout: 30_000 }, () => {
 
 describe("ReviewView, the paper game (E11)", () => {
   it("shows the result and an explanation instead of an empty board", () => {
-    render(<ReviewView review={review({ moves: [], result: { winnerSeat: 1, reason: "points", winLine: null } })} back={back} />);
+    render(<ReviewView review={review({ variant: "paper", moves: [], result: { winnerSeat: 1, reason: "points", winLine: null } })} back={back} />);
 
     expect(screen.getByText("Wygrałeś na punkty")).toBeTruthy();
     expect(screen.getByTestId("review-paper-note").textContent).toContain("Podgląd ruch po ruchu jest niedostępny");

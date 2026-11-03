@@ -3,8 +3,9 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { apiCall } = vi.hoisted(() => ({ apiCall: vi.fn() }));
+const { apiCall, refresh } = vi.hoisted(() => ({ apiCall: vi.fn(), refresh: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiCall }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 
 import { ResetPasswordForm } from "./reset-password-form";
 
@@ -24,6 +25,7 @@ async function fillAndSubmit(password = "nowe-haslo-123") {
 
 beforeEach(() => {
   apiCall.mockReset();
+  refresh.mockReset();
 });
 afterEach(cleanup);
 
@@ -60,6 +62,7 @@ describe("ResetPasswordForm", () => {
       body: { token: "tok", newPassword: "nowe-haslo-123" },
     });
     const done = await screen.findByTestId("reset-done");
+    expect(refresh).toHaveBeenCalledOnce();
     expect(done.textContent).toContain("Hasło zmienione");
     expect(screen.getByRole("link", { name: "Zaloguj się" }).getAttribute("href")).toBe("/login");
     expect(screen.queryByTestId("reset-form")).toBeNull();

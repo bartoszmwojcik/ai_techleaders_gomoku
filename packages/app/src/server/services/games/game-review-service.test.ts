@@ -14,6 +14,7 @@ const WHITE = [0, 1, 2, 3].map((x) => cellOf(x, 8));
 const MOVES = BLACK.flatMap((cell, index) => (WHITE[index] === undefined ? [cell] : [cell, WHITE[index]!]));
 
 const game = (over: Record<string, unknown> = {}) => ({
+  variant: "classic",
   id: ID,
   status: "finished",
   blackSeat: 1,
@@ -47,6 +48,7 @@ describe("GameReviewService.open", () => {
     expect(find).toHaveBeenCalledExactlyOnceWith(GamePlayer, { game: ID }, { populate: ["user"], orderBy: { seat: "asc" } });
     expect(review).toEqual({
       gameId: ID,
+      variant: "classic",
       finishedAt: "2026-11-02T10:00:00.000Z",
       blackSeat: 1,
       moves: MOVES,
