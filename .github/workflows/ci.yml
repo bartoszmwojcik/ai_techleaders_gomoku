@@ -19,8 +19,47 @@ env:
   NEXT_TELEMETRY_DISABLED: 1
 
 jobs:
+  # Pull requests that change only documentation skip the heavy jobs below (a skipped job
+  # counts as passing for the required checks). Everything else, every push to main and every
+  # manual run executes the full pipeline; if this job fails, the jobs run anyway (fail-safe).
+  changes:
+    name: Zakres zmian
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.scope.outputs.code }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: scope
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            echo "Not a pull request: full pipeline."
+            exit 0
+          fi
+          files=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          echo "Changed files:"; echo "$files"
+          # Documentation only: Markdown anywhere, .ai/, docs/, LICENSE. Anything else is code.
+          other=$(printf '%s\n' "$files" | grep -vE '^(.*\.md|\.ai/.*|docs/.*|LICENSE)$' || true)
+          if [ -z "$other" ]; then
+            echo "code=false" >> "$GITHUB_OUTPUT"
+            echo "Documentation-only pull request: heavy jobs are skipped."
+          else
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            echo "Code changes in:"; echo "$other"
+          fi
+
   lint:
     name: Lint
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -34,6 +73,8 @@ jobs:
 
   typecheck:
     name: Typecheck
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -47,6 +88,8 @@ jobs:
 
   unit:
     name: Unit tests (100% coverage)
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -72,6 +115,8 @@ jobs:
 
   build:
     name: Build
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -85,6 +130,8 @@ jobs:
 
   setup:
     name: Setup (npm run setup, twice)
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -114,6 +161,8 @@ jobs:
 
   integration:
     name: Integration tests (Testcontainers + agent-browser)
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -138,6 +187,8 @@ jobs:
           if-no-files-found: ignore
   tokens:
     name: Wartości spoza tokenów
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -158,6 +209,8 @@ jobs:
 
   docker:
     name: Obraz Docker (build + start stosu produkcyjnego)
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
