@@ -31,7 +31,7 @@ const INSERT_MOVE_SQL = `
   values (?, ?, ?, ?, ?, true, ?)`;
 const UPDATE_STATE_SQL = `
   update paper_game_states set move_count = ?, score_1 = ?, score_2 = ?, auto_seat = ?,
-    pending_auto_at = ?, last_move_at = ?
+    pending_auto_at = null, last_move_at = ?
   where game_id = ?`;
 const TAKE_OVER_SQL = (column: "clock_ms_1" | "clock_ms_2") =>
   `update games set ${column} = 0, turn_started_at = ? where id = ? and status = 'active'`;
@@ -101,6 +101,7 @@ export class PaperSettler {
         "run",
       );
     }
+    // Whatever is written leaves no stone pending: a take-over has none yet, a due one was just played.
     const stones = resolved.state.stones;
     const { scores } = scoreGame(stones);
     const moveCount = snapshot.moveCount + resolved.autoMoves.length;
@@ -112,7 +113,6 @@ export class PaperSettler {
         scores[0],
         scores[1],
         resolved.state.autoSeat,
-        resolved.finish === null ? toDate(resolved.state.pendingAutoAtMs) : null,
         lastAt === undefined ? null : new Date(lastAt),
         gameId,
       ],
@@ -145,8 +145,4 @@ export class PaperSettler {
     if (row.auto_seat !== null) return other(row.auto_seat as Seat);
     return seatOnTurn(row.move_count, row.black_seat as Seat);
   }
-}
-
-function toDate(ms: number | null): Date | null {
-  return ms === null ? null : new Date(ms);
 }
