@@ -7,6 +7,7 @@ import { SqlTimeoutSettler } from "./timeout-settler";
 const NOW = new Date("2026-10-29T12:00:00Z");
 
 type Snapshot = {
+  variant?: string;
   status?: string;
   black_seat?: number | null;
   move_count?: number;
@@ -19,6 +20,7 @@ type Snapshot = {
 function snapshot(row: Snapshot) {
   const ago = row.turnAgo === undefined ? 0 : row.turnAgo;
   return {
+    variant: row.variant ?? "classic",
     status: row.status ?? "active",
     black_seat: row.black_seat === undefined ? 1 : row.black_seat,
     move_count: row.move_count ?? 0,
@@ -27,6 +29,8 @@ function snapshot(row: Snapshot) {
     turn_started_ms: ago === null ? null : NOW.getTime() - ago * 1000,
   };
 }
+
+const paperSettler = { isDue: vi.fn(async () => true), settle: vi.fn(async () => ({ finished: true, changed: true })) };
 
 function setup(
   row: Snapshot | null,
@@ -39,7 +43,7 @@ function setup(
     execute: vi.fn(async (sql: string, params: unknown[] = []) => {
       const text = sql.trim().replace(/\s+/g, " ");
       calls.push({ sql: text, params });
-      if (text.startsWith("select status")) {
+      if (text.startsWith("select variant")) {
         const source = snapshots++ > 0 && options.rowAfterLock !== undefined ? options.rowAfterLock : row;
         return source ? [snapshot(source)] : [];
       }
@@ -48,7 +52,7 @@ function setup(
       return [];
     }),
   };
-  const settler = new SqlTimeoutSettler({ em: em as unknown as EntityManager, clock: { now: () => NOW } });
+  const settler = new SqlTimeoutSettler({ em: em as unknown as EntityManager, clock: { now: () => NOW }, paperSettler: paperSettler as never });
   return { settler, em, calls };
 }
 const tx = (em: unknown) => em as EntityManager;
@@ -114,16 +118,16 @@ describe("SqlTimeoutSettler.settleExpired", () => {
   it("is a plain read while the time is not up", async () => {
     const { settler, em, calls } = setup({ turnAgo: 10 });
     expect(await settler.settleExpired("game-1", tx(em))).toBe(false);
-    expect(sqlOf(calls)).toEqual(["select status, black_seat,"]);
+    expect(sqlOf(calls)).toEqual(["select variant, status,"]);
   });
 
   it("locks the game and settles once the time is up", async () => {
     const { settler, em, calls } = setup({ turnAgo: 650 });
     expect(await settler.settleExpired("game-1", tx(em), NOW)).toBe(true);
     expect(sqlOf(calls)).toEqual([
-      "select status, black_seat,",
+      "select variant, status,",
       "select id from",
-      "select status, black_seat,",
+      "select variant, status,",
       "update games set",
       "insert into game_pair_counters",
       "update game_players set",
@@ -134,7 +138,7 @@ describe("SqlTimeoutSettler.settleExpired", () => {
   it("re-reads under the lock: a move made meanwhile wins", async () => {
     const { settler, em, calls } = setup({ turnAgo: 650 }, { rowAfterLock: { turnAgo: 1 } });
     expect(await settler.settleExpired("game-1", tx(em))).toBe(false);
-    expect(sqlOf(calls)).toEqual(["select status, black_seat,", "select id from", "select status, black_seat,"]);
+    expect(sqlOf(calls)).toEqual(["select variant, status,", "select id from", "select variant, status,"]);
   });
 });
 
@@ -185,5 +189,31 @@ describe("SqlTimeoutSettler.settleForGuest", () => {
     const { settler, calls } = setup({ turnAgo: 5 }, { candidates: ["game-1"] });
     await settler.settleForGuest("hash");
     expect(calls.some(({ sql }) => sql.startsWith("update games"))).toBe(false);
+  });
+});
+
+describe("SqlTimeoutSettler with a paper game", () => {
+  it("hands settleGame to the paper settler and reports whether it finished the game", async () => {
+    const { settler, em, calls } = setup({ variant: "paper" });
+    expect(await settler.settleGame("game-1", tx(em))).toBe(true);
+    expect(paperSettler.settle).toHaveBeenCalledWith("game-1", em, NOW);
+    expect(calls).toHaveLength(1);
+    paperSettler.settle.mockResolvedValueOnce({ finished: false, changed: true });
+    expect(await settler.settleGame("game-1", tx(em))).toBe(false);
+  });
+
+  it("locks and settles only when the paper settler says something is due", async () => {
+    const due = setup({ variant: "paper" });
+    expect(await due.settler.settleExpired("game-1", tx(due.em))).toBe(true);
+    expect(due.calls.some(({ sql }) => sql.includes("for update"))).toBe(true);
+    paperSettler.isDue.mockResolvedValueOnce(false);
+    const idle = setup({ variant: "paper" });
+    expect(await idle.settler.settleExpired("game-1", tx(idle.em))).toBe(false);
+    expect(idle.calls.some(({ sql }) => sql.includes("for update"))).toBe(false);
+  });
+
+  it("does not touch a game that is gone", async () => {
+    const { settler, em } = setup(null);
+    expect(await settler.settleExpired("game-1", tx(em))).toBe(false);
   });
 });

@@ -56,3 +56,4 @@ export * from "./validators/chat/chat-settings-schema";
 export * from "./chat/state";
 export * from "./chat/agent-view";
 export * from "./chat/secret";
+export * from "./games/paper/view";

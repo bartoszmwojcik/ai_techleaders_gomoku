@@ -1,3 +1,5 @@
+import type { GameVariant } from "./paper/constants";
+
 // Lobby: the "looking for a game" status (#25, BR-12). Constants and the view the API returns.
 
 /** How long a status lasts, from the moment it was set; never renewed (BR-12, D-09). */
@@ -20,6 +22,9 @@ export type LobbyMeView = {
   createdAt: Date;
   /** Time left before the status expires. */
   expiresInMs: number;
+  /** What the seeker offers to play (E11, BR-46). */
+  variant: GameVariant;
+  timeControlMs: number;
 };
 
 /** Another seeker, as the list shows them: no e-mail and no account id (BR-14). */
@@ -30,6 +35,8 @@ export type LobbySeekerView = {
   /** How long they have been looking. */
   sinceMs: number;
   expiresInMs: number;
+  variant: GameVariant;
+  timeControlMs: number;
 };
 
 export type LobbyView = {

@@ -7,6 +7,9 @@ import {
   LOBBY_PICK_WINDOW_MS,
   SEEKING_TTL_MS,
   UnauthorizedError,
+  resolveGameSettings,
+  type GameSettings,
+  type GameVariant,
   type LobbyMeView,
   type LobbyPickView,
   type LobbySeekerView,
@@ -18,7 +21,7 @@ import type { GameParticipation } from "../auth/game-participation";
 import type { Clock } from "../email/email-sender";
 import type { RateLimiter } from "../rate-limit/rate-limiter";
 import type { ColorDraw } from "./color-draw";
-import { ACTIVE_GAME_EXISTS_MESSAGE } from "./game-service";
+import { ACTIVE_GAME_EXISTS_MESSAGE, INSERT_PAPER_STATE_SQL } from "./game-service";
 import { closeStaleSlotsOfUser } from "./lazy-closing";
 import { deleteSeekersSql } from "./lobby-seeker-sql";
 import type { TimeoutSettler } from "./timeout-settler";
@@ -44,23 +47,24 @@ const LOCK_USER_SQL = `select id from users where id = ? for no key update`;
 const ACTIVE_SLOT_SQL = `select game_id from game_players where user_id = ? and is_active`;
 
 // Only a dead status is overwritten; a live one is left as it is (no renewal, #25 Q3).
-// `?` binds: user, created_at, expires_at, now.
+// `?` binds: user, created_at, expires_at, variant, time control, now.
 const UPSERT_SQL = `
-  insert into lobby_seekers (user_id, created_at, expires_at) values (?, ?, ?)
+  insert into lobby_seekers (user_id, created_at, expires_at, variant, time_control_ms) values (?, ?, ?, ?, ?)
   on conflict (user_id) do update
-    set created_at = excluded.created_at, expires_at = excluded.expires_at
+    set created_at = excluded.created_at, expires_at = excluded.expires_at,
+      variant = excluded.variant, time_control_ms = excluded.time_control_ms
     where lobby_seekers.expires_at <= ?`;
 
 // Times are computed in SQL (raw `em.execute` returns timestamps as text). `?` binds: now, user, now.
 const READ_ME_SQL = `
-  select id, created_at,
+  select id, created_at, variant, time_control_ms,
     (extract(epoch from (expires_at - ?::timestamptz)) * 1000)::int as expires_in_ms
   from lobby_seekers where user_id = ? and expires_at > ?::timestamptz`;
 
 // Other valid seekers, oldest first. The slot filter is defensive: starting a game removes the status.
 // `?` binds: now, now, now, user, limit.
 const LIST_SQL = `
-  select s.id, u.display_name,
+  select s.id, u.display_name, s.variant, s.time_control_ms,
     greatest(0, (extract(epoch from (?::timestamptz - s.created_at)) * 1000))::int as since_ms,
     (extract(epoch from (s.expires_at - ?::timestamptz)) * 1000)::int as expires_in_ms
   from lobby_seekers s join users u on u.id = s.user_id
@@ -70,7 +74,7 @@ const LIST_SQL = `
   limit ?`;
 
 // Pick (#26). The owner of a status, found without a lock; `?` binds: seeker id.
-const SEEKER_OWNER_SQL = `select user_id from lobby_seekers where id = ?`;
+const SEEKER_OWNER_SQL = `select user_id, variant, time_control_ms from lobby_seekers where id = ?`;
 
 // Both accounts, locked by id (the same order as every other path that puts accounts in a game).
 const LOCK_PAIR_SQL = `select id from users where id in (?, ?) order by id for no key update`;
@@ -87,21 +91,30 @@ const PAIR_SLOTS_SQL = `select game_id, user_id from game_players where user_id 
 
 // `seen_at` stays NULL: the clock starts when both open the page (#21 Q20).
 const INSERT_LOBBY_GAME_SQL = `
-  insert into games (origin, status, created_at, started_at, black_seat)
-  values ('lobby', 'active', ?, ?, ?)
+  insert into games (origin, status, created_at, started_at, black_seat, variant, time_control_ms, clock_ms_1, clock_ms_2)
+  values ('lobby', 'active', ?, ?, ?, ?, ?, ?, ?)
   returning id`;
 
 const INSERT_LOBBY_PLAYER_SQL = `
   insert into game_players (game_id, seat, kind, user_id, is_active, joined_at, display_name)
   values (?, ?, 'account', ?, true, ?, (select display_name from users where id = ?))`;
 
-type MeRow = { id: string; created_at: string | Date; expires_in_ms: number };
-type SeekerRow = { id: string; display_name: string; since_ms: number; expires_in_ms: number };
+type MeRow = { id: string; created_at: string | Date; expires_in_ms: number; variant: string; time_control_ms: number };
+type SeekerRow = {
+  id: string;
+  display_name: string;
+  since_ms: number;
+  expires_in_ms: number;
+  variant: string;
+  time_control_ms: number;
+};
 
 const toMe = (row: MeRow): LobbyMeView => ({
   id: row.id,
   createdAt: new Date(row.created_at),
   expiresInMs: row.expires_in_ms,
+  variant: row.variant as GameVariant,
+  timeControlMs: row.time_control_ms,
 });
 
 /**
@@ -133,7 +146,8 @@ export class LobbyService {
    * @throws AppError 401 for a deleted account; 409 `ACTIVE_GAME_EXISTS` (BR-13, `data.gameId`)
    * when the account holds a waiting or running game; 429 `RATE_LIMITED`
    */
-  async markSeeking(userId: string): Promise<LobbyMeView> {
+  async markSeeking(userId: string, settings?: GameSettings): Promise<LobbyMeView> {
+    const { variant, timeControlMs } = resolveGameSettings(settings);
     await this.#rateLimiter.hit(`lobby-mark:${userId}`, LOBBY_MARK_LIMIT, LOBBY_MARK_WINDOW_MS);
     await this.#timeoutSettler.settleFor(userId);
 
@@ -155,7 +169,7 @@ export class LobbyService {
             }),
           };
         }
-        await tx.execute(UPSERT_SQL, [userId, now, expiresAt, now], "run");
+        await tx.execute(UPSERT_SQL, [userId, now, expiresAt, variant, timeControlMs, now], "run");
         const [row] = await tx.execute<MeRow[]>(READ_ME_SQL, [now, userId, now]);
         return { me: toMe(row!) };
       },
@@ -180,7 +194,7 @@ export class LobbyService {
     // An expired waiting game of the picker must not block them (idempotent, outside the transaction).
     await closeStaleSlotsOfUser(this.#em, pickerId, this.#clock.now());
 
-    const [seeker] = await this.#em.execute<{ user_id: string }[]>(SEEKER_OWNER_SQL, [seekerId]);
+    const [seeker] = await this.#em.execute<{ user_id: string; variant: string; time_control_ms: number }[]>(SEEKER_OWNER_SQL, [seekerId]);
     // No row: taken by someone, withdrawn, or cleaned up. Nobody can tell these from "never existed" (a uuid
     // nobody holds), so it is the same answer as losing the race.
     if (!seeker) throw seekerTaken();
@@ -219,8 +233,13 @@ export class LobbyService {
         now,
         now,
         this.#colorDraw.drawBlackSeat(),
+        seeker.variant,
+        seeker.time_control_ms,
+        seeker.time_control_ms,
+        seeker.time_control_ms,
       ]);
       const gameId = created!.id;
+      if (seeker.variant === "paper") await tx.execute(INSERT_PAPER_STATE_SQL, [gameId], "run");
       await tx.execute(INSERT_LOBBY_PLAYER_SQL, [gameId, 1, pickerId, now, pickerId], "run");
       await tx.execute(INSERT_LOBBY_PLAYER_SQL, [gameId, 2, ownerId, now, ownerId], "run");
       return { gameId };
@@ -246,6 +265,8 @@ export class LobbyService {
       displayName: row.display_name,
       sinceMs: row.since_ms,
       expiresInMs: row.expires_in_ms,
+      variant: row.variant as GameVariant,
+      timeControlMs: row.time_control_ms,
     }));
     return {
       me: mine ? toMe(mine) : null,

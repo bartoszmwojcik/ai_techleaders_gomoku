@@ -3,6 +3,7 @@ import type { EntityManager } from "@gomoku/db";
 
 import type { Clock } from "../email/email-sender";
 import { recordFinishedGame } from "./finished-game-counter";
+import type { PaperSettler } from "./paper-settler";
 
 /**
  * Lazy "lost on time" settlement of #23 (Q3): nothing runs in the background, a game whose
@@ -38,6 +39,7 @@ export interface TimeoutSettler {
 }
 
 type Snapshot = {
+  variant: string;
   status: string;
   black_seat: number | null;
   move_count: number;
@@ -48,7 +50,7 @@ type Snapshot = {
 };
 
 const SNAPSHOT_SQL = `
-  select status, black_seat, move_count, clock_ms_1, clock_ms_2,
+  select variant, status, black_seat, move_count, clock_ms_1, clock_ms_2,
     (extract(epoch from turn_started_at) * 1000)::float8 as turn_started_ms
   from games where id = ?`;
 
@@ -71,21 +73,23 @@ const RUNNING_GAMES_OF_GUEST_SQL = `
 const finishSql = (clockColumn: "clock_ms_1" | "clock_ms_2") => `
   update games set status = 'finished', winner_seat = ?, end_reason = 'timeout',
     finished_at = ?, ${clockColumn} = 0
-  where id = ? and status = 'active' and move_count = ?
+  where id = ? and status = 'active' and variant = 'classic' and move_count = ?
   returning id`;
 const FINISH_SQL = { 1: finishSql("clock_ms_1"), 2: finishSql("clock_ms_2") } as const;
 
 const RELEASE_SLOTS_SQL = `update game_players set is_active = false where game_id = ? and is_active`;
 
-type Deps = { em: EntityManager; clock: Clock };
+type Deps = { em: EntityManager; clock: Clock; paperSettler: PaperSettler };
 
 export class SqlTimeoutSettler implements TimeoutSettler {
   readonly #em: EntityManager;
   readonly #clock: Clock;
+  readonly #paperSettler: PaperSettler;
 
-  constructor({ em, clock }: Deps) {
+  constructor({ em, clock, paperSettler }: Deps) {
     this.#em = em;
     this.#clock = clock;
+    this.#paperSettler = paperSettler;
   }
 
   async settleFor(userId: string): Promise<void> {
@@ -114,8 +118,13 @@ export class SqlTimeoutSettler implements TimeoutSettler {
     tx: EntityManager,
     now: Date = this.#clock.now(),
   ): Promise<boolean> {
-    const snapshot = await this.#loserOf(gameId, tx, now);
-    if (!snapshot) return false;
+    const [row] = await tx.execute<Snapshot[]>(SNAPSHOT_SQL, [gameId]);
+    if (!row) return false;
+    if (row.variant === "paper") {
+      if (!(await this.#paperSettler.isDue(gameId, tx, now))) return false;
+    } else if (!this.#loserFrom(row, now)) {
+      return false;
+    }
     await tx.execute(LOCK_GAME_SQL, [gameId], "run");
     return this.settleGame(gameId, tx, now);
   }
@@ -125,7 +134,9 @@ export class SqlTimeoutSettler implements TimeoutSettler {
     tx: EntityManager,
     now: Date = this.#clock.now(),
   ): Promise<boolean> {
-    const found = await this.#loserOf(gameId, tx, now);
+    const [row] = await tx.execute<Snapshot[]>(SNAPSHOT_SQL, [gameId]);
+    if (row?.variant === "paper") return (await this.#paperSettler.settle(gameId, tx, now)).finished;
+    const found = row ? this.#loserFrom(row, now) : null;
     if (!found) return false;
     const written = await tx.execute<{ id: string }[]>(FINISH_SQL[found.loser], [
       found.loser === 1 ? 2 : 1,
@@ -140,13 +151,11 @@ export class SqlTimeoutSettler implements TimeoutSettler {
   }
 
   // The seat that is out of time at `now` in the game as it is now, or `null`.
-  async #loserOf(
-    gameId: string,
-    tx: EntityManager,
+  #loserFrom(
+    row: Snapshot,
     now: Date,
-  ): Promise<{ loser: Seat; deadlineMs: number; moveCount: number } | null> {
-    const [row] = await tx.execute<Snapshot[]>(SNAPSHOT_SQL, [gameId]);
-    if (!row || row.status !== "active" || row.black_seat === null) return null;
+  ): { loser: Seat; deadlineMs: number; moveCount: number } | null {
+    if (row.status !== "active" || row.black_seat === null) return null;
     if (row.turn_started_ms === null) return null;
     const state: ClockState = {
       clockMs: [row.clock_ms_1, row.clock_ms_2],

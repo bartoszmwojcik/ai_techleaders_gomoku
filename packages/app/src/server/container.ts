@@ -33,6 +33,8 @@ import { GameService } from "./services/games/game-service";
 import { InvitationCodes } from "./services/games/invitation-codes";
 import { InvitationService } from "./services/games/invitation-service";
 import { LobbyService } from "./services/games/lobby-service";
+import { PaperMoveService } from "./services/games/paper-move-service";
+import { PaperSettler } from "./services/games/paper-settler";
 import {
   SqlTimeoutSettler,
   type TimeoutSettler,
@@ -101,6 +103,11 @@ export type AppCradle = {
   lobbyService: LobbyService;
   /** No-op until the clock (#23) delivers the real settlement of timed-out games. */
   timeoutSettler: TimeoutSettler;
+  /** Lazy timeline of the paper game (E11): end by time and the automat. */
+  paperSettler: PaperSettler;
+  paperMoveService: PaperMoveService;
+  /** Random numbers in [0, 1), injected so tests can fix them (the automat's choice). */
+  random: () => number;
   rateLimiter: RateLimiter;
   emailVerificationService: EmailVerificationService;
   userService: UserService;
@@ -190,6 +197,9 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     finishedGameStatsService: asClass(FinishedGameStatsService).scoped(),
     lobbyService: asClass(LobbyService).scoped(),
     timeoutSettler: asClass(SqlTimeoutSettler).scoped(),
+    paperSettler: asClass(PaperSettler).scoped(),
+    paperMoveService: asClass(PaperMoveService).scoped(),
+    random: asValue(Math.random),
     rateLimiter: asClass(RateLimiter).scoped(),
     emailVerificationService: asClass(EmailVerificationService).scoped(),
     userService: asClass(UserService).scoped(),

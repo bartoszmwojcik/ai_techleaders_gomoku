@@ -30,6 +30,8 @@ export type BoardView = {
     reason: EndReason;
     /** Cells of the winning line (ascending), only for `five_in_row`. */
     winLine: number[] | null;
+    /** Points of both players (seat 1 first); only for the paper game's `points` and `resignation` (E11). */
+    scores?: [number, number];
   } | null;
 };
 
