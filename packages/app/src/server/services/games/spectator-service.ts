@@ -21,6 +21,7 @@ import {
   withLookupAttempt,
   type LookupGuard,
 } from "./join-core";
+import { loadPaperSnapshot } from "./paper-state";
 import type { TimeoutSettler } from "./timeout-settler";
 
 type Deps = {
@@ -230,7 +231,8 @@ export class SpectatorService {
       // The throw rolls back the slide of their access above.
       if (!game.isPublic) throw new GoneError(AUDIENCE_CLOSED_MESSAGE, { code: "AUDIENCE_CLOSED" });
       const players = await tx.find(GamePlayer, { game: gameId }, { populate: ["user"], orderBy: { seat: "asc" } });
-      const { players: seats, ...view } = watchableState(game, players, after, now);
+      const paper = game.variant === "paper" ? await loadPaperSnapshot(tx, gameId) : null;
+      const { players: seats, ...view } = watchableState(game, players, after, now, paper);
       const audience = await readAudience(tx, game, now);
       return {
         ...view,

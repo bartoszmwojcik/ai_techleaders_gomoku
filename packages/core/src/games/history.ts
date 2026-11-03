@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ValidationError } from "../http/errors";
+import type { GameVariant } from "./paper/constants";
 import type { EndReason, ParticipantKind, Seat } from "./types";
 
 /** Rows per page of the history (E04-S01 Q2). */
@@ -25,6 +26,10 @@ export type HistoryEntry = {
   result: HistoryResult;
   reason: EndReason;
   opponent: { kind: ParticipantKind; name: string | null };
+  /** The game's variant (E11, BR-51). */
+  variant: GameVariant;
+  /** Points of the paper game as `[mine, opponent's]`; absent for the classic game. */
+  scores?: [number, number];
 };
 
 export type HistoryPage = {
