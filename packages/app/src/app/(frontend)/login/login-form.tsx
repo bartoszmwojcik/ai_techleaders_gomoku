@@ -4,13 +4,13 @@ import { toValidationError } from "@gomoku/core/http/zod-error";
 import { loginSchema } from "@gomoku/core/validators/auth/login-schema";
 import { PasswordField } from "@gomoku/ui/game/password-field";
 import { TextLink } from "@gomoku/ui/game/text-link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import { ErrorMessage } from "@/components/feedback/error-message";
 import { FormField } from "@/components/forms/form-field";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { apiCall } from "@/lib/api-client";
+import { fullPageLoad } from "@/lib/full-page-load";
 
 type FieldName = "email" | "password";
 type FieldMessages = Partial<Record<FieldName, string>>;
@@ -39,7 +39,6 @@ function rateLimitedError(retryAfterSeconds: number | undefined): GeneralError {
 }
 
 export function LoginForm({ nextPath }: { nextPath: string }) {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   // Remounting the password field hides the password again after a wrong one.
@@ -76,7 +75,7 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
     });
     if (result.ok) {
       // Stay pending while the page navigates, so a second submit is impossible.
-      router.replace(nextPath);
+      fullPageLoad(nextPath);
       return;
     }
 

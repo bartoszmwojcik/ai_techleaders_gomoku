@@ -82,9 +82,10 @@ describe("the history page", () => {
     expect(await browser.url()).toContain("/login?next=%2Fhistory");
   });
 
-  it("is linked from the home page for a signed-in player only", async () => {
+  it("is linked from the menu of a signed-in player only", async () => {
     await signedUp();
     await browser.open(`${baseUrl}/`);
+    await browser.click("[data-testid=signed-in-as]");
     await browser.waitFor("a[href='/history']");
     await browser.clearCookies();
     await browser.open(`${baseUrl}/`);

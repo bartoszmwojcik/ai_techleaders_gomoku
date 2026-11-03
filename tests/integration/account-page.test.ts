@@ -66,14 +66,16 @@ describe("account page", () => {
     expect(await browser.url()).toBe(`${baseUrl}/login?next=%2Faccount`);
   });
 
-  it("offers the account link and logout on the home page of a signed-in player", async () => {
+  it("offers the account link and logout in the menu of a signed-in player", async () => {
     const user = uniqueUser();
     await registerInBrowser(user);
 
-    expect(await browser.count("a[href='/account']")).toBe(1);
+    expect(await browser.count("a[href='/account']")).toBe(0);
     expect(await browser.count("a[href='/login']")).toBe(0);
+    await browser.click("[data-testid=signed-in-as]");
+    await browser.waitFor("a[href='/account']");
 
-    await clickLogout();
+    await browser.click("[role=menuitem]:last-child");
     await browser.waitFor("a[href='/register']");
     expect(await browser.count("[data-testid=signed-in-as]")).toBe(0);
 
@@ -94,7 +96,7 @@ describe("account page", () => {
         ).toBe(true);
         expect(
           await browser.evaluate<boolean>(
-            `(() => { const b = [...document.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Wyloguj').getBoundingClientRect(); return b.left >= 0 && b.right <= window.innerWidth && b.height >= 44; })()`,
+            `(() => { const b = document.querySelector('[data-testid=signed-in-as]').getBoundingClientRect(); return b.left >= 0 && b.right <= window.innerWidth && b.height >= 44; })()`,
           ),
         ).toBe(true);
       }

@@ -61,7 +61,10 @@ describe("login page", () => {
 
     await browser.waitFor("[data-testid=signed-in-as]");
     expect(await browser.url()).toBe(`${baseUrl}/`);
-    expect(await browser.text("[data-testid=signed-in-as]")).toBe(`Zalogowano jako ${user.displayName}`);
+    expect(await browser.text("[data-testid=signed-in-as]")).toBe(user.displayName);
+    expect(await browser.evaluate<string>(`document.querySelector("[data-testid=signed-in-as]").getAttribute("aria-label")`)).toBe(
+      `Zalogowano jako ${user.displayName}, menu konta`,
+    );
 
     // A signed-in player is sent away from /login.
     await browser.open(`${baseUrl}/login`);

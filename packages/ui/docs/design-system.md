@@ -53,8 +53,9 @@ Gra planszowa dla dwóch osób online: ciemna strona, drewniana plansza, jeden p
 | Pokaż więcej | `@gomoku/ui/game/load-more` | pod stronicowaną listą (historia partii): przycisk, ładowanie, błąd z ponowieniem, koniec listy | lista bez stronicowania |
 | Skracana nazwa | `@gomoku/ui/game/truncated-name` | nick gościa i nazwa modelu agenta w wierszu listy (obcięcie z „…”, stały sufiks) | nazwy w nagłówkach i tekście ciągłym (zawijaj) |
 | Lista partii | `@gomoku/ui/game/history-list` | strona historii | lobby, trwające partie |
+| Menu użytkownika | `@gomoku/ui/game/user-menu` | prawy górny róg paska zalogowanego: Konto, Historia, Wyloguj (`UserMenuLink`, `UserMenuAction`) | główna akcja strony, gość, wybór opcji |
 
-Nie ma jeszcze: radio, przełącznika, pola wielowierszowego, menu, popovera, podpowiedzi, zakładek, panelu bocznego, awatara, toasta, linku „przejdź do treści”. Użyj zamienników z „Jak wybrać komponent” i wpisz lukę do „Czego brakuje”.
+Nie ma jeszcze: radio, przełącznika, pola wielowierszowego, popovera, podpowiedzi, zakładek, panelu bocznego, awatara, toasta, linku „przejdź do treści”. Użyj zamienników z „Jak wybrać komponent” i wpisz lukę do „Czego brakuje”.
 
 ## Tokeny znaczeniowe
 

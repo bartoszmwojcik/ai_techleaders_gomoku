@@ -4,7 +4,6 @@ import { Button } from "@gomoku/ui/game/button";
 import { TextLink } from "@gomoku/ui/game/text-link";
 import { connection } from "next/server";
 
-import { LogoutButton } from "@/components/auth/logout-button";
 import { VerifyEmailNotice } from "@/components/auth/verify-email-banner";
 import { CreateGameButton } from "@/components/games/create-game-button";
 import { HomeRulesLine, HomeRulesProvider } from "@/components/games/home-rules";
@@ -41,7 +40,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const currentGame = session?.data ?? null;
   // A visitor may hold a game as a guest (E02-S08): found by the token in the cookie.
   const guestGame = user ? null : await loadGuestCurrentGame();
-  const hasActiveGame = currentGame?.status === "active";
   // Only the first `notice` counts: the message after cancelling a game, or after deleting the
   // account (E01-S06; shown only without a session, which the deletion just ended).
   const { notice: noticeParam } = await searchParams;
@@ -70,82 +68,68 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       )}
       <div className="flex w-full flex-col items-center justify-center gap-section md:flex-row">
         <HomeRulesProvider>
-        <section className="max-w-sm space-y-4 text-center md:text-left">
-          <h1 className="text-title font-strong tracking-(--letter-spacing-title)">
-            Gomoku
-          </h1>
-          <p className="text-lead text-text-secondary">
-            Pięć w linii wygrywa. Zagraj ze znajomym albo znajdź przeciwnika w
-            lobby.
-          </p>
-          <HomeRulesLine />
-          {user ? (
-            <div className="flex flex-col items-center gap-stack md:items-start">
-              <p
-                className="m-0 text-body text-text-primary"
-                data-testid="signed-in-as"
-              >
-                Zalogowano jako{" "}
-                <strong className="font-strong">{user.displayName}</strong>
-              </p>
-              {currentGame && (
-                <Alert status="info" title="Masz partię">
-                  {GAME_PHASE_TEXT[currentGame.status]}{" "}
-                  <TextLink href={`/games/${currentGame.gameId}`}>
-                    Wróć do partii
-                  </TextLink>
-                </Alert>
-              )}
-              <CreateGameButton
-                heldGame={
-                  currentGame && {
-                    gameId: currentGame.gameId,
-                    status: currentGame.status,
+          <section className="max-w-sm space-y-4 text-center md:text-left">
+            <h1 className="text-title font-strong tracking-(--letter-spacing-title)">
+              Gomoku
+            </h1>
+            <p className="text-lead text-text-secondary">
+              Pięć w linii wygrywa. Zagraj ze znajomym albo znajdź przeciwnika w
+              lobby.
+            </p>
+            <HomeRulesLine />
+            {user ? (
+              <div className="flex flex-col items-center gap-stack md:items-start">
+                {currentGame && (
+                  <Alert status="info" title="Masz partię">
+                    {GAME_PHASE_TEXT[currentGame.status]}{" "}
+                    <TextLink href={`/games/${currentGame.gameId}`}>
+                      Wróć do partii
+                    </TextLink>
+                  </Alert>
+                )}
+                <CreateGameButton
+                  heldGame={
+                    currentGame && {
+                      gameId: currentGame.gameId,
+                      status: currentGame.status,
+                    }
                   }
-                }
-              />
-              <div className="flex flex-wrap items-center justify-center gap-group md:justify-start">
-                <Button asChild variant="secondary">
-                  <a href="/lobby">Lobby</a>
-                </Button>
-                <Button asChild variant="secondary">
-                  <a href="/history">Historia</a>
-                </Button>
-                <Button asChild variant="secondary">
-                  <a href="/account">Konto</a>
-                </Button>
-                <LogoutButton hasActiveGame={hasActiveGame} />
-                <TextLink href="/join" placement="standalone">
-                  Masz kod?
-                </TextLink>
+                />
+                <div className="flex w-full flex-wrap items-center justify-center gap-group md:justify-start">
+                  <Button asChild variant="secondary">
+                    <a href="/lobby">Lobby</a>
+                  </Button>
+                  <TextLink href="/join" placement="standalone">
+                    Masz kod?
+                  </TextLink>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-stack md:items-start">
-              {guestGame && (
-                <Alert status="info" title="Masz partię">
-                  {GUEST_PHASE_TEXT[guestGame.status]}{" "}
-                  <TextLink href={`/games/${guestGame.gameId}`}>Wróć do partii</TextLink>
-                </Alert>
-              )}
-              <div className="flex flex-wrap justify-center gap-group md:justify-start">
-                <Button asChild>
-                  <a href="/register">Załóż konto</a>
+            ) : (
+              <div className="flex flex-col items-center gap-stack md:items-start">
+                {guestGame && (
+                  <Alert status="info" title="Masz partię">
+                    {GUEST_PHASE_TEXT[guestGame.status]}{" "}
+                    <TextLink href={`/games/${guestGame.gameId}`}>Wróć do partii</TextLink>
+                  </Alert>
+                )}
+                <div className="flex flex-wrap justify-center gap-group md:justify-start">
+                  <Button asChild>
+                    <a href="/register">Załóż konto</a>
+                  </Button>
+                  <Button asChild variant="secondary">
+                    <a href="/login">Zaloguj się</a>
+                  </Button>
+                  <TextLink href="/join" placement="standalone">
+                    Masz kod?
+                  </TextLink>
+                </div>
+                {/* L34: a secondary button (not a small link) in the action column; "Załóż konto" stays the main action. */}
+                <Button asChild variant="secondary" className="w-full">
+                  <a href="/play">Zagraj ze znajomym bez konta</a>
                 </Button>
-                <Button asChild variant="secondary">
-                  <a href="/login">Zaloguj się</a>
-                </Button>
-                <TextLink href="/join" placement="standalone">
-                  Masz kod?
-                </TextLink>
               </div>
-              {/* L34: a secondary button (not a small link) in the action column; "Załóż konto" stays the main action. */}
-              <Button asChild variant="secondary" className="w-full">
-                <a href="/play">Zagraj ze znajomym bez konta</a>
-              </Button>
-            </div>
-          )}
-        </section>
+            )}
+          </section>
         </HomeRulesProvider>
 
         <div

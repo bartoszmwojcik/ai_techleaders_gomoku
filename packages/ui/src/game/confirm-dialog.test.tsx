@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -25,6 +25,17 @@ function renderOpen(props: Partial<React.ComponentProps<typeof ConfirmDialog>> =
 }
 
 describe("ConfirmDialog", () => {
+  it("lets a dialog without a trigger decide where focus goes when it closes", async () => {
+    const onCloseAutoFocus = vi.fn((event: Event) => event.preventDefault());
+    const { rerender } = render(
+      <ConfirmDialog open title="Wylogować?" confirmLabel="Wyloguj" cancelLabel="Zostań" onConfirm={vi.fn()} onCloseAutoFocus={onCloseAutoFocus} />,
+    );
+    rerender(
+      <ConfirmDialog open={false} title="Wylogować?" confirmLabel="Wyloguj" cancelLabel="Zostań" onConfirm={vi.fn()} onCloseAutoFocus={onCloseAutoFocus} />,
+    );
+    await waitFor(() => expect(onCloseAutoFocus).toHaveBeenCalledOnce());
+  });
+
   it("asks with the object name, starts focus on the way out and offers a verb to confirm", () => {
     renderOpen();
 

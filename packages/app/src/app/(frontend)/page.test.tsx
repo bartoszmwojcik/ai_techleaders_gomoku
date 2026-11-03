@@ -10,14 +10,6 @@ const { connection, getCurrentUserWith, currentGame, loadGuestCurrentGame } = vi
 vi.mock("next/server", () => ({ connection }));
 vi.mock("@/server/http/auth", () => ({ getCurrentUserWith }));
 vi.mock("@/server/http/guest-game", () => ({ loadGuestCurrentGame }));
-vi.mock("@/components/auth/logout-button", () => ({
-  LogoutButton: ({ hasActiveGame }: { hasActiveGame: boolean }) => (
-    <button data-testid="logout" data-active={String(hasActiveGame)}>
-      Wyloguj
-    </button>
-  ),
-}));
-
 vi.mock("@/components/games/create-game-button", () => ({
   CreateGameButton: ({ heldGame }: { heldGame: unknown }) => (
     <button data-testid="create" data-held={JSON.stringify(heldGame)}>
@@ -96,11 +88,11 @@ describe("HomePage", () => {
     expect(html).not.toContain("Utwórz zaproszenie");
   });
 
-  it("shows the name of a signed-in player instead of the registration link", async () => {
+  it("shows a signed-in player no sentence about the session and no registration link", async () => {
     signedIn();
     const html = renderToStaticMarkup(await HomePage({ searchParams: Promise.resolve({}) }));
-    expect(html).toContain("Zalogowano jako <strong");
-    expect(html).toContain("Ala_7");
+    expect(html).not.toContain("Zalogowano jako");
+    expect(html).not.toContain("signed-in-as");
     expect(html).not.toContain("/register");
     expect(html).not.toContain("/login");
   });
@@ -112,28 +104,25 @@ describe("HomePage", () => {
     expect(html).not.toContain("/history");
   });
 
-  it("links a signed-in player to the account and offers logout", async () => {
+  it("leaves a signed-in player three actions: the menu in the bar has the account, the history and logout", async () => {
     signedIn();
     const html = renderToStaticMarkup(await HomePage({ searchParams: Promise.resolve({}) }));
-    expect(html).toContain('href="/account"');
-    expect(html).toContain("Konto</a>");
     // The lobby is for accounts only (BR-22): the link is there for a signed-in player (#25 Q11).
     expect(html).toContain('href="/lobby"');
     expect(html).toContain("Lobby</a>");
-    expect(html).toContain('href="/history"');
-    expect(html).toContain("Historia</a>");
-    expect(html).toContain('data-testid="logout" data-active="false"');
-    expect(currentGame).toHaveBeenCalledWith("u1");
     expect(html).toContain('data-testid="create" data-held="null"');
     expect(html).toContain('href="/join"');
+    expect(html).not.toContain('href="/account"');
+    expect(html).not.toContain('href="/history"');
+    expect(html).not.toContain("Wyloguj");
+    expect(currentGame).toHaveBeenCalledWith("u1");
     expect(html).not.toContain("Masz partię");
   });
 
-  it("tells the logout button about a running game", async () => {
+  it("points a player in a running game back to it", async () => {
     signedIn();
     currentGame.mockResolvedValue({ gameId: "g1", status: "active", seat: 1 });
     const html = renderToStaticMarkup(await HomePage({ searchParams: Promise.resolve({}) }));
-    expect(html).toContain('data-active="true"');
     expect(html).toContain("W toku.");
     expect(html).toContain('href="/games/g1"');
     expect(html).toContain('data-held="{&quot;gameId&quot;:&quot;g1&quot;,&quot;status&quot;:&quot;active&quot;}"');
@@ -145,7 +134,6 @@ describe("HomePage", () => {
     const html = renderToStaticMarkup(await HomePage({ searchParams: Promise.resolve({}) }));
     expect(html).toContain("Czeka na przeciwnika.");
     expect(html).toContain('href="/games/g2"');
-    expect(html).toContain('data-active="false"');
   });
 
   it("confirms a cancelled invitation to the player who came back after cancelling", async () => {

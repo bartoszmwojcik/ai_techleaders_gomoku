@@ -73,7 +73,7 @@ const report = await withRequestScope(({ cradle }) => cradle.healthService.check
 
 #### Konta i sesje
 
-Gracz zakłada konto na `/register` (e-mail, nazwa gracza, hasło co najmniej 8 znaków) i jest od razu zalogowany; strona `/` pokazuje „Zalogowano jako …”, a zalogowany wchodzący na `/register` trafia na `/`. Parametr `?next=` wskazuje ścieżkę powrotu po rejestracji (tylko ścieżki względne w obrębie serwisu, inne wartości dają `/`). Formularz wywołuje `POST /api/auth/register`:
+Gracz zakłada konto na `/register` (e-mail, nazwa gracza, hasło co najmniej 8 znaków) i jest od razu zalogowany; górny pasek pokazuje nazwę gracza z menu konta (Konto, Historia, Wyloguj), a zalogowany wchodzący na `/register` trafia na `/`. Parametr `?next=` wskazuje ścieżkę powrotu po rejestracji (tylko ścieżki względne w obrębie serwisu, inne wartości dają `/`). Formularz wywołuje `POST /api/auth/register`:
 
 - **Uwierzytelnianie:** własne, bez biblioteki. Hasło jest hashowane przez `bcryptjs` (domyślnie koszt 12, `PASSWORD_HASH_COST`), sesja leży w tabeli `sessions` (30 dni), a w ciasteczku `httpOnly` jest losowy token (w bazie tylko jego SHA-256). W produkcji ciasteczko nazywa się `__Host-gomoku_session` (`Secure`, bez `Domain`), poza produkcją `gomoku_session`.
 - **Koszt bcrypt:** zmiana kosztu (`PASSWORD_HASH_COST`) działa po restarcie procesu, który przelicza atrapę hasha używaną przy logowaniu nieistniejącego konta (`PasswordHasher.dummyHash`, ten sam koszt co prawdziwe hashe). Hashe istniejących kont zachowują stary koszt, aż konto zaloguje się ponownie lub zmieni hasło (hash nie jest jeszcze przeliczany automatycznie).

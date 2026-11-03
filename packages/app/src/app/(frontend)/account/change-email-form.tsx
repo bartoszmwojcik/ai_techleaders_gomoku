@@ -3,13 +3,13 @@
 import { emailChangeSchema } from "@gomoku/core/validators/auth/profile-change-schema";
 import { Alert } from "@gomoku/ui/game/alert";
 import { PasswordField } from "@gomoku/ui/game/password-field";
-import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { ErrorMessage } from "@/components/feedback/error-message";
 import { FormField } from "@/components/forms/form-field";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { apiCall } from "@/lib/api-client";
+import { fullPageLoad } from "@/lib/full-page-load";
 
 type Field = "newEmail" | "currentPassword";
 type Messages = Partial<Record<Field, string>>;
@@ -29,7 +29,6 @@ function firstMessages(fieldErrors: Record<string, string[]> | undefined): Messa
 }
 
 export function ChangeEmailForm() {
-  const router = useRouter();
   const [newEmail, setNewEmail] = useState("");
   const [password, setPassword] = useState("");
   // Remounting a password field hides the password again.
@@ -83,7 +82,7 @@ export function ChangeEmailForm() {
     }
     const { code, retryAfterSeconds, fieldErrors } = result.error;
     if (code === "UNAUTHORIZED") {
-      router.replace(`/login?next=${encodeURIComponent("/account")}`);
+      fullPageLoad(`/login?next=${encodeURIComponent("/account")}`);
       return;
     }
     const messages = firstMessages(fieldErrors);

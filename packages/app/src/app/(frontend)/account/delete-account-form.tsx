@@ -7,11 +7,11 @@ import { ConfirmDialog } from "@gomoku/ui/game/confirm-dialog";
 import { Panel } from "@gomoku/ui/game/panel";
 import { PasswordField } from "@gomoku/ui/game/password-field";
 import { TextLink } from "@gomoku/ui/game/text-link";
-import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
 import { ErrorMessage } from "@/components/feedback/error-message";
 import { apiCall } from "@/lib/api-client";
+import { fullPageLoad } from "@/lib/full-page-load";
 
 type DeleteAccountFormProps = {
   displayName: string;
@@ -43,7 +43,6 @@ const focusLater = (focus: () => void) => setTimeout(focus, 80);
  * the whole page on `/?notice=account-deleted` (the layout reads the session).
  */
 export function DeleteAccountForm({ displayName, currentGame }: DeleteAccountFormProps) {
-  const router = useRouter();
   const [password, setPassword] = useState("");
   // Remounting a password field hides the password again.
   const [passwordKey, setPasswordKey] = useState(0);
@@ -95,7 +94,7 @@ export function DeleteAccountForm({ displayName, currentGame }: DeleteAccountFor
     const { code, data, fieldErrors, retryAfterSeconds } = result.error;
     if (code === "UNAUTHORIZED") {
       // The session is gone (or the account already): sign in again and come back here.
-      router.replace(`/login?next=${encodeURIComponent("/account")}`);
+      fullPageLoad(`/login?next=${encodeURIComponent("/account")}`);
       return;
     }
     if (code === "INVALID_PASSWORD") {

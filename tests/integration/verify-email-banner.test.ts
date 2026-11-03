@@ -77,7 +77,7 @@ describe("verify email banner", () => {
     expect(text).toContain("Bez potwierdzonego adresu nie odzyskasz konta, jeśli zapomnisz hasła.");
     expect(text).toContain(user.email);
     // It blocks nothing: the page actions stay usable.
-    expect(await browser.count("a[href='/account']")).toBe(1);
+    expect(await browser.count("[data-testid=create-game]")).toBe(1);
 
     // On the account page, with the status mark.
     await browser.open(`${baseUrl}/account`);
