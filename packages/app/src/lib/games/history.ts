@@ -1,6 +1,7 @@
 import type { EndReason, HistoryEntry, HistoryResult } from "@gomoku/core";
 
 import { agentNameOf, type PlayerName } from "./play";
+import { VARIANT_NAME } from "./settings";
 
 export const RESULT_LABEL: Record<HistoryResult, string> = {
   win: "Wygrana",
@@ -29,4 +30,15 @@ export function opponentNameOf({ kind, name }: HistoryEntry["opponent"]): Player
   const guest = kind === "guest";
   const nick = name ?? DELETED_PLAYER_LABEL;
   return { nick, guest, label: guest ? `${nick} (gość)` : nick };
+}
+
+/**
+ * How a finished game is described next to its date: the reason for the classic game; for the paper
+ * game its variant and the points ("Papier i ołówek · 7 : 5"), plus the reason when it was not the points.
+ */
+export function historyDetailOf(entry: Pick<HistoryEntry, "variant" | "scores" | "reason">): string {
+  if (entry.variant !== "paper") return REASON_LABEL[entry.reason];
+  const [mine, theirs] = entry.scores ?? [0, 0];
+  const base = `${VARIANT_NAME.paper} · ${mine} : ${theirs}`;
+  return entry.reason === "points" ? base : `${base} · ${REASON_LABEL[entry.reason]}`;
 }

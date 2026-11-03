@@ -1,6 +1,7 @@
 "use client";
 
 import { clampReviewStep, type GameReview } from "@gomoku/core";
+import { Alert } from "@gomoku/ui/game/alert";
 import { Board } from "@gomoku/ui/game/board";
 import { Button } from "@gomoku/ui/game/button";
 import { GameResultBanner } from "@gomoku/ui/game/game-result-banner";
@@ -11,7 +12,7 @@ import { PlayerLabel } from "@/components/games/player-label";
 import { formatFinishedAt } from "@/lib/format-date-time";
 import { REASON_LABEL } from "@/lib/games/history";
 import { cellLabel, playerNameOf } from "@/lib/games/play";
-import { COLOR_TITLE, lastMoveAt, reviewOutcomeOf, stepStatus, stonesAt, winLineAt } from "@/lib/games/review";
+import { COLOR_TITLE, isPaperReview, lastMoveAt, reviewOutcomeOf, stepStatus, stonesAt, winLineAt } from "@/lib/games/review";
 
 type Props = {
   review: GameReview;
@@ -48,31 +49,42 @@ export function ReviewView({ review, back }: Props) {
           </li>
         ))}
       </ul>
-      <Board
-        label="Plansza 15 na 15"
-        cellLabel={cellLabel}
-        stones={stonesAt(review, step)}
-        lastMove={lastMoveAt(review, step)}
-        winLine={winLineAt(review, step)}
-        readOnly
-      />
-      <p role="status" className="m-0 text-body text-text-secondary" data-testid="review-step">
-        {stepStatus(review, step)}
-      </p>
-      <div className="grid grid-cols-2 gap-group sm:grid-cols-4" role="group" aria-label="Przechodzenie po ruchach">
-        <Button variant="secondary" onClick={() => go(0)} disabled={step === 0} data-testid="review-start">
-          Początek
-        </Button>
-        <Button variant="secondary" onClick={() => go(step - 1)} disabled={step === 0} data-testid="review-prev">
-          Poprzedni
-        </Button>
-        <Button variant="secondary" onClick={() => go(step + 1)} disabled={step === total} data-testid="review-next">
-          Następny
-        </Button>
-        <Button variant="secondary" onClick={() => go(total)} disabled={step === total} data-testid="review-end">
-          Koniec
-        </Button>
-      </div>
+      {isPaperReview(review) ? (
+        // E11: the sheet of a paper game is not in the classic move log, so there is nothing to step through yet.
+        <div data-testid="review-paper-note">
+          <Alert status="info" title="Podgląd ruch po ruchu jest niedostępny" role="status">
+            Ta partia była rozegrana w wariancie „Papier i ołówek”. Wynik i gracze są powyżej.
+          </Alert>
+        </div>
+      ) : (
+        <>
+        <Board
+          label="Plansza 15 na 15"
+          cellLabel={cellLabel}
+          stones={stonesAt(review, step)}
+          lastMove={lastMoveAt(review, step)}
+          winLine={winLineAt(review, step)}
+          readOnly
+        />
+        <p role="status" className="m-0 text-body text-text-secondary" data-testid="review-step">
+          {stepStatus(review, step)}
+        </p>
+        <div className="grid grid-cols-2 gap-group sm:grid-cols-4" role="group" aria-label="Przechodzenie po ruchach">
+          <Button variant="secondary" onClick={() => go(0)} disabled={step === 0} data-testid="review-start">
+            Początek
+          </Button>
+          <Button variant="secondary" onClick={() => go(step - 1)} disabled={step === 0} data-testid="review-prev">
+            Poprzedni
+          </Button>
+          <Button variant="secondary" onClick={() => go(step + 1)} disabled={step === total} data-testid="review-next">
+            Następny
+          </Button>
+          <Button variant="secondary" onClick={() => go(total)} disabled={step === total} data-testid="review-end">
+            Koniec
+          </Button>
+        </div>
+        </>
+      )}
       <TextLink href={back.href} placement="standalone">
         {back.label}
       </TextLink>

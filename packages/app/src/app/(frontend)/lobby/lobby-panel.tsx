@@ -13,9 +13,11 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { rateLimitedError } from "@/components/feedback/rate-limited-error";
+import { GameSettingsPicker } from "@/components/games/game-settings-picker";
 import { usePageVisibility } from "@/components/games/use-page-visibility";
 import { apiCall } from "@/lib/api-client";
 import { sinceLabel, type LobbyData } from "@/lib/games/lobby";
+import { DEFAULT_SETTINGS, settingsBody, settingsLabel, type GameSettingsChoice } from "@/lib/games/settings";
 
 /** The lobby is read every 3 s while the tab is visible (#25 Q8), like a waiting game. */
 export const LOBBY_POLL_INTERVAL_MS = 3000;
@@ -67,6 +69,7 @@ export function LobbyPanel({ initial }: { initial: LobbyData }) {
   const [picking, setPicking] = useState<string | null>(null);
   const [problem, setProblem] = useState<{ kind: Problem; retryAfterSeconds?: number } | null>(null);
   const [expired, setExpired] = useState(false);
+  const [settings, setSettings] = useState<GameSettingsChoice>(DEFAULT_SETTINGS);
 
   const reading = useRef(false);
   // Bumped by every answer to the player's own action; a read that began before it is stale.
@@ -155,7 +158,7 @@ export function LobbyPanel({ initial }: { initial: LobbyData }) {
     setBusy("mark");
     setProblem(null);
     setExpired(false);
-    const result = await apiCall<{ me: NonNullable<Mine> }>("/api/lobby/seeking", { method: "PUT" });
+    const result = await apiCall<{ me: NonNullable<Mine> }>("/api/lobby/seeking", { method: "PUT", ...(settings.variant === "paper" ? { body: settingsBody(settings) } : {}) });
     marking.current = false;
     setBusy(null);
     version.current += 1;
@@ -298,7 +301,10 @@ export function LobbyPanel({ initial }: { initial: LobbyData }) {
               />
             </div>
           ) : (
-            <div data-testid="lobby-mark">{markButton("primary")}</div>
+            <div data-testid="lobby-mark" className="flex flex-col items-start gap-stack">
+              <GameSettingsPicker value={settings} onChange={setSettings} disabled={busy === "mark"} />
+              {markButton("primary")}
+            </div>
           )}
           <Panel title="Gracze szukający gry">
             {reloading ? (
@@ -333,7 +339,7 @@ export function LobbyPanel({ initial }: { initial: LobbyData }) {
                   <LobbyRow
                     key={seeker.id}
                     name={seeker.displayName}
-                    since={sinceLabel(seeker.sinceMs)}
+                    since={`${settingsLabel(seeker.variant, seeker.timeControlMs)} · ${sinceLabel(seeker.sinceMs)}`}
                     expiresLabel="wygasa za"
                     expiresInMs={seeker.expiresInMs}
                     selectLabel="Zagraj"
