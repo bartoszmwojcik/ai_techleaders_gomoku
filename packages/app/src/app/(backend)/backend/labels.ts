@@ -18,6 +18,7 @@ export const END_REASON_LABELS = [
   ["draw", "remis"],
   ["timeout", "czas"],
   ["resignation", "poddanie"],
+  ["points", "punkty"],
 ] as const;
 
 const KIND_LABELS: Record<string, string> = { account: "konto", guest: "gość", agent: "agent" };

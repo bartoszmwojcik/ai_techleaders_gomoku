@@ -14,6 +14,7 @@ export const REASON_LABEL: Record<EndReason, string> = {
   timeout: "Koniec czasu",
   resignation: "Poddanie",
   draw: "Plansza pełna",
+  points: "Punkty",
 };
 
 export const DELETED_PLAYER_LABEL = "Usunięty gracz";

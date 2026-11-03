@@ -8,6 +8,7 @@ describe("history labels", () => {
     expect(RESULT_LABEL).toEqual({ win: "Wygrana", loss: "Porażka", draw: "Remis" });
     expect(Object.keys(REASON_LABEL).sort()).toEqual([...END_REASONS].sort());
     expect(REASON_LABEL.five_in_row).toBe("5 w linii");
+    expect(REASON_LABEL.points).toBe("Punkty");
   });
 });
 

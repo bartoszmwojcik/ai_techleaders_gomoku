@@ -10,7 +10,7 @@ export type GameCounters = {
   byStatus: { waiting: number; active: number; finished: number; cancelled: number };
   /** Finished games still in the database. */
   finishedByOrigin: { invite: number; lobby: number; rematch: number };
-  finishedByEndReason: { five_in_row: number; draw: number; timeout: number; resignation: number };
+  finishedByEndReason: { five_in_row: number; draw: number; timeout: number; resignation: number; points: number };
 };
 
 export type AccountTotals = { total: number; verified: number; unverified: number };
@@ -48,7 +48,8 @@ const GAME_COUNTERS_SQL = `
     count(*) filter (where status = 'finished' and end_reason = 'five_in_row')::int as five_in_row,
     count(*) filter (where status = 'finished' and end_reason = 'draw')::int as draw,
     count(*) filter (where status = 'finished' and end_reason = 'timeout')::int as timeout,
-    count(*) filter (where status = 'finished' and end_reason = 'resignation')::int as resignation
+    count(*) filter (where status = 'finished' and end_reason = 'resignation')::int as resignation,
+    count(*) filter (where status = 'finished' and end_reason = 'points')::int as points
   from games`;
 
 const ACCOUNT_TOTALS_SQL = `
@@ -105,6 +106,7 @@ export class AdminOverviewService {
         draw: r.draw!,
         timeout: r.timeout!,
         resignation: r.resignation!,
+        points: r.points!,
       },
     };
   }

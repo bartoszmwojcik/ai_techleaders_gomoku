@@ -31,9 +31,9 @@ export type GameColor = (typeof GAME_COLORS)[number];
 
 /**
  * Why a game finished: five (or more) in a row and a full board (#22), the clock running
- * out (#23) and a resignation (resignation spec).
+ * out (#23), a resignation (resignation spec) and the score of the paper variant (`points`, E11).
  */
-export const END_REASONS = ["five_in_row", "draw", "timeout", "resignation"] as const;
+export const END_REASONS = ["five_in_row", "draw", "timeout", "resignation", "points"] as const;
 export type EndReason = (typeof END_REASONS)[number];
 
 /** Outcome of a finished game; `winnerSeat` is `null` only for a draw. */

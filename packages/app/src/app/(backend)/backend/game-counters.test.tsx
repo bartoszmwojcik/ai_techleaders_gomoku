@@ -23,7 +23,7 @@ describe("GameCountersSection", () => {
       games={{
         byStatus: { waiting: 1, active: 2, finished: 9, cancelled: 3 },
         finishedByOrigin: { invite: 5, lobby: 3, rematch: 1 },
-        finishedByEndReason: { five_in_row: 4, draw: 1, timeout: 2, resignation: 2 },
+        finishedByEndReason: { five_in_row: 4, draw: 1, timeout: 2, resignation: 2, points: 3 },
       }}
       stats={stats}
     />,
@@ -47,6 +47,7 @@ describe("GameCountersSection", () => {
     stat("rewanż", 1);
     stat("pięć w linii", 4);
     stat("poddanie", 2);
+    stat("punkty", 3);
     expect(html).toContain("Partie w bazie teraz");
   });
 

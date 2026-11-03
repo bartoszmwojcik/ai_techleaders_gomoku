@@ -21,7 +21,7 @@ describe("game domain constants", () => {
     expect(SEATS).toEqual([1, 2]);
     expect(REMATCH_STATES).toEqual(["pending", "accepted", "declined"]);
     expect(GAME_COLORS).toEqual(["black", "white"]);
-    expect(END_REASONS).toEqual(["five_in_row", "draw", "timeout", "resignation"]);
+    expect(END_REASONS).toEqual(["five_in_row", "draw", "timeout", "resignation", "points"]);
   });
 
   it("keeps the agreed durations", () => {

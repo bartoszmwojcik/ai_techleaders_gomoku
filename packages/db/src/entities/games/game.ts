@@ -1,8 +1,16 @@
 import { defineEntity, p } from "@mikro-orm/core";
 
-import { BOARD_CELLS, END_REASONS, INITIAL_CLOCK_MS } from "@gomoku/core";
+import {
+  BOARD_CELLS,
+  END_REASONS,
+  GAME_VARIANTS,
+  INITIAL_CLOCK_MS,
+  PAPER_TIME_CONTROLS_MS,
+} from "@gomoku/core";
 
 const EMPTY_BOARD = `(repeat('0', ${BOARD_CELLS}))::bit(${BOARD_CELLS})`;
+const VARIANTS_SQL = GAME_VARIANTS.map((variant) => `'${variant}'`).join(", ");
+const PAPER_TIME_CONTROLS_SQL = PAPER_TIME_CONTROLS_MS.join(", ");
 const END_REASONS_SQL = END_REASONS.map((reason) => `'${reason}'`).join(", ");
 
 /**
@@ -38,8 +46,14 @@ export const Game = defineEntity({
     moves: p.blob().columnType("bytea").defaultRaw(`''::bytea`),
     // Set when the game finishes; NULL for a draw.
     winnerSeat: p.smallint().nullable(),
-    // `five_in_row` | `draw` | `timeout` | `resignation`; CHECK below.
+    // `five_in_row` | `draw` | `timeout` | `resignation` | `points`; CHECK below.
     endReason: p.string().length(16).nullable(),
+
+    // Variant (E11, D-34): `classic` (15x15, 10 minutes) or `paper` (101x101, points); CHECK below.
+    // A paper game keeps its stones in `paper_moves`, so the bitboards above stay empty for it.
+    variant: p.string().length(16).default("classic"),
+    // Clock budget per player in ms: 600000 for `classic`, 1/2/3/5 minutes for `paper`; CHECK below.
+    timeControlMs: p.integer().default(INITIAL_CLOCK_MS),
 
     // Chess clock (#23): remaining time after each player's last move, by seat.
     clockMs1: p.integer().fieldName("clock_ms_1").default(INITIAL_CLOCK_MS),
@@ -79,7 +93,23 @@ export const Game = defineEntity({
     },
     {
       name: "games_clock_ms_check",
-      expression: `clock_ms_1 between 0 and ${INITIAL_CLOCK_MS} and clock_ms_2 between 0 and ${INITIAL_CLOCK_MS}`,
+      expression: `clock_ms_1 between 0 and time_control_ms and clock_ms_2 between 0 and time_control_ms`,
+    },
+    { name: "games_variant_check", expression: `variant in (${VARIANTS_SQL})` },
+    {
+      name: "games_time_control_check",
+      expression: `(variant = 'classic' and time_control_ms = ${INITIAL_CLOCK_MS}) or (variant = 'paper' and time_control_ms in (${PAPER_TIME_CONTROLS_SQL}))`,
+    },
+    // A paper game keeps its stones elsewhere; the classic bitboards and the log stay empty.
+    { name: "games_paper_board_empty_check", expression: `variant = 'classic' or move_count = 0` },
+    // The end reasons of one variant never appear in the other.
+    {
+      name: "games_classic_end_reason_check",
+      expression: `end_reason is null or end_reason not in ('five_in_row', 'draw', 'timeout') or variant = 'classic'`,
+    },
+    {
+      name: "games_points_end_reason_check",
+      expression: `end_reason is distinct from 'points' or variant = 'paper'`,
     },
     { name: "games_black_seat_check", expression: `black_seat in (1, 2)` },
     { name: "games_winner_seat_check", expression: `winner_seat in (1, 2)` },
@@ -118,7 +148,7 @@ export const Game = defineEntity({
     },
     {
       name: "games_winner_required_check",
-      expression: `end_reason is null or end_reason = 'draw' or winner_seat is not null`,
+      expression: `end_reason is null or end_reason in ('draw', 'points') or winner_seat is not null`,
     },
     {
       name: "games_rematch_offered_by_seat_check",

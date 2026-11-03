@@ -24,13 +24,13 @@ const normalized = (sql: string) => sql.replace(/\s+/g, " ").trim();
 describe("AdminOverviewService.gameCounters", () => {
   it("shapes the single aggregate row", async () => {
     const { service, execute } = setup([
-      [{ waiting: 1, active: 2, finished: 9, cancelled: 3, invite: 5, lobby: 3, rematch: 1, five_in_row: 4, draw: 1, timeout: 2, resignation: 2 }],
+      [{ waiting: 1, active: 2, finished: 9, cancelled: 3, invite: 5, lobby: 3, rematch: 1, five_in_row: 4, draw: 1, timeout: 2, resignation: 2, points: 3 }],
     ]);
 
     await expect(service.gameCounters()).resolves.toEqual({
       byStatus: { waiting: 1, active: 2, finished: 9, cancelled: 3 },
       finishedByOrigin: { invite: 5, lobby: 3, rematch: 1 },
-      finishedByEndReason: { five_in_row: 4, draw: 1, timeout: 2, resignation: 2 },
+      finishedByEndReason: { five_in_row: 4, draw: 1, timeout: 2, resignation: 2, points: 3 },
     });
     expect(execute).toHaveBeenCalledOnce();
     expect(normalized(String(execute.mock.calls[0]![0]))).toContain("from games");
