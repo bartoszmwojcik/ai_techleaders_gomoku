@@ -68,6 +68,7 @@ describe("finished-game counter guard", () => {
     const finishers = files.filter(({ content }) => FINISHES_A_GAME.test(content)).map(({ path }) => path);
     expect(finishers.sort()).toEqual([
       "packages/app/src/server/services/games/game-move-service.ts",
+      "packages/app/src/server/services/games/paper-settler.ts",
       "packages/app/src/server/services/games/timeout-settler.ts",
     ]);
     expect(findUnrecordedFinishers(files)).toEqual([]);

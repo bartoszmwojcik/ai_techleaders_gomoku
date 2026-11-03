@@ -241,7 +241,7 @@ describe("SpectatorService.getState", () => {
       ],
     });
     expect(state.clock).toMatchObject({ remainingMs: [580_000, 585_000], running: 1, now: NOW.getTime() });
-    expect(Object.keys(state).sort()).toEqual(["audience", "blackSeat", "canChat", "clock", "moveCount", "moves", "players", "result", "status", "turnSeat"]);
+    expect(Object.keys(state).sort()).toEqual(["audience", "blackSeat", "canChat", "clock", "moveCount", "moves", "players", "result", "status", "timeControlMs", "turnSeat", "variant"]);
     for (const player of state.players) expect(Object.keys(player)).not.toContain("seen");
     expect(JSON.stringify(state)).not.toMatch(/secret|ala@example|invitation|code|rematch|you/i);
     expect(timeoutSettler.settleExpired).toHaveBeenCalledWith(GAME, em, NOW);
