@@ -1,6 +1,6 @@
-import { turnColor, type GameColor, type GameReview, type Seat } from "@gomoku/core";
+import { turnColor, type GameColor, type GameReview, type GameVariant, type Seat } from "@gomoku/core";
 
-import { cellName, colorOfSeat, outcomeOf, playerNameOf, stonesOf, type Outcome, type PlacedStone } from "./play";
+import { cellName, colorOfSeat, outcomeOf, playerNameOf, sideWords, stonesOf, type Outcome, type PlacedStone } from "./play";
 
 /** The stones on the board after `step` moves (0 = empty board). */
 export function stonesAt(review: GameReview, step: number): PlacedStone[] {
@@ -18,7 +18,6 @@ export function winLineAt(review: GameReview, step: number): number[] | undefine
 }
 
 const COLOR_WORD: Record<GameColor, string> = { black: "czarny", white: "biały" };
-const COLOR_WINS: Record<GameColor, string> = { black: "Wygrały czarne", white: "Wygrały białe" };
 
 /** "Ruch 12 z 37: biały, kolumna F, rząd 8", "Początek partii" on the empty board. */
 export function stepStatus(review: GameReview, step: number): string {
@@ -42,6 +41,9 @@ const NEUTRAL_DETAIL = {
 /** The review of a paper game has no sheet to step through yet: its moves are not in the classic log (E11). */
 export const isPaperReview = (review: Pick<GameReview, "result">): boolean => review.result.reason === "points";
 
+/** The review carries no variant: a game decided by points can only be a paper one. */
+export const reviewVariant = (review: Pick<GameReview, "result">): GameVariant => (isPaperReview(review) ? "paper" : "classic");
+
 /**
  * The banner of the review. A reader who played hears it as on the game screen ("Wygrałeś"); a
  * reader who did not (`viewerSeat` null, the public games of E09-S02) hears who won, by colour and name.
@@ -50,7 +52,7 @@ export function reviewOutcomeOf(review: GameReview): Outcome {
   if (review.viewerSeat !== null) {
     return outcomeOf({ result: review.result, you: { seat: review.viewerSeat } })!;
   }
-  return neutralOutcomeOf(review);
+  return neutralOutcomeOf({ ...review, variant: reviewVariant(review) });
 }
 
 /**
@@ -61,6 +63,8 @@ export function neutralOutcomeOf(game: {
   result: GameReview["result"] & { scores?: [number, number] };
   blackSeat: Seat;
   players: GameReview["players"];
+  /** Names the sides: by colour (classic, the default) or by mark (paper). */
+  variant?: GameVariant;
 }): Outcome {
   const { winnerSeat, reason, scores } = game.result;
   if (winnerSeat === null) {
@@ -71,10 +75,7 @@ export function neutralOutcomeOf(game: {
     };
   }
   const color = colorOfSeat(game.blackSeat, winnerSeat)!;
-  // The winner's points first: "Wygrały czarne: Ala · 7 : 5".
+  // The winner's points first: "Wygrał krzyżyk: Ala · 7 : 5".
   const score = scores ? ` · ${scores[winnerSeat - 1]} : ${scores[2 - winnerSeat]}` : "";
-  return { result: "win", title: `${COLOR_WINS[color]}: ${seatName(game, winnerSeat)}${score}`, detail: NEUTRAL_DETAIL[reason] };
+  return { result: "win", title: `${sideWords(game.variant).wins[color]}: ${seatName(game, winnerSeat)}${score}`, detail: NEUTRAL_DETAIL[reason] };
 }
-
-/** The colour as the legend names it: "Czarne: Ala". */
-export const COLOR_TITLE: Record<GameColor, string> = { black: "Czarne", white: "Białe" };

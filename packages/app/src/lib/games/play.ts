@@ -1,5 +1,6 @@
 import { coordsOf } from "@gomoku/core/games/board";
 import { turnColor } from "@gomoku/core/games/rules";
+import type { GameVariant } from "@gomoku/core/games/paper/constants";
 import type { GameColor, Seat } from "@gomoku/core/games/types";
 
 import type { GameView } from "@/server/http/game-view";
@@ -47,9 +48,51 @@ export function colorOfSeat(blackSeat: Seat | null, seat: Seat): GameColor | nul
   return blackSeat === seat ? "black" : "white";
 }
 
-export const COLOR_NAME: Record<GameColor, string> = { black: "czarne", white: "białe" };
-/** "Grasz czarnymi". */
-export const COLOR_PLAYS: Record<GameColor, string> = { black: "czarnymi", white: "białymi" };
+/** How the two sides are named on screen: by colour in the classic game, by mark (black = ×, white = ○) in the paper one. */
+export type SideWords = {
+  /** "Twój ruch (czarne)". */
+  name: Record<GameColor, string>;
+  /** "Grasz czarnymi". */
+  plays: Record<GameColor, string>;
+  /** "Czarne: Ala". */
+  title: Record<GameColor, string>;
+  /** "Ruch czarnych: Ala". */
+  genitive: Record<GameColor, string>;
+  /** "Wygrały czarne: Ala". */
+  wins: Record<GameColor, string>;
+  /** The button of the two-step move. */
+  place: Record<GameColor, string>;
+  rematchSwapped: string;
+  rematchOffer: string;
+  rematchInfo: string;
+};
+
+const CLASSIC_WORDS: SideWords = {
+  name: { black: "czarne", white: "białe" },
+  plays: { black: "czarnymi", white: "białymi" },
+  title: { black: "Czarne", white: "Białe" },
+  genitive: { black: "czarnych", white: "białych" },
+  wins: { black: "Wygrały czarne", white: "Wygrały białe" },
+  place: { black: "Postaw kamień", white: "Postaw kamień" },
+  rematchSwapped: "Rewanż: kolory zostały zamienione.",
+  rematchOffer: "Kolory zostaną zamienione.",
+  rematchInfo: "Rewanż to nowa partia z odwróconymi kolorami",
+};
+
+const PAPER_WORDS: SideWords = {
+  name: { black: "krzyżyk", white: "kółko" },
+  plays: { black: "krzyżykiem", white: "kółkiem" },
+  title: { black: "Krzyżyk", white: "Kółko" },
+  genitive: { black: "krzyżyka", white: "kółka" },
+  wins: { black: "Wygrał krzyżyk", white: "Wygrało kółko" },
+  place: { black: "Postaw krzyżyk", white: "Postaw kółko" },
+  rematchSwapped: "Rewanż: znaki zostały zamienione.",
+  rematchOffer: "Znaki zostaną zamienione.",
+  rematchInfo: "Rewanż to nowa partia z zamienionymi znakami",
+};
+
+/** Anything but the paper variant reads as classic, so a page that meets a variant it does not know can still say it does not know it. */
+export const sideWords = (variant: GameVariant | undefined): SideWords => (variant === "paper" ? PAPER_WORDS : CLASSIC_WORDS);
 
 const COLUMN_STATE = { empty: "puste", black: "czarny kamień", white: "biały kamień" } as const;
 

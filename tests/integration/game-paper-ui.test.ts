@@ -1,6 +1,6 @@
 // The paper and pencil game in two real browsers (E11, steps 12-13): the creator (an account, a mouse)
 // picks the variant and a 2 minute clock on the home page, a guest on a touch screen joins, and both
-// put stones on the sheet. The touch player checks 320/360/390 px: "Postaw kamień" is inside the window,
+// put marks on the sheet. The touch player checks 320/360/390 px: the "Postaw …" button is inside the window,
 // nothing scrolls sideways and the zoom levels run from 15 to 21 fields.
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 
@@ -57,10 +57,10 @@ const byLabel = (label: string) => `[aria-label="${label}"]`;
 const rows = (browser: Browser) => browser.count("[role=grid] [role=row]");
 const horizontalOverflow = (browser: Browser) =>
   browser.evaluate<boolean>("document.documentElement.scrollWidth > document.documentElement.clientWidth");
-/** Bottom edge of "Postaw kamień" relative to the window height (negative: inside the window). */
+/** Bottom edge of the "Postaw …" button relative to the window height (negative: inside the window). */
 const buttonOverflow = (browser: Browser) =>
   browser.evaluate<number>(
-    "(() => { const b = [...document.querySelectorAll('button')].find((e) => e.textContent.trim() === 'Postaw kamień'); return Math.round(b.getBoundingClientRect().bottom - window.innerHeight); })()",
+    "(() => { const b = [...document.querySelectorAll('button')].find((e) => e.textContent.trim().startsWith('Postaw')); return Math.round(b.getBoundingClientRect().bottom - window.innerHeight); })()",
   );
 
 describe("the paper and pencil game", () => {
@@ -128,23 +128,25 @@ describe("the paper and pencil game", () => {
     }
 
     // The black player puts the first stone in the middle; the white one next to it.
-    const guestIsBlack = (await guest.text("main")).includes("Twój ruch (czarne)");
+    const guestIsBlack = (await guest.text("main")).includes("Twój ruch (krzyżyk)");
+    // The guest's button names the guest's mark: × for black, ○ for white.
+    const place = guestIsBlack ? "Postaw krzyżyk" : "Postaw kółko";
     const centre = async (browser: Browser, touch: boolean) => {
-      if (touch) await browser.run("find", "text", "Postaw kamień", "click");
+      if (touch) await browser.run("find", "text", place, "click");
       else await browser.click(byLabel("Pole 0, 0, puste"));
     };
     const beside = async (browser: Browser, touch: boolean) => {
       if (touch) {
         await browser.click(byLabel("Zaznaczenie w prawo"));
-        await browser.run("find", "text", "Postaw kamień", "click");
+        await browser.run("find", "text", place, "click");
       } else await browser.click(byLabel("Pole 1, 0, puste"));
     };
-    await bodyHas(guestIsBlack ? guest : creator, "Twój ruch (czarne)");
+    await bodyHas(guestIsBlack ? guest : creator, "Twój ruch (krzyżyk)");
     await centre(guestIsBlack ? guest : creator, guestIsBlack);
-    await bodyHas(guestIsBlack ? creator : guest, "Twój ruch (białe)");
+    await bodyHas(guestIsBlack ? creator : guest, "Twój ruch (kółko)");
     await beside(guestIsBlack ? creator : guest, !guestIsBlack);
-    await creator.waitForFn("document.querySelectorAll('[aria-label*=\"kamień\"]').length === 2");
-    await guest.waitForFn("document.querySelectorAll('[aria-label*=\"kamień\"]').length === 2");
+    await creator.waitForFn("document.querySelectorAll('[role=grid] [aria-label*=\"krzyżyk\"], [role=grid] [aria-label*=\"kółko\"]').length === 2");
+    await guest.waitForFn("document.querySelectorAll('[role=grid] [aria-label*=\"krzyżyk\"], [role=grid] [aria-label*=\"kółko\"]').length === 2");
     expect((await state()).paper.moves).toEqual(expect.arrayContaining([expect.objectContaining({ x: 50, y: 50 }), expect.objectContaining({ x: 51, y: 50 })]));
 
     // Phone windows: wait for the touch player's turn so the button is there, then measure.
@@ -159,7 +161,7 @@ describe("the paper and pencil game", () => {
       expect(await rows(guest), `15 fields at ${width} px`).toBe(15);
       // Known deviation: at 320×568 a long opponent name wraps in the clock and pushes the button up to ~34 px
       // below the window edge (the spec budget is ≈ 544 px); 360 px and wider must fit.
-      expect(await buttonOverflow(guest), `"Postaw kamień" below the window edge (px) at ${width} px`).toBeLessThanOrEqual(width === 320 ? 40 : 0);
+      expect(await buttonOverflow(guest), `the "Postaw …" button below the window edge (px) at ${width} px`).toBeLessThanOrEqual(width === 320 ? 40 : 0);
       for (const level of [17, 19, 21]) {
         await guest.click(byLabel("Oddal"));
         expect(await rows(guest)).toBe(level);

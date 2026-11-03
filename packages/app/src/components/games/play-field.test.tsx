@@ -663,7 +663,7 @@ describe("PlayField, the paper game (E11)", () => {
     field(paperGame());
     expect(document.querySelector('[aria-label="Plansza bez granic, papier i ołówek"]')).not.toBeNull();
     expect(document.querySelector('[aria-label="Plansza 15 na 15"]')).toBeNull();
-    expect(screen.getByText("Twój ruch (czarne)")).toBeTruthy();
+    expect(screen.getByText("Twój ruch (krzyżyk)")).toBeTruthy();
     await press(at(2, 0));
     expect(apiCall).toHaveBeenCalledWith("/api/games/g1/moves", { body: { x: 52, y: 50, moveNumber: 3 } });
     expect(onState).toHaveBeenCalledWith(expect.anything(), 2);
@@ -671,7 +671,7 @@ describe("PlayField, the paper game (E11)", () => {
 
   it("does not send a field that is too far from every stone", async () => {
     field(paperGame());
-    await press(cell("Pole 8, 0, puste, za daleko od kamieni"));
+    await press(cell("Pole 8, 0, puste, za daleko od znaków"));
     expect(apiCall).not.toHaveBeenCalled();
   });
 
@@ -680,7 +680,31 @@ describe("PlayField, the paper game (E11)", () => {
     field(paperGame());
     await press(at(0, 1));
     expect(screen.getByText("Wysyłanie ruchu…")).toBeTruthy();
-    expect(document.querySelector('[aria-label^="Pole 0, 1, czarny kamień"]')).not.toBeNull();
+    expect(document.querySelector('[aria-label^="Pole 0, 1, krzyżyk"]')).not.toBeNull();
+  });
+
+  it("names the sides by mark everywhere and shows the marks at the names and the turn, without colours or stones", () => {
+    field(paperGame({ moveCount: 0 }, { moves: [] }));
+    expect(screen.getByText("Twój ruch (krzyżyk)")).toBeTruthy();
+    expect(screen.getByText("Wylosowano: Ty grasz krzyżykiem.")).toBeTruthy();
+    expect(screen.getByTestId("my-color").textContent).toBe("Grasz krzyżykiem.");
+    expect(screen.getByRole("img", { name: "krzyżyk" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "kółko" })).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/kamie|czarn|biał/i);
+  });
+
+  it("names the second player's side and the swap of a rematch by mark", () => {
+    field(paperGame({ moveCount: 0, blackSeat: 2, turnSeat: 1, fromRematch: true }, { moves: [] }));
+    expect(screen.getByText("Rewanż: znaki zostały zamienione. Grasz kółkiem.")).toBeTruthy();
+    expect(screen.getByText("Twój ruch (kółko)")).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/kamie|czarn|biał|kolor/i);
+  });
+
+  it("says the past tense by mark at the end of a game", () => {
+    field(paperGame({ status: "finished", turnSeat: null, result: { winnerSeat: 1, reason: "points", winLine: null, scores: [7, 5] } }));
+    expect(screen.getByTestId("my-color").textContent).toBe("Grałeś krzyżykiem.");
+    expect(screen.getByTestId("rematch-info").textContent).toBe("Rewanż to nowa partia z zamienionymi znakami: zagrasz kółkiem.");
+    expect(document.body.textContent).not.toMatch(/kamie|czarn|biał|kolor/i);
   });
 
   it("shows the points at the clocks and who the automat plays for", () => {
@@ -691,19 +715,19 @@ describe("PlayField, the paper game (E11)", () => {
 
   it("says the automat is putting the stone and keeps the board read-only", () => {
     field(paperGame({ turnSeat: 2 }, { autoSeat: 2, autoMoveAt: AT }));
-    expect(screen.getByText("Automat stawia kamień…")).toBeTruthy();
+    expect(screen.getByText("Automat stawia znak…")).toBeTruthy();
     expect(grid().getAttribute("aria-readonly")).toBe("true");
   });
 
   it("keeps the own clock running while the automat plays for the opponent", () => {
     field(paperGame({ clock: { remainingMs: [100_000, 0], running: 1, now: 0 } }, { autoSeat: 2 }));
-    expect(screen.getByText("Twój ruch (czarne)")).toBeTruthy();
+    expect(screen.getByText("Twój ruch (krzyżyk)")).toBeTruthy();
     expect(document.querySelectorAll('[data-slot="clock"]')).toHaveLength(2);
   });
 
   it("tells a player whose own time ran out that the automat plays for them", () => {
     field(paperGame({ turnSeat: 1, clock: { remainingMs: [0, 100_000], running: 2, now: 0 } }, { autoSeat: 1 }));
-    expect(screen.getByText("Twój czas minął — automat stawia kamienie za Ciebie")).toBeTruthy();
+    expect(screen.getByText("Twój czas minął — automat stawia znaki za Ciebie")).toBeTruthy();
     expect(grid().getAttribute("aria-readonly")).toBe("true");
   });
 
@@ -717,7 +741,7 @@ describe("PlayField, the paper game (E11)", () => {
     apiCall.mockResolvedValue(failure("MOVE_TOO_FAR"));
     field(paperGame());
     await press(at(2, 0));
-    expect(screen.getByText("Za daleko od kamieni: najwyżej 3 pola od innego.")).toBeTruthy();
+    expect(screen.getByText("Za daleko od znaków: najwyżej 3 pola od innego.")).toBeTruthy();
     expect(onRefresh).toHaveBeenCalled();
   });
 
@@ -733,12 +757,12 @@ describe("PlayField, the paper game (E11)", () => {
     it("starts the selection on the opponent's last stone and moves it with the arrows", async () => {
       field(paperGame());
       expect(screen.getByTestId("selection").textContent).toBe("Dotknij pola albo przesuń zaznaczenie strzałkami.");
-      expect(byText("Postaw kamień").hasAttribute("disabled")).toBe(true);
+      expect(byText("Postaw krzyżyk").hasAttribute("disabled")).toBe(true);
       await press(screen.getByRole("button", { name: "Zaznaczenie w prawo" }));
-      expect(screen.getByTestId("selection").textContent).toBe("Zaznaczono pole 2, 0. Naciśnij „Postaw kamień”.");
-      expect(byText("Postaw kamień").hasAttribute("disabled")).toBe(false);
+      expect(screen.getByTestId("selection").textContent).toBe("Zaznaczono pole 2, 0. Naciśnij „Postaw krzyżyk”.");
+      expect(byText("Postaw krzyżyk").hasAttribute("disabled")).toBe(false);
       expect(apiCall).not.toHaveBeenCalled();
-      await press(byText("Postaw kamień"));
+      await press(byText("Postaw krzyżyk"));
       expect(apiCall).toHaveBeenCalledWith("/api/games/g1/moves", { body: { x: 52, y: 50, moveNumber: 3 } });
     });
 
@@ -746,8 +770,8 @@ describe("PlayField, the paper game (E11)", () => {
       field(paperGame());
       const right = screen.getByRole("button", { name: "Zaznaczenie w prawo" });
       for (let step = 0; step < 4; step += 1) await press(right);
-      expect(screen.getByTestId("selection").textContent).toBe("Za daleko od kamieni: najwyżej 3 pola od innego.");
-      expect(byText("Postaw kamień").hasAttribute("disabled")).toBe(true);
+      expect(screen.getByTestId("selection").textContent).toBe("Za daleko od znaków: najwyżej 3 pola od innego.");
+      expect(byText("Postaw krzyżyk").hasAttribute("disabled")).toBe(true);
       await press(screen.getByRole("button", { name: "Zaznaczenie w lewo" }));
       await press(screen.getByRole("button", { name: "Zaznaczenie w lewo" }));
       await press(screen.getByRole("button", { name: "Zaznaczenie w lewo" }));
@@ -757,8 +781,8 @@ describe("PlayField, the paper game (E11)", () => {
 
     it("selects the middle for the first stone of the game", async () => {
       field(paperGame({ moveCount: 0 }, { moves: [] }));
-      expect(screen.getByTestId("selection").textContent).toBe("Zaznaczono pole 0, 0. Naciśnij „Postaw kamień”.");
-      await press(byText("Postaw kamień"));
+      expect(screen.getByTestId("selection").textContent).toBe("Zaznaczono pole 0, 0. Naciśnij „Postaw krzyżyk”.");
+      await press(byText("Postaw krzyżyk"));
       expect(apiCall).toHaveBeenCalledWith("/api/games/g1/moves", { body: { x: 50, y: 50, moveNumber: 1 } });
     });
 
@@ -772,7 +796,7 @@ describe("PlayField, the paper game (E11)", () => {
 
     it("asks to wait while the automat plays", () => {
       field(paperGame({ turnSeat: 2 }, { autoSeat: 2 }));
-      expect(screen.getByTestId("selection").textContent).toBe("Poczekaj, aż automat postawi kamień.");
+      expect(screen.getByTestId("selection").textContent).toBe("Poczekaj, aż automat postawi znak.");
     });
 
     it("asks to wait for the opponent", () => {

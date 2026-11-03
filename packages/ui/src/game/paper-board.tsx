@@ -26,6 +26,7 @@ import {
 
 import { crispLineWidth, watchDevicePixelRatio } from "./board-line-width";
 import { cn } from "./cn";
+import { PaperMark } from "./paper-mark";
 import {
   centerView,
   dragView,
@@ -74,7 +75,7 @@ type PaperBoardLabels = {
   board: string;
   /** Names one cell, e.g. "Pole 3, −2, puste". */
   cell: (cell: PaperCellInfo) => string;
-  /** Description of a field too far from every stone, e.g. "Za daleko od kamieni (najwyżej 3 pola)". */
+  /** Description of a field too far from every stone, e.g. "Za daleko od znaków (najwyżej 3 pola)". */
   notAllowed: string;
   /** Live announcement of the automaton's move; the point is in screen coordinates. */
   autoMoved: (point: Point) => string;
@@ -102,21 +103,21 @@ type PaperBoardLabels = {
 
 type PaperBoardProps = {
   stones: readonly PaperStone[];
-  /** Stone colour of each seat. */
+  /** The side of each seat: black plays ×, white plays ○. */
   colors: Record<Seat, StoneColor>;
   /** Counted fives, drawn with a pencil stroke. */
   fives?: readonly PaperFive[];
-  /** The last stone placed (marked with an outline). */
+  /** The last mark placed (framed with the red pencil). */
   lastMove?: Point;
-  /** The opponent's last stone; when it is off-screen a direction marker appears on the edge. */
+  /** The opponent's last mark; when it is off-screen a direction marker appears on the edge. */
   opponentMove?: Point;
   /** The field picked and waiting for confirmation (dashed outline); the parent owns the second step. */
   selection?: Point;
-  /** Seat whose colour the selection preview uses. Default 1. */
+  /** Seat whose mark the selection preview shows. Default 1. */
   selectionSeat?: Seat;
   /** Runs when the player picks an allowed empty field (click, Enter, Space) or moves the selection with the touch bar. */
   onSelect?: (point: Point) => void;
-  /** Fields where a stone may go, as a predicate or a list; fields outside are inactive. Omit for "everywhere". */
+  /** Fields where a mark may go, as a predicate or a list; fields outside are inactive. Omit for "everywhere". */
   allowed?: ((point: Point) => boolean) | readonly Point[];
   /** Finished game or opponent's turn: the board can be read and moved around but nothing is picked. */
   disabled?: boolean;
@@ -127,7 +128,7 @@ type PaperBoardProps = {
   selectionBar?: boolean;
   /** Show the toolbar above the board (window arrows, centre, zoom on desktop). Default true. */
   toolbar?: boolean;
-  /** Changing the value centres the view on the stones (start of the game, after the player's own move). */
+  /** Changing the value centres the view on the marks (start of the game, after the player's own move). */
   recenterToken?: string | number;
   /** Key of the zoom level in localStorage. */
   storageKey?: string;
@@ -156,8 +157,11 @@ const KEY_DIRECTIONS: Record<string, Direction> = {
 const MARKER_X = { "-1": "left-1", "0": "left-1/2 -translate-x-1/2", "1": "right-1" } as const;
 const MARKER_Y = { "-1": "top-1", "0": "top-1/2 -translate-y-1/2", "1": "bottom-1" } as const;
 
-const TOOL_BUTTON =
-  "inline-flex size-(--target-min) shrink-0 items-center justify-center rounded-base border border-border-control bg-transparent text-text-primary hover:bg-surface-raised active:bg-border-default focus-visible:focus-ring disabled:cursor-not-allowed disabled:text-text-muted [&_svg]:size-(--icon-size-md)";
+const TOOL_LOOK =
+  "inline-flex shrink-0 items-center justify-center rounded-base border border-border-control bg-transparent text-text-primary hover:bg-surface-raised active:bg-border-default focus-visible:focus-ring disabled:cursor-not-allowed disabled:text-text-muted [&_svg]:size-(--icon-size-md)";
+const TOOL_BUTTON = `${TOOL_LOOK} size-(--target-min)`;
+/** A button with a word: as tall as the icon buttons, as wide as the word needs, so the text never leaves its frame. */
+const TOOL_TEXT_BUTTON = `${TOOL_LOOK} h-(--target-min) min-w-target whitespace-nowrap px-3 text-body`;
 
 const keyOf = ({ x, y }: Point) => `${x},${y}`;
 
@@ -284,6 +288,9 @@ function PaperBoard({
 
   const x0 = windowStart(view.cx, view.level);
   const y0 = windowStart(view.cy, view.level);
+  const lastColumn = view.level - 1;
+  const atStart = { x: x0 === 0, y: y0 === 0 };
+  const atEnd = { x: x0 + lastColumn === PAPER_MAX, y: y0 + lastColumn === PAPER_MAX };
   const tabStop = isInWindow(view, focus) ? focus : { x: view.cx, y: view.cy };
 
   function pick(point: Point) {
@@ -384,7 +391,7 @@ function PaperBoard({
           })}
           <button
             type="button"
-            className={cn(TOOL_BUTTON, "px-3 text-body")}
+            className={TOOL_TEXT_BUTTON}
             onClick={() => setView(centerView(view, lastMove ?? stonesCenter(stones)))}
           >
             {labels.center}
@@ -397,7 +404,8 @@ function PaperBoard({
       )}
       <div
         style={lineWidth ? ({ "--board-line-width": lineWidth } as CSSProperties) : undefined}
-        className="board-texture rounded-base bg-board-surface p-(--board-padding) shadow-board"
+        data-testid="paper-sheet"
+        className="paper-sheet p-(--board-padding)"
       >
         <div
           ref={frame}
@@ -429,20 +437,23 @@ function PaperBoard({
                     const color = stone ? colors[stone.seat] : undefined;
                     const shown = color ?? (isSelected ? colors[selectionSeat] : undefined);
                     const last = lastMove !== undefined && keyOf(lastMove) === key;
-                    const edgeX = point.x === 0 || point.x === PAPER_MAX;
-                    const edgeY = point.y === 0 || point.y === PAPER_MAX;
                     const inactive = Boolean(stone) || !canPlace;
                     return (
                       <div
                         role="gridcell"
                         key={key}
                         className={cn(
-                          "relative aspect-square before:absolute before:top-1/2 before:bg-board-line after:absolute after:left-1/2 after:bg-board-line",
-                          point.x === 0 ? "before:right-0 before:left-1/2" : point.x === PAPER_MAX ? "before:right-1/2 before:left-0" : "before:inset-x-0",
-                          point.y === 0 ? "after:top-1/2 after:bottom-0" : point.y === PAPER_MAX ? "after:top-0 after:bottom-1/2" : "after:inset-y-0",
-                          edgeY ? "before:h-[calc(var(--board-line-width)*3)]" : "before:h-(--board-line-width)",
-                          edgeX ? "after:w-[calc(var(--board-line-width)*3)]" : "after:w-(--board-line-width)",
-                          restricted && canPlace && !stone && "bg-paper-allowed",
+                          // The squares of the sheet: a line along the top and the left of every cell. At the rim of the window
+                          // the line runs on into the fading margin, except where the whole board really ends (0 and 100).
+                          "relative aspect-square before:absolute before:top-0 before:bg-paper-line after:absolute after:left-0 after:bg-paper-line",
+                          column === 0 && !atStart.x ? "before:-left-(--board-padding)" : "before:left-0",
+                          column === lastColumn && !atEnd.x ? "before:-right-(--board-padding)" : "before:right-0",
+                          row === 0 && !atStart.y ? "after:-top-(--board-padding)" : "after:top-0",
+                          row === lastColumn && !atEnd.y ? "after:-bottom-(--board-padding)" : "after:bottom-0",
+                          point.y === 0 ? "before:h-[calc(var(--board-line-width)*3)]" : "before:h-(--board-line-width)",
+                          point.x === 0 ? "after:w-[calc(var(--board-line-width)*3)]" : "after:w-(--board-line-width)",
+                          // A mark stays on the tone of its surroundings, with no patch of darker paper under it.
+                          restricted && (canPlace || stone) && "bg-paper-allowed",
                         )}
                       >
                         <button
@@ -471,14 +482,12 @@ function PaperBoard({
                             <span
                               aria-hidden="true"
                               className={cn(
-                                "flex size-(--piece-size) items-center justify-center rounded-piece border border-piece-outline shadow-piece",
-                                shown === "black" ? "bg-piece-black" : "bg-piece-white",
-                                !stone && "border-2 border-dashed",
-                                last && "outline-2 outline-offset-2 outline-board-marker",
-                                stone?.auto && !last && "outline-2 outline-dashed outline-offset-2 outline-board-marker",
+                                "flex size-full items-center justify-center",
+                                last && "outline-2 -outline-offset-2 outline-paper-pencil",
+                                !stone && "outline-2 outline-dashed -outline-offset-2 outline-paper-pencil",
                               )}
                             >
-                              {stone?.auto && <span className="size-1/4 rounded-piece bg-paper-auto" />}
+                              <PaperMark color={shown} auto={Boolean(stone?.auto)} preview={!stone} className="size-(--paper-mark-size)" />
                             </span>
                           )}
                         </button>
@@ -489,6 +498,27 @@ function PaperBoard({
               );
             })}
           </div>
+          {/* The two lines that close the squares of the last column and the last row. */}
+          <span
+            aria-hidden="true"
+            data-testid="paper-closing-column"
+            className={cn(
+              "pointer-events-none absolute right-0 bg-paper-line",
+              atStart.y ? "top-0" : "-top-(--board-padding)",
+              atEnd.y ? "bottom-0" : "-bottom-(--board-padding)",
+              atEnd.x ? "w-[calc(var(--board-line-width)*3)]" : "w-(--board-line-width)",
+            )}
+          />
+          <span
+            aria-hidden="true"
+            data-testid="paper-closing-row"
+            className={cn(
+              "pointer-events-none absolute bottom-0 bg-paper-line",
+              atStart.x ? "left-0" : "-left-(--board-padding)",
+              atEnd.x ? "right-0" : "-right-(--board-padding)",
+              atEnd.y ? "h-[calc(var(--board-line-width)*3)]" : "h-(--board-line-width)",
+            )}
+          />
           <svg aria-hidden="true" viewBox={`0 0 ${view.level} ${view.level}`} preserveAspectRatio="none" className="pointer-events-none absolute inset-0 size-full">
             {fives.map(({ seat, from, to }) => {
               const length = Math.max(Math.hypot(to.x - from.x, to.y - from.y), 1);

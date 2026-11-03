@@ -1,7 +1,7 @@
 import type { GameReview } from "@gomoku/core";
 import { describe, expect, it } from "vitest";
 
-import { COLOR_TITLE, isPaperReview, lastMoveAt, neutralOutcomeOf, reviewOutcomeOf, stepStatus, stonesAt, winLineAt } from "./review";
+import { isPaperReview, lastMoveAt, neutralOutcomeOf, reviewOutcomeOf, reviewVariant, stepStatus, stonesAt, winLineAt } from "./review";
 
 const review = (over: Partial<GameReview> = {}): GameReview => ({
   gameId: "g",
@@ -75,12 +75,6 @@ describe("reviewOutcomeOf", () => {
   });
 });
 
-describe("COLOR_TITLE", () => {
-  it("names both colours for the legend", () => {
-    expect(COLOR_TITLE).toEqual({ black: "Czarne", white: "Białe" });
-  });
-});
-
 describe("the paper game", () => {
   const players = review().players;
 
@@ -96,6 +90,18 @@ describe("the paper game", () => {
       title: "Wygrały białe: Bob (gość) · 7 : 3",
       detail: "Wygrał wyższy wynik punktowy.",
     });
+  });
+
+  it("names the winner by mark in the paper game, for a spectator and for a reader who did not play", () => {
+    const result = { winnerSeat: 2 as const, reason: "points" as const, winLine: null, scores: [3, 7] as [number, number] };
+    expect(neutralOutcomeOf({ result, blackSeat: 1, players, variant: "paper" }).title).toBe("Wygrało kółko: Bob (gość) · 7 : 3");
+    expect(neutralOutcomeOf({ result, blackSeat: 2, players, variant: "paper" }).title).toBe("Wygrał krzyżyk: Bob (gość) · 7 : 3");
+    expect(reviewOutcomeOf(review({ viewerSeat: null, result }))).toMatchObject({ title: "Wygrało kółko: Bob (gość) · 7 : 3" });
+  });
+
+  it("takes a review decided by points for a paper game, any other for a classic one", () => {
+    expect(reviewVariant(review({ result: { winnerSeat: 1, reason: "points", winLine: null } }))).toBe("paper");
+    expect(reviewVariant(review())).toBe("classic");
   });
 
   it("tells a draw on points, with and without the points", () => {
