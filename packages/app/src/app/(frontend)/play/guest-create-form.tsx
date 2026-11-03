@@ -164,7 +164,7 @@ export function GuestCreateForm() {
             </Button>
           )}
           {failure?.kind === "waiting" && (
-            <Button variant="secondary" onClick={() => setAsking(true)}>
+            <Button variant="secondary" data-testid="guest-cancel-own" onClick={() => setAsking(true)}>
               Anuluj i utwórz nową
             </Button>
           )}

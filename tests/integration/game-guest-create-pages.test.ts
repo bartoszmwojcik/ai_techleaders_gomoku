@@ -206,7 +206,7 @@ describe("BR-13 for a guest", () => {
     await bodyHas(creator, "Masz oczekującą partię");
     expect(await creator.count(`a[href='${first}']`)).toBe(1);
 
-    await click(creator, "Anuluj i utwórz nową");
+    await creator.click("[data-testid=guest-cancel-own]");
     await bodyHas(creator, "Anulować poprzednie zaproszenie?");
     await click(creator, "Tak, anuluj i utwórz nową");
     await creator.waitForFn(`location.pathname.startsWith('/games/') && location.pathname !== ${JSON.stringify(first)}`);
