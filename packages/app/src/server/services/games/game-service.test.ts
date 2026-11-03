@@ -34,6 +34,8 @@ const CUTOFF = new Date(NOW.getTime() - READY_DEADLINE_MS);
 type Calls = string[];
 
 const EMPTY_BOARD = {
+  variant: "classic",
+  timeControlMs: INITIAL_CLOCK_MS,
   blackSeat: null,
   moveCount: 0,
   stonesBlack: "0".repeat(225),
@@ -60,6 +62,8 @@ function setup(options: {
   player?: Record<string, unknown>;
   now?: () => Date;
   userMissing?: boolean;
+  paperState?: Record<string, unknown>[];
+  paperMoves?: Record<string, unknown>[];
 } = {}) {
   const calls: Calls = [];
   const rows = [...(options.executeRows ?? [])];
@@ -67,13 +71,15 @@ function setup(options: {
   const em = {
     transactional: vi.fn(async (fn: (tx: unknown) => unknown) => fn(em)),
     execute: vi.fn(async (sql: string) => {
-      if (sql.includes("select g.move_count")) {
+      if (sql.includes("coalesce(s.move_count")) {
         calls.push("member");
         return options.member === false ? [] : [{ move_count: options.gamesMoveCount ?? 0 }];
       }
+      if (sql.includes("from paper_game_states where")) return options.paperState ?? [];
+      if (sql.includes("from paper_moves where")) return options.paperMoves ?? [];
       if (sql.includes("from users where id")) {
         calls.push("execute:lock-user");
-        return options.userMissing ? [] : [{ id: "user-1" }];
+        return options.userMissing ? [] : [{ id: "user-1", display_name: "Ala" }];
       }
       calls.push(`execute:${sql.includes("returning id") && sql.includes("update games set") ? "cancel" : sql.trim().split(/\s+/).slice(0, 2).join(" ")}`);
       return rows.shift() ?? [];
@@ -164,7 +170,16 @@ describe("GameService.create", () => {
 
     const expiresAt = new Date(NOW.getTime() + INVITATION_TTL_MS);
     expect(created.map(({ entity }) => entity)).toEqual([Game, GamePlayer, Invitation]);
-    expect(created[0]!.data).toEqual({ origin: "invite", isPublic: false, status: "waiting", createdAt: NOW });
+    expect(created[0]!.data).toEqual({
+      origin: "invite",
+      isPublic: false,
+      status: "waiting",
+      variant: "classic",
+      timeControlMs: INITIAL_CLOCK_MS,
+      clockMs1: INITIAL_CLOCK_MS,
+      clockMs2: INITIAL_CLOCK_MS,
+      createdAt: NOW,
+    });
     expect(created[1]!.data).toMatchObject({
       seat: 1,
       kind: "account",
@@ -607,6 +622,8 @@ describe("GameService.getState", () => {
     expect(timeoutSettler.settleExpired).toHaveBeenCalledWith("game-1", em, NOW);
     expect(state).toEqual({
       status: "waiting",
+      variant: "classic",
+      timeControlMs: INITIAL_CLOCK_MS,
       clock: { remainingMs: [INITIAL_CLOCK_MS, INITIAL_CLOCK_MS], running: null, now: NOW.getTime() },
       moveCount: 0,
       blackSeat: null,
@@ -831,5 +848,136 @@ describe("GameService.getState", () => {
     });
     expect(calls).toEqual(["member"]);
     expect(em.execute).toHaveBeenCalledOnce();
+  });
+});
+
+describe("GameService, the paper variant (E11)", () => {
+  const PAPER = { variant: "paper", timeControlMs: 120_000 } as const;
+  const creator = { id: "p1", seat: 1, kind: "account", displayName: "Ala", seenAt: NOW };
+  const guest = { id: "p2", seat: 2, kind: "guest", user: null, nickname: null, seenAt: null };
+  const move = (n: number, x: number, seat: number, auto = false) => ({
+    move_number: n,
+    x,
+    y: 50,
+    seat,
+    is_auto: auto,
+    at_ms: NOW.getTime() - 1000 * (10 - n),
+  });
+  const paperGame = (extra: Record<string, unknown> = {}) => ({
+    variant: "paper",
+    timeControlMs: 120_000,
+    clockMs1: 100_000,
+    clockMs2: 90_000,
+    ...extra,
+  });
+
+  it("creates the paper game with its clock budget and the empty sheet, for an account", async () => {
+    const { service, created, em } = setup();
+    await service.create({ kind: "account", userId: "user-1", settings: PAPER });
+    expect(created[0]!.data).toMatchObject({
+      variant: "paper",
+      timeControlMs: 120_000,
+      clockMs1: 120_000,
+      clockMs2: 120_000,
+    });
+    expect(em.execute).toHaveBeenLastCalledWith(expect.stringContaining("insert into paper_game_states"), ["game-1"], "run");
+  });
+
+  it("creates the paper game for a guest and none of the sheet for a classic one", async () => {
+    const HASH = "c".repeat(64);
+    const rows = [[], [], [], []];
+    const paper = setup({ executeRows: rows });
+    await paper.service.create({ kind: "guest", tokenHash: HASH, limitKey: "k", settings: PAPER });
+    expect(paper.created[0]!.data).toMatchObject({ variant: "paper", timeControlMs: 120_000 });
+    expect(paper.em.execute).toHaveBeenLastCalledWith(expect.stringContaining("paper_game_states"), ["game-1"], "run");
+
+    const classic = setup({ executeRows: [[], [], [], []] });
+    await classic.service.create({ kind: "guest", tokenHash: HASH, limitKey: "k" });
+    expect(classic.created[0]!.data).toMatchObject({ variant: "classic", timeControlMs: INITIAL_CLOCK_MS });
+    expect(classic.em.execute).not.toHaveBeenCalledWith(expect.stringContaining("paper_game_states"), expect.anything(), "run");
+  });
+
+  it("serves the sheet of a game in progress: moves after `after`, scores and the clock of the automat's opponent", async () => {
+    const { service } = setup({
+      gamesMoveCount: 3,
+      game: paperGame({ status: "active", blackSeat: 1, turnStartedAt: new Date(NOW.getTime() - 5000) }),
+      players: [creator, guest],
+      paperState: [{ move_count: 3, auto_seat: 2, pending_ms: NOW.getTime() + 1500 }],
+      paperMoves: [move(1, 50, 1), move(2, 51, 2), move(3, 52, 1)],
+    });
+    const state = await service.getState({ playerId: "p1" }, "game-1", 1);
+    expect(state).toMatchObject({
+      variant: "paper",
+      timeControlMs: 120_000,
+      moveCount: 3,
+      blackSeat: 1,
+      turnSeat: 2,
+      moves: [],
+      result: null,
+      paper: { moveCount: 3, autoSeat: 2, scores: [0, 0], autoMoveAt: new Date(NOW.getTime() + 1500).toISOString() },
+    });
+    expect(state.paper!.moves.map(({ n }) => n)).toEqual([2, 3]);
+    // The automat plays seat 2, so the clock of seat 1 runs.
+    expect(state.clock).toEqual({ remainingMs: [95_000, 90_000], running: 1, now: NOW.getTime() });
+  });
+
+  it("runs the clock of seat 2 when the automat plays seat 1, and of the seat on turn without one", async () => {
+    const base = { game: paperGame({ status: "active", blackSeat: 1, turnStartedAt: new Date(NOW.getTime() - 5000) }), players: [creator, guest] };
+    const automat = setup({ ...base, paperState: [{ move_count: 2, auto_seat: 1, pending_ms: null }], paperMoves: [move(1, 50, 1), move(2, 51, 2)] });
+    expect((await automat.service.getState({ playerId: "p1" }, "game-1")).clock.running).toBe(2);
+    const plain = setup({ ...base, paperState: [{ move_count: 1, auto_seat: null, pending_ms: null }], paperMoves: [move(1, 50, 1)] });
+    const state = await plain.service.getState({ playerId: "p1" }, "game-1");
+    expect(state.clock.running).toBe(2);
+    expect(state.paper).toMatchObject({ autoSeat: null, autoMoveAt: null });
+  });
+
+  it("has no seat on turn and no clock before the game is active", async () => {
+    const { service } = setup({
+      game: paperGame({ status: "waiting" }),
+      players: [creator],
+      invitation: { code: "ABCDEFGH", expiresAt: new Date("2026-10-30T12:00:00Z") },
+      paperState: [{ move_count: 0, auto_seat: null, pending_ms: null }],
+    });
+    const state = await service.getState({ playerId: "p1" }, "game-1");
+    expect(state).toMatchObject({ variant: "paper", turnSeat: null, blackSeat: null, result: null });
+    expect(state.clock.running).toBeNull();
+  });
+
+  it("carries the result with the scores of a finished paper game, and none when no reason is stored", async () => {
+    const finished = setup({
+      game: paperGame({ status: "finished", blackSeat: 1, winnerSeat: 2, endReason: "points", finishedAt: NOW }),
+      players: [creator, guest],
+      paperState: [{ move_count: 1, auto_seat: null, pending_ms: null }],
+      paperMoves: [move(1, 50, 1)],
+    });
+    expect((await finished.service.getState({ playerId: "p1" }, "game-1")).result).toEqual({
+      winnerSeat: 2,
+      reason: "points",
+      winLine: null,
+      scores: [0, 0],
+    });
+    const drawn = setup({
+      game: paperGame({ status: "finished", blackSeat: 1, winnerSeat: null, endReason: "points", finishedAt: NOW }),
+      players: [creator, guest],
+      paperState: [{ move_count: 0, auto_seat: null, pending_ms: null }],
+    });
+    expect((await drawn.service.getState({ playerId: "p1" }, "game-1")).result).toMatchObject({ winnerSeat: null });
+    const noReason = setup({
+      game: paperGame({ status: "finished", blackSeat: 1, endReason: null }),
+      players: [creator, guest],
+      paperState: [{ move_count: 0, auto_seat: null, pending_ms: null }],
+    });
+    expect((await noReason.service.getState({ playerId: "p1" }, "game-1")).result).toBeNull();
+  });
+
+  it("rejects `after` beyond the moves of the sheet with 400", async () => {
+    const { service } = setup({
+      gamesMoveCount: 1,
+      game: paperGame({ status: "active", blackSeat: 1 }),
+      players: [creator, guest],
+      paperState: [{ move_count: 1, auto_seat: null, pending_ms: null }],
+      paperMoves: [move(1, 50, 1)],
+    });
+    await expect(service.getState({ playerId: "p1" }, "game-1", 2)).rejects.toMatchObject({ status: 400 });
   });
 });
