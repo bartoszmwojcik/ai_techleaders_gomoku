@@ -167,6 +167,47 @@ export const ZaznaczenieRuszaSiePrzyciskami: Story = {
   },
 };
 
+/** Measured, not assumed: the word stays inside its button and the bar does not scroll sideways at 320 px. */
+export const PasekNarzedziWaski320: Story = {
+  render: (args) => (
+    <Narrow>
+      <PaperBoard {...args} />
+    </Narrow>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const toolbar = canvas.getByRole("toolbar");
+    const center = canvas.getByRole("button", { name: "Wyśrodkuj" });
+    await expect(center.scrollWidth).toBeLessThanOrEqual(center.clientWidth);
+    const box = center.getBoundingClientRect();
+    await expect(box.height).toBeGreaterThanOrEqual(44);
+    for (const other of within(toolbar).getAllByRole("button")) {
+      if (other === center) continue;
+      const rect = other.getBoundingClientRect();
+      const overlaps = rect.left < box.right && rect.right > box.left && rect.top < box.bottom && rect.bottom > box.top;
+      await expect(overlaps).toBe(false);
+    }
+    await expect(toolbar.scrollWidth).toBeLessThanOrEqual(toolbar.clientWidth);
+  },
+};
+
+export const KartkaNajwiekszyPoziom: Story = {
+  args: { storageKey: "story.paper-board.level-31" },
+  beforeEach: () => {
+    window.localStorage.setItem("story.paper-board.level-31", "31");
+    return () => window.localStorage.removeItem("story.paper-board.level-31");
+  },
+};
+
+export const KartkaNajmniejszyPoziomWaska: Story = {
+  args: { layout: "phone" },
+  render: (args) => (
+    <Narrow>
+      <PaperBoard {...args} />
+    </Narrow>
+  ),
+};
+
 export const PrzyciskiPowiekszania: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

@@ -24,11 +24,12 @@ Pokazuje partię wariantu „papier i ołówek” na planszy 101 × 101 pól prz
 ## 4. Anatomia
 
 1. **Okno** N × N pól; renderowane są tylko widoczne pola (najwyżej 31² przycisków).
-2. **Pasek narzędzi** nad planszą: cztery strzałki przesuwające okno o ⌊N/3⌋, „Wyśrodkuj”, na komputerze „−”/„+” i poziom.
-3. **Pola dozwolone** (najwyżej 3 pola od kamienia) w jaśniejszym tonie drewna (`paper-allowed`); pozostałe są nieaktywne i mają opis dla czytnika.
+2. **Pasek narzędzi** nad planszą: cztery strzałki przesuwające okno o ⌊N/3⌋, „Wyśrodkuj” (szerokość według słowa), na komputerze „−”/„+” i poziom; przy 320 px pasek zawija się, nie przewija.
+3. **Kartka:** pergamin (`paper-surface`, `paper-grain`) z cienką kratką (`paper-line`). Znaki stoją w kratkach. Brzegi: margines `board-padding` wygasa na czterech bokach, a linie biegną w niego dalej, więc widać wycinek większej kartki. Komórki leżą na pełnym papierze, wygasanie nie obniża kontrastu.
+3a. **Pola dozwolone** (najwyżej 3 pola od znaku) w jaśniejszym tonie papieru (`paper-allowed`); pozostałe są nieaktywne i mają opis dla czytnika.
 4. **Kamienie** w kolorze miejsca; ostatni ruch z pełnym obrysem, ruch automatu z przerywanym obrysem i pomarańczową kropką (`paper-auto`).
 5. **Kreska ołówkiem** (SVG, `paper-pencil`) przez każdą policzoną piątkę.
-6. **Krawędź planszy** (0 i 100): pogrubiony ostatni rząd siatki, linie kończą się w jego środku.
+6. **Krawędź planszy** (0 i 100): pogrubiona linia kratki; poza nią margines jest pusty, linie już nie biegną.
 7. **Znacznik kierunku** ruchu przeciwnika poza oknem, na krawędzi planszy.
 8. **Pasek dotykowy** pod planszą (telefon): cztery strzałki zaznaczenia i „−”/„+”, 6 × 44 px + 5 × 4 px = 284 px.
 
@@ -48,6 +49,12 @@ Układ wykrywa komponent (`layout` go wymusza). Poziom pamięta `localStorage` (
 Pusta, trwająca, z piątką, ruch automatu, ruch przeciwnika poza oknem, tylko do odczytu (`disabled`: nawigacja działa, wybór nie), przy krawędzi planszy.
 
 <Canvas of={Stories.RuchAutomatu} />
+
+Oba motywy: w ciemnym papier jest przyciemniony, nie odwrócony. Wymuszone kolory (`forced-colors`): paleta systemowa, bez gradientu i wygaszania. Plansza nie ma animacji, więc `prefers-reduced-motion` niczego nie zmienia.
+
+<Canvas of={Stories.KartkaNajwiekszyPoziom} />
+
+<Canvas of={Stories.KartkaNajmniejszyPoziomWaska} />
 
 ## 7. Zachowanie i dostępność
 

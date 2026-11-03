@@ -132,19 +132,44 @@ describe("PaperBoard stones and markers", () => {
     expect(container.querySelector("svg[preserveAspectRatio]")?.getAttribute("viewBox")).toBe("0 0 21 21");
   });
 
-  it("shows the board edge: thicker end line on the window cells at 0 and 100", () => {
+  it("draws the squares along the top and left of each cell, running on into the fading margin at the rim", () => {
+    setup({ layout: "phone" });
+    expect(screen.getByTestId("paper-sheet").className).toContain("paper-sheet");
+    const inner = cell("0,0 empty").parentElement as HTMLElement;
+    expect(inner.className).toContain("before:top-0");
+    expect(inner.className).toContain("before:left-0");
+    expect(inner.className).toContain("before:right-0");
+    expect(inner.className).toContain("after:left-0");
+    expect(inner.className).toContain("after:top-0");
+    expect(inner.className).toContain("after:bottom-0");
+    const first = cell("-7,-7 empty").parentElement as HTMLElement;
+    expect(first.className).toContain("before:-left-(--board-padding)");
+    expect(first.className).toContain("after:-top-(--board-padding)");
+    const end = cell("7,7 empty").parentElement as HTMLElement;
+    expect(end.className).toContain("before:-right-(--board-padding)");
+    expect(end.className).toContain("after:-bottom-(--board-padding)");
+    expect(screen.getByTestId("paper-closing-column").className).toContain("-top-(--board-padding)");
+    expect(screen.getByTestId("paper-closing-row").className).toContain("-left-(--board-padding)");
+  });
+
+  it("ends the lines and thickens them where the whole board ends, at 0 and at 100", () => {
     setup({ layout: "phone", stones: [{ x: 2, y: 2, seat: 1 }] });
     const corner = cell("-50,-50 empty").parentElement as HTMLElement;
-    expect(corner.className).toContain("before:left-1/2");
-    expect(corner.className).toContain("after:top-1/2");
-    expect(corner.className).toContain("calc(var(--board-line-width)*3)");
-    const inner = cell("-45,-45 empty").parentElement as HTMLElement;
-    expect(inner.className).toContain("before:inset-x-0");
+    expect(corner.className).toContain("before:left-0");
+    expect(corner.className).toContain("after:top-0");
+    expect(corner.className).toContain("before:h-[calc(var(--board-line-width)*3)]");
+    expect(corner.className).toContain("after:w-[calc(var(--board-line-width)*3)]");
+    expect(screen.getByTestId("paper-closing-column").className).toContain("top-0");
+    expect(screen.getByTestId("paper-closing-row").className).toContain("left-0");
     cleanup();
     setup({ layout: "phone", stones: [{ x: 98, y: 98, seat: 1 }] });
     const far = cell("50,50 empty").parentElement as HTMLElement;
-    expect(far.className).toContain("before:right-1/2");
-    expect(far.className).toContain("after:bottom-1/2");
+    expect(far.className).toContain("before:right-0");
+    expect(far.className).toContain("after:bottom-0");
+    expect(far.className).toContain("before:h-(--board-line-width)");
+    expect(screen.getByTestId("paper-closing-column").className).toContain("w-[calc(var(--board-line-width)*3)]");
+    expect(screen.getByTestId("paper-closing-row").className).toContain("h-[calc(var(--board-line-width)*3)]");
+    expect(screen.getByTestId("paper-closing-column").className).toContain("bottom-0");
   });
 });
 
@@ -314,6 +339,16 @@ describe("PaperBoard panning", () => {
     expect(cell("0,-7 empty")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Okno w dół" }));
     expect(cell("0,0 empty")).toBeTruthy();
+  });
+
+  it("lets the word of the centre button set its width, unlike the icon buttons of 44 px", () => {
+    setup();
+    const center = screen.getByRole("button", { name: "Wyśrodkuj" });
+    expect(center.className).not.toContain("size-(--target-min)");
+    expect(center.className).toContain("h-(--target-min)");
+    expect(center.className).toContain("min-w-target");
+    expect(center.className).toContain("whitespace-nowrap");
+    expect(screen.getByRole("button", { name: "Okno w lewo" }).className).toContain("size-(--target-min)");
   });
 
   it("centres on the last move, or on the stones without one", () => {
