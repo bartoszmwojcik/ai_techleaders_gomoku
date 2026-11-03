@@ -89,7 +89,7 @@ describe("GameHistoryService.list", () => {
     ]);
     expect(page.entries[1]).toMatchObject({ result: "loss" });
     expect(page.entries[2]).toMatchObject({ result: "draw", reason: "points" });
-    expect(execute.mock.calls[0]![0]).toContain("left join paper_game_states ps on ps.game_id = g.id");
+    expect((execute.mock.calls[0] as unknown as [string])[0]).toContain("left join paper_game_states ps on ps.game_id = g.id");
   });
 
   it("has no scores for a classic game", async () => {

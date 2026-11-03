@@ -103,7 +103,8 @@ export class PaperMoveService {
     }
     const snapshot = (await loadPaperSnapshot(tx, gameId))!;
     const onTurn = seatOnTurn(snapshot.moveCount, row!.black_seat as Seat);
-    if (onTurn !== seat) {
+    // The seat the automat plays for never moves by hand, also when it is on turn (BR-50).
+    if (onTurn !== seat || snapshot.autoSeat === seat) {
       const message = onTurn === snapshot.autoSeat ? AUTO_TURN_MESSAGE : NOT_YOUR_TURN_MESSAGE;
       return { refusal: new ConflictError(message, { code: "NOT_YOUR_TURN" }) };
     }

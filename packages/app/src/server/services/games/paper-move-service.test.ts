@@ -156,6 +156,20 @@ describe("PaperMoveService.play, refusals", () => {
     expect(refusalOf(await other.play(2, 52, 50, 3)).message).toBe(NOT_YOUR_TURN_MESSAGE);
   });
 
+  it("does not let the seat the automat plays for move by hand, even when it is on turn", async () => {
+    // Black (seat 1) ran out of time as the leader; white has moved, so black is on turn - the automat's stone is due.
+    const stones: Stone[] = [
+      { x: 50, y: 50, seat: 1 },
+      { x: 51, y: 50, seat: 2 },
+      { x: 52, y: 50, seat: 1, auto: true },
+      { x: 53, y: 50, seat: 2 },
+    ];
+    const { play, ran } = setup({ autoSeat: 1, stones });
+    const refusal = refusalOf(await play(1, 49, 50, 5));
+    expect([refusal.status, refusal.code, refusal.message]).toEqual([409, "NOT_YOUR_TURN", AUTO_TURN_MESSAGE]);
+    expect(ran("insert into paper_moves")).toHaveLength(0);
+  });
+
   it("refuses a move number other than the next one with STALE_MOVE", async () => {
     const { play, ran } = setup();
     const refusal = refusalOf(await play(1, 50, 50, 3));
