@@ -197,6 +197,7 @@ log "starting next start on $BASE_URL"
 (
   cd packages/app
   NODE_ENV=production DATABASE_URL="$DATABASE_URL" TRUST_PROXY_HOPS=1 APP_ORIGIN="$BASE_URL" \
+  ADMIN_EMAIL="${ADMIN_EMAIL:-qa-admin@example.test}" \
   SESSION_COOKIE_SECURE=false PASSWORD_HASH_COST=4 EMAIL_TRANSPORT=file EMAIL_OUTBOX_PATH="$OUTBOX" \
   exec setsid node "$ROOT/node_modules/next/dist/bin/next" start --hostname 127.0.0.1 --port "$APP_PORT" \
     >"$ROOT/$APP_LOG" 2>&1 < /dev/null
