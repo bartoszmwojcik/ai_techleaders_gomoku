@@ -101,3 +101,21 @@ Uwagi 2026-10-31: E02-S05…S08 (#87, #88, #94, #95) założono poza `om-backlog
 | E03-S01, E03-S02 | Bez bramki `emailVerifiedAt` (BR-26). | #25, #26 |
 | E01-S03-T01 | Dostawca poczty nie blokuje rejestracji ani gry; potrzebny dla potwierdzenia i resetu. | #38 |
 | Nowa pozycja w #39 | Reguła 14 dni: `emailVerifiedAt IS NULL`, `createdAt` starsze niż now − 14 dni, `NOT EXISTS` wiersz uczestnika partii; kaskada usuwa sesje i tokeny. **Zablokowana przez** E02-S01-T01 (#29). Zastępuje Q14 (7 dni). | #39 |
+
+## .ai/specs/2026-11-02-paper-pencil-gomoku.md
+Backlog source: .ai/specs/2026-11-02-paper-pencil-gomoku.md
+Last filed: 2026-11-02
+
+| Id | Issue | Title | Epic | Depends on | Adopted |
+|---|---|---|---|---|---|
+| E11 | #215 | Wariant gry „papier i ołówek” | — | — | no |
+| E11-S01 | #216 | Twórca zaproszenia wybiera „papier i ołówek” i czas, a gracze stawiają kamienie z odstępem ≤ 3 i zdobywają punkty za piątki | #215 | E11-S01-T01 (#222), E11-S01-T02 (#223) | no |
+| E11-S01-T01 | #222 | Migracja: wariant i czas partii, paper_game_states, paper_moves | #216 | — | no |
+| E11-S01-T02 | #223 | Reguły wariantu w core (odstęp, punktacja, ruch automatu, oś czasu) | #216 | — | no |
+| E11-S02 | #217 | Po upływie czasu wygrywa wyższy wynik, a za prowadzącego bez czasu stawia automat | #215 | E11-S01 (#216) | no |
+| E11-S03 | #218 | Gracz przesuwa i powiększa planszę (telefon 15–21 pól) i stawia kamień przyciskami 44 px | #215 | E11-S01 (#216) | no |
+| E11-S04 | #219 | Rewanż i lobby zachowują wariant i czas | #215 | E11-S01 (#216) | no |
+| E11-S05 | #220 | Historia pokazuje wariant i wynik punktowy, a sprzątanie zna termin partii „papier” | #215 | E11-S02 (#217) | no |
+| E11-S06 | #221 | Agent MCP gra partię „papier i ołówek” | #215 | E11-S02 (#217) | no |
+
+Uwagi 2026-11-02 (E11): wariant to osąd właściciela (D-34), bez dowodu popytu (A-16, Q-21); `SDLC.md` nie ma Definition of Ready (formalny test gotowości pominięty). Zgłoszenia są podzgłoszeniami GitHub (epik → historie → zadania). Implementacja jednym PR-em zamykającym całe E11 (spec R11); specyfikacja na gałęzi `claude/paper-grid-pencil-game-0ycu0x` czeka na akceptację właściciela przed kodem.
