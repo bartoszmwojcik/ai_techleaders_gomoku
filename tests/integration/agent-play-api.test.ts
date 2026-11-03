@@ -84,14 +84,14 @@ type Game = {
 };
 
 /** A game of an account and an agent with a running clock: the agent joined, the human opened the page. */
-async function startedGame(agentName = "probe model 1"): Promise<Game> {
+async function startedGame(agentName = "probe model 1", settings: Json = {}): Promise<Game> {
   const n = `${Date.now().toString(36)}${++counter}`;
   const name = `Play_${n}`;
   const email = `agentplay-${n}@example.com`;
   const registered = await rest("POST", "/api/auth/register", { email, displayName: name, password: "secret123" });
   expect(registered.status).toBe(201);
   const cookie = cookieOf(registered);
-  const created = await json(await rest("POST", "/api/games", {}, cookie));
+  const created = await json(await rest("POST", "/api/games", settings, cookie));
   const gameId = created.data.gameId as string;
   const code = created.data.invitation.code as string;
   const joined = await tool("join", { code, agentName });
@@ -475,5 +475,98 @@ describe("what the agent and the server log never contain", () => {
     expect(log).not.toContain(game.token);
     expect(log).not.toContain(game.code);
     expect(log).not.toContain("leakprobe");
+  });
+});
+
+describe("the paper and pencil variant over MCP (E11)", () => {
+  const PAPER = { variant: "paper", timeControlMs: 60_000 };
+
+  it("shows the cut-out of the sheet and judges the moves by the rules of the variant", async () => {
+    const game = await startedGame("probe model 1", PAPER);
+    let moveNumber = 1;
+    if (!game.agentBlack) {
+      expect((await humanMove(game, 50, 50, moveNumber)).status).toBe(200);
+      moveNumber += 1;
+    }
+
+    const first = (await getState(game.token)).structuredContent;
+    expect(first).toMatchObject({
+      status: "active",
+      variant: "paper",
+      scores: { you: 0, opponent: 0 },
+      autoSeat: null,
+      autoMoveAt: null,
+      turn: "you",
+      nextMoveNumber: moveNumber,
+    });
+    expect(first.boardOrigin).toEqual({ x: 47, y: 47 });
+    expect(first.clock.youMs).toBeGreaterThan(55_000);
+    expect(first.clock.youMs).toBeLessThanOrEqual(60_000);
+
+    const offSheet = errorOf(await playMove(game.token, 101, 50, moveNumber));
+    expect(offSheet).toMatchObject({ code: "ILLEGAL_MOVE", reason: "out_of_board" });
+    if (game.agentBlack) {
+      expect(errorOf(await playMove(game.token, 51, 50, moveNumber))).toMatchObject({ code: "ILLEGAL_MOVE", reason: "first_move_center" });
+      expect((await playMove(game.token, 50, 50, moveNumber)).isError).toBeUndefined();
+      expect((await humanMove(game, 51, 50, moveNumber + 1)).status).toBe(200);
+      moveNumber += 2;
+    }
+    expect(errorOf(await playMove(game.token, 60, 50, moveNumber))).toMatchObject({ code: "ILLEGAL_MOVE", reason: "too_far" });
+    const played = await playMove(game.token, 52, 50, moveNumber);
+    expect(played.isError).toBeUndefined();
+
+    // The window holds the stones (x 50..52, y 50) with a margin of three, in absolute coordinates.
+    const view = played.structuredContent;
+    expect(view.boardOrigin).toEqual({ x: 47, y: 47 });
+    expect(view.board).toHaveLength(7);
+    expect(view.board.every((row: string) => row.length === 9)).toBe(true);
+    expect(view.board[3][52 - 47]).toBe(game.agentBlack ? "B" : "W");
+    expect(view.turn).toBe("opponent");
+    const tail = (await getState(game.token, { afterMove: moveNumber - 1 })).structuredContent;
+    expect(tail.moves).toEqual([{ n: moveNumber, x: 52, y: 50, color: game.agentBlack ? "black" : "white", auto: false }]);
+  });
+
+  it("tells the agent the automat plays for it and wakes the waiting get_state when the stone is due", async () => {
+    const game = await startedGame("probe model 1", PAPER);
+    // The agent builds a five on its row, the human a four and a stone off the line; the agent leads 1:0.
+    const agentRow = [50, 51, 52, 53, 54].map((x) => [x, game.agentBlack ? 50 : 52]);
+    const humanMoves = game.agentBlack
+      ? [[50, 52], [51, 52], [52, 52], [53, 52], [50, 54]]
+      : [[50, 50], [51, 50], [52, 50], [53, 50], [50, 48], [50, 46]];
+    let moveNumber = 1;
+    let humanIndex = 0;
+    const human = async () => {
+      const [x, y] = humanMoves[humanIndex++]!;
+      expect((await humanMove(game, x!, y!, moveNumber)).status, `human move ${moveNumber}`).toBe(200);
+      moveNumber += 1;
+    };
+    for (const [index, [x, y]] of agentRow.entries()) {
+      if (!game.agentBlack) await human();
+      const played = await playMove(game.token, x!, y!, moveNumber);
+      expect(played.isError, `agent move ${moveNumber}`).toBeUndefined();
+      moveNumber += 1;
+      if (game.agentBlack && index < 4) await human();
+    }
+    await human();
+    expect((await getState(game.token)).structuredContent).toMatchObject({ turn: "you", scores: { you: 1, opponent: 0 } });
+
+    // The agent's clock runs out while it leads: the automat takes over at that moment.
+    await run(`update games set turn_started_at = now() - make_interval(secs => 61) where id = ?`, [game.gameId]);
+    expect((await humanState(game)).paper).toMatchObject({ autoSeat: 2 });
+
+    const taken = (await getState(game.token)).structuredContent;
+    expect(taken).toMatchObject({ status: "active", autoSeat: 2, turn: "opponent", scores: { you: 1, opponent: 0 } });
+    expect(taken.moves.at(-1)).toMatchObject({ auto: true });
+    expect(taken.clock.runningSide).toBe("opponent");
+
+    // The human moves; the automat answers 2 s later, which the waiting agent sees long before waitSeconds.
+    const startedAt = Date.now();
+    setTimeout(() => void rest("POST", `/api/games/${game.gameId}/moves`, { x: 49, y: 51, moveNumber: taken.nextMoveNumber }, game.cookie), 1000);
+    const waited = (await getState(game.token, { waitSeconds: 20 })).structuredContent;
+
+    expect(Date.now() - startedAt).toBeLessThan(12_000);
+    expect(waited.autoSeat).toBe(2);
+    expect(waited.nextMoveNumber).toBe(taken.nextMoveNumber + 2);
+    expect(waited.moves.slice(-2)).toMatchObject([{ x: 49, y: 51, auto: false }, { auto: true }]);
   });
 });

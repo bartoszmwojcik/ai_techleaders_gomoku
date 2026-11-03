@@ -71,7 +71,7 @@ const other = (seat: Seat): Seat => (seat === 1 ? 2 : 1);
  */
 export function agentGameView(input: AgentViewInput, afterMove = 0): AgentGameState {
   if (input.variant === "paper" && input.paper) return paperAgentView(input, input.paper, afterMove);
-  const { you, blackSeat, turnSeat, clock } = input;
+  const { you, blackSeat, turnSeat } = input;
   const grid = Array.from({ length: BOARD_SIZE }, () => Array<string>(BOARD_SIZE).fill("."));
   const moves = input.moves.map((cell, index) => ({
     n: index + 1,
