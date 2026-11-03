@@ -164,7 +164,7 @@ describe("GameService.create", () => {
 
     const expiresAt = new Date(NOW.getTime() + INVITATION_TTL_MS);
     expect(created.map(({ entity }) => entity)).toEqual([Game, GamePlayer, Invitation]);
-    expect(created[0]!.data).toEqual({ origin: "invite", status: "waiting", createdAt: NOW });
+    expect(created[0]!.data).toEqual({ origin: "invite", isPublic: false, status: "waiting", createdAt: NOW });
     expect(created[1]!.data).toMatchObject({
       seat: 1,
       kind: "account",
@@ -183,6 +183,12 @@ describe("GameService.create", () => {
         expiresAt,
       },
     });
+  });
+
+  it("makes the game public only when the creator asks for it (BR-40)", async () => {
+    const { service, created } = setup();
+    await service.create({ kind: "account", userId: "user-1", isPublic: true });
+    expect(created[0]!.data).toMatchObject({ origin: "invite", isPublic: true });
   });
 
   it("answers 401 and creates nothing when the account was deleted meanwhile (#37)", async () => {
@@ -237,6 +243,15 @@ describe("GameService.create for a guest (E02-S08)", () => {
   const slotRow = (status: string, seat = 1) => [{ game_id: "held-game", status, seat }];
   // Statements of the transaction in order: advisory lock, expire, cancel not started, slot read.
   const withSlot = (...rest: unknown[][]) => [[], [], [], ...rest];
+
+  it("keeps a guest's game private by default and public on request (BR-40)", async () => {
+    const first = setup({ executeRows: withSlot([]) });
+    await first.service.create(guest());
+    expect(first.created[0]!.data).toMatchObject({ isPublic: false });
+    const second = setup({ executeRows: withSlot([]) });
+    await second.service.create(guest({ isPublic: true }));
+    expect(second.created[0]!.data).toMatchObject({ isPublic: true });
+  });
 
   it("limits per address, settles the browser's timeouts, locks the token and inserts the guest", async () => {
     const { service, em, calls, created, rateLimiter, timeoutSettler } = setup({ executeRows: withSlot([]) });
@@ -471,7 +486,91 @@ describe("GameService.findParticipant", () => {
   });
 });
 
+describe("GameService.closeAudience (E10-S05, BR-43)", () => {
+  const closing = (row: Partial<{ status: string; is_public: boolean; closed: boolean }> | null, extra: Parameters<typeof setup>[0] = {}) =>
+    setup({
+      executeRows: row ? [[{ status: "active", is_public: true, closed: false, ...row }]] : [[]],
+      game: { status: "active", isPublic: false, audienceClosedAt: NOW },
+      players: [{ id: "p1", seat: 1, kind: "account", displayName: "Ala", seenAt: NOW }],
+      ...extra,
+    });
+
+  it.each(["active", "finished"])("closes a public %s game, deletes the spectators' messages and returns the state", async (status) => {
+    const { service, em, calls } = closing({ status }, { game: { status, isPublic: false, audienceClosedAt: NOW, finishedAt: NOW, endReason: "draw", blackSeat: 1 } });
+
+    const state = await service.closeAudience({ playerId: "p1" }, "game-1");
+
+    expect(em.count).toHaveBeenCalledWith(GamePlayer, { id: "p1", game: "game-1", seat: 1 });
+    expect(calls.slice(0, 4)).toEqual(["count", "execute:select status,", "execute:update games", "execute:delete from"]);
+    expect(em.execute).toHaveBeenNthCalledWith(1, expect.stringContaining("for update"), ["game-1"]);
+    expect(em.execute).toHaveBeenNthCalledWith(2, expect.stringContaining("is_public = false"), [NOW, "game-1"], "run");
+    expect(em.execute).toHaveBeenNthCalledWith(3, expect.stringContaining("spectator_id is not null"), ["game-1"], "run");
+    expect(state).toMatchObject({ audienceClosed: true, you: { seat: 1 } });
+    expect(state).not.toHaveProperty("audience");
+    expect(state).not.toHaveProperty("canCloseAudience");
+  });
+
+  it("is a harmless repeat once closed: nothing is written", async () => {
+    const { service, em } = closing({ closed: true, is_public: false });
+    expect(await service.closeAudience({ playerId: "p1" }, "game-1")).toMatchObject({ audienceClosed: true });
+    expect(em.execute).toHaveBeenCalledOnce();
+  });
+
+  it("answers 404 for anybody but the creator and for a game that vanished", async () => {
+    const stranger = closing({}, { count: 0 });
+    await expect(stranger.service.closeAudience({ playerId: "p2" }, "game-1")).rejects.toMatchObject({ status: 404 });
+    expect(stranger.em.execute).not.toHaveBeenCalled();
+    const gone = closing(null);
+    await expect(gone.service.closeAudience({ playerId: "p1" }, "game-1")).rejects.toMatchObject({ status: 404 });
+  });
+
+  it.each(["waiting", "cancelled"])("answers 409 GAME_NOT_ACTIVE for a %s game", async (status) => {
+    const { service, em } = closing({ status });
+    await expect(service.closeAudience({ playerId: "p1" }, "game-1")).rejects.toMatchObject({ status: 409, code: "GAME_NOT_ACTIVE" });
+    expect(em.execute).toHaveBeenCalledOnce();
+  });
+
+  it("answers 409 GAME_NOT_PUBLIC for a game that was private from the start", async () => {
+    const { service, em } = closing({ is_public: false });
+    await expect(service.closeAudience({ playerId: "p1" }, "game-1")).rejects.toMatchObject({ status: 409, code: "GAME_NOT_PUBLIC" });
+    expect(em.execute).toHaveBeenCalledOnce();
+  });
+});
+
 describe("GameService.getState", () => {
+  it("lets only the creator of a public game in progress or finished close the audience, and tells both once it is closed", async () => {
+    const creator = { id: "p1", seat: 1, kind: "account", displayName: "Ala", seenAt: NOW };
+    const other = { id: "p2", seat: 2, kind: "guest", user: null, nickname: null, seenAt: NOW };
+    const rows = [[], [], [], [], [{ n: 0 }]];
+    const asCreator = setup({ game: { status: "active", isPublic: true }, players: [creator, other], executeRows: rows });
+    expect((await asCreator.service.getState({ playerId: "p1" }, "game-1")).canCloseAudience).toBe(true);
+    const asOther = setup({ game: { status: "active", isPublic: true }, players: [creator, other], executeRows: [[], [], [], [], [{ n: 0 }]] });
+    expect(await asOther.service.getState({ playerId: "p2" }, "game-1")).not.toHaveProperty("canCloseAudience");
+    const privateGame = setup({ game: { status: "active", isPublic: false }, players: [creator, other] });
+    expect(await privateGame.service.getState({ playerId: "p1" }, "game-1")).not.toHaveProperty("canCloseAudience");
+    const closed = setup({ game: { status: "active", isPublic: false, audienceClosedAt: NOW }, players: [creator, other] });
+    const state = await closed.service.getState({ playerId: "p2" }, "game-1");
+    expect(state.audienceClosed).toBe(true);
+    expect(state).not.toHaveProperty("canCloseAudience");
+  });
+
+  it("carries the audience of a public game in progress, after the lazy bookkeeping, and nothing otherwise", async () => {
+    const pub = setup({
+      game: { status: "active", isPublic: true },
+      players: [creator, guest],
+      executeRows: [[], [], [], [], [{ n: 2 }]],
+    });
+    expect((await pub.service.getState({ playerId: "p1" }, "game-1")).audience).toEqual({ spectators: 2 });
+
+    const closed = setup({ game: { status: "active", isPublic: false }, players: [creator, guest] });
+    expect(await closed.service.getState({ playerId: "p1" }, "game-1")).not.toHaveProperty("audience");
+    const done = setup({
+      game: { status: "finished", isPublic: true, finishedAt: NOW },
+      players: [creator, guest],
+    });
+    expect(await done.service.getState({ playerId: "p1" }, "game-1")).not.toHaveProperty("audience");
+  });
+
   const creator = {
     id: "p1",
     seat: 1,

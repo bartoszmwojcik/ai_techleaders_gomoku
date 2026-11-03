@@ -535,6 +535,7 @@ describe("InvitationService.preview", () => {
     expect(await invitations.preview(code, { userId: creator }, guard())).toEqual({
       creatorName: expect.stringMatching(/^Inv_/),
       creatorKind: "account",
+      isPublic: false,
       state: "own-invitation",
       gameId,
     });

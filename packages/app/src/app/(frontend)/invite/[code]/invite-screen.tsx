@@ -5,17 +5,19 @@ import { TextLink } from "@gomoku/ui/game/text-link";
 import type { InvitationView } from "@/server/http/invitation-view";
 
 import { JoinActions } from "./join-actions";
+import { WatchActions } from "./watch-actions";
 
 type Props = {
   /** The invitation code in its display form, `ABCD-EFGH`. */
   code: string;
-  /** Any view except `redirect`, which the page handles before rendering. */
-  view: Exclude<InvitationView, { kind: "redirect" }>;
+  /** Any view except `redirect` and `review`, which the page handles before rendering. */
+  view: Exclude<InvitationView, { kind: "redirect" | "review" }>;
 };
 
 function heading(view: Props["view"]): string {
   if (view.kind === "invalid") return "To zaproszenie jest już nieważne";
   if (view.kind === "limit") return "Zaproszenie do partii";
+  if (view.kind === "watch") return "Ta partia już trwa";
   // s07.11: a guest creator is "{nick} (gość)". `null` is only a deleted account, never a guest: the
   // kind decides. The account may be gone, or the page cannot name it: a neutral word, never a guess.
   if (view.creatorKind === "guest") return `${view.creatorName ?? "Gracz 1"} (gość) zaprasza Cię do partii Gomoku`;
@@ -38,7 +40,22 @@ export function InviteScreen({ code, view }: Props) {
         </p>
       )}
 
+      {open && view.isPublic && (
+        <div data-testid="invite-public">
+          <Alert status="info" title="Partia publiczna: może ją oglądać każdy z kodem" />
+        </div>
+      )}
+
       {view.kind === "joinable" && <JoinActions code={code} mode={view.signedIn ? "member" : "visitor"} />}
+
+      {view.kind === "watch" && (
+        <>
+          <p className="m-0 text-body" data-testid="invite-watch-note">
+            Obaj gracze są już w partii. Możesz ją oglądać na żywo — nie wpłyniesz na jej przebieg.
+          </p>
+          <WatchActions code={code} signedIn={view.signedIn} />
+        </>
+      )}
 
       {view.kind === "has-active-game" && (
         <>

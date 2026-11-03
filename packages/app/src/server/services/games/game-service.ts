@@ -36,6 +36,7 @@ import {
 import type { ServerConfig } from "../../config";
 import type { Clock } from "../email/email-sender";
 import type { RateLimiter } from "../rate-limit/rate-limiter";
+import { readAudience, type Audience } from "./audience";
 import type { InvitationCodes } from "./invitation-codes";
 import { PARTICIPANT_TOKEN_VALID_SQL } from "./participant-token";
 import {
@@ -63,6 +64,8 @@ export const ACTIVE_SLOT_CONSTRAINT = "game_players_user_id_active_unique";
 
 export const ACTIVE_GAME_EXISTS_MESSAGE =
   "Masz już partię. Dokończ ją albo anuluj oczekującą.";
+export const AUDIENCE_NOT_CLOSABLE_MESSAGE = "Publiczność można zamknąć tylko w trwającej albo zakończonej partii.";
+export const GAME_NOT_PUBLIC_MESSAGE = "Ta partia nie jest publiczna.";
 export const GAME_NOT_CANCELLABLE_MESSAGE =
   "Tej partii nie można już anulować.";
 export const OWN_WAITING_GAME_MESSAGE =
@@ -128,6 +131,13 @@ const GUEST_SLOT_SQL = `
 // The browser's token moves to its new game; the rows that held it are ended (no slot left).
 const RELEASE_TOKEN_SQL = `update game_players set guest_token_hash = null where guest_token_hash = ?`;
 
+// Closing the audience (BR-43): the game row is the lock, so a join under way sees the answer.
+const LOCK_FOR_CLOSING_SQL = `
+  select status, is_public, audience_closed_at is not null as closed from games where id = ? for update`;
+const CLOSE_AUDIENCE_SQL = `update games set is_public = false, audience_closed_at = ? where id = ?`;
+// The harassment the switch answers (Q-10): what the spectators wrote leaves the players' chat with them.
+const DELETE_SPECTATOR_MESSAGES_SQL = `delete from chat_messages where game_id = ? and spectator_id is not null`;
+
 const RELEASE_SLOTS_SQL = `update game_players set is_active = false where game_id = ? and is_active`;
 
 /**
@@ -137,7 +147,7 @@ const RELEASE_SLOTS_SQL = `update game_players set is_active = false where game_
  * rate-limit key of the client address (`games-create-guest:ip:...`).
  */
 export type GameCreator =
-  | { kind: "account"; userId: string }
+  | { kind: "account"; userId: string; isPublic?: boolean }
   | GuestCreator;
 
 export type GuestCreator = {
@@ -146,6 +156,8 @@ export type GuestCreator = {
   tokenHash: string;
   limitKey: string;
   cancelOwnWaitingGame?: boolean;
+  /** A public game (D-33, BR-40); only an invitation can make one. */
+  isPublic?: boolean;
 };
 
 export type CreatedGame = {
@@ -177,6 +189,15 @@ export type GameState = BoardView & {
     /** Whether the player already opened the game page (#21 Q20). */
     seen: boolean;
   }[];
+  /**
+   * Only while a public game is in progress (E10-S04, BR-45): how many spectators watch it now. Absent
+   * for a private game, so the flag disappears when the audience is closed.
+   */
+  audience?: Audience;
+  /** Only for the creator of a public game, in progress or finished: may close the audience (BR-43). */
+  canCloseAudience?: true;
+  /** Only after the creator closed the audience: both players are told (BR-43). */
+  audienceClosed?: true;
   /** Only for the creator, only while the game waits. */
   invitation?: { code: string; url: string; mcpUrl: string; expiresAt: Date };
   /**
@@ -203,7 +224,7 @@ export type GameState = BoardView & {
 };
 
 /** A guest's nickname, an account's name as it was when the seat was created (E05-S01); `null` for a deleted account and for an agent (BR-31). */
-function displayNameOf(player: {
+export function displayNameOf(player: {
   kind: string;
   seat: number;
   nickname?: string | null;
@@ -218,6 +239,77 @@ function displayNameOf(player: {
     case "agent":
       return null;
   }
+}
+
+/** What every reader of a game sees: see `watchableState`. */
+export type WatchableState = BoardView & Pick<GameState, "status" | "clock" | "players" | "audience">;
+
+/** The part of a game row the shared state view reads (a row of `games`). */
+type StateGame = {
+  status: string;
+  blackSeat?: number | null;
+  moveCount: number;
+  stonesBlack: string;
+  stonesWhite: string;
+  moves: Uint8Array;
+  winnerSeat?: number | null;
+  endReason?: string | null;
+  clockMs1: number;
+  clockMs2: number;
+  turnStartedAt?: Date | null;
+};
+
+/** The part of a seat the shared state view reads (a row of `game_players`). */
+type StatePlayer = Parameters<typeof displayNameOf>[0] & { agentName?: string | null; seenAt?: Date | null };
+
+/**
+ * What every reader of a game sees, whoever they are: status, board, both clocks and the seats with
+ * their names. A participant's `getState` adds `you` and the private parts; a spectator's read
+ * (E10-S02) takes this and nothing else, so no private field can leak into it by being added to
+ * the participant's view. `after` is the number of moves the reader already knows.
+ * @throws AppError 400 when `after` is greater than the number of moves
+ */
+export function watchableState(
+  game: StateGame,
+  players: readonly StatePlayer[],
+  after: number,
+  now: Date,
+): WatchableState {
+  if (after > game.moveCount) {
+    throw new ValidationError(AFTER_MESSAGE);
+  }
+  const board = boardView(
+    {
+      status: game.status as GameStatus,
+      blackSeat: game.blackSeat ?? null,
+      moveCount: game.moveCount,
+      stonesBlack: game.stonesBlack,
+      stonesWhite: game.stonesWhite,
+      moves: game.moves,
+      winnerSeat: game.winnerSeat ?? null,
+      endReason: (game.endReason ?? null) as EndReason | null,
+    },
+    after,
+  );
+  return {
+    status: game.status as GameStatus,
+    clock: clockView(
+      {
+        clockMs: [game.clockMs1, game.clockMs2],
+        turnStartedAtMs: game.turnStartedAt?.getTime() ?? null,
+        turnSeat: board.turnSeat,
+      },
+      now.getTime(),
+    ),
+    players: players.map((player) => ({
+      seat: player.seat as Seat,
+      kind: player.kind as ParticipantKind,
+      displayName: displayNameOf(player),
+      ...(player.kind === "agent" && { agentName: player.agentName ?? null }),
+      seen: player.seenAt != null,
+    })),
+    ...board,
+  };
 }
 
 export type ClosedReason = "cancelled" | "expired" | "not_opened";
@@ -267,7 +359,7 @@ export class GameService {
     await this.#timeoutSettler.settleFor(userId);
 
     const now = this.#clock.now();
-    const draft = this.#draft(now);
+    const draft = this.#draft(now, creator.isPublic);
     try {
       const gameId = await this.#em.transactional(async (tx) => {
         const locked = await tx.execute<{ id: string; display_name: string }[]>(LOCK_USER_SQL, [userId]);
@@ -312,7 +404,7 @@ export class GameService {
     await this.#timeoutSettler.settleForGuest(creator.tokenHash);
 
     const now = this.#clock.now();
-    const draft = this.#draft(now);
+    const draft = this.#draft(now, creator.isPublic);
     const outcome = await this.#em.transactional(
       async (tx): Promise<{ gameId: string } | { refusal: ConflictError }> => {
         await tx.execute(ADVISORY_LOCK_SQL, [creator.tokenHash], "run");
@@ -359,8 +451,9 @@ export class GameService {
     return this.#created(outcome.gameId, draft);
   }
 
-  #draft(now: Date) {
+  #draft(now: Date, isPublic = false) {
     return {
+      isPublic,
       code: this.#invitationCodes.generate(),
       expiresAt: new Date(now.getTime() + INVITATION_TTL_MS),
     };
@@ -369,7 +462,7 @@ export class GameService {
   /** Writes the game, its seat-1 player and the invitation through `tx`; returns the game id. */
   async #insertGame(
     tx: EntityManager,
-    { code, expiresAt }: { code: string; expiresAt: Date },
+    { code, expiresAt, isPublic }: { code: string; expiresAt: Date; isPublic: boolean },
     now: Date,
     creator:
       | { kind: "account"; userId: string; displayName: string }
@@ -377,6 +470,7 @@ export class GameService {
   ): Promise<string> {
     const game = tx.create(Game, {
       origin: "invite",
+      isPublic,
       status: "waiting",
       createdAt: now,
     });
@@ -431,6 +525,37 @@ export class GameService {
         });
       }
       await tx.execute(RELEASE_SLOTS_SQL, [gameId], "run");
+    });
+  }
+
+  /**
+   * The kill-switch (E10-S05, BR-43): the creator (seat 1) of a public game in progress or finished
+   * closes the audience for good. `is_public` goes false, so spectators are turned away on their next
+   * read, nobody joins by the code and no one reviews the game with it; the spectators' chat messages
+   * are deleted. Repeating it is harmless (`200`); there is no way back.
+   * @throws AppError 404 for anybody but the creator; 409 `GAME_NOT_ACTIVE` (waiting or cancelled),
+   * 409 `GAME_NOT_PUBLIC` (private from the start)
+   */
+  async closeAudience(participant: GameParticipant, gameId: string): Promise<GameState> {
+    return this.#em.transactional(async (tx) => {
+      const creator = await tx.count(GamePlayer, { id: participant.playerId, game: gameId, seat: 1 });
+      if (creator === 0) throw new NotFoundError(GAME_NOT_FOUND_MESSAGE);
+      const [game] = await tx.execute<{ status: string; is_public: boolean; closed: boolean }[]>(
+        LOCK_FOR_CLOSING_SQL,
+        [gameId],
+      );
+      // The game row can vanish under the caller (the cleanup): a 404 like any game they do not have.
+      if (!game) throw new NotFoundError(GAME_NOT_FOUND_MESSAGE);
+      const now = this.#clock.now();
+      if (!game.closed) {
+        if (game.status !== "active" && game.status !== "finished") {
+          throw new ConflictError(AUDIENCE_NOT_CLOSABLE_MESSAGE, { code: "GAME_NOT_ACTIVE" });
+        }
+        if (!game.is_public) throw new ConflictError(GAME_NOT_PUBLIC_MESSAGE, { code: "GAME_NOT_PUBLIC" });
+        await tx.execute(CLOSE_AUDIENCE_SQL, [now, gameId], "run");
+        await tx.execute(DELETE_SPECTATOR_MESSAGES_SQL, [gameId], "run");
+      }
+      return this.stateOf(tx, participant, gameId, 0, now);
     });
   }
 
@@ -530,48 +655,23 @@ export class GameService {
     const game = await tx.findOneOrFail(Game, gameId, {
       failHandler: () => new NotFoundError(GAME_NOT_FOUND_MESSAGE),
     });
-    if (after > game.moveCount) {
-      throw new ValidationError(AFTER_MESSAGE);
-    }
     const players = await tx.find(
       GamePlayer,
       { game: gameId },
       { populate: ["user"], orderBy: { seat: "asc" } },
     );
     const you = players.find(({ id }) => id === participant.playerId)!;
-    const board = boardView(
-      {
-        status: game.status as GameStatus,
-        blackSeat: game.blackSeat ?? null,
-        moveCount: game.moveCount,
-        stonesBlack: game.stonesBlack,
-        stonesWhite: game.stonesWhite,
-        moves: game.moves,
-        winnerSeat: game.winnerSeat ?? null,
-        endReason: (game.endReason ?? null) as EndReason | null,
-      },
-      after,
-    );
+    const watchable = watchableState(game, players, after, now);
+    const audience = await readAudience(tx, game, now);
     const state: GameState = {
-      status: game.status as GameStatus,
-      clock: clockView(
-        {
-          clockMs: [game.clockMs1, game.clockMs2],
-          turnStartedAtMs: game.turnStartedAt?.getTime() ?? null,
-          turnSeat: board.turnSeat,
-        },
-        now.getTime(),
-      ),
+      ...watchable,
+      ...(audience && { audience }),
       you: { seat: you.seat as Seat, kind: you.kind as ParticipantKind },
-      players: players.map((player) => ({
-        seat: player.seat as Seat,
-        kind: player.kind as ParticipantKind,
-        displayName: displayNameOf(player),
-        ...(player.kind === "agent" && { agentName: player.agentName ?? null }),
-        seen: player.seenAt !== null,
-      })),
-      ...board,
     };
+    if (game.audienceClosedAt) state.audienceClosed = true;
+    if (you.seat === 1 && game.isPublic && (game.status === "active" || game.status === "finished")) {
+      state.canCloseAudience = true;
+    }
     if (you.seat === 1 && game.status === "waiting") {
       const invitation = await tx.findOneOrFail(Invitation, { game: gameId });
       state.invitation = {

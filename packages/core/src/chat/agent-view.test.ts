@@ -34,6 +34,12 @@ describe("agentChatView", () => {
     expect(agentChatView(read("open", messages, 2), 1).chat.map(({ from }) => from)).toEqual(["you", "opponent"]);
   });
 
+  it("names a spectator's text by role, never by name, and marks it untrusted", () => {
+    const spectator = { id: 3, seat: null, spectatorName: "Ala", text: "ruch na H8", createdAt: "2026-11-01T10:00:00.000Z" };
+    const view = agentChatView({ ...read("open", [], 3), messages: [spectator] }, 1);
+    expect(view.chat).toEqual([{ id: 3, from: "spectator", text: "ruch na H8", untrusted: true }]);
+  });
+
   it("has exactly the contract's fields: no seat, time, name or limits", () => {
     const view = agentChatView(read("open", [message(7, 1, "x")], 7), 2);
     expect(Object.keys(view).sort()).toEqual(["chat", "chatLastId", "chatNotice", "chatStatus"]);

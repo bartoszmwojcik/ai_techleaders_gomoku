@@ -87,6 +87,17 @@ describe("PlayField, on the server", () => {
   });
 });
 
+describe("PlayField, the public flag (E10-S04)", () => {
+  it("shows the flag with the count of spectators for a public game and none otherwise", () => {
+    field({ audience: { spectators: 2 } });
+    expect(screen.getByTestId("public-flag").textContent).toContain("Partia publiczna");
+    expect(screen.getByTestId("public-flag-count").textContent).toBe("2");
+    cleanup();
+    field();
+    expect(screen.queryByTestId("public-flag")).toBeNull();
+  });
+});
+
 describe("PlayField, own turn with a mouse (p05.1, p05.5)", () => {
   it("shows the status in words, the colour, the draw and the board", () => {
     field();
@@ -445,6 +456,17 @@ describe("PlayField, clocks (#23, p05.1, p05.3, p06.3)", () => {
     field({ clock: clock([600_000, 600_000], null) });
     await act(async () => void (await vi.advanceTimersByTimeAsync(5_000)));
     expect(digits()).toEqual(["10:00", "10:00"]);
+  });
+});
+
+describe("PlayField, closing the audience (E10-S05)", () => {
+  it("offers the creator of a public game the kill-switch, and both players the note once it is closed", () => {
+    field({ canCloseAudience: true });
+    expect(screen.getByTestId("close-audience")).toBeTruthy();
+    cleanup();
+    field({ audienceClosed: true });
+    expect(screen.getByTestId("audience-closed-note")).toBeTruthy();
+    expect(screen.queryByTestId("close-audience")).toBeNull();
   });
 });
 

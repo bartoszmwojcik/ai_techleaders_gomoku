@@ -7,6 +7,7 @@ import { ChatMessage } from "./chat/chat-message";
 import { Game } from "./games/game";
 import { GamePairCounter } from "./games/game-pair-counter";
 import { GamePlayer } from "./games/game-player";
+import { GameSpectator } from "./games/game-spectator";
 import { Invitation } from "./games/invitation";
 import { LobbySeeker } from "./games/lobby-seeker";
 import { RateLimitBucket } from "./rate-limit/rate-limit-bucket";
@@ -27,4 +28,5 @@ export const entities = [
   LobbySeeker,
   GamePairCounter,
   ChatMessage,
+  GameSpectator,
 ] as const;

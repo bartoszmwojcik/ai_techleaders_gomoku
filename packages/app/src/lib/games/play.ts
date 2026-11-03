@@ -18,7 +18,7 @@ export function stonesOf(moves: readonly number[]): PlacedStone[] {
  * game never reopens: a game can end without a move (timeout, resignation), so a late `active`
  * response with the same move count must not undo `finished`.
  */
-export function mergeState(current: GameView, next: GameView, after: number): GameView {
+export function mergeState<T extends Pick<GameView, "moves" | "moveCount" | "status">>(current: T, next: T, after: number): T {
   if (next.moveCount < current.moves.length) return current;
   if (current.status === "finished" && next.status !== "finished") return current;
   return { ...next, moves: [...current.moves.slice(0, after), ...next.moves] };
@@ -83,7 +83,7 @@ export function agentNameOf(declared: string | null | undefined): PlayerName {
  * account name (`null` for a deleted account). The "(gość)" suffix comes from `kind`, here in the UI layer;
  * an agent has no `displayName` and is named by `kind` and its declared `agentName`.
  */
-export function playerNameOf(player: GameView["players"][number] | undefined): PlayerName {
+export function playerNameOf(player: (Omit<GameView["players"][number], "seen"> & { seen?: boolean }) | undefined): PlayerName {
   if (player?.kind === "agent") return agentNameOf(player.agentName);
   const guest = player?.kind === "guest";
   const nick = player?.displayName ?? "Usunięty gracz";
@@ -98,7 +98,7 @@ export function playerName(player: GameView["players"][number] | undefined): str
 export type Outcome = { result: "win" | "loss" | "draw"; title: string; detail: string };
 
 /** The banner of a finished game from the point of view of the viewer (p06.1, p06.2, p06.4; texts of the prototype). */
-export function outcomeOf(game: GameView): Outcome | null {
+export function outcomeOf(game: { result: GameView["result"]; you: { seat: Seat } }): Outcome | null {
   const { result } = game;
   if (!result) return null;
   if (result.reason === "draw") {

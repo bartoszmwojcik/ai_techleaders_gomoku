@@ -22,13 +22,13 @@ beforeEach(() => {
   getCurrentUser.mockReset().mockResolvedValue(null);
   readGuestTokenHash.mockReset().mockResolvedValue(undefined);
   headers.mockReset().mockResolvedValue(new Headers());
-  preview.mockReset().mockResolvedValue({ creatorName: "Ala", creatorKind: "guest", state: "joinable" });
+  preview.mockReset().mockResolvedValue({ creatorName: "Ala", creatorKind: "guest", isPublic: false, state: "joinable" });
 });
 
 describe("loadInvitationView", () => {
   it("previews the code for an anonymous visitor with the pool of the request", async () => {
     const view = await loadInvitationView("ABCD-EFGH");
-    expect(view).toEqual({ kind: "joinable", creatorName: "Ala", creatorKind: "guest", gameId: undefined, signedIn: false });
+    expect(view).toEqual({ kind: "joinable", creatorName: "Ala", creatorKind: "guest", isPublic: false, gameId: undefined, signedIn: false });
     expect(preview).toHaveBeenCalledWith(
       "ABCD-EFGH",
       { userId: undefined, guestTokenHash: undefined },
@@ -44,13 +44,32 @@ describe("loadInvitationView", () => {
   });
 
   it.each([["has-active-game"], ["has-own-waiting-game"]])("keeps the viewer's other game for %s", async (state) => {
-    preview.mockResolvedValue({ creatorName: null, creatorKind: "account", state, gameId: "g7" });
-    expect(await loadInvitationView("x")).toEqual({ kind: state, creatorName: null, creatorKind: "account", gameId: "g7", signedIn: false });
+    preview.mockResolvedValue({ creatorName: null, creatorKind: "account", isPublic: true, state, gameId: "g7" });
+    expect(await loadInvitationView("x")).toEqual({ kind: state, creatorName: null, creatorKind: "account", isPublic: true, gameId: "g7", signedIn: false });
   });
 
   it.each([["own-invitation"], ["participant"]])("sends the %s viewer to the game", async (state) => {
     preview.mockResolvedValue({ creatorName: "Ala", state, gameId: "g1" });
     expect(await loadInvitationView("x")).toEqual({ kind: "redirect", gameId: "g1" });
+  });
+
+  it("sends anybody to the review of a finished public game", async () => {
+    preview.mockResolvedValue({ creatorName: "Ala", isPublic: true, state: "reviewable", gameId: "g1" });
+    expect(await loadInvitationView("x")).toEqual({ kind: "review", gameId: "g1" });
+  });
+
+  it("lets a viewer watch a public game in progress, with their kind of identity (E10-S02)", async () => {
+    preview.mockResolvedValue({ creatorName: "Ala", creatorKind: "guest", isPublic: true, state: "watchable", gameId: "g1" });
+    expect(await loadInvitationView("x")).toEqual({
+      kind: "watch",
+      isPublic: true,
+      creatorName: "Ala",
+      creatorKind: "guest",
+      gameId: "g1",
+      signedIn: false,
+    });
+    getCurrentUser.mockResolvedValue({ id: "u1" });
+    expect(await loadInvitationView("x")).toMatchObject({ kind: "watch", signedIn: true });
   });
 
   it("answers invalid for the uniform 410", async () => {

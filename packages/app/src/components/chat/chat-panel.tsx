@@ -1,7 +1,7 @@
 "use client";
 
 import { CHAT_MAX_LENGTH } from "@gomoku/core/chat/constants";
-import type { ChatMessageView } from "@gomoku/core/chat/types";
+import type { Seat } from "@gomoku/core/games/types";
 import { Alert } from "@gomoku/ui/game/alert";
 import { Button } from "@gomoku/ui/game/button";
 import { InfoToggleButton, InfoToggleNote } from "@gomoku/ui/game/info-toggle";
@@ -35,6 +35,8 @@ const TURN_OFF_FAILED = "Nie udało się wyłączyć czatu. Spróbuj ponownie.";
 const TURN_ON_FAILED = "Nie udało się włączyć czatu. Spróbuj ponownie.";
 const DISABLED_BY_OPPONENT_TEXT = "Rozmówca wyłączył czat. Nie możesz teraz pisać.";
 const DISABLED_BY_OPPONENT_REASON = "Pisanie jest zablokowane: rozmówca wyłączył czat.";
+// A public game: the other player left the conversation, the spectators did not (BR-41).
+const OPPONENT_DISABLED_PUBLIC_TEXT = "Rozmówca wyłączył czat i nie zobaczy Twoich wiadomości. Możesz pisać do widzów.";
 const LOADING_TEXT = "Wczytujemy czat…";
 const INFO_LABEL = "Informacja o wiadomościach czatu";
 // BR-34: the messages stay in the database until about an hour after the game ends, so "not saved" would be untrue.
@@ -72,7 +74,7 @@ function LiveChat({ gameId, game, onGone }: Props) {
 
   const mySeat = game.you.seat;
   const opponent = game.players.find((player) => player.seat !== mySeat);
-  const labelOf = (seat: ChatMessageView["seat"]) => (
+  const labelOf = (seat: Seat) => (
     <PlayerLabel name={playerNameOf(game.players.find((player) => player.seat === seat))} you={seat === mySeat} testId="chat-sender" />
   );
   const newest = chat.messages.at(-1)?.id ?? 0;
@@ -167,6 +169,9 @@ function LiveChat({ gameId, game, onGone }: Props) {
           <p role="status" className="m-0 text-body text-text-secondary">
             {DISABLED_BY_YOU_TEXT}
           </p>
+        )}
+        {chat.loaded && state === "open" && chat.opponentDisabled && (
+          <Alert status="info" title={OPPONENT_DISABLED_PUBLIC_TEXT} role="status" />
         )}
         {chat.loaded && state === "disabled_by_opponent" && (
           <Alert status="info" title={DISABLED_BY_OPPONENT_TEXT} role="status" />

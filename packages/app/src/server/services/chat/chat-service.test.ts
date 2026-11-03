@@ -357,3 +357,175 @@ describe("ChatService.setEnabled", () => {
     await expect(setup({ updateError: broken }).service.setEnabled(PARTICIPANT, GAME, false)).rejects.toBe(broken);
   });
 });
+
+describe("ChatService in a public game (E10-S03)", () => {
+  it("keeps the chat open for the player whose opponent turned it off, and says so", async () => {
+    const { service } = setup({ context: { theirs: false, is_public: true } as Context });
+    expect(await service.read(PARTICIPANT, GAME, { limit: 50 })).toMatchObject({ state: "open", opponentDisabled: true });
+  });
+
+  it("still lets that player write, and does not say so in a private game", async () => {
+    const { service } = setup({ context: { theirs: false, is_public: true } as Context });
+    await expect(service.send(PARTICIPANT, GAME, { text: "hej", clientId: CLIENT_ID })).resolves.toMatchObject({ created: true });
+    const { service: privateService } = setup({ context: { theirs: false } });
+    const data = await privateService.read(PARTICIPANT, GAME, { limit: 50 });
+    expect(data.state).toBe("disabled_by_opponent");
+    expect(data).not.toHaveProperty("opponentDisabled");
+  });
+
+  it("shows a spectator's message with its name and no seat", async () => {
+    const { service } = setup({
+      messages: [{ ...row(1), seat: null as never, author_name: "Ala" } as ReturnType<typeof row>],
+    });
+    expect((await service.read(PARTICIPANT, GAME, { limit: 50 })).messages).toEqual([
+      { id: 1, seat: null, spectatorName: "Ala", text: "msg 1", createdAt: "2026-11-01T10:00:01.000Z" },
+    ]);
+  });
+});
+
+type SpectatorSetup = {
+  context?: Partial<{
+    name: string | null;
+    status: string;
+    window_open: boolean;
+    since_last_ms: number | null;
+    total: number;
+  }> | null;
+  messages?: ReturnType<typeof row>[];
+  repeat?: ReturnType<typeof row>;
+  insertError?: Error;
+};
+const SPECTATOR = { spectatorId: "spectator-1" };
+
+/** A fake `em` for the spectator's side: answers by what each statement selects. */
+function spectatorSetup({ context = {}, messages = [], repeat, insertError }: SpectatorSetup = {}) {
+  const calls: { sql: string; params: unknown[] }[] = [];
+  let inserted = false;
+  const execute = vi.fn(async (sql: string, params: unknown[] = []) => {
+    calls.push({ sql, params });
+    if (sql.includes("pg_advisory_xact_lock")) return [];
+    if (sql.includes("from game_spectators s")) {
+      return context === null
+        ? []
+        : [
+            {
+              spectator_id: "spectator-1",
+              name: "Ala",
+              status: "active",
+              window_open: false,
+              since_last_ms: null,
+              total: 0,
+              ...context,
+            },
+          ];
+    }
+    if (sql.includes("m.spectator_id = ?")) {
+      return inserted ? [{ ...row(1), seat: null, author_name: "Ala" }] : repeat ? [repeat] : [];
+    }
+    if (sql.startsWith("\n  insert into chat_messages")) {
+      if (insertError) throw insertError;
+      inserted = true;
+      return [];
+    }
+    return messages;
+  });
+  const em = {
+    execute,
+    transactional: vi.fn(async (fn: (tx: unknown) => unknown) => fn(em)),
+  } as unknown as EntityManager;
+  return { service: new ChatService({ em, chatConfig: CONFIG }), calls };
+}
+
+describe("ChatService.readAsSpectator", () => {
+  it("reads the whole conversation with the limits of a person", async () => {
+    const { service, calls } = spectatorSetup({ messages: [row(1), row(2, 2)] });
+    expect(await service.readAsSpectator(SPECTATOR, GAME, { limit: 50 })).toMatchObject({
+      state: "open",
+      lastId: 2,
+      limits: { maxLength: 200, minIntervalMs: 2000 },
+    });
+    expect(calls.at(-1)!.sql).toContain("order by m.seq desc limit ?");
+  });
+
+  it("asks only for what is newer than the cursor and reports the wait after their own message", async () => {
+    const { service, calls } = spectatorSetup({ context: { since_last_ms: 500 } });
+    const data = await service.readAsSpectator(SPECTATOR, GAME, { afterId: 4, limit: 10 });
+    expect(data).toMatchObject({ messages: [], lastId: 4, retryAfterMs: 1500 });
+    expect(calls.at(-1)!.params).toEqual([GAME, 4, 10]);
+  });
+
+  it("is empty when the game has no chat now", async () => {
+    const closed = spectatorSetup({ context: { status: "finished", window_open: false } });
+    expect(await closed.service.readAsSpectator(SPECTATOR, GAME, { limit: 50 })).toMatchObject({ state: "closed", messages: [] });
+    const waiting = spectatorSetup({ context: { status: "waiting" } });
+    expect(await waiting.service.readAsSpectator(SPECTATOR, GAME, { limit: 50 })).toMatchObject({ state: "unavailable" });
+  });
+
+  it("is 404 for a spectator or a game that is gone or no longer public", async () => {
+    const { service } = spectatorSetup({ context: null });
+    await expect(service.readAsSpectator(SPECTATOR, GAME, { limit: 50 })).rejects.toBeInstanceOf(NotFoundError);
+  });
+});
+
+describe("ChatService.sendAsSpectator", () => {
+  const input = { text: "  Ale ruch!  ", clientId: CLIENT_ID };
+
+  it("stores the message under the spectator's name and answers with the wait", async () => {
+    const { service, calls } = spectatorSetup();
+    const data = await service.sendAsSpectator(SPECTATOR, GAME, input);
+    expect(data).toEqual({
+      message: { id: 1, seat: null, spectatorName: "Ala", text: "msg 1", createdAt: "2026-11-01T10:00:01.000Z" },
+      retryAfterMs: 2000,
+      created: true,
+    });
+    const insert = calls.find(({ sql }) => sql.includes("insert into chat_messages"))!;
+    expect(insert.params).toEqual([GAME, GAME, "spectator-1", "Ala", CLIENT_ID, "Ale ruch!"]);
+    expect(calls[0]!.sql).toContain("pg_advisory_xact_lock");
+  });
+
+  it("answers a retry of the same attempt with the stored message and writes nothing", async () => {
+    const { service, calls } = spectatorSetup({ repeat: { ...row(3), seat: null as never }, context: { since_last_ms: 100 } });
+    const data = await service.sendAsSpectator(SPECTATOR, GAME, input);
+    expect(data).toMatchObject({ created: false, retryAfterMs: 1900 });
+    expect(calls.some(({ sql }) => sql.includes("insert into chat_messages"))).toBe(false);
+  });
+
+  it("refuses a visitor without a nickname with 403, and a refused text with 400 and the reason", async () => {
+    const { service } = spectatorSetup({ context: { name: null } });
+    await expect(service.sendAsSpectator(SPECTATOR, GAME, input)).rejects.toBeInstanceOf(ForbiddenError);
+    const refused = await service
+      .sendAsSpectator(SPECTATOR, GAME, { text: "zobacz example.com", clientId: CLIENT_ID })
+      .catch((error: unknown) => error);
+    expect(refused).toBeInstanceOf(ValidationError);
+    expect(refused).toMatchObject({ data: { reason: "url" } });
+  });
+
+  it("refuses when the game has no chat now, is full, or the spectator writes too fast", async () => {
+    await expect(
+      spectatorSetup({ context: { status: "waiting" } }).service.sendAsSpectator(SPECTATOR, GAME, input),
+    ).rejects.toMatchObject({ code: "CHAT_UNAVAILABLE" });
+    await expect(
+      spectatorSetup({ context: { status: "finished", window_open: false } }).service.sendAsSpectator(SPECTATOR, GAME, input),
+    ).rejects.toMatchObject({ code: "CHAT_UNAVAILABLE" });
+    await expect(
+      spectatorSetup({ context: { total: 3 } }).service.sendAsSpectator(SPECTATOR, GAME, input),
+    ).rejects.toMatchObject({ code: "CHAT_FULL" });
+    const fast = await spectatorSetup({ context: { since_last_ms: 400 } })
+      .service.sendAsSpectator(SPECTATOR, GAME, input)
+      .catch((error: unknown) => error);
+    expect(fast).toBeInstanceOf(TooManyRequestsError);
+    expect(fast).toMatchObject({ data: { retryAfterMs: 1600 } });
+  });
+
+  it("is 404 for a gone spectator and when the game goes away mid-write, other errors pass through", async () => {
+    await expect(spectatorSetup({ context: null }).service.sendAsSpectator(SPECTATOR, GAME, input)).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
+    const gone = new ForeignKeyConstraintViolationException(new Error("fk") as never);
+    await expect(
+      spectatorSetup({ insertError: gone }).service.sendAsSpectator(SPECTATOR, GAME, input),
+    ).rejects.toBeInstanceOf(NotFoundError);
+    const boom = new Error("boom");
+    await expect(spectatorSetup({ insertError: boom }).service.sendAsSpectator(SPECTATOR, GAME, input)).rejects.toBe(boom);
+  });
+});

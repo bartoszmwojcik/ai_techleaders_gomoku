@@ -7,6 +7,7 @@ import {
   ValidationError,
   CHAT_REJECTION_MESSAGES,
   deriveChatState,
+  deriveSpectatorChatState,
   normalizeChatMessage,
   type ChatMessageView,
   type ChatReadData,
@@ -34,7 +35,7 @@ const CREATED_AT = `to_char(m.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:
 // message age (the interval limit) and the size of the conversation (the cap).
 const CONTEXT_SQL = `
   select p.id as sender_id, p.seat, p.kind, p.chat_enabled as mine, o.chat_enabled as theirs,
-    g.status,
+    g.status, g.is_public,
     exists (select 1 from game_players d where d.game_id = g.id and d.kind = 'account' and d.user_id is null) as gone,
     (g.status = 'finished' and g.finished_at > now() - (? * interval '1 millisecond')) as window_open,
     (select extract(epoch from clock_timestamp() - max(m.created_at)) * 1000
@@ -49,16 +50,46 @@ const LOCK_GAME_SQL = `select pg_advisory_xact_lock(hashtextextended(?::text, 0)
 
 const SET_ENABLED_SQL = `update game_players set chat_enabled = ? where id = ?`;
 
-const SELECT_MESSAGE = `select m.seq, p.seat, m.body, ${CREATED_AT} as created_at
-  from chat_messages m join game_players p on p.id = m.sender_id`;
+// A spectator's message has no seat (`sender_id` NULL) but the name it was written under (E10-S03).
+const SELECT_MESSAGE = `select m.seq, p.seat, m.author_name, m.body, ${CREATED_AT} as created_at
+  from chat_messages m left join game_players p on p.id = m.sender_id`;
 
 const AFTER_SQL = `${SELECT_MESSAGE} where m.game_id = ? and m.seq > ? order by m.seq limit ?`;
 const LATEST_SQL = `select * from (${SELECT_MESSAGE} where m.game_id = ? order by m.seq desc limit ?) latest order by seq`;
 const REPEAT_SQL = `${SELECT_MESSAGE} where m.sender_id = ? and m.client_id = ?`;
+const REPEAT_SPECTATOR_SQL = `${SELECT_MESSAGE} where m.spectator_id = ? and m.client_id = ?`;
+
+// The spectator, their name (a visitor's nickname or the account's name; NULL = a visitor without a
+// nickname, who only reads), the game and the size of the conversation. Only a public game has spectators:
+// closing the audience (E10-S05) makes this `404`, like the other spectator reads.
+const SPECTATOR_CONTEXT_SQL = `
+  select s.id as spectator_id, coalesce(s.nickname, u.display_name) as name,
+    g.status,
+    (g.status = 'finished' and g.finished_at > now() - (? * interval '1 millisecond')) as window_open,
+    (select extract(epoch from clock_timestamp() - max(m.created_at)) * 1000
+       from chat_messages m where m.spectator_id = s.id)::float8 as since_last_ms,
+    (select count(*) from chat_messages m where m.game_id = g.id)::int as total
+  from game_spectators s
+  join games g on g.id = s.game_id
+  left join users u on u.id = s.user_id
+  where s.id = ? and g.id = ? and g.is_public`;
 
 const INSERT_SQL = `
   insert into chat_messages (game_id, seq, sender_id, client_id, body, created_at)
   values (?, (select coalesce(max(seq), 0) + 1 from chat_messages where game_id = ?), ?, ?, ?, clock_timestamp())`;
+
+const INSERT_SPECTATOR_SQL = `
+  insert into chat_messages (game_id, seq, spectator_id, author_name, client_id, body, created_at)
+  values (?, (select coalesce(max(seq), 0) + 1 from chat_messages where game_id = ?), ?, ?, ?, ?, clock_timestamp())`;
+
+type SpectatorContext = {
+  spectator_id: string;
+  name: string | null;
+  status: GameStatus;
+  window_open: boolean;
+  since_last_ms: number | null;
+  total: number;
+};
 
 type Context = {
   sender_id: string;
@@ -67,6 +98,8 @@ type Context = {
   mine: boolean;
   theirs: boolean | null;
   status: GameStatus;
+  /** The game is public (BR-40): the other player's switch does not cut the asker off from the spectators. */
+  is_public: boolean;
   /** A seat belongs to a deleted account (`user_id` NULL, `kind` still `account`). */
   gone: boolean;
   window_open: boolean;
@@ -74,16 +107,23 @@ type Context = {
   total: number;
 };
 
-type MessageRow = { seq: number; seat: Seat; body: string; created_at: string };
+type MessageRow = { seq: number; seat: Seat | null; author_name?: string | null; body: string; created_at: string };
 
 export const CHAT_UNAVAILABLE_MESSAGE = "Czat jest teraz niedostępny w tej partii.";
 export const CHAT_DISABLED_MESSAGE = "Czat jest wyłączony.";
 export const CHAT_AGENT_SETTINGS_MESSAGE = "Agent nie zmienia ustawień czatu.";
 export const CHAT_FULL_MESSAGE = "W tej partii jest już maksymalna liczba wiadomości.";
+export const CHAT_SPECTATOR_NAME_REQUIRED_MESSAGE = "Aby pisać na czacie, wejdź z nickiem lub zalogowany jako konto.";
 export const CHAT_RATE_LIMITED_MESSAGE = "Poczekaj chwilę przed następną wiadomością.";
 
 function viewOf(row: MessageRow): ChatMessageView {
-  return { id: row.seq, seat: row.seat, text: row.body, createdAt: row.created_at };
+  return {
+    id: row.seq,
+    seat: row.seat,
+    ...(row.author_name != null && { spectatorName: row.author_name }),
+    text: row.body,
+    createdAt: row.created_at,
+  };
 }
 
 /**
@@ -129,7 +169,101 @@ export class ChatService {
       lastId: messages.at(-1)?.id ?? afterId ?? 0,
       limits,
       ...(retryAfterMs > 0 ? { retryAfterMs } : {}),
+      ...(state === "open" && context.is_public && context.theirs === false ? { opponentDisabled: true as const } : {}),
     };
+  }
+
+  /**
+   * The messages of a public game for one of its spectators (E10-S03): the same page as a player's
+   * read, from every sender. A spectator has no setting, so the players' switches never hide the
+   * conversation from them (BR-41); only the game decides (`open`, `closed`, `unavailable`).
+   * @throws AppError 404 when the spectator or the game is gone (or no longer public).
+   */
+  async readAsSpectator(
+    spectator: { spectatorId: string },
+    gameId: string,
+    { afterId, limit }: { afterId?: number; limit: number },
+  ): Promise<ChatReadData> {
+    const context = await this.#spectatorContext(this.#em, spectator, gameId);
+    const state = deriveSpectatorChatState({ status: context.status, windowOpen: context.window_open });
+    const rows =
+      state !== "open"
+        ? []
+        : afterId === undefined
+          ? await this.#em.execute<MessageRow[]>(LATEST_SQL, [gameId, limit])
+          : await this.#em.execute<MessageRow[]>(AFTER_SQL, [gameId, afterId, limit]);
+    const messages = rows.map(viewOf);
+    const retryAfterMs = state === "open" ? this.#retryAfterOf(context.since_last_ms, this.#config.human) : 0;
+    return {
+      state,
+      messages,
+      lastId: messages.at(-1)?.id ?? afterId ?? 0,
+      limits: this.#config.human,
+      ...(retryAfterMs > 0 ? { retryAfterMs } : {}),
+    };
+  }
+
+  /**
+   * A spectator's message (E10-S03, BR-41), under the rules of a person's (BR-32): the text, a retry of
+   * the same `clientId`, the state, the cap of the game, the interval - one transaction under the
+   * game's advisory lock, shared with the players' sends so the numbering stays in commit order. A
+   * visitor without a nickname only reads (`403`).
+   * @throws AppError 400 with `fieldErrors.text`; 403 without a name; 404; 409 `CHAT_UNAVAILABLE` /
+   * `CHAT_FULL`; 429 `RATE_LIMITED` with `data.retryAfterMs`.
+   */
+  async sendAsSpectator(
+    spectator: { spectatorId: string },
+    gameId: string,
+    input: { text: unknown; clientId: string },
+  ): Promise<ChatSendData & { created: boolean }> {
+    const checked = normalizeChatMessage(input.text, { maxLength: this.#config.human.maxLength });
+    if (!checked.ok) {
+      const message = CHAT_REJECTION_MESSAGES[checked.reason];
+      throw new ValidationError(message, {
+        fieldErrors: { text: [message] },
+        data: { reason: checked.reason },
+      });
+    }
+    try {
+      return await this.#em.transactional(async (tx) => {
+        await tx.execute(LOCK_GAME_SQL, [gameId], "run");
+        const context = await this.#spectatorContext(tx, spectator, gameId);
+        if (context.name === null) throw new ForbiddenError(CHAT_SPECTATOR_NAME_REQUIRED_MESSAGE);
+        const [repeat] = await tx.execute<MessageRow[]>(REPEAT_SPECTATOR_SQL, [spectator.spectatorId, input.clientId]);
+        if (repeat) {
+          return {
+            message: viewOf(repeat),
+            retryAfterMs: this.#retryAfterOf(context.since_last_ms, this.#config.human),
+            created: false,
+          };
+        }
+        const state = deriveSpectatorChatState({ status: context.status, windowOpen: context.window_open });
+        if (state !== "open") throw new ConflictError(CHAT_UNAVAILABLE_MESSAGE, { code: "CHAT_UNAVAILABLE" });
+        if (context.total >= this.#config.maxMessagesPerGame) {
+          throw new ConflictError(CHAT_FULL_MESSAGE, { code: "CHAT_FULL" });
+        }
+        const wait = this.#retryAfterOf(context.since_last_ms, this.#config.human);
+        if (wait > 0) {
+          throw new TooManyRequestsError(CHAT_RATE_LIMITED_MESSAGE, {
+            retryAfterSeconds: Math.ceil(wait / 1000),
+            data: { retryAfterMs: wait },
+          });
+        }
+        await tx.execute(
+          INSERT_SPECTATOR_SQL,
+          [gameId, gameId, spectator.spectatorId, context.name, input.clientId, checked.text],
+          "run",
+        );
+        const [row] = await tx.execute<MessageRow[]>(REPEAT_SPECTATOR_SQL, [spectator.spectatorId, input.clientId]);
+        return { message: viewOf(row!), retryAfterMs: this.#config.human.minIntervalMs, created: true };
+      });
+    } catch (error) {
+      // The game or the spectator went away under us (the cleanup): the same answer as for a stranger.
+      if (error instanceof ForeignKeyConstraintViolationException) {
+        throw new NotFoundError(GAME_NOT_FOUND_MESSAGE);
+      }
+      throw error;
+    }
   }
 
   /**
@@ -247,6 +381,20 @@ export class ChatService {
     return context;
   }
 
+  async #spectatorContext(
+    em: EntityManager,
+    spectator: { spectatorId: string },
+    gameId: string,
+  ): Promise<SpectatorContext> {
+    const [context] = await em.execute<SpectatorContext[]>(SPECTATOR_CONTEXT_SQL, [
+      CHAT_RETENTION_MS,
+      spectator.spectatorId,
+      gameId,
+    ]);
+    if (!context) throw new NotFoundError(GAME_NOT_FOUND_MESSAGE);
+    return context;
+  }
+
   #stateOf(context: Context): ChatState {
     // The account of the other side is deleted and its chat with it (BR-34): nobody to talk to, and
     // `seq` would restart from 1 under a client's cursor.
@@ -256,6 +404,7 @@ export class ChatService {
       windowOpen: context.window_open,
       mine: context.mine,
       theirs: context.theirs,
+      isPublic: context.is_public,
     });
   }
 
@@ -269,7 +418,11 @@ export class ChatService {
 
   /** Milliseconds until the asker may send again; 0 when they may now. */
   #retryAfter(context: Context): number {
-    if (context.since_last_ms === null) return 0;
-    return Math.max(0, Math.ceil(this.#limitsOf(context).minIntervalMs - context.since_last_ms));
+    return this.#retryAfterOf(context.since_last_ms, this.#limitsOf(context));
+  }
+
+  #retryAfterOf(sinceLastMs: number | null, { minIntervalMs }: { minIntervalMs: number }): number {
+    if (sinceLastMs === null) return 0;
+    return Math.max(0, Math.ceil(minIntervalMs - sinceLastMs));
   }
 }

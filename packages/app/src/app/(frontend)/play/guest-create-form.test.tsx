@@ -20,6 +20,8 @@ const create = () => screen.getByRole("button", { name: "Rozumiem, utwórz zapro
 const nick = () => screen.getByLabelText(/Twój nick/) as HTMLInputElement;
 
 beforeEach(() => {
+  // Radix Checkbox measures itself inside a <form>; jsdom has no ResizeObserver.
+  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   push.mockReset();
   apiCall.mockReset();
 });
@@ -42,6 +44,17 @@ describe("GuestCreateForm", () => {
     expect(apiCall).toHaveBeenCalledWith("/api/games", { body: { acknowledgedGuestWarning: true } });
     expect(push).toHaveBeenCalledWith("/games/g1");
     expect((screen.getByRole("button", { name: "Tworzenie zaproszenia…" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("offers 'Partia publiczna', unticked, and sends isPublic only when it is ticked (BR-40)", async () => {
+    apiCall.mockResolvedValue(ok);
+    const u = userEvent.setup();
+    render(<GuestCreateForm />);
+    const box = screen.getByRole("checkbox", { name: /Partia publiczna/ });
+    expect(box.getAttribute("aria-checked")).toBe("false");
+    await u.click(box);
+    await u.click(create());
+    expect(apiCall).toHaveBeenCalledWith("/api/games", { body: { acknowledgedGuestWarning: true, isPublic: true } });
   });
 
   it("sends the normalized nickname", async () => {

@@ -8,6 +8,7 @@ import { ChatMessage } from "./chat/chat-message";
 import { Game } from "./games/game";
 import { GamePairCounter } from "./games/game-pair-counter";
 import { GamePlayer } from "./games/game-player";
+import { GameSpectator } from "./games/game-spectator";
 import { Invitation } from "./games/invitation";
 import { LobbySeeker } from "./games/lobby-seeker";
 
@@ -27,6 +28,7 @@ describe("entities registry", () => {
       "lobby_seekers",
       "game_pair_counters",
       "chat_messages",
+      "game_spectators",
     ]);
   });
 
@@ -127,15 +129,43 @@ describe("chat messages", () => {
     expect(ChatMessage.meta.uniques.map((unique) => unique.name)).toEqual([
       "chat_messages_game_id_seq_unique",
       "chat_messages_sender_id_client_id_unique",
+      "chat_messages_spectator_id_client_id_unique",
     ]);
     expect(ChatMessage.meta.checks.map((check) => check.name)).toEqual([
       "chat_messages_seq_check",
+      "chat_messages_author_check",
       "chat_messages_body_length_check",
     ]);
   });
 
+  it("may come from a spectator instead of a seat, and goes with the spectator's row", () => {
+    const { sender, spectator, authorName } = ChatMessage.meta.properties;
+    expect([sender, spectator, authorName].every((property) => property.nullable)).toBe(true);
+    expect(spectator.deleteRule).toBe("cascade");
+  });
+
   it("keeps the chat setting per seat, on by default", () => {
     expect(GamePlayer.meta.properties.chatEnabled.default).toBe(true);
+  });
+});
+
+describe("game spectators", () => {
+  it("leaves with its game and its account, and is keyed by account per game and by token", () => {
+    const { game, user, tokenHash, nickname } = GameSpectator.meta.properties;
+    expect(game.deleteRule).toBe("cascade");
+    expect(user.deleteRule).toBe("cascade");
+    expect([user, tokenHash, nickname].every((property) => property.nullable)).toBe(true);
+    expect(tokenHash.unique).toBe(true);
+    expect(GameSpectator.meta.uniques.map((unique) => unique.name)).toEqual(["game_spectators_game_id_user_id_unique"]);
+    expect(GameSpectator.meta.checks.map((check) => check.name)).toEqual([
+      "game_spectators_identity_check",
+      "game_spectators_nickname_check",
+      "game_spectators_expiry_check",
+    ]);
+  });
+
+  it("has no seat: it is not a participant of the game", () => {
+    expect(Object.keys(GameSpectator.meta.properties)).not.toContain("seat");
   });
 });
 

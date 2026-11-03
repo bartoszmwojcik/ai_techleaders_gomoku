@@ -174,6 +174,17 @@ describe("ChatPanel, the other states", () => {
     expect((screen.getByLabelText("Wiadomość") as HTMLInputElement).disabled).toBe(true);
   });
 
+  it("in a public game keeps the form open when the opponent turned the chat off, and says who will not read it", () => {
+    useChat.mockReturnValue(
+      chat({ state: "open", opponentDisabled: true, messages: [{ id: 2, seat: null, spectatorName: "Ola", text: "Brawo", createdAt: "2026-11-02T10:00:00.000Z" }] }),
+    );
+    setup();
+
+    expect(screen.getByText("Rozmówca wyłączył czat i nie zobaczy Twoich wiadomości. Możesz pisać do widzów.")).toBeTruthy();
+    expect(screen.getByTestId("chat-spectator").textContent).toBe("Widz · Ola");
+    expect((screen.getByLabelText("Wiadomość") as HTMLInputElement).disabled).toBe(false);
+  });
+
   it("offers a retry only after three failed reads in a row", () => {
     useChat.mockReturnValue(chat({ fails: 2 }));
     setup();

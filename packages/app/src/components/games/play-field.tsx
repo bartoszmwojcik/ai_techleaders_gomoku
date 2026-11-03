@@ -10,6 +10,8 @@ import { TurnStatus } from "@gomoku/ui/game/turn-status";
 import { useRef, useState, useSyncExternalStore } from "react";
 
 import { ChatPanel } from "@/components/chat/chat-panel";
+import { CloseAudience } from "@/components/games/close-audience";
+import { PublicFlag } from "@/components/games/public-flag";
 import { apiCall } from "@/lib/api-client";
 import {
   cellLabel,
@@ -193,6 +195,8 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
   return (
     <>
       <h1 className="m-0 flex min-h-target items-center pr-12 text-section font-strong sm:pr-0">{finished ? "Koniec partii" : "Partia w toku"}</h1>
+      <PublicFlag audience={game.audience} />
+      <CloseAudience gameId={gameId} game={game} onState={onState} onRefresh={onRefresh} onGone={onGone} />
       <div className="flex max-w-(--layout-width-board) flex-col gap-stack">
         {game.fromRematch && guest && !tokenNoticeSeen && (
           // p06.15: the guest holds a new token for the rematch, in the same browser (rematch Q5).

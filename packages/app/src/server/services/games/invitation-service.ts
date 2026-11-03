@@ -91,6 +91,8 @@ export type InvitationPreview = {
   creatorName: string | null;
   /** Whether the creator plays with an account or as a guest (E02-S08). */
   creatorKind: CreatorKind;
+  /** Whether anyone with the code may watch the game (D-33, BR-45): shown before joining. */
+  isPublic: boolean;
   state:
     /** Free to join (a guest option may still apply to the anonymous visitor). */
     | "joinable"
@@ -101,7 +103,11 @@ export type InvitationPreview = {
     /** The viewer holds a slot in another game that is in progress. */
     | "has-active-game"
     /** The viewer has their own waiting game (Q18). */
-    | "has-own-waiting-game";
+    | "has-own-waiting-game"
+    /** A finished public game, the viewer not in it: its code opens the review (E09-S02, BR-44). */
+    | "reviewable"
+    /** A public game in progress, both seats taken, the viewer not in it: its code lets them watch (E10-S02, BR-39). */
+    | "watchable";
   /** The game to open or link to, for every state except `joinable`. */
   gameId?: string;
 };
@@ -191,6 +197,7 @@ export class InvitationService {
       const known = (state: InvitationPreview["state"]): InvitationPreview => ({
         creatorName: creatorNameOf(invitation),
         creatorKind: invitation.creator_kind as CreatorKind,
+        isPublic: invitation.is_public,
         state,
         gameId: invitation.game_id,
       });
@@ -199,6 +206,25 @@ export class InvitationService {
       } else if (member.seat === 2 || invitation.status !== "cancelled") {
         return known("participant");
       }
+    }
+    if (invitation && invitation.status === "finished" && invitation.is_public) {
+      return {
+        creatorName: creatorNameOf(invitation),
+        creatorKind: invitation.creator_kind as CreatorKind,
+        isPublic: true,
+        state: "reviewable",
+        gameId: invitation.game_id,
+      };
+    }
+    if (invitation && invitation.status === "active" && invitation.is_public) {
+      // Watching takes no slot (BR-13), so a viewer who plays elsewhere may watch too.
+      return {
+        creatorName: creatorNameOf(invitation),
+        creatorKind: invitation.creator_kind as CreatorKind,
+        isPublic: true,
+        state: "watchable",
+        gameId: invitation.game_id,
+      };
     }
     if (
       !invitation ||
@@ -214,6 +240,7 @@ export class InvitationService {
     const creator = {
       creatorName: creatorNameOf(invitation),
       creatorKind: invitation.creator_kind as CreatorKind,
+      isPublic: invitation.is_public,
     };
     if (!slot) return { ...creator, state: "joinable" };
     return {

@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { getContainer } = vi.hoisted(() => ({ getContainer: vi.fn() }));
 vi.mock("../container", () => ({ getContainer }));
 
-import { apiHandler, assertSameOrigin, readJsonBody } from "./api-handler";
+import { apiHandler, assertSameOrigin, readJsonBody, readOptionalJsonBody } from "./api-handler";
 
 const ORIGIN = "https://gomoku.example";
 
@@ -73,6 +73,17 @@ describe("readJsonBody", () => {
     expect(await readJsonBody(ok)).toEqual({ a: 1 });
     const bad = new Request("http://x", { method: "POST", body: "{nope" });
     await expect(readJsonBody(bad)).rejects.toBeInstanceOf(ValidationError);
+  });
+});
+
+describe("readOptionalJsonBody", () => {
+  it("treats a missing or blank body as an empty object, parses JSON and rejects garbage", async () => {
+    expect(await readOptionalJsonBody(new Request("http://x", { method: "POST" }))).toEqual({});
+    expect(await readOptionalJsonBody(new Request("http://x", { method: "POST", body: "  " }))).toEqual({});
+    expect(await readOptionalJsonBody(new Request("http://x", { method: "POST", body: '{"a":1}' }))).toEqual({ a: 1 });
+    await expect(
+      readOptionalJsonBody(new Request("http://x", { method: "POST", body: "{nope" })),
+    ).rejects.toBeInstanceOf(ValidationError);
   });
 });
 
