@@ -15,6 +15,7 @@ const entry = (over: Partial<HistoryEntry> = {}): HistoryEntry => ({
   result: "win",
   reason: "five_in_row",
   opponent: { kind: "account", name: "Alicja_99" },
+  variant: "classic",
   ...over,
 });
 const ok = (data: unknown) => ({ ok: true, data });

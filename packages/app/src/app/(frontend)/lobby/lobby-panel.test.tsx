@@ -11,11 +11,13 @@ import type { LobbyData } from "@/lib/games/lobby";
 
 import { LOBBY_FAILURES_BEFORE_ERROR, LOBBY_POLL_INTERVAL_MS, LobbyPanel } from "./lobby-panel";
 
-const seeker = (name: string, sinceMs = 60_000, expiresInMs = 240_000) => ({
+const seeker = (name: string, sinceMs = 60_000, expiresInMs = 240_000, variant: "classic" | "paper" = "classic", timeControlMs = 600_000) => ({
   id: `id-${name}`,
   displayName: name,
   sinceMs,
   expiresInMs,
+  variant,
+  timeControlMs,
 });
 const lobby = (over: Partial<LobbyData> = {}): LobbyData => ({
   me: null,
@@ -62,9 +64,9 @@ describe("LobbyPanel: what is shown", () => {
     const rows = within(list).getAllByRole("listitem");
     expect(rows).toHaveLength(2);
     expect(within(list).getByText("Alicja_99")).toBeTruthy();
-    expect(within(list).getByText("szuka od 1 min")).toBeTruthy();
+    expect(within(list).getByText("Klasyczny · 10 min · szuka od 1 min")).toBeTruthy();
     expect(within(list).getByText("4:00")).toBeTruthy();
-    expect(within(list).getByText("szuka od 3 min")).toBeTruthy();
+    expect(within(list).getByText("Klasyczny · 10 min · szuka od 3 min")).toBeTruthy();
     expect(within(list).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual([
       "Zagraj z Alicja_99",
       "Zagraj z czarny_kamień",

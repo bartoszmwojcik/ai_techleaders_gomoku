@@ -24,6 +24,8 @@ vi.setConfig({ testTimeout: 20_000 });
 const NO_RESULT = null;
 const live = (over: Partial<SpectatorView> = {}): SpectatorView => ({
   status: "active",
+  variant: "classic",
+  timeControlMs: 600_000,
   moveCount: 1,
   blackSeat: 1,
   turnSeat: 2,

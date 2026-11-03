@@ -30,6 +30,8 @@ import { PlayField } from "./play-field";
 const player = (seat: 1 | 2, name: string | null, kind: "account" | "guest" = "account") => ({ seat, kind, displayName: name, seen: true });
 const game = (over: Partial<GameView> = {}): GameView => ({
   status: "active",
+  variant: "classic",
+  timeControlMs: 600_000,
   you: { seat: 1, kind: "account" },
   players: [player(1, "Ala_7"), player(2, "Kuba_P")],
   moveCount: 0,

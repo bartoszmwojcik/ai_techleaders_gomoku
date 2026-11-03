@@ -22,6 +22,8 @@ vi.setConfig({ testTimeout: 20_000 });
 
 const EXPIRES = "2026-10-30T09:00:00.000Z";
 const NO_BOARD = {
+  variant: "classic",
+  timeControlMs: 600_000,
   moveCount: 0,
   blackSeat: null,
   turnSeat: null,

@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import type { GameView } from "@/server/http/game-view";
 
-import { cellLabel, cellName, colorOfSeat, mergeState, moveOf, outcomeOf, playerName, playerNameOf, stonesOf } from "./play";
+import { cellLabel, cellName, colorOfSeat, knownMoves, mergeState, outcomeOf, paperStonesOf, playerName, playerNameOf, stonesOf } from "./play";
 
 const view = (over: Partial<GameView> = {}): GameView => ({
   status: "active",
+  variant: "classic",
+  timeControlMs: 600_000,
   you: { seat: 1, kind: "account" },
   players: [],
   moveCount: 0,
@@ -57,12 +59,6 @@ describe("mergeState", () => {
     );
     expect(merged.status).toBe("finished");
     expect(merged.moves).toEqual([1, 2, 3]);
-  });
-});
-
-describe("moveOf", () => {
-  it("turns a cell into the body of a move", () => {
-    expect(moveOf(2 * 15 + 3, 7)).toEqual({ x: 3, y: 2, moveNumber: 7 });
   });
 });
 
@@ -129,5 +125,74 @@ describe("outcomeOf", () => {
     expect(outcomeOf(finished(2, "timeout"))?.result).toBe("loss");
     expect(outcomeOf(finished(1, "resignation"))?.result).toBe("win");
     expect(outcomeOf(finished(2, "resignation"))?.result).toBe("loss");
+  });
+});
+
+describe("the paper game", () => {
+  const at = "2026-11-03T10:00:00.000Z";
+  const sheet = (moves: { n: number; x: number; y: number; seat: 1 | 2; auto: boolean; at: string }[], moveCount = moves.length) => ({
+    moveCount,
+    moves,
+    scores: [0, 0] as [number, number],
+    fives: [],
+    autoSeat: null,
+    autoMoveAt: null,
+  });
+  const m = (n: number) => ({ n, x: 50 + n, y: 50, seat: ((n % 2) + 1) as 1 | 2, auto: false, at });
+
+  it("counts the moves of the sheet, or the classic log", () => {
+    expect(knownMoves(view({ moves: [1, 2] }))).toBe(2);
+    expect(knownMoves(view({ variant: "paper", paper: sheet([m(1), m(2), m(3)]) }))).toBe(3);
+  });
+
+  it("merges the moves after the known ones into paper.moves", () => {
+    const current = view({ variant: "paper", moveCount: 2, paper: sheet([m(1), m(2)]) });
+    const next = view({ variant: "paper", moveCount: 4, paper: sheet([m(3), m(4)], 4) });
+    const merged = mergeState(current, next, 2);
+    expect(merged.paper?.moves.map((move) => move.n)).toEqual([1, 2, 3, 4]);
+    expect(merged.paper?.moveCount).toBe(4);
+  });
+
+  it("starts the sheet from the new moves when the client held none", () => {
+    const merged = mergeState(view({ variant: "paper" }), view({ variant: "paper", moveCount: 1, paper: sheet([m(1)]) }), 0);
+    expect(merged.paper?.moves).toHaveLength(1);
+  });
+
+  it("keeps the current sheet when the response is older", () => {
+    const current = view({ variant: "paper", moveCount: 3, paper: sheet([m(1), m(2), m(3)]) });
+    expect(mergeState(current, view({ variant: "paper", moveCount: 1, paper: sheet([], 1) }), 3)).toBe(current);
+  });
+
+  it("gives the stones for the board", () => {
+    expect(paperStonesOf(sheet([m(1)]))).toEqual([{ x: 51, y: 50, seat: 2, auto: false }]);
+  });
+
+  describe("outcomeOf", () => {
+    const finished = (reason: "points" | "resignation", winnerSeat: 1 | 2 | null, scores?: [number, number]) => ({
+      result: { winnerSeat, reason, winLine: null, ...(scores && { scores }) },
+      you: { seat: 1 as const },
+    });
+
+    it("shows the points of a win, a loss and a draw, the viewer's first", () => {
+      expect(outcomeOf(finished("points", 1, [7, 5]))).toEqual({ result: "win", title: "Wygrana 7 : 5", detail: "Wynik końcowy według punktów za piątki." });
+      expect(outcomeOf(finished("points", 2, [5, 7]))?.title).toBe("Przegrana 5 : 7");
+      expect(outcomeOf({ ...finished("points", 2, [5, 7]), you: { seat: 2 } })?.title).toBe("Wygrana 7 : 5");
+      expect(outcomeOf(finished("points", null, [4, 4]))).toMatchObject({ result: "draw", title: "Remis 4 : 4" });
+    });
+
+    it("says it plainly without the points (a review)", () => {
+      expect(outcomeOf(finished("points", 1))).toEqual({ result: "win", title: "Wygrałeś na punkty", detail: "" });
+      expect(outcomeOf(finished("points", 2))?.title).toBe("Przegrałeś na punkty");
+      expect(outcomeOf(finished("points", null))).toEqual({ result: "draw", title: "Remis", detail: "" });
+    });
+
+    it("names a resignation of the paper game, with the points at that moment", () => {
+      expect(outcomeOf(finished("resignation", 2, [3, 1]))).toEqual({
+        result: "loss",
+        title: "Przegrana przez poddanie",
+        detail: "Wynik w chwili poddania: 3 : 1.",
+      });
+      expect(outcomeOf(finished("resignation", 1, [3, 1]))?.title).toBe("Wygrana — przeciwnik poddał partię");
+    });
   });
 });
