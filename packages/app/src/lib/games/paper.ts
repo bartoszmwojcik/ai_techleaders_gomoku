@@ -6,7 +6,7 @@ import type { GameView } from "@/server/http/game-view";
 type Paper = NonNullable<GameView["paper"]>;
 type Point = { x: number; y: number };
 
-const STATE_WORD = { empty: "puste", black: "czarny kamień", white: "biały kamień" } as const;
+const STATE_WORD = { empty: "puste", black: "krzyżyk", white: "kółko" } as const;
 const ARROWS: Record<string, string> = {
   "-1,-1": "↖",
   "0,-1": "↑",
@@ -25,15 +25,15 @@ export const PAPER_LABELS: PaperBoardLabels = {
     [
       `Pole ${x}, ${y}`,
       STATE_WORD[state],
-      state === "empty" && !allowed ? "za daleko od kamieni" : "",
+      state === "empty" && !allowed ? "za daleko od znaków" : "",
       last ? "ostatni ruch" : "",
       auto ? "postawiony przez automat" : "",
       selected ? "zaznaczone" : "",
     ]
       .filter(Boolean)
       .join(", "),
-  notAllowed: "Za daleko od kamieni: kamień można postawić najwyżej 3 pola od innego.",
-  autoMoved: ({ x, y }) => `Automat postawił kamień na polu ${x}, ${y}`,
+  notAllowed: "Za daleko od znaków: znak można postawić najwyżej 3 pola od innego.",
+  autoMoved: ({ x, y }) => `Automat postawił znak na polu ${x}, ${y}`,
   opponentMarker: ({ dx, dy }) => `Ruch przeciwnika ${ARROWS[`${dx},${dy}`]}`,
   toolbar: "Przesuwanie i powiększanie planszy",
   level: (level) => `${level} × ${level} pól`,
@@ -51,7 +51,7 @@ export const PAPER_LABELS: PaperBoardLabels = {
   selectionDown: "Zaznaczenie w dół",
 };
 
-/** Stone colour of each seat; before the draw (`blackSeat` null) the seats take the default order. */
+/** The side of each seat (black plays ×, white plays ○); before the draw (`blackSeat` null) the seats take the default order. */
 export function paperColors(blackSeat: Seat | null): Record<Seat, StoneColor> {
   return blackSeat === 2 ? { 1: "white", 2: "black" } : { 1: "black", 2: "white" };
 }
@@ -79,7 +79,7 @@ export function refusalText(rules: PaperRules, point: Point): string {
   const why = refusalIn(rules.index, point.x, point.y);
   if (why === null) return "";
   if (why === "CELL_OCCUPIED") return "To pole jest już zajęte.";
-  if (why === "FIRST_MOVE_CENTER") return "Pierwszy kamień trafia na środek planszy.";
+  if (why === "FIRST_MOVE_CENTER") return "Pierwszy znak trafia na środek planszy.";
   if (why === "OFF_BOARD") return "To pole jest poza planszą.";
-  return "Za daleko od kamieni: najwyżej 3 pola od innego.";
+  return "Za daleko od znaków: najwyżej 3 pola od innego.";
 }

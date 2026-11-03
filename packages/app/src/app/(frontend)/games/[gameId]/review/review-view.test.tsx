@@ -92,6 +92,15 @@ describe("ReviewView", { timeout: 30_000 }, () => {
     expect(screen.getByTestId("review-players").textContent).toBe("Czarne: AlaBiałe: Bob (gość)");
   });
 
+  it("names the players by mark, with the marks, in a paper game", () => {
+    render(<ReviewView review={review({ moves: [], viewerSeat: null, result: { winnerSeat: 2, reason: "points", winLine: null } })} back={back} />);
+    expect(screen.getByTestId("review-players").textContent).toBe("Krzyżyk: AlaKółko: Bob (gość)");
+    expect(screen.getByTestId("review-players").querySelectorAll("path")).toHaveLength(1);
+    expect(screen.getByTestId("review-players").querySelectorAll("circle")).toHaveLength(1);
+    expect(screen.getByText("Wygrało kółko: Bob (gość)")).toBeTruthy();
+    expect(document.querySelector("main")?.textContent).not.toMatch(/czarn|biał/i);
+  });
+
   it("reviews a game that ended without a move on the board", () => {
     render(<ReviewView review={review({ moves: [], result: { winnerSeat: 2, reason: "resignation", winLine: null } })} back={back} />);
 

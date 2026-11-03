@@ -26,6 +26,7 @@ import {
 
 import { crispLineWidth, watchDevicePixelRatio } from "./board-line-width";
 import { cn } from "./cn";
+import { PaperMark } from "./paper-mark";
 import {
   centerView,
   dragView,
@@ -74,7 +75,7 @@ type PaperBoardLabels = {
   board: string;
   /** Names one cell, e.g. "Pole 3, −2, puste". */
   cell: (cell: PaperCellInfo) => string;
-  /** Description of a field too far from every stone, e.g. "Za daleko od kamieni (najwyżej 3 pola)". */
+  /** Description of a field too far from every stone, e.g. "Za daleko od znaków (najwyżej 3 pola)". */
   notAllowed: string;
   /** Live announcement of the automaton's move; the point is in screen coordinates. */
   autoMoved: (point: Point) => string;
@@ -102,21 +103,21 @@ type PaperBoardLabels = {
 
 type PaperBoardProps = {
   stones: readonly PaperStone[];
-  /** Stone colour of each seat. */
+  /** The side of each seat: black plays ×, white plays ○. */
   colors: Record<Seat, StoneColor>;
   /** Counted fives, drawn with a pencil stroke. */
   fives?: readonly PaperFive[];
-  /** The last stone placed (marked with an outline). */
+  /** The last mark placed (framed with the red pencil). */
   lastMove?: Point;
-  /** The opponent's last stone; when it is off-screen a direction marker appears on the edge. */
+  /** The opponent's last mark; when it is off-screen a direction marker appears on the edge. */
   opponentMove?: Point;
   /** The field picked and waiting for confirmation (dashed outline); the parent owns the second step. */
   selection?: Point;
-  /** Seat whose colour the selection preview uses. Default 1. */
+  /** Seat whose mark the selection preview shows. Default 1. */
   selectionSeat?: Seat;
   /** Runs when the player picks an allowed empty field (click, Enter, Space) or moves the selection with the touch bar. */
   onSelect?: (point: Point) => void;
-  /** Fields where a stone may go, as a predicate or a list; fields outside are inactive. Omit for "everywhere". */
+  /** Fields where a mark may go, as a predicate or a list; fields outside are inactive. Omit for "everywhere". */
   allowed?: ((point: Point) => boolean) | readonly Point[];
   /** Finished game or opponent's turn: the board can be read and moved around but nothing is picked. */
   disabled?: boolean;
@@ -127,7 +128,7 @@ type PaperBoardProps = {
   selectionBar?: boolean;
   /** Show the toolbar above the board (window arrows, centre, zoom on desktop). Default true. */
   toolbar?: boolean;
-  /** Changing the value centres the view on the stones (start of the game, after the player's own move). */
+  /** Changing the value centres the view on the marks (start of the game, after the player's own move). */
   recenterToken?: string | number;
   /** Key of the zoom level in localStorage. */
   storageKey?: string;
@@ -451,7 +452,8 @@ function PaperBoard({
                           row === lastColumn && !atEnd.y ? "after:-bottom-(--board-padding)" : "after:bottom-0",
                           point.y === 0 ? "before:h-[calc(var(--board-line-width)*3)]" : "before:h-(--board-line-width)",
                           point.x === 0 ? "after:w-[calc(var(--board-line-width)*3)]" : "after:w-(--board-line-width)",
-                          restricted && canPlace && !stone && "bg-paper-allowed",
+                          // A mark stays on the tone of its surroundings, with no patch of darker paper under it.
+                          restricted && (canPlace || stone) && "bg-paper-allowed",
                         )}
                       >
                         <button
@@ -480,14 +482,12 @@ function PaperBoard({
                             <span
                               aria-hidden="true"
                               className={cn(
-                                "flex size-(--piece-size) items-center justify-center rounded-piece border border-piece-outline shadow-piece",
-                                shown === "black" ? "bg-piece-black" : "bg-piece-white",
-                                !stone && "border-2 border-dashed",
-                                last && "outline-2 outline-offset-2 outline-board-marker",
-                                stone?.auto && !last && "outline-2 outline-dashed outline-offset-2 outline-board-marker",
+                                "flex size-full items-center justify-center",
+                                last && "outline-2 -outline-offset-2 outline-paper-pencil",
+                                !stone && "outline-2 outline-dashed -outline-offset-2 outline-paper-pencil",
                               )}
                             >
-                              {stone?.auto && <span className="size-1/4 rounded-piece bg-paper-auto" />}
+                              <PaperMark color={shown} auto={Boolean(stone?.auto)} preview={!stone} className="size-(--paper-mark-size)" />
                             </span>
                           )}
                         </button>

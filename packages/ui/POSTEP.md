@@ -219,3 +219,20 @@ Plansza wariantu to pergaminowa kartka zamiast drewna. Decyzje:
 - **Motywy:** tokeny papieru zależą od motywu; w ciemnym papier jest przyciemniony, nie odwrócony. Kontrast kratki (`paper-line`, wzór WCAG, próg 3:1), najgorszy na `paper-grain`: jasny 3,26, ciemny 3,34; na `paper-surface`: 3,74 i 3,90.
 - **`forced-colors`:** paleta systemowa, bez gradientu i maski. **`prefers-reduced-motion`:** plansza nie ma animacji, nic do wyłączenia.
 - **Przycisk „Wyśrodkuj”:** miał stałe 44 × 44 px, a słowo wychodziło poza ramkę na sąsiednie przyciski. Wysokość została, szerokość wynika ze słowa, pasek zawija się przy 320 px. Pilnuje tego story `PasekNarzedziWaski320` (pomiar w przeglądarce).
+
+## Znaki ○ i × (plansza „papier i ołówek”)
+
+Plansza wariantu pokazuje znaki zamiast kamieni. Nowy komponent `src/game/paper-mark.tsx`, stories i MDX w `docs/product/paper-mark.*`; `TurnStatus` przyjmuje `marker`. Decyzje:
+
+- **Mapowanie (decyzja właściciela):** czarne = pierwszy gracz = ×, białe = drugi gracz = ○ z jasnym wypełnieniem i ciemnym konturem. Prop `colors` zostaje, nazwy znaków są w jednym miejscu (`PaperMark`, `sideWords` w aplikacji).
+- **Kreski czyste, nie odręczne** (domyślna ze zgłoszenia). Grubość w jednostkach pola 24, więc idzie za powiększeniem.
+- **Ostatni ruch i piątki kredką:** czerwony ołówek (`paper-pencil`) odróżnia je od tuszu znaków, a pomarańcz zostaje dla działań. **Automat:** jaśniejsza, przerywana kreska i tekst w nazwie pola; pomarańczowa kropka zniknęła. **Podgląd:** jaśniejsza kreska w przerywanej ramce.
+- **Poza kartką:** `framed`, kawałek papieru pod znakiem, bo ciemny tusz znika na ciemnej stronie.
+- **Kontrast znaków (próg 3:1), wzór WCAG, względem `paper-surface` / `paper-grain` / `paper-allowed`:**
+
+| Para | Jasny | Ciemny |
+|---|---|---|
+| `paper-ink` (× i kontur ○) | 14,34 / 12,51 / 16,02 | 7,31 / 6,26 / 9,01 |
+| `paper-auto` (automat, podgląd) | 6,26 / 5,46 / 6,99 | 4,30 / 3,68 / 5,29 |
+| `paper-pencil` (ramka, piątka) | 6,01 / 5,25 / 6,72 | 4,32 / 3,70 / 5,33 |
+| `paper-mark-fill` / `paper-ink` (wnętrze ○) | 16,74 | 16,74 |

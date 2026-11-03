@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { GameView } from "@/server/http/game-view";
 
-import { cellLabel, cellName, colorOfSeat, knownMoves, mergeState, outcomeOf, paperStonesOf, playerName, playerNameOf, stonesOf } from "./play";
+import { cellLabel, cellName, colorOfSeat, knownMoves, mergeState, outcomeOf, paperStonesOf, playerName, playerNameOf, sideWords, stonesOf } from "./play";
 
 const view = (over: Partial<GameView> = {}): GameView => ({
   status: "active",
@@ -67,6 +67,21 @@ describe("colorOfSeat", () => {
     expect(colorOfSeat(null, 1)).toBeNull();
     expect(colorOfSeat(2, 2)).toBe("black");
     expect(colorOfSeat(2, 1)).toBe("white");
+  });
+});
+
+describe("sideWords", () => {
+  it("names the sides by colour in the classic game and by mark in the paper one (black = ×, white = ○)", () => {
+    expect(sideWords("classic").plays).toEqual({ black: "czarnymi", white: "białymi" });
+    expect(sideWords("classic").place.white).toBe("Postaw kamień");
+    expect(sideWords("paper").plays).toEqual({ black: "krzyżykiem", white: "kółkiem" });
+    expect(sideWords("paper").place).toEqual({ black: "Postaw krzyżyk", white: "Postaw kółko" });
+    expect(sideWords("paper").rematchOffer).toBe("Znaki zostaną zamienione.");
+    expect(sideWords(undefined)).toBe(sideWords("classic"));
+  });
+
+  it("has no word for a colour or a stone in the paper set", () => {
+    expect(JSON.stringify(sideWords("paper"))).not.toMatch(/kamie|czarn|biał|kolor/i);
   });
 });
 

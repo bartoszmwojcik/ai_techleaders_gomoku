@@ -65,6 +65,7 @@
   --palette-clay-750: #a8341f;
   --palette-clay-800: #9f2d1a;
   --palette-clay-900: #8f2616; /* danger pressed, light theme (propozycja) */
+  --palette-clay-950: #7a1f10; /* red pencil on the dimmed paper of the dark theme */
   --palette-amber-400: #fbbf24;
   --palette-amber-800: #92400e;
   --palette-olive-300: #b5c47a;
@@ -129,14 +130,17 @@
   --piece-outline: var(--palette-stone-900);
   /* Last move and winning line: dark wood tone, 4.06:1 on the board. The action colour reaches only about 2.5:1 on wood. */
   --board-marker: var(--palette-wood-line);
-  /* E11 PaperBoard: the pencil stroke through a five, the marker of an automatic move. */
-  --paper-pencil: var(--palette-stone-700);
-  --paper-auto: var(--palette-orange-400);
+  /* The marks of the paper variant, the same in both themes: × is dark ink, ○ a light fill inside the same ink. */
+  --paper-ink: var(--palette-stone-900);
+  --paper-mark-fill: var(--palette-stone-50);
 
   /* Layer 3: component tokens. */
   --piece-size: 80%; /* R01.3: stone as a share of its cell */
   --board-padding: var(--space-3); /* R01.3 */
   --board-line-width: 1px; /* R01.3 */
+  --paper-mark-size: 84%; /* a mark as a share of its square */
+  --paper-mark-stroke: 3; /* in the 24-unit box of the mark, so it follows the zoom */
+  --paper-mark-dash: 4 2.5; /* the broken line of a mark placed by the automaton */
 
   /* R02.3, R01.8: white label on the action fill, same in both themes. */
   --action-primary-text: var(--palette-white);
@@ -173,6 +177,8 @@
   --paper-grain: var(--palette-parchment-dim-grain);
   --paper-line: var(--palette-parchment-dim-line);
   --paper-allowed: var(--palette-parchment-dim-allowed); /* fields within reach (<= 3 from a mark) */
+  --paper-auto: var(--palette-stone-700); /* lighter ink of a mark placed by the automaton, and of the preview */
+  --paper-pencil: var(--palette-clay-950); /* red pencil: the stroke through a five, the frame of the last move */
 }
 
 /* ---- Meaning tokens, light theme ---- */
@@ -199,6 +205,8 @@
   --paper-grain: var(--palette-parchment-light-grain);
   --paper-line: var(--palette-parchment-light-line);
   --paper-allowed: var(--palette-parchment-light-allowed);
+  --paper-auto: var(--palette-stone-600);
+  --paper-pencil: var(--palette-clay-800);
 }
 
 /* ---- Tailwind: only tokens exist as utilities ---- */
@@ -275,6 +283,8 @@
   --color-paper-line: var(--paper-line);
   --color-paper-allowed: var(--paper-allowed);
   --color-paper-pencil: var(--paper-pencil);
+  --color-paper-ink: var(--paper-ink);
+  --color-paper-mark-fill: var(--paper-mark-fill);
   --color-paper-auto: var(--paper-auto);
   --color-piece-black: var(--piece-black);
   --color-piece-white: var(--piece-white);
@@ -313,11 +323,6 @@
     forced-color-adjust: none;
     background-image: none;
     mask-image: none;
-    --paper-surface: Canvas;
-    --paper-line: CanvasText;
-    --paper-allowed: Canvas;
-    --paper-pencil: CanvasText;
-    --board-marker: Highlight;
     --piece-outline: Highlight;
     --surface-raised: ButtonFace;
     --text-primary: ButtonText;
@@ -352,6 +357,21 @@
 @utility motion-base {
   transition-duration: var(--duration-base);
   transition-timing-function: var(--easing-standard);
+}
+
+/* Forced colours: the marks and the squares keep their shape in the system palette, on and off the sheet. */
+@media (forced-colors: active) {
+  :root,
+  [data-theme="dark"],
+  [data-theme="light"] {
+    --paper-surface: Canvas;
+    --paper-line: CanvasText;
+    --paper-allowed: Canvas;
+    --paper-pencil: CanvasText;
+    --paper-ink: CanvasText;
+    --paper-auto: CanvasText;
+    --paper-mark-fill: Canvas;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

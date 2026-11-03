@@ -83,7 +83,7 @@ describe("PaperBoard window", () => {
 });
 
 describe("PaperBoard stones and markers", () => {
-  it("shows stones in the seat colour, marks the last move and automatic moves", () => {
+  it("shows × for black and ○ for white, frames the last move and breaks the line of automatic moves", () => {
     setup({
       stones: [
         { x: 50, y: 50, seat: 1 },
@@ -92,11 +92,24 @@ describe("PaperBoard stones and markers", () => {
       ],
       lastMove: { x: 52, y: 50 },
     });
-    expect(cell("0,0 black").querySelector("span")?.className).toContain("bg-piece-black");
-    expect(cell("1,0 white automat").querySelector("span")?.className).toContain("outline-dashed");
-    expect(cell("1,0 white automat").querySelector("span span")).toBeTruthy();
-    expect(cell("2,0 white ostatni automat").querySelector("span")?.className).toContain("outline-board-marker");
-    expect(cell("0,0 black").getAttribute("aria-disabled")).toBe("true");
+    const cross = cell("0,0 black");
+    expect(cross.querySelector("svg path")).toBeTruthy();
+    expect(cross.querySelector("svg circle")).toBeNull();
+    expect(cross.querySelector("svg")?.getAttribute("class")).toContain("stroke-paper-ink");
+    expect(cross.querySelector("span")?.className).not.toContain("outline-paper-pencil");
+    const auto = cell("1,0 white automat");
+    expect(auto.querySelector("svg circle")).toBeTruthy();
+    expect(auto.querySelector("svg")?.getAttribute("class")).toContain("stroke-dasharray");
+    expect(auto.querySelector("span")?.className).not.toContain("outline-paper-pencil");
+    const last = cell("2,0 white ostatni automat").querySelector("span")?.className;
+    expect(last).toContain("outline-paper-pencil");
+    expect(last).not.toContain("outline-dashed");
+    expect(cross.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("draws no stone any more", () => {
+    const { container } = setup({ stones: [{ x: 50, y: 50, seat: 1 }, { x: 51, y: 50, seat: 2 }] });
+    expect(container.innerHTML).not.toContain("bg-piece-");
   });
 
   it("announces the automaton's move, and nothing for a player's move", () => {
@@ -107,14 +120,15 @@ describe("PaperBoard stones and markers", () => {
     expect(screen.getByRole("status").textContent).toBe("");
   });
 
-  it("previews the selection in the chosen seat's colour", () => {
+  it("previews the selection with the chosen seat's mark: a lighter line in a dashed frame", () => {
     setup({ selection: { x: 50, y: 50 }, selectionSeat: 2 });
-    const preview = cell("0,0 empty wybrane").querySelector("span");
-    expect(preview?.className).toContain("bg-piece-white");
-    expect(preview?.className).toContain("border-dashed");
+    const preview = cell("0,0 empty wybrane");
+    expect(preview.querySelector("svg circle")).toBeTruthy();
+    expect(preview.querySelector("svg")?.getAttribute("class")).toContain("stroke-paper-auto");
+    expect(preview.querySelector("span")?.className).toContain("outline-dashed");
     cleanup();
     setup({ selection: { x: 50, y: 50 } });
-    expect(cell("0,0 empty wybrane").querySelector("span")?.className).toContain("bg-piece-black");
+    expect(cell("0,0 empty wybrane").querySelector("svg path")).toBeTruthy();
   });
 
   it("draws a pencil stroke through every five, in window coordinates", () => {
@@ -187,6 +201,8 @@ describe("PaperBoard allowed fields", () => {
     fireEvent.click(far);
     fireEvent.click(cell("0,0 black daleko"));
     expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(cell("0,0 black daleko").parentElement?.className).toContain("bg-paper-allowed");
+    expect(far.parentElement?.className).not.toContain("bg-paper-allowed");
   });
 
   it("accepts a predicate, and treats a missing restriction as everywhere", () => {

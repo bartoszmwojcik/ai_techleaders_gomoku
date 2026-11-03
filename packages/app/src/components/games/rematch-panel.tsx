@@ -9,7 +9,7 @@ import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "re
 
 import { apiCall } from "@/lib/api-client";
 import { rematchModeOf } from "@/lib/games/rematch";
-import { colorOfSeat, COLOR_PLAYS, playerNameOf } from "@/lib/games/play";
+import { colorOfSeat, playerNameOf, sideWords } from "@/lib/games/play";
 import type { GameView } from "@/server/http/game-view";
 
 import { useServerNow } from "./use-server-now";
@@ -65,6 +65,7 @@ export function RematchPanel({ gameId, game, reopened, onState, onRefresh, onAcc
   const guest = game.you.kind === "guest";
   const mySeat = game.you.seat;
   const other = game.players.find((player) => player.seat !== mySeat);
+  const words = sideWords(game.variant);
   const nextColor = colorOfSeat(game.blackSeat, mySeat) === "black" ? "white" : "black";
 
   const [withdrawn, setWithdrawn] = useState(false);
@@ -292,7 +293,7 @@ export function RematchPanel({ gameId, game, reopened, onState, onRefresh, onAcc
   } else if (mode.kind === "theirs") {
     statusText = (
       <>
-        {playerNameOf(other).label} proponuje rewanż. Kolory zostaną zamienione.
+        {playerNameOf(other).label} proponuje rewanż. {words.rematchOffer}
         {countdown(mode.expiresAt)}
       </>
     );
@@ -354,7 +355,7 @@ export function RematchPanel({ gameId, game, reopened, onState, onRefresh, onAcc
       {!target && mode.kind === "none" && (
         <>
           <p className="m-0 text-body text-text-secondary" data-testid="rematch-info">
-            Rewanż to nowa partia z odwróconymi kolorami: zagrasz {COLOR_PLAYS[nextColor]}.
+            {words.rematchInfo}: zagrasz {words.plays[nextColor]}.
           </p>
           {guestNote}
           {alert}

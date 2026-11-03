@@ -8,7 +8,7 @@ import * as Stories from "./paper-board.stories";
 
 ## 1. Do czego służy
 
-Pokazuje partię wariantu „papier i ołówek” na planszy 101 × 101 pól przez okno N × N, które gracz przesuwa i powiększa, i pozwala wskazać pole na następny kamień. Klasyczna plansza 15 × 15 zostaje w komponencie Plansza.
+Pokazuje partię wariantu „papier i ołówek” na planszy 101 × 101 pól przez okno N × N, które gracz przesuwa i powiększa, i pozwala wskazać pole na następny znak. Klasyczna plansza 15 × 15 zostaje w komponencie Plansza.
 
 <Canvas of={Stories.PiatkaPrzekreslonaOlowkiem} />
 
@@ -27,8 +27,8 @@ Pokazuje partię wariantu „papier i ołówek” na planszy 101 × 101 pól prz
 2. **Pasek narzędzi** nad planszą: cztery strzałki przesuwające okno o ⌊N/3⌋, „Wyśrodkuj” (szerokość według słowa), na komputerze „−”/„+” i poziom; przy 320 px pasek zawija się, nie przewija.
 3. **Kartka:** pergamin (`paper-surface`, `paper-grain`) z cienką kratką (`paper-line`). Znaki stoją w kratkach. Brzegi: margines `board-padding` wygasa na czterech bokach, a linie biegną w niego dalej, więc widać wycinek większej kartki. Komórki leżą na pełnym papierze, wygasanie nie obniża kontrastu.
 3a. **Pola dozwolone** (najwyżej 3 pola od znaku) w jaśniejszym tonie papieru (`paper-allowed`); pozostałe są nieaktywne i mają opis dla czytnika.
-4. **Kamienie** w kolorze miejsca; ostatni ruch z pełnym obrysem, ruch automatu z przerywanym obrysem i pomarańczową kropką (`paper-auto`).
-5. **Kreska ołówkiem** (SVG, `paper-pencil`) przez każdą policzoną piątkę.
+4. **Znaki** (`PaperMark`): miejsce czarne = pierwszy gracz = × (`paper-ink`), miejsce białe = drugi gracz = ○ (`paper-mark-fill` w konturze `paper-ink`). Znaczenie niesie kształt. Ostatni ruch: pełna ramka kredką (`paper-pencil`). Ruch automatu: jaśniejsza, przerywana kreska (`paper-auto`) i tekst w nazwie pola. Podgląd zaznaczenia: jaśniejsza kreska w przerywanej ramce.
+5. **Kreska kredką** (SVG, `paper-pencil`) przez każdą policzoną piątkę.
 6. **Krawędź planszy** (0 i 100): pogrubiona linia kratki; poza nią margines jest pusty, linie już nie biegną.
 7. **Znacznik kierunku** ruchu przeciwnika poza oknem, na krawędzi planszy.
 8. **Pasek dotykowy** pod planszą (telefon): cztery strzałki zaznaczenia i „−”/„+”, 6 × 44 px + 5 × 4 px = 284 px.
@@ -50,6 +50,8 @@ Pusta, trwająca, z piątką, ruch automatu, ruch przeciwnika poza oknem, tylko 
 
 <Canvas of={Stories.RuchAutomatu} />
 
+<Canvas of={Stories.ZnakiZaznaczoneNaKartce} />
+
 Oba motywy: w ciemnym papier jest przyciemniony, nie odwrócony. Wymuszone kolory (`forced-colors`): paleta systemowa, bez gradientu i wygaszania. Plansza nie ma animacji, więc `prefers-reduced-motion` niczego nie zmienia.
 
 <Canvas of={Stories.KartkaNajwiekszyPoziom} />
@@ -61,7 +63,7 @@ Oba motywy: w ciemnym papier jest przyciemniony, nie odwrócony. Wymuszone kolor
 - **Przesuwanie:** przeciąganie (próg 8 px odróżnia je od stuknięcia), strzałki paska, klawiatura. Plansza ma `touch-action: none`; powiększanie strony działa poza planszą.
 - **Powiększanie:** przyciski „−”/„+” (44 px), Ctrl + kółko, szczypanie dwoma palcami.
 - **Klawiatura:** jeden punkt `Tab`, strzałki przenoszą fokus, na krawędzi okna okno przesuwa się o 1; `Enter` lub `Spacja` wybiera.
-- **Dotyk:** stuknięcie zaznacza (`onSelect`), pasek przesuwa zaznaczenie o jedno pole (okno idzie za zaznaczeniem), „Postaw kamień” steruje rodzic. Pola mają 14–19 px, mniej niż 24 × 24 px z WCAG 2.5.8: spełniamy wyjątek „Equivalent” (zawsze widoczne sterowanie 44 px).
+- **Dotyk:** stuknięcie zaznacza (`onSelect`), pasek przesuwa zaznaczenie o jedno pole (okno idzie za zaznaczeniem), przycisk potwierdzenia („Postaw krzyżyk”, „Postaw kółko”) steruje rodzic. Pola mają 14–19 px, mniej niż 24 × 24 px z WCAG 2.5.8: spełniamy wyjątek „Equivalent” (zawsze widoczne sterowanie 44 px).
 - **Czytnik:** każde pole ma nazwę i stan; pole niedozwolone ma `aria-describedby`; ruch automatu ogłasza `role="status"`.
 - **Okno nie skacze samo:** ruch przeciwnika poza oknem tylko pokazuje znacznik. Wyjątki: zmiana `recenterToken` (start, własny ruch) i zaznaczenie poza widokiem.
 
@@ -85,7 +87,7 @@ Plansza zajmuje szerokość kontenera do `layout-width-board` (448 px). Rozmiar 
 import { PaperBoard } from "@gomoku/ui/game/paper-board";
 
 <PaperBoard
-  stones={stones}            // [{ x, y, seat: 1 | 2, auto? }]
+  stones={stones}            // [{ x, y, seat: 1 | 2, auto? }], znaki
   colors={{ 1: "black", 2: "white" }}
   fives={fives}              // [{ seat, from: { x, y }, to: { x, y } }]
   lastMove={lastMove}
