@@ -11,6 +11,9 @@ type Row = Record<string, unknown>;
 
 const row = (over: Row = {}): Row => ({
   id: ID,
+  variant: "classic",
+  score_1: null,
+  score_2: null,
   finished_at: "2026-10-31T15:04:05.123456Z",
   end_reason: "five_in_row",
   winner_seat: 1,
@@ -63,10 +66,35 @@ describe("GameHistoryService.list", () => {
           result: "win",
           reason: "five_in_row",
           opponent: { kind: "account", name: "Alicja_99" },
+          variant: "classic",
         },
       ],
       nextCursor: null,
     });
+  });
+
+  it("adds the scores of a paper game as [mine, opponent's] from the reader's seat (E11)", async () => {
+    const { service, execute } = setup([
+      row({ variant: "paper", score_1: 3, score_2: 1, my_seat: 1 }),
+      row({ variant: "paper", score_1: 3, score_2: 1, my_seat: 2, winner_seat: 1 }),
+      row({ variant: "paper", score_1: 0, score_2: 0, my_seat: 1, winner_seat: null, end_reason: "points" }),
+    ]);
+
+    const page = await service.list(USER);
+
+    expect(page.entries.map(({ variant, scores }) => ({ variant, scores }))).toEqual([
+      { variant: "paper", scores: [3, 1] },
+      { variant: "paper", scores: [1, 3] },
+      { variant: "paper", scores: [0, 0] },
+    ]);
+    expect(page.entries[1]).toMatchObject({ result: "loss" });
+    expect(page.entries[2]).toMatchObject({ result: "draw", reason: "points" });
+    expect(execute.mock.calls[0]![0]).toContain("left join paper_game_states ps on ps.game_id = g.id");
+  });
+
+  it("has no scores for a classic game", async () => {
+    const page = await setup([row()]).service.list(USER);
+    expect(page.entries[0]).not.toHaveProperty("scores");
   });
 
   it("returns an empty page for an account without games", async () => {

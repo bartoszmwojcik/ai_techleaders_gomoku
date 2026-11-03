@@ -1,7 +1,6 @@
 import {
   ConflictError,
   NotFoundError,
-  ValidationError,
   applyMove,
   classicMoveCreateSchema,
   cellOf,
@@ -188,12 +187,8 @@ export class GameMoveService {
         },
         cell,
       );
-      if (!outcome.ok) {
-        if (outcome.reason === "occupied") {
-          throw new ConflictError(CELL_OCCUPIED_MESSAGE, { code: "CELL_OCCUPIED" });
-        }
-        throw new ValidationError("Pole jest poza planszą.");
-      }
+      // The classic bounds were checked above, so the only refusal left is an occupied cell.
+      if (!outcome.ok) throw new ConflictError(CELL_OCCUPIED_MESSAGE, { code: "CELL_OCCUPIED" });
 
       const { state, result } = outcome;
       const left = spend(
