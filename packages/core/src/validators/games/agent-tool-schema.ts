@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { CHAT_MAX_SEQ } from "../../chat/constants";
-import { BOARD_CELLS } from "../../games/board";
+import { PAPER_CELLS } from "../../games/paper/constants";
 import { AGENT_TOKEN_LENGTH, MCP_MAX_WAIT_SECONDS } from "../../games/constants";
 
 const token = z
@@ -18,7 +18,7 @@ const integer = (field: string) => z.number({ error: field }).int({ error: field
 export const agentGetStateSchema = z.object({
   token,
   waitSeconds: integer("waitSeconds").min(0, { error: "waitSeconds" }).max(MCP_MAX_WAIT_SECONDS, { error: "waitSeconds" }).nullish(),
-  afterMove: integer("afterMove").min(0, { error: "afterMove" }).max(BOARD_CELLS, { error: "afterMove" }).nullish(),
+  afterMove: integer("afterMove").min(0, { error: "afterMove" }).max(PAPER_CELLS, { error: "afterMove" }).nullish(),
   afterMessage: integer("afterMessage").min(0, { error: "afterMessage" }).max(CHAT_MAX_SEQ, { error: "afterMessage" }).nullish(),
 });
 
@@ -36,7 +36,7 @@ export const agentPlayMoveSchema = z.object({
   token,
   x: integer("x"),
   y: integer("y"),
-  moveNumber: integer("moveNumber").min(1, { error: "moveNumber" }).max(BOARD_CELLS, { error: "moveNumber" }),
+  moveNumber: integer("moveNumber").min(1, { error: "moveNumber" }).max(PAPER_CELLS, { error: "moveNumber" }),
 });
 
 export type AgentGetStateInput = z.infer<typeof agentGetStateSchema>;
