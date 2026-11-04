@@ -45,6 +45,7 @@ Gra planszowa dla dwóch osób online: ciemna strona, drewniana plansza, jeden p
 | Grupa wyboru | `@gomoku/ui/game/choice-group` | 2–5 krótkich opcji (wariant, czas na gracza) | długa lista (Select), wiele wyborów naraz (Checkbox) |
 | Baner wyniku | `@gomoku/ui/game/game-result-banner` | po zakończeniu partii | w trakcie partii, lista historii (Znacznik statusu) |
 | Karta kodu zaproszenia | `@gomoku/ui/game/invite-code-card` | strona oczekującej partii | wpisywanie kodu przez zaproszonego (Pole formularza) |
+| Kod QR | `@gomoku/ui/game/qr-code` | link do zeskanowania: karta zaproszenia (`qr`), trwająca partia publiczna | ozdoba, link, który i tak trzeba kliknąć na tym samym urządzeniu |
 | Karta podłączenia agenta | `@gomoku/ui/game/agent-connect-card` | strona oczekującej partii prywatnej, pod kartą zaproszenia (adres MCP, polecenie, kod) | pomoc w trakcie partii, ogólne zwijane sekcje (patrz „Czego brakuje”) |
 | Pole hasła | `@gomoku/ui/game/password-field` | każde pole hasła (logowanie, rejestracja, reset, zmiana) | inne dane wrażliwe |
 | Baner potwierdzenia e-maila | `@gomoku/ui/game/verify-email-banner` | `/` i `/account` przy niepotwierdzonym e-mailu (nie blokuje gry; zamykalny, wraca po 7 dniach) | po potwierdzeniu, dla gościa |

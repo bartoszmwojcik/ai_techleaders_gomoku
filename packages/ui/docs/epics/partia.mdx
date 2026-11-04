@@ -15,7 +15,7 @@ Utworzenie partii i zaproszenie, dołączenie, ruchy i wygrana, zegary, powrót 
 
 ## Komponenty
 
-[Plansza](?path=/docs/produkt-partia-plansza--docs), [Zegar gracza](?path=/docs/produkt-partia-zegar-gracza--docs), [Status tury](?path=/docs/produkt-partia-status-tury--docs), [Baner wyniku](?path=/docs/produkt-partia-baner-wyniku--docs), [Karta kodu zaproszenia](?path=/docs/produkt-partia-karta-kodu-zaproszenia--docs), [Karta podłączenia agenta](?path=/docs/produkt-partia-karta-podłączenia-agenta--docs), [Alert](?path=/docs/prymitywy-alert--docs), [Stan błędu](?path=/docs/prymitywy-stan-błędu--docs), [Szkielet ładowania](?path=/docs/prymitywy-szkielet-ładowania--docs). Wzorce: [Zaproszenie przez link lub kod](?path=/docs/wzorce-zaproszenie-przez-link-lub-kod--docs), [Widok szczegółów](?path=/docs/wzorce-widok-szczegółów--docs).
+[Plansza](?path=/docs/produkt-partia-plansza--docs), [Zegar gracza](?path=/docs/produkt-partia-zegar-gracza--docs), [Status tury](?path=/docs/produkt-partia-status-tury--docs), [Baner wyniku](?path=/docs/produkt-partia-baner-wyniku--docs), [Karta kodu zaproszenia](?path=/docs/produkt-partia-karta-kodu-zaproszenia--docs), [Kod QR](?path=/docs/produkt-partia-kod-qr--docs), [Karta podłączenia agenta](?path=/docs/produkt-partia-karta-podłączenia-agenta--docs), [Alert](?path=/docs/prymitywy-alert--docs), [Stan błędu](?path=/docs/prymitywy-stan-błędu--docs), [Szkielet ładowania](?path=/docs/prymitywy-szkielet-ładowania--docs). Wzorce: [Zaproszenie przez link lub kod](?path=/docs/wzorce-zaproszenie-przez-link-lub-kod--docs), [Widok szczegółów](?path=/docs/wzorce-widok-szczegółów--docs).
 
 ## Mapa stanów ekranów
 
@@ -67,7 +67,7 @@ Agent dołącza do partii prywatnej przez MCP, nie przez przeglądarkę. Człowi
 
 ## Pliki źródłowe
 
-- Komponenty: `src/game/board.tsx`, `player-clock.tsx`, `turn-status.tsx`, `game-result-banner.tsx`, `invite-code-card.tsx`, `format-clock.ts`.
+- Komponenty: `src/game/board.tsx`, `player-clock.tsx`, `turn-status.tsx`, `game-result-banner.tsx`, `invite-code-card.tsx`, `qr-code.tsx`, `format-clock.ts`.
 - Stories ekranów: `docs/screens/partia.stories.tsx`, `game-screen.tsx`, `invite-screens.tsx`, `home-screen.tsx`; wzorce: `docs/patterns/invitation.stories.tsx`, `detail.stories.tsx`, `permissions.stories.tsx`.
 - Specyfikacje: `.ai/specs/implemented/2026-10-24-game-invitations.md`, `.ai/specs/implemented/2026-10-25-game-moves-win-detection.md`, `.ai/specs/implemented/2026-10-31-agent-joins-private-game.md`.
 - Zgłoszenia: epik #16, #21, #22, #23, #24 (spike #30).

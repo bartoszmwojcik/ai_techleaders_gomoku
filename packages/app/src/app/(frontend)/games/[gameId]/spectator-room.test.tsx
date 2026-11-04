@@ -93,6 +93,14 @@ describe("SpectatorRoom", () => {
     expect(screen.queryByTestId("public-flag")).toBeNull();
   });
 
+  it("shows the QR code of the link only while the game is public and on (BR-53)", () => {
+    const first = room(live({ audience: { spectators: 4 } }));
+    expect(screen.getByRole("img", { name: "Kod QR z linkiem do oglądania partii" }).getAttribute("src")).toBe("/api/games/g1/qr");
+    first.unmount();
+    room(live());
+    expect(screen.queryByRole("img", { name: "Kod QR z linkiem do oglądania partii" })).toBeNull();
+  });
+
   it("updates the counter from the poll and drops the flag when the audience is closed", async () => {
     room(live({ audience: { spectators: 2 } }));
     apiCall.mockResolvedValue(read(same({ audience: { spectators: 1 } })));

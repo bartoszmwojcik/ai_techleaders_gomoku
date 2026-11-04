@@ -15,6 +15,7 @@ import { useRef, useState, useSyncExternalStore } from "react";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { CloseAudience } from "@/components/games/close-audience";
 import { PublicFlag } from "@/components/games/public-flag";
+import { PublicGameQr } from "@/components/games/public-game-qr";
 import { apiCall } from "@/lib/api-client";
 import {
   cellLabel,
@@ -450,6 +451,8 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
           // D06: no component for the actions after the end; the block is built from Alert and Button.
           <RematchPanel gameId={gameId} game={game} reopened={reopened ?? false} onState={onState} onRefresh={onRefresh} onAccepting={onAccepting} onGone={onGone} />
         )}
+        {/* Under the controls, so it never pushes the board or its button off the first screen on a phone. */}
+        <PublicGameQr gameId={gameId} audience={game.audience} />
         {/* E07-S01: under the controls and, on the result screen, under the rematch block, so it never pushes the main action down. */}
         <ChatPanel gameId={gameId} game={game} onGone={onGone} />
       </div>

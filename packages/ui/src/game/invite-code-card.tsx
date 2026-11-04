@@ -15,6 +15,8 @@ type InviteCodeCardProps = {
   /** Name of the link line and of the code line (required, passed in). */
   linkLabel: string;
   codeLabel: string;
+  /** The QR code of the same link (`QrCode`), beside the link and the code; wraps under them when there is no room. */
+  qr?: ReactNode;
   /** Until when the invitation works, e.g. "Ważne do 18:40". */
   validUntil?: ReactNode;
   /** Copies the link. The page does the copying (Clipboard API) and then sets `copied`. */
@@ -38,6 +40,7 @@ function InviteCodeCard({
   code,
   linkLabel,
   codeLabel,
+  qr,
   validUntil,
   copyLabel,
   copiedLabel,
@@ -51,16 +54,19 @@ function InviteCodeCard({
 }: InviteCodeCardProps) {
   return (
     <Panel title={title} className={cn("max-w-(--layout-width-dialog)", className)}>
-      <dl className="m-0 flex flex-col gap-stack">
-        <div className="flex flex-col gap-group">
-          <dt className="text-meta font-strong text-text-secondary">{linkLabel}</dt>
-          <dd className="m-0 text-body text-text-primary select-all">{link}</dd>
-        </div>
-        <div className="flex flex-col gap-group">
-          <dt className="text-meta font-strong text-text-secondary">{codeLabel}</dt>
-          <dd className="m-0 text-section font-strong tracking-widest text-text-primary select-all">{code}</dd>
-        </div>
-      </dl>
+      <div className="flex flex-wrap items-start gap-stack">
+        <dl className="m-0 flex min-w-0 flex-1 basis-(--layout-width-qr) flex-col gap-stack">
+          <div className="flex flex-col gap-group">
+            <dt className="text-meta font-strong text-text-secondary">{linkLabel}</dt>
+            <dd className="m-0 text-body text-text-primary select-all">{link}</dd>
+          </div>
+          <div className="flex flex-col gap-group">
+            <dt className="text-meta font-strong text-text-secondary">{codeLabel}</dt>
+            <dd className="m-0 text-section font-strong tracking-widest text-text-primary select-all">{code}</dd>
+          </div>
+        </dl>
+        {qr}
+      </div>
       {validUntil && <p className="m-0 text-meta text-text-muted">{validUntil}</p>}
       <div className="flex flex-wrap gap-group">
         <Button variant="secondary" onClick={onCopy}>

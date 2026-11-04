@@ -11,6 +11,8 @@ import { Field } from "@gomoku/ui/game/field";
 import { GameResultBanner } from "@gomoku/ui/game/game-result-banner";
 import { HistoryList, HistoryRow } from "@gomoku/ui/game/history-list";
 import { InviteCodeCard } from "@gomoku/ui/game/invite-code-card";
+import { QrCode } from "@gomoku/ui/game/qr-code";
+import { SAMPLE_QR } from "../product/qr-sample";
 import { LobbyList, LobbyRow } from "@gomoku/ui/game/lobby-list";
 import { Panel } from "@gomoku/ui/game/panel";
 import { PageHeader } from "@gomoku/ui/game/page-header";
@@ -227,6 +229,16 @@ Link i kod jednego zaproszenia z kopiowaniem i udostępnianiem. [Dokumentacja](?
 <Unstyled>
   <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
     <InviteCodeCard title="Zaproś znajomego" link="https://gomoku.example/invite/ABCD-EFGH" code="ABCD-EFGH" linkLabel="Link do zaproszenia" codeLabel="Kod" copyLabel="Kopiuj link" copiedLabel="Skopiowano" onCopy={() => undefined} />
+  </div>
+</Unstyled>
+
+### Kod QR
+
+Link do zeskanowania telefonem: na karcie zaproszenia i w trwającej partii publicznej. [Dokumentacja](?path=/docs/produkt-partia-kod-qr--docs), import `@gomoku/ui/game/qr-code`.
+
+<Unstyled>
+  <div className="my-stack max-w-xl rounded-base border border-border-default bg-surface-page p-4 text-text-primary">
+    <QrCode src={SAMPLE_QR} label="Kod QR z linkiem zaproszenia" caption="Zeskanuj telefonem, żeby dołączyć." />
   </div>
 </Unstyled>
 

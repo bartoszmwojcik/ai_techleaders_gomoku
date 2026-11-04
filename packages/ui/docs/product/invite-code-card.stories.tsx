@@ -1,8 +1,10 @@
 import { InviteCodeCard } from "@gomoku/ui/game/invite-code-card";
+import { QrCode } from "@gomoku/ui/game/qr-code";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, within } from "storybook/test";
 
 import { Narrow } from "../../.storybook/blocks";
+import { SAMPLE_QR } from "./qr-sample";
 
 const meta = {
   title: "Produkt/Partia/Karta kodu zaproszenia",
@@ -33,6 +35,18 @@ export const Playground: Story = {};
 export const Skopiowano: Story = { args: { copied: true } };
 
 export const BezUdostepniania: Story = { args: { onShare: undefined, shareLabel: undefined } };
+
+const qr = <QrCode src={SAMPLE_QR} label="Kod QR z linkiem zaproszenia" caption="Zeskanuj telefonem, żeby dołączyć." />;
+
+export const ZKodemQr: Story = { args: { qr } };
+
+export const KodQrNaWaskimEkranie: Story = {
+  render: (args) => (
+    <Narrow>
+      <InviteCodeCard {...args} qr={qr} />
+    </Narrow>
+  ),
+};
 
 export const DlugiLinkNaWaskimEkranie: Story = {
   render: (args) => (

@@ -1,0 +1,74 @@
+import { ArgTypes, Canvas, Meta } from "@storybook/addon-docs/blocks";
+import { QrCode } from "@gomoku/ui/game/qr-code";
+import * as Stories from "./qr-code.stories";
+
+<Meta of={Stories} />
+
+# Kod QR
+
+## 1. Do czego służy
+
+Daje osobie obok link do zeskanowania telefonem, bez przepisywania (D-35).
+
+<Canvas of={Stories.Playground} />
+
+## 2. Kiedy używać
+
+- **Karta zaproszenia** (prop `qr`), póki przeciwnik nie dołączył (BR-52).
+- **Trwająca partia publiczna:** dla graczy i widzów, do chwili zamknięcia publiczności (BR-53).
+
+## 3. Kiedy nie używać
+
+- **Jako ozdoba** ani gdy link nie prowadzi już do gry (partia prywatna po dołączeniu przeciwnika).
+- **Zamiast linku i kodu:** kod QR je uzupełnia; nie każdy ma aparat pod ręką.
+
+## 4. Anatomia
+
+1. **Obraz** o szerokości 200 px (`layout-width-qr`), węższy, gdy brakuje miejsca.
+2. **Podpis** (opcjonalny): co zrobić z kodem.
+
+## 5. Warianty
+
+Brak wariantów wyglądu.
+
+<Canvas of={Stories.BezPodpisu} />
+
+## 6. Stany
+
+Jeden. Gdy obraz się nie wczyta, przeglądarka pokaże opis (`label`); link i kod zostają na karcie.
+
+## 7. Zachowanie i dostępność
+
+- **Czytnik ekranu** dostaje `label` jako opis obrazu.
+- **Kolory** są w obrazie, nie w tokenach: ciemne moduły na jasnym tle z marginesem 4 modułów, w obu motywach, bo tego wymaga czytnik. To jedyne takie miejsce.
+- **Nic poza aplikacją:** obraz tworzy aplikacja biblioteką `qrcode` (`GET /api/games/{id}/qr`), link nie trafia do zewnętrznych serwisów.
+
+## 8. Treść
+
+Opis mówi, co kod zawiera („Kod QR z linkiem zaproszenia”), a podpis, co zrobić („Zeskanuj telefonem, żeby dołączyć.”). Komponent nie ma wbudowanych tekstów.
+
+## 9. Responsywność
+
+Mieści się w panelu przy 320 px.
+
+<Canvas of={Stories.WPaneluNaWaskimEkranie} />
+
+## 10. API
+
+<ArgTypes of={QrCode} />
+
+## 11. Kod
+
+```tsx
+import { QrCode } from "@gomoku/ui/game/qr-code";
+
+<QrCode src={`/api/games/${gameId}/qr`} label="Kod QR z linkiem zaproszenia" caption="Zeskanuj telefonem, żeby dołączyć." />;
+```
+
+## 12. Dobrze i źle
+
+**Dobrze:** jasny kod na każdym tle, pod elementami sterującymi, gdy ekran jest ciasny. **Źle:** kod w kolorach motywu (ciemny motyw odwraca kontrast i czytnik zawodzi), kod nad planszą na telefonie.
+
+## 13. Powiązane
+
+- **Mylony z:** [Kartą kodu zaproszenia](?path=/docs/produkt-partia-karta-kodu-zaproszenia--docs), która pokazuje link i kod i przyjmuje ten komponent.
