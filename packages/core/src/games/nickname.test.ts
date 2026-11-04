@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   NICKNAME_MAX_LENGTH,
+  NICKNAME_RESERVED_MESSAGE,
   defaultNickname,
+  isReservedNickname,
   nicknameSchema,
   normalizeNickname,
 } from "./nickname";
@@ -92,5 +94,27 @@ describe("defaultNickname", () => {
   it("is derived from the seat", () => {
     expect(defaultNickname(1)).toBe("Gracz 1");
     expect(defaultNickname(2)).toBe("Gracz 2");
+  });
+});
+
+describe("reserved nicknames (T-13)", () => {
+  it("rejects reserved display names however they are written", () => {
+    for (const value of ["Admin", "admin", "ADMIN", "Agent", "a_d-m_i-n", "Ad min", "Usunięty gracz", "Usuniety_Gracz", "Gomoku", "Sys\u200Ctem"]) {
+      const result = parse(value);
+      expect(result.success, value).toBe(false);
+      expect(result.error?.issues[0]?.message).toBe(NICKNAME_RESERVED_MESSAGE);
+    }
+  });
+
+  it("does not match a dotted variant as reserved (the dot is invalid anyway)", () => {
+    const result = parse("a.d.m.i.n");
+    expect(result.success).toBe(false);
+    expect(isReservedNickname("a.d.m.i.n")).toBe(false);
+  });
+
+  it("accepts names that merely contain a reserved word", () => {
+    expect(parse("Adminka").success).toBe(true);
+    expect(parse("Agent 007").success).toBe(true);
+    expect(isReservedNickname("Ala")).toBe(false);
   });
 });

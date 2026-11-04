@@ -39,7 +39,7 @@ export default defineConfig({
     unstubEnvs: true,
     coverage: {
       provider: "v8",
-      include: ["packages/*/src/**/*.{ts,tsx}", "packages/app/next.config.ts", "scripts/setup/**/*.mjs"],
+      include: ["packages/*/src/**/*.{ts,tsx}", "packages/app/next.config.ts", "scripts/setup/**/*.mjs", "scripts/ci/**/*.mjs"],
       exclude: [
         "**/*.test.{ts,tsx}",
         "**/*.d.ts",

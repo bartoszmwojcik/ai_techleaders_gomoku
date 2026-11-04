@@ -19,6 +19,23 @@ loadEnvConfig(
 // Types are then checked by a separate `tsc` run before `next build`, so they are never skipped.
 const buildCpus = Number(process.env.NEXT_BUILD_CPUS);
 
+// Browser features the app never uses are switched off for the page and every frame in it.
+// `clipboard-write` (invite link copy) is left at its default, which allows the page itself.
+const PERMISSIONS_POLICY = [
+  "accelerometer",
+  "bluetooth",
+  "camera",
+  "geolocation",
+  "gyroscope",
+  "magnetometer",
+  "microphone",
+  "payment",
+  "serial",
+  "usb",
+]
+  .map((feature) => `${feature}=()`)
+  .join(", ");
+
 const nextConfig: NextConfig = {
   experimental: Number.isInteger(buildCpus) && buildCpus > 0 ? { cpus: buildCpus } : undefined,
   typescript: { ignoreBuildErrors: process.env.NEXT_SKIP_TYPECHECK === "1" },
@@ -31,6 +48,18 @@ const nextConfig: NextConfig = {
     "kysely",
   ],
   headers: async () => [
+    {
+      // T-08: baseline for every response. No HSTS (hard to undo) and no CSP (needs a nonce for the
+      // theme script) yet. Next applies matching rules in order and a later rule wins for the same
+      // header, so the per-route rules below must stay AFTER this one (`next.config.test.ts`).
+      source: "/:path*",
+      headers: [
+        { key: "X-Frame-Options", value: "DENY" },
+        { key: "X-Content-Type-Options", value: "nosniff" },
+        { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        { key: "Permissions-Policy", value: PERMISSIONS_POLICY },
+      ],
+    },
     {
       // The verification and reset tokens are in the address: the pages must not leak them in `Referer`.
       source: "/verify-email",
