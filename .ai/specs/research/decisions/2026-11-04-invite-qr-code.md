@@ -26,5 +26,9 @@ Prośba: „Na ekranie z zaproszeniem do gry dodaj QR kod prowadzący do gry z z
 
 ## Luki (propozycje agenta, niepotwierdzone)
 
-- Kto widzi kod QR w trwającej partii publicznej: gracze i widzowie czy tylko gracze (Q-22). Propozycja: wszyscy, którzy widzą link (każdy z linkiem i tak może go przekazać).
+- Kto widzi kod QR w trwającej partii publicznej: gracze i widzowie czy tylko gracze (Q-22). Propozycja: wszyscy, którzy widzą link (każdy z linkiem i tak może go przekazać). Rozstrzygnięte 2026-11-04 przez właściciela przy przeglądzie PR #235: gracze i widzowie.
 - Kod QR w partii prywatnej po dołączeniu przeciwnika: nie pokazujemy (link nie prowadzi już do gry).
+
+## Ustalenia z wdrożenia (2026-11-04)
+
+- Karta zaproszenia ma 480 px, więc kod QR o szerokości 200 px stoi pod linkiem i kodem, nie obok nich (BR-52). Właściciel zaakceptował ten układ przy przeglądzie PR #235.
