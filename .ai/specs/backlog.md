@@ -2,7 +2,7 @@
 
 ## .ai/specs/product-brief.md
 Backlog source: .ai/specs/product-brief.md
-Last filed: 2026-11-02
+Last filed: 2026-11-04
 
 | Id | Issue | Title | Epic | Depends on | Adopted |
 |---|---|---|---|---|---|
@@ -64,6 +64,11 @@ Last filed: 2026-11-02
 | E10-S04 | #210 | Gracze i widzowie widzą flagę „Partia publiczna” z licznikiem oglądających | #201 | E10-S02 (#207) | no |
 | E10-S05 | #211 | Twórca zamyka publiczność w trakcie partii | #201 | E10-S02 (#207) | no |
 | E10-S06 | #212 | Partia z agentem (MCP) też może być publiczna | #201 | E10-S01 (#202), E06-S01 (#127) | no |
+| E12 | #232 | Kod QR zaproszenia | — | — | no |
+| E12-S01 | #233 | Twórca zaproszenia widzi kod QR z linkiem, a osoba obok skanuje go i trafia do dołączenia | #232 | — | no |
+| E12-S02 | #234 | W trwającej partii publicznej widać kod QR, którego skan otwiera oglądanie | #232 | E12-S01 (#233), E10-S01 (#202) | no |
+
+Uwagi 2026-11-04 (E12): kod QR zaproszenia to osąd właściciela (D-35; przesłanka: pokaz na spotkaniu, A-19), bez dowodu popytu; zgoda na zależność `qrcode` (MIT), działanie na mikr.us do potwierdzenia po wdrożeniu; `SDLC.md` nie ma Definition of Ready. Q-22 (kto widzi kod w partii publicznej) nieblokujące. Id E11 zajęte przez źródło specyfikacji wariantu „papier i ołówek”.
 
 Uwagi 2026-11-02 (E09, E10): przegląd historii i partie publiczne z widzami to osąd właściciela (D-33), bez dowodu popytu (A-01); przyjęte ryzyka A-13, A-15, A-14 do zmierzenia (E10-S02-T01); `SDLC.md` nie ma Definition of Ready. Zgłoszenia założono przez `om-prepare-issue` (bez adopcji: wyszukiwanie „publiczna”, „widz”, „przegląd partii”, „spectator”, „replay” niczego nie znalazło). Szczegóły z „propozycja agenta, niepotwierdzona” (BR-13 dla widza, podpis widza, czat widzów po zakończeniu i w polu `chat` agenta, ponowne otwarcie publiczności, czas dostępu widza) zapisano jako otwarte pytania nieblokujące do specyfikacji. Q-16 (prawo) wymagane przed udostępnieniem osobom z zewnątrz (S3).
 
