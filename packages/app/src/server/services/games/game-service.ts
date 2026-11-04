@@ -90,7 +90,7 @@ function activeGameExists(gameId: string): ConflictError {
 
 /** Used only outside production, where `APP_ORIGIN` may be unset (as in e-mail links). */
 const AFTER_MESSAGE = "Nieprawidłowy parametr after.";
-const DEV_ORIGIN = "http://localhost:3000";
+export const DEV_ORIGIN = "http://localhost:3000";
 
 // The player a guest token stands for in this game, while the token is valid (BR-22).
 const FIND_GUEST_SQL = `

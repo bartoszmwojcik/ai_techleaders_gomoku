@@ -80,11 +80,12 @@ function errorResponse(error: AppError): Response {
 /**
  * Wraps a route function: applies CSRF protection to state-changing methods, wraps the
  * result in the `{ ok, data | error }` envelope and maps `AppError` and `ZodError` to their
- * status. Unknown errors become a generic `500` (logged, never leaked to the client).
+ * status. Unknown errors become a generic `500` (logged, never leaked to the client). A route
+ * answering with something other than JSON (an image) returns its own `Response`, passed on as is.
  * Every `/api/*` route except `/api/health` must go through it.
  */
 export function apiHandler<T, Args extends unknown[] = []>(
-  fn: (request: Request, ...args: Args) => Promise<ApiSuccess<T>>,
+  fn: (request: Request, ...args: Args) => Promise<ApiSuccess<T> | Response>,
 ): (request: Request, ...args: Args) => Promise<Response> {
   return async (request, ...args) => {
     try {
@@ -92,7 +93,9 @@ export function apiHandler<T, Args extends unknown[] = []>(
         const container = await getContainer();
         assertSameOrigin(request, container.cradle.serverConfig);
       }
-      const { data, status = 200 } = await fn(request, ...args);
+      const result = await fn(request, ...args);
+      if (result instanceof Response) return result;
+      const { data, status = 200 } = result;
       const body: ApiResult<T> = { ok: true, data };
       return Response.json(body, { status });
     } catch (error) {

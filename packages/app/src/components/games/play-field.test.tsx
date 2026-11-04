@@ -90,6 +90,14 @@ describe("PlayField, on the server", () => {
 });
 
 describe("PlayField, the public flag (E10-S04)", () => {
+  it("shows the QR code of the link in a public game only (BR-53)", () => {
+    field({ audience: { spectators: 0 } });
+    expect(screen.getByRole("img", { name: "Kod QR z linkiem do oglądania partii" }).getAttribute("src")).toBe("/api/games/g1/qr");
+    cleanup();
+    field();
+    expect(screen.queryByRole("img", { name: "Kod QR z linkiem do oglądania partii" })).toBeNull();
+  });
+
   it("shows the flag with the count of spectators for a public game and none otherwise", () => {
     field({ audience: { spectators: 2 } });
     expect(screen.getByTestId("public-flag").textContent).toContain("Partia publiczna");

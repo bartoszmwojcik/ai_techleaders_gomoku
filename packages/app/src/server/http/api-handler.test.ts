@@ -88,6 +88,13 @@ describe("readOptionalJsonBody", () => {
 });
 
 describe("apiHandler", () => {
+  it("passes on a Response of the route as it is", async () => {
+    const image = new Response("<svg/>", { headers: { "content-type": "image/svg+xml" } });
+    const handler = apiHandler(async () => image);
+
+    await expect(handler(new Request("http://internal/api/x"))).resolves.toBe(image);
+  });
+
   it("wraps data in the envelope, defaulting to 200", async () => {
     const response = await apiHandler(async () => ({ data: { a: 1 } }))(post());
     expect(response.status).toBe(200);

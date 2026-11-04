@@ -36,6 +36,16 @@ describe("InviteCodeCard", () => {
     expect(screen.queryByText(/Ważne do/)).toBeNull();
   });
 
+  it("gives the QR code a place next to the link and the code, and none without it", () => {
+    renderCard({ qr: <span role="img" aria-label="Kod QR z linkiem zaproszenia" /> });
+
+    expect(screen.getByRole("img", { name: "Kod QR z linkiem zaproszenia" })).toBeTruthy();
+    cleanup();
+    renderCard();
+
+    expect(screen.queryByRole("img")).toBeNull();
+  });
+
   it("copies the link on click and announces the copy once it is done", async () => {
     const user = userEvent.setup();
     const onCopy = renderCard();

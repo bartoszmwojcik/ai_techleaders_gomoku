@@ -17,6 +17,7 @@ import { AudienceClosedScreen } from "@/components/games/audience-closed";
 import { GameClock } from "@/components/games/game-clock";
 import { PlayerLabel } from "@/components/games/player-label";
 import { PublicFlag } from "@/components/games/public-flag";
+import { PublicGameQr } from "@/components/games/public-game-qr";
 import { useGameClock } from "@/components/games/use-game-clock";
 import { usePageVisibility } from "@/components/games/use-page-visibility";
 import { apiCall } from "@/lib/api-client";
@@ -235,6 +236,7 @@ export function SpectatorRoom({ gameId, initial }: Props) {
           />
         )}
       </div>
+      <PublicGameQr gameId={gameId} audience={game.audience} />
       <SpectatorChat gameId={gameId} players={game.players} canWrite={game.canChat} onGone={() => void read()} />
       <TextLink href="/" placement="standalone">
         Wróć na stronę główną

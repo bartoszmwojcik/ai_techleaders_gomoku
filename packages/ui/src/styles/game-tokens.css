@@ -113,6 +113,7 @@
   --layout-width-narrow: 384px;
   --layout-width-board: 448px; /* przyklad-tokeny.html: max width of the board */
   --layout-width-dialog: 480px; /* propozycja: dialog fits a sentence and two buttons */
+  --layout-width-qr: 200px; /* E12: readable from arm's length, still fits a panel at 320 px wide */
 
   /* tokens.md target-min (propozycja, BR-20 phone). */
   --target-min: 44px;

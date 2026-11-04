@@ -8,6 +8,7 @@ import { Button } from "@gomoku/ui/game/button";
 import { ConfirmDialog } from "@gomoku/ui/game/confirm-dialog";
 import { InviteCodeCard } from "@gomoku/ui/game/invite-code-card";
 import { PlayerClock } from "@gomoku/ui/game/player-clock";
+import { QrCode } from "@gomoku/ui/game/qr-code";
 import { formatClock } from "@gomoku/ui/game/format-clock";
 import { TextLink } from "@gomoku/ui/game/text-link";
 import { TurnStatus } from "@gomoku/ui/game/turn-status";
@@ -19,6 +20,7 @@ import { ChatPanel } from "@/components/chat/chat-panel";
 import { CreateGameButton } from "@/components/games/create-game-button";
 import { DismissibleNotice } from "@/components/games/dismissible-notice";
 import { GameGate } from "@/components/games/game-gate";
+import { inviteQrPath } from "@/components/games/public-game-qr";
 import { PlayerLabel } from "@/components/games/player-label";
 import { PlayField } from "@/components/games/play-field";
 import { serverNowMs } from "@/components/games/use-server-now";
@@ -485,6 +487,7 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
             code={invitation.code}
             linkLabel="Link zaproszenia"
             codeLabel="Kod do wpisania na stronie „Masz kod?”"
+            qr={<QrCode src={inviteQrPath(gameId)} label="Kod QR z linkiem zaproszenia" caption="Zeskanuj telefonem, żeby dołączyć." />}
             validUntil={`Ważne do ${formatValidUntil(invitation.expiresAt)}`}
             copyLabel="Kopiuj"
             copiedLabel="Skopiowano"

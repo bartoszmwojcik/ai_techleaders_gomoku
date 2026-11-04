@@ -115,6 +115,14 @@ describe("GameRoom, waiting (p03)", () => {
     expect(document.querySelector("main")!.hasAttribute("data-theme-overlay")).toBe(false);
   });
 
+  it("shows the QR code of the link on the card, described for a screen reader (BR-52)", () => {
+    room(waiting());
+
+    const image = screen.getByRole("img", { name: "Kod QR z linkiem zaproszenia" });
+    expect(image.getAttribute("src")).toBe("/api/games/g1/qr");
+    expect(screen.getByText("Zeskanuj telefonem, żeby dołączyć.")).toBeTruthy();
+  });
+
   it("shows a guest creator the same card and a permanent warning under it (p03.11, p03.12)", () => {
     room(guestWaiting());
     expect(screen.getAllByText("ABCD-EFGH")[0]).toBeTruthy();
