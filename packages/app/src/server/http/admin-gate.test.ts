@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { notFound, getCurrentUserWith } = vi.hoisted(() => ({
   notFound: vi.fn(() => {
@@ -18,6 +18,8 @@ const user = (over: object = {}) => ({
   emailVerifiedAt: new Date("2026-11-01T00:00:00Z"),
   ...over,
 });
+
+afterEach(() => vi.restoreAllMocks());
 
 beforeEach(() => {
   notFound.mockClear();
@@ -49,5 +51,28 @@ describe("requireAdmin", () => {
     getCurrentUserWith.mockResolvedValue(current);
 
     await expect(requireAdmin()).rejects.toThrow("NEXT_NOT_FOUND");
+  });
+});
+
+describe("requireAdmin security log", () => {
+  it("logs a denial without the account", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    getCurrentUserWith.mockResolvedValue({ user: user({ email: "ala@example.com" }), data: "admin@example.com" });
+
+    await expect(requireAdmin()).rejects.toThrow("NEXT_NOT_FOUND");
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    const line = warn.mock.calls[0]![0] as string;
+    expect(JSON.parse(line)).toMatchObject({ event: "security.admin_denied" });
+    expect(line).not.toContain("ala@example.com");
+  });
+
+  it("logs nothing for the administrator", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    getCurrentUserWith.mockResolvedValue({ user: user(), data: "admin@example.com" });
+
+    await requireAdmin();
+
+    expect(warn).not.toHaveBeenCalled();
   });
 });

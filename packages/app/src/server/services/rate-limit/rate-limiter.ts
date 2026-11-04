@@ -1,6 +1,8 @@
 import { TooManyRequestsError } from "@gomoku/core";
 import type { EntityManager } from "@gomoku/db";
 
+import { limiterScope, logSecurityEvent } from "../../http/security-log";
+
 type Deps = { em: EntityManager };
 
 type BucketRow = { count: number; retry_after_seconds: number };
@@ -58,6 +60,9 @@ export class RateLimiter {
     );
     const row = rows[0] as BucketRow;
     if (row.count > limit) {
+      // Only the first refusal of a window is logged (one line per pool and window, however hard
+      // the flood), with the pool's name and never its key (the hash of an address or an e-mail).
+      if (row.count === limit + 1) logSecurityEvent("rate_limited", { scope: limiterScope(key) });
       throw new TooManyRequestsError(
         "Zbyt wiele prób. Spróbuj ponownie później.",
         {

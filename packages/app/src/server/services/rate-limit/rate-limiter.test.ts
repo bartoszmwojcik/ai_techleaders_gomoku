@@ -1,6 +1,6 @@
 import { TooManyRequestsError } from "@gomoku/core";
 import type { EntityManager } from "@gomoku/db";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { RateLimiter } from "./rate-limiter";
 
@@ -102,5 +102,30 @@ describe("RateLimiter.release", () => {
       ["invite:ip:1", 1000],
       "run",
     );
+  });
+});
+
+describe("RateLimiter security log", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("logs the first refusal of a window with the pool name and no key", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const { limiter } = setup([{ count: 6, retry_after_seconds: 42 }]);
+
+    await limiter.hit("login:ip:0123abcd", 5, 1000).catch(() => undefined);
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    const line = warn.mock.calls[0]![0] as string;
+    expect(JSON.parse(line)).toMatchObject({ event: "security.rate_limited", scope: "login:ip" });
+    expect(line).not.toContain("0123abcd");
+  });
+
+  it("stays silent for the following refusals and for allowed attempts", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    await setup([{ count: 7, retry_after_seconds: 42 }]).limiter.hit("k", 5, 1000).catch(() => undefined);
+    await setup([{ count: 5, retry_after_seconds: 42 }]).limiter.hit("k", 5, 1000);
+
+    expect(warn).not.toHaveBeenCalled();
   });
 });

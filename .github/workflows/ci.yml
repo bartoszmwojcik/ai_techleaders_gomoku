@@ -61,6 +61,20 @@ jobs:
       - name: Hashes of .agents/skills match skills-lock.json
         run: node scripts/ci/cli.mjs skills-lock
 
+  # Informational (A03:2025, T-10): known vulnerabilities in the production dependencies. Never blocks a
+  # merge (`continue-on-error`) and is not a required check; the result is read in the job log.
+  audit:
+    name: Audit zależności
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: npm audit --omit=dev --audit-level=high
+
   lint:
     name: Lint
     needs: changes

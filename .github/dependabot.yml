@@ -1,5 +1,5 @@
-# Weekly updates of the npm workspace (one lockfile in the root) and of the GitHub Actions pinned in
-# .github/workflows. Majors of the framework stack are bumped deliberately, so they are not grouped in.
+# Weekly updates of the npm workspace (one lockfile in the root), of the GitHub Actions pinned in
+# .github/workflows and of the base image digests pinned in the Dockerfile and compose.prod.yaml. Majors of the framework stack are bumped deliberately, so they are not grouped in.
 version: 2
 updates:
   - package-ecosystem: npm
@@ -21,4 +21,18 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+    labels: [dependencies]
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 2
+    labels: [dependencies]
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 2
     labels: [dependencies]
