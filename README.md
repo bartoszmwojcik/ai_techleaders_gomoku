@@ -85,6 +85,7 @@ Zasady pracy (stack, granice pakietów, testy, proces PR) opisuje [`AGENTS.md`](
 - [Praca nad projektem](docs/rozwoj.md): instalacja ręczna, zmienne środowiskowe, komendy, testy i CI.
 - [Architektura](docs/architektura.md): stack, pakiety, szczegóły działania aplikacji.
 - [Wdrożenie i utrzymanie](docs/wdrozenie-i-utrzymanie.md): mikr.us, kopie zapasowe, sprzątanie rekordów.
+- [Model zagrożeń](docs/security/threat-model.md): granice zaufania, zagrożenia i zakres testów bezpieczeństwa.
 
 ## Licencja
 
