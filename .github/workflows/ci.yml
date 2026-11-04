@@ -29,7 +29,7 @@ jobs:
     outputs:
       code: ${{ steps.scope.outputs.code }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
       - id: scope
@@ -44,17 +44,22 @@ jobs:
             echo "Not a pull request: full pipeline."
             exit 0
           fi
-          files=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          # --no-renames: a moved file lists both paths, so moving code into docs/ cannot hide the deleted path.
+          files=$(git diff --no-renames --name-only "$BASE_SHA...$HEAD_SHA")
           echo "Changed files:"; echo "$files"
-          # Documentation only: Markdown anywhere, .ai/, docs/, LICENSE. Anything else is code.
-          other=$(printf '%s\n' "$files" | grep -vE '^(.*\.md|\.ai/.*|docs/.*|LICENSE)$' || true)
-          if [ -z "$other" ]; then
-            echo "code=false" >> "$GITHUB_OUTPUT"
-            echo "Documentation-only pull request: heavy jobs are skipped."
-          else
-            echo "code=true" >> "$GITHUB_OUTPUT"
-            echo "Code changes in:"; echo "$other"
-          fi
+          # Documentation only: Markdown, .ai/, docs/, LICENSE. Skills, agent settings, workflows and the
+          # skills lock are code even when Markdown (rule and tests: scripts/ci/scope.mjs).
+          printf '%s\n' "$files" | node scripts/ci/cli.mjs scope >> "$GITHUB_OUTPUT"
+          grep -q '^code=false$' "$GITHUB_OUTPUT" && echo "Documentation-only pull request: heavy jobs are skipped." || echo "Code changes: full pipeline."
+
+  skills-lock:
+    name: Skills (skills-lock.json)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Hashes of .agents/skills match skills-lock.json
+        run: node scripts/ci/cli.mjs skills-lock
 
   lint:
     name: Lint
@@ -63,8 +68,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -78,8 +83,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -93,8 +98,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -106,7 +111,7 @@ jobs:
             exit 1
           fi
       - run: npm test
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:
           name: coverage
@@ -120,8 +125,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -135,8 +140,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -152,7 +157,7 @@ jobs:
             echo "::error::The second npm run setup performed a step — the installer is not idempotent."
             exit 1
           fi
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: failure()
         with:
           name: setup-logs
@@ -171,15 +176,15 @@ jobs:
       AGENT_BROWSER_EXECUTABLE_PATH: /usr/bin/google-chrome
       AGENT_BROWSER_ARGS: --no-sandbox
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
       - run: npm run build
       - run: npm run test:integration
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: failure()
         with:
           name: integration-server-log
@@ -192,8 +197,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -214,7 +219,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Zbuduj i uruchom stos z compose.prod.yaml
         env:
           POSTGRES_PASSWORD: ci-only-password

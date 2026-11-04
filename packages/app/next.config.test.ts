@@ -61,22 +61,34 @@ describe("next.config", () => {
     expect(config.experimental).toBeUndefined();
   });
 
-  it("sends Referrer-Policy: no-referrer on /verify-email, /confirm-email-change and /reset-password, where the token is in the URL", async () => {
+  it("sends the baseline security headers on every path", async () => {
     const { default: config } = await import("./next.config");
+    const rules = (await config.headers?.()) ?? [];
+    const baseline = rules.find((rule) => rule.source === "/:path*");
+    const headers = Object.fromEntries((baseline?.headers ?? []).map(({ key, value }) => [key, value]));
 
-    expect(await config.headers?.()).toEqual([
-      {
-        source: "/verify-email",
-        headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
-      },
-      {
-        source: "/confirm-email-change",
-        headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
-      },
-      {
-        source: "/reset-password",
-        headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
-      },
+    expect(headers["X-Frame-Options"]).toBe("DENY");
+    expect(headers["X-Content-Type-Options"]).toBe("nosniff");
+    expect(headers["Referrer-Policy"]).toBe("strict-origin-when-cross-origin");
+    expect(headers["Permissions-Policy"]).toBe(
+      "accelerometer=(), bluetooth=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), serial=(), usb=()",
+    );
+    expect(Object.keys(headers)).not.toContain("Strict-Transport-Security");
+    expect(Object.keys(headers)).not.toContain("Content-Security-Policy");
+  });
+
+  it("sends Referrer-Policy: no-referrer on /verify-email, /confirm-email-change and /reset-password, where the token is in the URL, after the baseline so it wins", async () => {
+    const { default: config } = await import("./next.config");
+    const rules = (await config.headers?.()) ?? [];
+
+    expect(rules.map((rule) => rule.source)).toEqual([
+      "/:path*",
+      "/verify-email",
+      "/confirm-email-change",
+      "/reset-password",
     ]);
+    for (const rule of rules.slice(1)) {
+      expect(rule.headers).toEqual([{ key: "Referrer-Policy", value: "no-referrer" }]);
+    }
   });
 });

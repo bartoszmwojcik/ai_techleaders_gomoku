@@ -1,0 +1,24 @@
+# Weekly updates of the npm workspace (one lockfile in the root) and of the GitHub Actions pinned in
+# .github/workflows. Majors of the framework stack are bumped deliberately, so they are not grouped in.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    labels: [dependencies]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns: ["*"]
+    labels: [dependencies]
