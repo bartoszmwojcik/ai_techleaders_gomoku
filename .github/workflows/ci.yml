@@ -44,7 +44,8 @@ jobs:
             echo "Not a pull request: full pipeline."
             exit 0
           fi
-          files=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          # --no-renames: a moved file lists both paths, so moving code into docs/ cannot hide the deleted path.
+          files=$(git diff --no-renames --name-only "$BASE_SHA...$HEAD_SHA")
           echo "Changed files:"; echo "$files"
           # Documentation only: Markdown, .ai/, docs/, LICENSE. Skills, agent settings, workflows and the
           # skills lock are code even when Markdown (rule and tests: scripts/ci/scope.mjs).
