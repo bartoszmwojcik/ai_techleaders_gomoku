@@ -1,0 +1,45 @@
+flowchart LR
+  subgraph internet [Niezaufane: internet]
+    Player[Gracz / gość / widz - przeglądarka]
+    Admin[Administrator - przeglądarka]
+    Agent[Agent AI - klient MCP]
+    Attacker[Atakujący: anonim lub inny gracz]
+  end
+  subgraph agenthost [Poza naszą kontrolą: środowisko agenta]
+    LLM[Model LLM i inne narzędzia agenta]
+  end
+  subgraph edge [Półzaufane: hosting mikr.us]
+    Proxy[Proxy HTTPS mikr.us]
+  end
+  subgraph vps [Zaufane: VPS, kontenery Docker]
+    App(Next.js: strony, /api, server actions)
+    Mcp(Endpoint MCP /api/mcp)
+    DB[(PostgreSQL: konta, sesje, partie, czat, liczniki limitów)]
+    Cron(cron: db:cleanup)
+    Bak[(Kopie pg_dump)]
+    Env[(.env.production: sekrety)]
+  end
+  subgraph ext [Półzaufane: dostawcy]
+    Mail[Brevo: e-mail]
+    GH[GitHub: repo i CI]
+  end
+  subgraph dev [Łańcuch dostaw]
+    Skills[Skille agentów: .claude/skills, skills-lock.json]
+  end
+  Player -->|"cookie sesji/gościa/widza, kody zaproszeń, ruchy, czat (T-03, T-05, T-06, T-07, T-13)"| Proxy
+  Attacker -->|"zgadywanie kodów, podmiana ID, nagłówki IP, ramka iframe (T-01, T-03, T-05, T-08)"| Proxy
+  Admin -->|"cookie sesji, /backend (T-04)"| Proxy
+  Agent -->|"kod zaproszenia, token jednorazowy, ruchy, wiadomości (T-02, T-06, T-09)"| Proxy
+  Proxy -->|"żądania + X-Forwarded-For (T-01)"| App
+  Proxy -->|"JSON-RPC MCP (T-02, T-09)"| Mcp
+  App -->|"zapytania, liczniki limitów (T-03, T-09)"| DB
+  Mcp -->|"stan partii, czat człowieka oznaczony untrusted (T-02)"| DB
+  Mcp -.->|"tekst człowieka trafia do kontekstu modelu (T-02)"| LLM
+  LLM -.->|"wywołania narzędzi play_move, send_message (T-02)"| Mcp
+  App -->|"linki weryfikacji i resetu (T-07, T-12)"| Mail
+  Cron -->|"kasowanie wygasłych rekordów"| DB
+  DB -->|"pg_dump bez czatu (T-11)"| Bak
+  Env -->|"DATABASE_URL, BREVO_API_KEY (T-11)"| App
+  Skills -->|"instrukcje wykonywane przez agentów kodujących (T-10)"| GH
+  classDef boundary stroke-dasharray: 5 5
+  class internet,agenthost,edge,vps,ext,dev boundary
