@@ -1,4 +1,4 @@
-import { ConflictError, ForbiddenError, GoneError, NotFoundError, TooManyRequestsError, ValidationError } from "@gomoku/core";
+import { AppError, ConflictError, ForbiddenError, GoneError, NotFoundError, TooManyRequestsError, ValidationError } from "@gomoku/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { INTERNAL_MESSAGE, INVALID_TOKEN_MESSAGE, toolErrorOf, toolFailure, toolSuccess } from "./mcp-errors";
@@ -136,5 +136,28 @@ describe("toolErrorOf for the chat", () => {
     expect(toolErrorOf(error).structuredContent).toEqual({
       error: { code: "RATE_LIMITED", message: "Poczekaj", retryable: true, retryAfterMs: 1234 },
     });
+  });
+});
+
+describe("toolErrorOf security log", () => {
+  it.each([
+    ["an unknown token", new NotFoundError("Nie znaleziono partii.")],
+    ["an invalid token code", new AppError(401, "INVALID_TOKEN", "Zły token tajny-token")],
+  ])("logs mcp_token_invalid for %s, without the message", (_label, error) => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    toolErrorOf(error);
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    const line = warn.mock.calls[0]![0] as string;
+    expect(JSON.parse(line)).toMatchObject({ event: "security.mcp_token_invalid" });
+    expect(line).not.toContain("tajny-token");
+  });
+
+  it("logs nothing for other tool errors", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    toolErrorOf(new GoneError("x", { code: "INVALID_INVITATION" }));
+    toolErrorOf(new TooManyRequestsError("Za dużo"));
+    expect(warn).not.toHaveBeenCalled();
   });
 });

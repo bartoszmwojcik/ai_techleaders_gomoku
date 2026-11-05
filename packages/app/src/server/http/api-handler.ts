@@ -10,9 +10,16 @@ import {
 import { getContainer } from "../container";
 import type { ServerConfig } from "../config";
 import { describeError } from "./describe-error";
+import { logSecurityEvent } from "./security-log";
 
 /** Header every state-changing request must carry (set by `apiCall`); a second CSRF layer. */
 export const CSRF_HEADER = "x-gomoku-request";
+
+/** Largest accepted request body of the JSON API (API4:2023); the biggest legitimate one is a chat message. `/api/mcp` has its own, smaller limit. */
+export const API_BODY_MAX_BYTES = 64 * 1024;
+
+/** Never from a cache: the answers are about one session or one game. */
+const NO_STORE = "private, no-store";
 
 const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const LOCALHOST_ORIGIN = /^http:\/\/localhost:\d+$/;
@@ -39,25 +46,42 @@ export function assertSameOrigin(
     config.appOrigin === undefined
       ? origin !== null && LOCALHOST_ORIGIN.test(origin)
       : origin === config.appOrigin;
-  if (!allowed || !request.headers.has(CSRF_HEADER)) throw forbidden();
-}
-
-/** Parses a JSON request body; anything unparsable is a `400`, never a `500`. */
-export async function readJsonBody(request: Request): Promise<unknown> {
-  try {
-    return await request.json();
-  } catch {
-    throw new ValidationError("Nieprawidłowe dane żądania.");
+  if (!allowed || !request.headers.has(CSRF_HEADER)) {
+    logSecurityEvent("csrf_rejected", { reason: allowed ? "missing_header" : "origin" });
+    throw forbidden();
   }
 }
 
+function payloadTooLarge(): AppError {
+  return new AppError(413, "PAYLOAD_TOO_LARGE", "Żądanie jest zbyt duże.");
+}
+
 /**
- * Like `readJsonBody`, but a request without a body is `{}`: for endpoints whose body only
- * carries optional settings. A body that is present must still be valid JSON.
+ * Reads the body as text, refusing more than `API_BODY_MAX_BYTES` with a `413` before it is
+ * parsed: by the declared `Content-Length` when there is one, and always by counting the bytes
+ * of the stream, so a lying or missing length (chunked) cannot get past it.
  */
-export async function readOptionalJsonBody(request: Request): Promise<unknown> {
-  const text = await request.text();
-  if (text.trim() === "") return {};
+async function readBodyText(request: Request): Promise<string> {
+  const declared = Number(request.headers.get("content-length"));
+  if (declared > API_BODY_MAX_BYTES) throw payloadTooLarge();
+  if (request.body === null) return "";
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder();
+  let received = 0;
+  let text = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) return text + decoder.decode();
+    received += value.byteLength;
+    if (received > API_BODY_MAX_BYTES) {
+      await reader.cancel();
+      throw payloadTooLarge();
+    }
+    text += decoder.decode(value, { stream: true });
+  }
+}
+
+function parseJson(text: string): unknown {
   try {
     return JSON.parse(text);
   } catch {
@@ -65,9 +89,23 @@ export async function readOptionalJsonBody(request: Request): Promise<unknown> {
   }
 }
 
+/** Parses a JSON request body; anything unparsable is a `400`, never a `500`, a body over the limit a `413`. */
+export async function readJsonBody(request: Request): Promise<unknown> {
+  return parseJson(await readBodyText(request));
+}
+
+/**
+ * Like `readJsonBody`, but a request without a body is `{}`: for endpoints whose body only
+ * carries optional settings. A body that is present must still be valid JSON.
+ */
+export async function readOptionalJsonBody(request: Request): Promise<unknown> {
+  const text = await readBodyText(request);
+  return text.trim() === "" ? {} : parseJson(text);
+}
+
 function errorResponse(error: AppError): Response {
   const body: ApiResult<never> = { ok: false, error: error.toBody() };
-  const headers = new Headers();
+  const headers = new Headers({ "Cache-Control": NO_STORE });
   if (
     error instanceof TooManyRequestsError &&
     error.retryAfterSeconds !== undefined
@@ -82,7 +120,8 @@ function errorResponse(error: AppError): Response {
  * result in the `{ ok, data | error }` envelope and maps `AppError` and `ZodError` to their
  * status. Unknown errors become a generic `500` (logged, never leaked to the client). A route
  * answering with something other than JSON (an image) returns its own `Response`, passed on as is.
- * Every `/api/*` route except `/api/health` must go through it.
+ * Every `/api/*` route except `/api/health` and `/api/mcp` must go through it (`api-routes.guard.test.ts`).
+ * All its answers carry `Cache-Control: private, no-store` unless the route set its own.
  */
 export function apiHandler<T, Args extends unknown[] = []>(
   fn: (request: Request, ...args: Args) => Promise<ApiSuccess<T> | Response>,
@@ -94,10 +133,13 @@ export function apiHandler<T, Args extends unknown[] = []>(
         assertSameOrigin(request, container.cradle.serverConfig);
       }
       const result = await fn(request, ...args);
-      if (result instanceof Response) return result;
+      if (result instanceof Response) {
+        if (!result.headers.has("Cache-Control")) result.headers.set("Cache-Control", NO_STORE);
+        return result;
+      }
       const { data, status = 200 } = result;
       const body: ApiResult<T> = { ok: true, data };
-      return Response.json(body, { status });
+      return Response.json(body, { status, headers: { "Cache-Control": NO_STORE } });
     } catch (error) {
       const appError =
         error instanceof AppError ? error : toValidationError(error);

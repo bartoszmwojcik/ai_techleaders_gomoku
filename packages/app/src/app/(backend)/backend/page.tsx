@@ -28,7 +28,7 @@ export default async function BackendHomePage({ searchParams }: Readonly<{ searc
 
   const overview = await withRequestScope(async ({ cradle }) => {
     const health = await cradle.healthService.check();
-    // The raw reason (hosts, ports) goes to the server log only, never to the browser.
+    // The reason is only the class and code of the error (`HealthService`: never the message with hosts or a query); it goes to the server log only, never to the browser.
     if (!health.database.ok) console.error("Backend panel: database check failed", health.database.reason);
     try {
       const [games, accounts, stats, page] = await Promise.all([

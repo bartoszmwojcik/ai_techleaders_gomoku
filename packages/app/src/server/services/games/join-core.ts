@@ -1,6 +1,7 @@
 import { GoneError, INVITATION_LOOKUP_WINDOW_MS, type GameVariant, type Seat } from "@gomoku/core";
 import type { EntityManager } from "@gomoku/db";
 
+import { limiterScope, logSecurityEvent } from "../../http/security-log";
 import type { RateLimiter } from "../rate-limit/rate-limiter";
 
 /**
@@ -138,7 +139,11 @@ export async function withLookupAttempt<T>(
   try {
     result = await lookup();
   } catch (error) {
-    if (!(error instanceof GoneError)) await release();
+    if (error instanceof GoneError) {
+      logSecurityEvent("invitation_lookup_failed", { scope: limiterScope(guard.key) });
+    } else {
+      await release();
+    }
     throw error;
   }
   await release();
