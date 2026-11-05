@@ -2,7 +2,7 @@
 
 ## .ai/specs/product-brief.md
 Backlog source: .ai/specs/product-brief.md
-Last filed: 2026-11-04
+Last filed: 2026-11-05
 
 | Id | Issue | Title | Epic | Depends on | Adopted |
 |---|---|---|---|---|---|
@@ -67,6 +67,10 @@ Last filed: 2026-11-04
 | E12 | #232 | Kod QR zaproszenia | — | — | no |
 | E12-S01 | #233 | Twórca zaproszenia widzi kod QR z linkiem, a osoba obok skanuje go i trafia do dołączenia | #232 | — | no |
 | E12-S02 | #234 | W trwającej partii publicznej widać kod QR, którego skan otwiera oglądanie | #232 | E12-S01 (#233), E10-S01 (#202) | no |
+| E13 | #255 | Przeciwnik komputerowy: bot algorytmiczny w klasyku | — | — | no |
+| E13-S01 | #256 | Właściciel ma zatwierdzoną specyfikację bota, która zamyka Q-23 | #255 | — | no |
+
+Uwagi 2026-11-05 (E13): bot algorytmiczny to upodobanie właściciela (D-36), popyt nieprzebadany (A-20); `SDLC.md` nie ma Definition of Ready. Zgłoszono tylko epik i E13-S01 (specyfikacja bota). Zaplanowane, ale niezgłoszone historie: S02 (wybór bota przy tworzeniu partii i gra do końca, + T01 migracja i uczestnik „Bot”), S03 (silnik: poziom 1 heurystyka i poziom 2 alfa-beta w `packages/core`, testy bot–bot), S04 (nazwa z poziomem i siłą zależną od RAM, bezpieczny limit), S05 (historia konta, licznik admina jako osobna para, `db:cleanup` dla partii gość–bot); kolejność S01 → (S02, S03) → (S04, S05). Powód: Q-23 je blokuje; jak przy E11 najpierw specyfikacja, potem backlog z niej. Epik #255 ma S01 jako podzgłoszenie.
 
 Uwagi 2026-11-04 (E12): kod QR zaproszenia to osąd właściciela (D-35; przesłanka: pokaz na spotkaniu, A-19), bez dowodu popytu; zgoda na zależność `qrcode` (MIT), działanie na mikr.us do potwierdzenia po wdrożeniu; `SDLC.md` nie ma Definition of Ready. Q-22 (kto widzi kod w partii publicznej) nieblokujące. Id E11 zajęte przez źródło specyfikacji wariantu „papier i ołówek”.
 
