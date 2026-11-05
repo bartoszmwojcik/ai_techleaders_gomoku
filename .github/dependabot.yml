@@ -32,6 +32,10 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 2
+    # A Node major moves together with NODE_VERSION in CI and engines (#251), not on its own in the image.
+    ignore:
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
     labels: [dependencies]
   - package-ecosystem: docker-compose
     directory: /
