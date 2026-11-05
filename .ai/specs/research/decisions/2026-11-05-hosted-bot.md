@@ -47,3 +47,17 @@
 - Bot wymaga zmiany modelu uczestnika (`PARTICIPANT_KINDS`, `game_players`, `KNOWN_PAIRS`, migracja) i rozstrzygnięcia, kto wywołuje ruch bota przy leniwym rozliczaniu zegara (brak timerów w serwerze) oraz po restarcie procesu.
 - Partie gość–bot kolidują z regułami `db:cleanup` (partie samych gości, osierocone) i BR-24; zakres rozstrzyga specyfikacja.
 - Sygnał sukcesu rozdzielony na techniczny (bot–bot, czas ruchu) i użycie przez graczy (otwarte).
+
+## Zatwierdzenie specyfikacji (2026-11-05)
+
+Właściciel o specyfikacji `.ai/specs/2026-11-05-hosted-bot.md` (E13-S01, #256, PR #258): „Zatwierdzam wszystko z rekomendacjami”. Znaczy to przyjęcie wszystkich pozycji R1…R22 z podanymi rekomendacjami. Rozstrzygnięcia:
+
+- **R2:** nowy typ uczestnika `kind = 'bot'` w `game_players` (wewnętrzny klient miejsca agenta odrzucony).
+- **R1:** ruch bota wywołuje `after()` po zatwierdzeniu ruchu gracza, a odzyskiwanie po restarcie jest leniwe (każdy odczyt partii, w której bot jest na ruchu).
+- **R5:** `worker_thread` na jeden ruch; warunek wstępny to spike S04 (`worker_threads` pod Turbopack). Jeśli spike się nie powiedzie, decyzja wraca do właściciela.
+- **Budżety (R6–R8, R18):** zatwierdzone jako wartości **startowe**; funkcja zostaje wyłączona (`BOT_ENABLED` domyślnie wyłączona, R19) do zaakceptowanego pomiaru na hoście o parametrach Mikrusa (A-21, A-22).
+- **R9, R11, R12, R13:** nazwa pokazująca siłę, sprzątanie partii gość–bot (znikają 1 h po końcu, konto–bot zostaje w historii), dwie pary w liczniku (`account-bot`, `bot-guest`), brak rewanżu z botem (nowa partia „Zagraj ponownie z botem”).
+- **R3, R10, R15, R17, R18, R19:** zatwierdzone z rekomendacjami.
+- **Pułap twardy w BR-57:** właściciel potwierdził, że jest zabezpieczeniem (`terminate()`), a nie ogranicznikiem siły bota; siłę poziomu 2 wyznaczają rozmiar tablicy transpozycji i limit głębokości, miękki cel czasu ogranicza każdy ruch.
+
+Skutek w briefie: Q-23 zamknięte; następny bloker to spike S04 i pomiar na Mikrusie.
