@@ -45,7 +45,7 @@ x-app: &app
 services:
   postgres:
     # postgres:17 pinned to the digest of the multi-arch index (includes linux/amd64); Dependabot (docker-compose) proposes updates.
-    image: postgres:17@sha256:3b0cda93be7c8dba2ed484d19393d93845dc3dafb88973e248ba8e6d99d784e1
+    image: postgres:18@sha256:3a4264520e121176619f54ff867d12774bc81e95e7b84db58d63bccdb6144b81
     restart: unless-stopped
     # Modest settings for a VPS with little memory.
     command: ["postgres", "-c", "shared_buffers=64MB", "-c", "max_connections=30"]
