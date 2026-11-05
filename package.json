@@ -40,13 +40,13 @@
     "@types/react-dom": "^19.3.0",
     "@vitest/coverage-v8": "^5.0.5",
     "agent-browser": "^0.41.1",
-    "eslint": "^9.39.5",
+    "eslint": "^10.14.0",
     "eslint-config-next": "^16.4.3",
     "jsqr": "^1.4.0",
     "pg": "^8.23.1",
     "pngjs": "^7.0.0",
     "testcontainers": "^12.2.1",
-    "typescript": "^7.0.2",
+    "typescript": "^6.0.3",
     "vitest": "^5.0.5"
   }
 }

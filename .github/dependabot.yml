@@ -11,6 +11,10 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    # typescript-eslint does not support TypeScript 7 yet (peer: <6.1.0); drop this once it does.
+    ignore:
+      - dependency-name: typescript
+        versions: [">=7"]
     labels: [dependencies]
   - package-ecosystem: github-actions
     directory: /
