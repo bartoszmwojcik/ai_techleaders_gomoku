@@ -39,4 +39,8 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 2
+    # A Postgres major needs a planned data migration (pg_upgrade), so it is not bumped automatically.
+    ignore:
+      - dependency-name: postgres
+        update-types: ["version-update:semver-major"]
     labels: [dependencies]
