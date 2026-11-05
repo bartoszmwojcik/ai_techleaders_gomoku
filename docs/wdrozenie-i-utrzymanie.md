@@ -162,6 +162,41 @@ Panel pokazuje:
 
 Panel nie ma żadnej akcji zmieniającej dane: w grupie `(backend)` nie ma route handlerów ani server actions, a test strażnik `admin-gate.guard.test.ts` zawodzi, gdy któryś pojawi się bez `requireAdmin()` (lub w ogóle). Odpowiedź z danymi nie jest buforowana.
 
+## Zdarzenia bezpieczeństwa w logach
+
+Aplikacja zapisuje zdarzenia bezpieczeństwa (OWASP A09:2025, `docs/security/threat-model.md`) jako **jednowierszowy JSON** na stderr (`console.warn`, funkcja `logSecurityEvent` w `packages/app/src/server/http/security-log.ts`). Linia ma stały kod `event` (`security.<kod>`), czas `ts` i co najwyżej nazwę puli (`scope`) lub powód (`reason`). Nigdy nie zawiera e-maila, adresu IP, tokenu, pseudonimu ani user-agenta; udane żądania nie są logowane.
+
+| Zdarzenie | Kiedy | Szczegóły |
+| --- | --- | --- |
+| `security.rate_limited` | pierwsze odrzucenie (429) puli w oknie licznika; kolejne odrzucenia tego samego okna nie dopisują linii, więc zalew 429 daje jedną linię na pulę i okno | `scope`: nazwa puli, np. `login:ip`, `login:email-ip`, `mcp:ip`, `invitation-lookup:ip` |
+| `security.csrf_rejected` | zmiana stanu bez właściwego `Origin` lub bez nagłówka `X-Gomoku-Request` | `reason`: `origin` albo `missing_header` |
+| `security.admin_denied` | `/backend` otwarty przez kogoś, kto nie jest administratorem (w tym boty szukające panelu) | brak |
+| `security.login_failed` | złe hasło lub nieznany e-mail (jedna linia dla obu przypadków) | brak |
+| `security.invitation_lookup_failed` | nieznany lub nieważny kod zaproszenia (przeglądarka i agent MCP) | `scope`: `invitation-lookup:ip`, `agent-lookup:ip` lub `...:global` |
+| `security.mcp_token_invalid` | wywołanie narzędzia MCP z nieznanym tokenem partii | brak |
+
+Objętość: linia powstaje tylko przy odmowie. Najgęstsze źródło to `login_failed` i `mcp_token_invalid`, ale ograniczają je limity żądań (np. logowanie: 30 prób na godzinę i adres, MCP: 300 żądań na minutę i adres), więc jeden adres nie wyprodukuje więcej niż kilkaset linii na minutę. Logi Dockera mają rotację z konfiguracji demona; nie ma SIEM-a ani alertów.
+
+Przegląd na VPS (kontener aplikacji, nazwę sprawdź przez `docker compose -f compose.prod.yaml ps`):
+
+```bash
+# Zdarzenia z ostatniej doby, policzone wg kodu:
+docker logs --since 24h <kontener-aplikacji> 2>&1 | grep '"event":"security.' | grep -o '"event":"[^"]*"' | sort | uniq -c | sort -rn
+
+# Surowe linie ostatniej godziny (np. po zgłoszeniu problemu):
+docker logs --since 1h <kontener-aplikacji> 2>&1 | grep '"event":"security.'
+```
+
+Przykładowy wpis crona, który raz dziennie dopisuje podsumowanie do pliku (bez wysyłki, bez alertów):
+
+```cron
+5 6 * * * docker logs --since 24h <kontener-aplikacji> 2>&1 | grep -o '"event":"security\.[a-z_]*"' | sort | uniq -c >> /var/log/gomoku-security.log
+```
+
+## Limit rozmiaru ciała żądań
+
+Ciało żądań JSON do `/api/*` (poza `/api/mcp`, które ma własny limit 8 KB) może mieć najwyżej **64 KB** (`API_BODY_MAX_BYTES` w `packages/app/src/server/http/api-handler.ts`). Większe jest odrzucane odpowiedzią `413` (`PAYLOAD_TOO_LARGE`) przed parsowaniem: po nagłówku `Content-Length` oraz przez liczenie bajtów strumienia, więc brak lub fałszywy nagłówek nie pomaga. Odpowiedzi JSON z `/api/*` mają `Cache-Control: private, no-store`.
+
 ## Adres klienta za proxy (pomiar #112)
 
 Pomiar z 2026-11-04 na produkcji (`gomoku.byst.re`, `TRUST_PROXY_HOPS=1`). Metoda: kilka nieszkodliwych żądań `POST /api/invitations/ZZZZ-ZZZZ/spectate` (nieistniejący kod, odpowiedź `410`), po których odczytano klucze liczników `invitation-lookup:ip:<sha256(adres)>` w `rate_limit_buckets`. Klucz jest skrótem adresu, więc pozwala sprawdzić, jaki adres aplikacja uznała za klienta. Konta i partie nie były zakładane.

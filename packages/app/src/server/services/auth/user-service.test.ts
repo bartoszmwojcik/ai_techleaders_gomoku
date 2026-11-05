@@ -284,6 +284,40 @@ describe("UserService.register verification timeout", () => {
   });
 });
 
+describe("UserService.authenticate security log", () => {
+  const setup = (user: object | null, matches: boolean) =>
+    new UserService({
+      em: { findOne: vi.fn(async () => user) } as unknown as EntityManager,
+      passwordHasher: { dummyHash: Promise.resolve("d"), verify: vi.fn(async () => matches) } as unknown as PasswordHasher,
+      sessionService: { create: vi.fn() } as unknown as SessionService,
+      invalidateResetTokens: vi.fn(async () => undefined),
+      clock: { now: () => new Date("2026-11-02T10:00:00Z") },
+    } as never);
+
+  it.each([
+    ["a wrong password", { id: "1", displayName: "Ala", passwordHash: "h" }, false],
+    ["an unknown e-mail", null, false],
+  ])("logs one event without the e-mail for %s", async (_label, user, matches) => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    await setup(user, matches).authenticate("ala@example.com", "secret123").catch(() => undefined);
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    const line = warn.mock.calls[0]![0] as string;
+    expect(JSON.parse(line)).toMatchObject({ event: "security.login_failed" });
+    expect(line).not.toContain("ala@example.com");
+    expect(line).not.toContain("secret123");
+    warn.mockRestore();
+  });
+
+  it("logs nothing for a successful login", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    await setup({ id: "1", displayName: "Ala", passwordHash: "h" }, true).authenticate("ala@example.com", "x");
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+});
+
 describe("UserService.authenticate", () => {
   function authSetup(user: object | null, matches: boolean) {
     const em = { findOne: vi.fn(async () => user) };

@@ -1,7 +1,10 @@
 import type { Orm } from "@gomoku/db";
 
+import { describeError } from "../http/describe-error";
+
 export type HealthReport = {
   status: "ok" | "error";
+  /** `reason` is the class and driver code of the error only (e.g. `Error ECONNREFUSED`): the message carries hosts, ports or queries. */
   database: { ok: true } | { ok: false; reason: string };
 };
 
@@ -21,7 +24,8 @@ export class HealthService {
       await this.#orm.em.getConnection().execute("select 1");
       return { status: "ok", database: { ok: true } };
     } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
+      const { name, code } = describeError(error);
+      const reason = code === undefined ? name : `${name} ${code}`;
       return { status: "error", database: { ok: false, reason } };
     }
   }

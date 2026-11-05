@@ -64,3 +64,33 @@ describe("baseline security headers", () => {
     expectBaseline(response);
   });
 });
+
+describe("Cache-Control of the JSON API", () => {
+  it("is private, no-store on authenticated reads and on errors", async () => {
+    let n = 0;
+    const headers = (cookie?: string) => ({
+      "content-type": "application/json",
+      origin: baseUrl,
+      "x-gomoku-request": "1",
+      "x-forwarded-for": `198.75.0.${++n}`,
+      ...(cookie ? { cookie } : {}),
+    });
+    const suffix = Date.now().toString(36);
+    const registered = await fetch(`${baseUrl}/api/auth/register`, {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify({ email: `cc-${suffix}@example.com`, displayName: `Cc_${suffix}`, password: "secret123" }),
+    });
+    expect(registered.status).toBe(201);
+    expect(registered.headers.get("cache-control")).toBe("private, no-store");
+    const cookie = (registered.headers.get("set-cookie") ?? "").split(";")[0]!;
+
+    for (const path of ["/api/history", "/api/lobby", "/api/games/00000000-0000-4000-8000-000000000000"]) {
+      const response = await fetch(`${baseUrl}${path}`, { headers: { cookie } });
+      expect(response.headers.get("cache-control"), path).toBe("private, no-store");
+    }
+    const anonymous = await fetch(`${baseUrl}/api/history`);
+    expect(anonymous.status).toBe(401);
+    expect(anonymous.headers.get("cache-control")).toBe("private, no-store");
+  });
+});

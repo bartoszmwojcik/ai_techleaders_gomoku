@@ -93,12 +93,12 @@ describe("BackendHomePage", () => {
   it("keeps the database failure reason out of the page and logs it on the server", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
-    const html = await render({ status: "error", database: { ok: false, reason: "connection refused" } });
+    const html = await render({ status: "error", database: { ok: false, reason: "Error ECONNREFUSED" } });
 
     expect(html).toContain("Brak połączenia");
     expect(html).toContain("Sprawdź logi serwera.");
-    expect(html).not.toContain("connection refused");
-    expect(error).toHaveBeenCalledWith("Backend panel: database check failed", "connection refused");
+    expect(html).not.toContain("ECONNREFUSED");
+    expect(error).toHaveBeenCalledWith("Backend panel: database check failed", "Error ECONNREFUSED");
     error.mockRestore();
   });
 
