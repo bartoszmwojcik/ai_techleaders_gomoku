@@ -124,3 +124,7 @@ Last filed: 2026-11-02
 | E11-S06 | #221 | Agent MCP gra partię „papier i ołówek” | #215 | E11-S02 (#217) | no |
 
 Uwagi 2026-11-02 (E11): wariant to osąd właściciela (D-34), bez dowodu popytu (A-16, Q-21); `SDLC.md` nie ma Definition of Ready (formalny test gotowości pominięty). Zgłoszenia są podzgłoszeniami GitHub (epik → historie → zadania). Implementacja jednym PR-em zamykającym całe E11 (spec R11); specyfikacja na gałęzi `claude/paper-grid-pencil-game-0ycu0x` czeka na akceptację właściciela przed kodem.
+
+## Stan E13 (2026-11-05)
+
+Źródło: `.ai/specs/2026-11-05-hosted-bot.md`. E13-S01 (#256) zatwierdzona przez właściciela 2026-11-05 (specyfikacja scalona w PR #258, Q-23 zamknięte). Historie S02–S05 można już zgłosić ze specyfikacji (plan faz); jeszcze niezgłoszone, czekają na potwierdzenie drzewa przez właściciela. Funkcja zostaje za flagą `BOT_ENABLED` do zaakceptowanego pomiaru na Mikrusie.

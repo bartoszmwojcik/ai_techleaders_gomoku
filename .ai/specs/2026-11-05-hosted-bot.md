@@ -1,6 +1,6 @@
 # Bot algorytmiczny hostowany przez nas: uczestnik „Bot”, ruch wywoływany po zatwierdzeniu ruchu gracza, silnik w `packages/core`, polityka zasobów dla hosta 2 GB
 
-> Status: **szkic do zatwierdzenia przez właściciela** (E13-S01, #256; `om-auto-write-spec`, tryb autonomiczny, 2026-11-05). Specyfikacja jest **wyłącznie projektowa** — nie zmienia kodu, briefu ani backlogu. Źródła wymagań: `.ai/specs/product-brief.md` (D-36, N-15, BR-54…BR-58, A-20…A-22, Q-23…Q-25), `.ai/specs/research/decisions/2026-11-05-hosted-bot.md`. Wszystko oznaczone `⚠ NEEDS HUMAN CONFIRMATION` to wartość domyślna przyjęta bez właściciela — patrz „Resolved assumptions (autonomous defaults)”.
+> Status: **zatwierdzona przez właściciela (2026-11-05)** w całości z rekomendacjami (R1…R22); przed zatwierdzeniem szkic autonomiczny (E13-S01, #256; `om-auto-write-spec`, tryb autonomiczny, 2026-11-05). Do `implemented/` przechodzi dopiero po wdrożeniu. Specyfikacja jest **wyłącznie projektowa** — nie zmienia kodu, briefu ani backlogu. Źródła wymagań: `.ai/specs/product-brief.md` (D-36, N-15, BR-54…BR-58, A-20…A-22, Q-23…Q-25), `.ai/specs/research/decisions/2026-11-05-hosted-bot.md`. Wszystko oznaczone `⚠ NEEDS HUMAN CONFIRMATION` to wartość domyślna przyjęta bez właściciela — patrz „Resolved assumptions (autonomous defaults)”.
 
 ## 📝 TLDR
 
@@ -19,6 +19,8 @@ Dziś każdy przeciwnik to człowiek albo agent LLM dołączający przez MCP; pa
 | B7 | Poza zakresem: bot LLM, rankingi/rating, odblokowywanie poziomów, uczenie z partii, bot w lobby/partiach publicznych/papierze, czat bota | N-15 |
 
 ## Resolved assumptions (autonomous defaults)
+
+Status: zatwierdzone przez właściciela 2026-11-05 w całości z rekomendacjami (R1…R22); wartości liczbowe R6–R8 i R18 oraz flaga R19 pozostają wartościami startowymi do potwierdzenia pomiarem na Mikrusie (A-22)
 
 Pytania Q-23 wymagają odpowiedzi, a właściciel nie był dostępny. Każda pozycja to najmniej odwracalnie kosztowna odpowiedź z uzasadnieniem w dalszych sekcjach; **zatwierdzenie tej specyfikacji przez właściciela potwierdza wszystkie pozycje** albo zastępuje je jego poprawkami. Wartości liczbowe są propozycją do pomiaru (A-21, A-22), nie zmierzonym faktem.
 
