@@ -2,6 +2,7 @@ import { isInstallationAdmin } from "@gomoku/core";
 import { notFound } from "next/navigation";
 
 import { type CurrentUser, getCurrentUserWith } from "./auth";
+import { logSecurityEvent } from "./security-log";
 
 /**
  * Gate of the admin panel (E08-S02, BR-35, BR-37). EVERY `page.tsx`, `route.ts` and server action
@@ -16,6 +17,7 @@ import { type CurrentUser, getCurrentUserWith } from "./auth";
 export async function requireAdmin(): Promise<CurrentUser> {
   const current = await getCurrentUserWith(async (_user, cradle) => cradle.serverConfig.adminEmail);
   if (!current || !current.user.emailVerifiedAt || !isInstallationAdmin(current.user.email, current.data)) {
+    logSecurityEvent("admin_denied");
     notFound();
   }
   return current.user;

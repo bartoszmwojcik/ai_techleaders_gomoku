@@ -18,21 +18,24 @@ describe("HealthService", () => {
     expect(execute).toHaveBeenCalledWith("select 1");
   });
 
-  it("reports the error message when the query fails", async () => {
-    const execute = vi.fn().mockRejectedValue(new Error("connect ECONNREFUSED 127.0.0.1:5432"));
+  it("reports the class and code of the error, never its message", async () => {
+    const error = Object.assign(new Error("connect ECONNREFUSED 127.0.0.1:5432 user=gomoku"), { code: "ECONNREFUSED" });
+    const execute = vi.fn().mockRejectedValue(error);
 
     await expect(new HealthService({ orm: ormWith(execute) }).check()).resolves.toEqual({
       status: "error",
-      database: { ok: false, reason: "connect ECONNREFUSED 127.0.0.1:5432" },
+      database: { ok: false, reason: "Error ECONNREFUSED" },
     });
   });
 
-  it("stringifies a non-Error rejection", async () => {
-    const execute = vi.fn().mockRejectedValue("timeout");
-
-    await expect(new HealthService({ orm: ormWith(execute) }).check()).resolves.toEqual({
-      status: "error",
-      database: { ok: false, reason: "timeout" },
+  it("reports only the class of an error without a code and the type of a non-Error rejection", async () => {
+    const plain = vi.fn().mockRejectedValue(new TypeError("secret detail"));
+    await expect(new HealthService({ orm: ormWith(plain) }).check()).resolves.toMatchObject({
+      database: { ok: false, reason: "TypeError" },
+    });
+    const text = vi.fn().mockRejectedValue("timeout");
+    await expect(new HealthService({ orm: ormWith(text) }).check()).resolves.toMatchObject({
+      database: { ok: false, reason: "string" },
     });
   });
 });

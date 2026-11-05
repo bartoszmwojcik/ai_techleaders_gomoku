@@ -15,6 +15,7 @@ import {
 } from "@gomoku/db";
 
 import { describeError } from "../../http/describe-error";
+import { logSecurityEvent } from "../../http/security-log";
 import type { Clock } from "../email/email-sender";
 import {
   VERIFICATION_SEND_TIMEOUT_MS,
@@ -185,6 +186,8 @@ export class UserService {
     const hash = user?.passwordHash ?? (await this.#passwordHasher.dummyHash);
     const matches = await this.#passwordHasher.verify(password, hash);
     if (!user || !matches) {
+      // No e-mail, no address: the same line for an unknown account and a wrong password.
+      logSecurityEvent("login_failed");
       throw new UnauthorizedError(INVALID_CREDENTIALS_MESSAGE, {
         code: "INVALID_CREDENTIALS",
       });

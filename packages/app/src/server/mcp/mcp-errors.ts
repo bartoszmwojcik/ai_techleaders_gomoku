@@ -2,6 +2,7 @@ import { AppError, NotFoundError, TooManyRequestsError, type ChatRejection } fro
 import type { CallToolResult } from "@modelcontextprotocol/server";
 
 import { describeError } from "../http/describe-error";
+import { logSecurityEvent } from "../http/security-log";
 
 /** Tool error codes of the MCP endpoint (decisions #138 and 8, API Contracts), one set for every tool. */
 export type McpErrorCode =
@@ -98,6 +99,7 @@ export function toolErrorOf(error: unknown): CallToolResult {
     });
   }
   if (error instanceof NotFoundError) {
+    logSecurityEvent("mcp_token_invalid");
     return toolFailure({ code: "INVALID_TOKEN", message: INVALID_TOKEN_MESSAGE, retryable: false });
   }
   if (error instanceof AppError) {
@@ -110,6 +112,7 @@ export function toolErrorOf(error: unknown): CallToolResult {
         ...(typeof reason === "string" && { reason: reason as ChatErrorReason }),
       });
     }
+    if (error.code === "INVALID_TOKEN") logSecurityEvent("mcp_token_invalid");
     if (error.code in RETRYABLE) {
       return toolFailure({
         code: error.code as McpErrorCode,
