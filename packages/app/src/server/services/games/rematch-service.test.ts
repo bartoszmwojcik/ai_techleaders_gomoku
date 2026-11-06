@@ -9,7 +9,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { deriveRematchToken, hashOpaqueToken } from "../../http/opaque-token";
 import { ACTIVE_SLOT_CONSTRAINT } from "./game-service";
-import { RematchService } from "./rematch-service";
+import { REMATCH_WITH_BOT_MESSAGE, RematchService } from "./rematch-service";
 
 const NOW = new Date("2026-10-30T12:00:00Z");
 
@@ -22,6 +22,9 @@ const guest = (seat: 1 | 2, hash: string | null = `hash-${seat}`, nickname: stri
 });
 const agent = (seat: 1 | 2): Row => ({
   id: `p${seat}`, seat, kind: "agent", user_id: null, guest_token_hash: null, nickname: null,
+});
+const bot = (): Row => ({
+  id: "p2", seat: 2, kind: "bot", user_id: null, guest_token_hash: null, nickname: null,
 });
 const finished = (extra: Row = {}): Row => ({
   variant: "classic", time_control_ms: 600_000, status: "finished", black_seat: 1, rematch_state: null, rematch_offered_by_seat: null,
@@ -128,6 +131,19 @@ describe("RematchService.offer", () => {
       await expect(service.offer(me("p1"), "game-1")).rejects.toMatchObject({
         status: 409,
         code: "REMATCH_UNAVAILABLE",
+      });
+      expect(rateLimiter.hit).not.toHaveBeenCalled();
+      expect(ran("set rematch_state = 'pending'")).toHaveLength(0);
+    }
+  });
+
+  it("refuses an offer in a game with the bot, naming the new game instead (R13)", async () => {
+    for (const players of [[account(1), bot()], [guest(1), bot()]]) {
+      const { service, rateLimiter, ran } = setup({ players });
+      await expect(service.offer(me("p1"), "game-1")).rejects.toMatchObject({
+        status: 409,
+        code: "REMATCH_UNAVAILABLE",
+        message: REMATCH_WITH_BOT_MESSAGE,
       });
       expect(rateLimiter.hit).not.toHaveBeenCalled();
       expect(ran("set rematch_state = 'pending'")).toHaveLength(0);
@@ -298,6 +314,7 @@ describe("RematchService.accept", () => {
     ["a deleted account", [account(1, null), account(2)], pending(), "token"],
     ["a guest whose token was cleared", [guest(1, null), account(2)], pending(), "token"],
     ["an agent", [account(1), agent(2)], pending(), "token"],
+    ["the bot", [account(1), bot()], pending(), "token"],
     ["a guest whose token expired", [guest(1), account(2)], pending({ token_fresh: false }), "token"],
   ])("refuses when the other player is gone: %s", async (_name, players, game, token) => {
     const { service, ran } = setup({ players, game });

@@ -38,6 +38,7 @@ export const REMATCH_ALREADY_OFFERED_MESSAGE = "Rewanż został już zaproponowa
 export const REMATCH_NOT_OFFERED_MESSAGE = "Nie ma propozycji rewanżu do rozstrzygnięcia.";
 export const REMATCH_EXPIRED_MESSAGE = "Propozycja rewanżu wygasła.";
 export const REMATCH_UNAVAILABLE_MESSAGE = "Przeciwnik nie jest już dostępny, rewanż jest niemożliwy.";
+export const REMATCH_WITH_BOT_MESSAGE = "Z botem nie ma rewanżu. Zagraj ponownie z botem w nowej partii.";
 
 /** A player of the finished game, as the rematch needs them. */
 type PlayerRow = {
@@ -176,6 +177,8 @@ export class RematchService {
     if (game.status !== "finished") throw gameNotFinished();
     // Nobody to play against: no offer for a game with a deleted account (#37) or with an agent
     // (BR-31: a rematch has no code to hand over, so the agent could not follow), and no attempt spent.
+    // The bot has no rematch either (R13): a new game with it reads the resources afresh (BR-57).
+    if (players.some(isBot)) throw rematchUnavailable(REMATCH_WITH_BOT_MESSAGE);
     if (players.some((player) => isDeletedAccount(player) || isAgent(player))) throw rematchUnavailable();
 
     // The attempt is reserved BEFORE the write (so the limit cannot be raced) and given back when
@@ -359,13 +362,14 @@ export class RematchService {
       : { gameId };
   }
 
-  // An account that was deleted, an agent (BR-31), or a guest whose token is gone or about to expire (BR-22), so
+  // An account that was deleted, an agent (BR-31), the bot (R13), or a guest whose token is gone or about to expire (BR-22), so
   // that no seat of the new game is left without a way to be claimed.
   #unavailable(player: PlayerRow, game: GameRow): boolean {
     switch (player.kind) {
       case "account":
         return isDeletedAccount(player);
       case "agent":
+      case "bot":
         return true;
       case "guest":
         return player.guest_token_hash === null || !game.token_fresh;
@@ -421,8 +425,9 @@ export class RematchService {
 // A deleted account keeps its row with `user_id NULL` (#37); a guest has `user_id NULL` too.
 const isDeletedAccount = (player: PlayerRow) => player.kind === "account" && player.user_id === null;
 const isAgent = (player: PlayerRow) => player.kind === "agent";
-const rematchUnavailable = () =>
-  new ConflictError(REMATCH_UNAVAILABLE_MESSAGE, { code: "REMATCH_UNAVAILABLE" });
+const isBot = (player: PlayerRow) => player.kind === "bot";
+const rematchUnavailable = (message = REMATCH_UNAVAILABLE_MESSAGE) =>
+  new ConflictError(message, { code: "REMATCH_UNAVAILABLE" });
 const gameNotFinished = () =>
   new ConflictError(GAME_NOT_FINISHED_MESSAGE, { code: "GAME_NOT_FINISHED" });
 const notOffered = () =>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { readAdminEmail, readServerConfig } from "./config";
+import { parseBotEnabled, readAdminEmail, readServerConfig } from "./config";
 
 const MCP_DEFAULTS = { requestLimit: 300, joinLimit: 10, lookupLimit: 20, lookupGlobalLimit: 300, tokenLimit: 60, chatLimit: 30 };
 
@@ -17,6 +17,20 @@ const production = {
   ADMIN_EMAIL: "Admin@Example.com",
 };
 
+describe("BOT_ENABLED (hosted-bot R19)", () => {
+  it("is off unless set to true", () => {
+    expect(parseBotEnabled(undefined)).toBe(false);
+    expect(parseBotEnabled("")).toBe(false);
+    expect(parseBotEnabled("false")).toBe(false);
+    expect(parseBotEnabled("true")).toBe(true);
+    expect(readServerConfig({ BOT_ENABLED: "true" }).botEnabled).toBe(true);
+  });
+
+  it.each(["1", "yes", "TRUE"])("refuses %s", (raw) => {
+    expect(() => parseBotEnabled(raw)).toThrow("BOT_ENABLED must be true or false");
+  });
+});
+
 describe("readServerConfig", () => {
   it("uses defaults outside production", () => {
     expect(readServerConfig({})).toEqual({
@@ -32,6 +46,7 @@ describe("readServerConfig", () => {
       emailDailyLimit: undefined,
       mcp: MCP_DEFAULTS,
       chat: CHAT_DEFAULTS,
+      botEnabled: false,
     });
     expect(
       readServerConfig({
@@ -62,6 +77,7 @@ describe("readServerConfig", () => {
       emailDailyLimit: undefined,
       mcp: MCP_DEFAULTS,
       chat: CHAT_DEFAULTS,
+      botEnabled: false,
     });
   });
 
@@ -89,6 +105,7 @@ describe("readServerConfig", () => {
       emailDailyLimit: undefined,
       mcp: MCP_DEFAULTS,
       chat: CHAT_DEFAULTS,
+      botEnabled: false,
     });
     for (const bad of ["3", "32", "abc", "12.5", "-4", "004", "1e1"]) {
       expect(() => readServerConfig({ PASSWORD_HASH_COST: bad })).toThrow(

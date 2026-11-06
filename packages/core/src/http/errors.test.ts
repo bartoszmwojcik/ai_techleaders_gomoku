@@ -6,6 +6,7 @@ import {
   ForbiddenError,
   GoneError,
   NotFoundError,
+  ServiceUnavailableError,
   TooManyRequestsError,
   UnauthorizedError,
   ValidationError,
@@ -52,6 +53,7 @@ describe.each([
   ["ConflictError", ConflictError, 409, "CONFLICT"],
   ["GoneError", GoneError, 410, "GONE"],
   ["TooManyRequestsError", TooManyRequestsError, 429, "RATE_LIMITED"],
+  ["ServiceUnavailableError", ServiceUnavailableError, 503, "SERVICE_UNAVAILABLE"],
 ] as const)("%s", (name, ErrorClass, status, code) => {
   it("has the default status and code", () => {
     const error = new ErrorClass("msg");
@@ -85,5 +87,12 @@ describe("TooManyRequestsError", () => {
         .retryAfterSeconds,
     ).toBe(30);
     expect(new TooManyRequestsError("slow down").retryAfterSeconds).toBeUndefined();
+  });
+});
+
+describe("ServiceUnavailableError", () => {
+  it("exposes retryAfterSeconds", () => {
+    expect(new ServiceUnavailableError("off", { code: "BOT_UNAVAILABLE", retryAfterSeconds: 60 }).retryAfterSeconds).toBe(60);
+    expect(new ServiceUnavailableError("off").retryAfterSeconds).toBeUndefined();
   });
 });

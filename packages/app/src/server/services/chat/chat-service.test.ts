@@ -21,6 +21,7 @@ type Context = Partial<{
   status: string;
   window_open: boolean;
   gone: boolean;
+  with_bot: boolean;
   since_last_ms: number | null;
   total: number;
 }>;
@@ -33,6 +34,7 @@ const contextRow = (context: Context = {}) => ({
   status: "active",
   window_open: false,
   gone: false,
+  with_bot: false,
   since_last_ms: null,
   total: 0,
   ...context,
@@ -133,6 +135,7 @@ describe("ChatService.read", () => {
     ["unavailable", { status: "waiting", theirs: null }],
     ["unavailable", { status: "cancelled" }],
     ["unavailable", { status: "finished", window_open: true, gone: true }],
+    ["unavailable", { status: "active", with_bot: true }],
     ["closed", { status: "finished", window_open: false }],
     ["disabled_by_you", { mine: false }],
   ] as [string, Context][])("returns no messages and does not query them when the chat is %s", async (state, context) => {
@@ -232,6 +235,7 @@ describe("ChatService.send", () => {
     ["cancelled", { status: "cancelled" }],
     ["closed", { status: "finished", window_open: false }],
     ["with a deleted account", { status: "finished", window_open: true, gone: true }],
+    ["with the bot (R14)", { status: "active", with_bot: true }],
   ] as [string, Context][])("answers 409 CHAT_UNAVAILABLE in a %s game", async (_name, context) => {
     const error = await setup({ context }).service.send(PARTICIPANT, GAME, input).catch((e) => e);
     expect(error).toBeInstanceOf(ConflictError);

@@ -6,6 +6,7 @@ import {
   INVITATION_TTL_MS,
   NotFoundError,
   READY_DEADLINE_MS,
+  ServiceUnavailableError,
   TooManyRequestsError,
 } from "@gomoku/core";
 import {
@@ -19,6 +20,9 @@ import {
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  BOT_FIXED_MEMORY_MB,
+  BOT_RETRY_AFTER_SECONDS,
+  BOT_UNAVAILABLE_MESSAGE,
   ACTIVE_GAME_EXISTS_MESSAGE,
   ACTIVE_SLOT_CONSTRAINT,
   GAME_NOT_CANCELLABLE_MESSAGE,
@@ -50,7 +54,7 @@ const EMPTY_BOARD = {
 
 /** Fake `em`: `transactional` runs the callback with the same object as `tx`. */
 function setup(options: {
-  config?: { appOrigin?: string };
+  config?: { appOrigin?: string; botEnabled?: boolean };
   executeRows?: unknown[][];
   count?: number;
   member?: boolean;
@@ -108,6 +112,7 @@ function setup(options: {
   };
   const rateLimiter = { hit: vi.fn(async () => ({ count: 1, retryAfterSeconds: 1 })) };
   const invitationCodes = { generate: vi.fn(() => "ABCDEFGH") };
+  const colorDraw = { drawBlackSeat: vi.fn(() => 2 as const) };
   const timeoutSettler = {
     settleFor: vi.fn(async () => undefined),
     settleForGuest: vi.fn(async () => undefined),
@@ -121,8 +126,9 @@ function setup(options: {
     invitationCodes: invitationCodes as never,
     timeoutSettler,
     serverConfig: (options.config ?? { appOrigin: "https://gomoku.test" }) as never,
+    colorDraw,
   });
-  return { service, em, calls, created, rateLimiter, invitationCodes, timeoutSettler };
+  return { service, em, calls, created, rateLimiter, invitationCodes, timeoutSettler, colorDraw };
 }
 
 function uniqueViolation(constraint: string) {
@@ -218,7 +224,7 @@ describe("GameService.create", () => {
 
   it("falls back to the development origin when APP_ORIGIN is unset", async () => {
     const { service } = setup({ config: {} });
-    const result = await service.create({ kind: "account", userId: "user-1" });
+    const result = (await service.create({ kind: "account", userId: "user-1" })) as { invitation: { url: string; mcpUrl: string } };
     expect(result.invitation.url).toBe("http://localhost:3000/invite/ABCD-EFGH");
     expect(result.invitation.mcpUrl).toBe("http://localhost:3000/api/mcp");
   });
@@ -244,6 +250,104 @@ describe("GameService.create", () => {
     await expect(setup({ flushError: other }).service.create({ kind: "account", userId: "user-1" })).rejects.toBe(other);
     const boom = new Error("boom");
     await expect(setup({ flushError: boom }).service.create({ kind: "account", userId: "user-1" })).rejects.toBe(boom);
+  });
+});
+
+describe("GameService.create with the bot (hosted-bot spec)", () => {
+  const ON = { appOrigin: "https://gomoku.test", botEnabled: true };
+  const HASH = "d".repeat(64);
+
+  it("starts a classic, private game at once: no invitation, the bot in seat 2, the colours drawn (R3, R4)", async () => {
+    const { service, created, invitationCodes, colorDraw, calls } = setup({ config: ON });
+
+    const result = await service.create({ kind: "account", userId: "user-1", opponent: { kind: "bot", level: 2 } });
+
+    expect(created.map(({ entity }) => entity)).toEqual([Game, GamePlayer, GamePlayer]);
+    expect(created[0]!.data).toEqual({
+      origin: "bot",
+      isPublic: false,
+      status: "active",
+      startedAt: NOW,
+      blackSeat: 2,
+      variant: "classic",
+      timeControlMs: INITIAL_CLOCK_MS,
+      clockMs1: INITIAL_CLOCK_MS,
+      clockMs2: INITIAL_CLOCK_MS,
+      createdAt: NOW,
+    });
+    expect(created[1]!.data).toMatchObject({ seat: 1, kind: "account", isActive: true });
+    expect(created[1]!.data).not.toHaveProperty("seenAt");
+    // The bot counts as having opened the game: the clock starts with the player's first read.
+    expect(created[2]!.data).toEqual({
+      game: expect.anything(),
+      seat: 2,
+      kind: "bot",
+      botLevel: 2,
+      botMemoryMb: BOT_FIXED_MEMORY_MB,
+      botDepthCap: 8,
+      isActive: true,
+      joinedAt: NOW,
+      seenAt: NOW,
+    });
+    expect(colorDraw.drawBlackSeat).toHaveBeenCalledOnce();
+    expect(invitationCodes.generate).not.toHaveBeenCalled();
+    // The same closing of stale games and seekers as any create (BR-13).
+    expect(calls).toEqual(["execute:lock-user", "execute:delete from", "execute:with expired", "execute:with stale", "flush"]);
+    expect(result).toEqual({ gameId: "game-1", opponent: "bot", bot: { level: 2, name: "Bot · poziom 2 · 16 MB" } });
+  });
+
+  it("gives level 1 no memory and ignores a variant or a public flag that slipped past the schema", async () => {
+    const { service, created } = setup({ config: ON });
+    const result = await service.create({
+      kind: "account",
+      userId: "user-1",
+      isPublic: true,
+      settings: { variant: "paper", timeControlMs: 60_000 },
+      opponent: { kind: "bot", level: 1 },
+    });
+    expect(created[0]!.data).toMatchObject({ isPublic: false, variant: "classic", timeControlMs: INITIAL_CLOCK_MS });
+    expect(created[2]!.data).toMatchObject({ botLevel: 1, botMemoryMb: null, botDepthCap: null });
+    expect(result).toEqual({ gameId: "game-1", opponent: "bot", bot: { level: 1, name: "Bot · poziom 1" } });
+  });
+
+  it("creates a guest's game with the bot under the same BR-13 checks", async () => {
+    const { service, created, calls } = setup({ config: ON, executeRows: [[], [], [], []] });
+    const result = await service.create({
+      kind: "guest",
+      tokenHash: HASH,
+      limitKey: "games-create-guest:ip:abc",
+      opponent: { kind: "bot", level: 1 },
+    });
+    expect(created.map(({ entity, data }) => [entity, data.kind])).toEqual([
+      [Game, undefined],
+      [GamePlayer, "guest"],
+      [GamePlayer, "bot"],
+    ]);
+    expect(calls).toContain("execute:select p.game_id,");
+    expect(result).toMatchObject({ opponent: "bot" });
+  });
+
+  it.each([
+    ["an account", { kind: "account" as const, userId: "user-1" }],
+    ["a guest", { kind: "guest" as const, tokenHash: HASH, limitKey: "games-create-guest:ip:abc" }],
+  ])("refuses %s with 503 BOT_UNAVAILABLE while BOT_ENABLED is off, before the limit or any write (R19)", async (_name, creator) => {
+    const { service, em, rateLimiter } = setup({ config: { appOrigin: "https://gomoku.test" } });
+    const error = await service.create({ ...creator, opponent: { kind: "bot", level: 2 } }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ServiceUnavailableError);
+    expect(error).toMatchObject({
+      status: 503,
+      code: "BOT_UNAVAILABLE",
+      message: BOT_UNAVAILABLE_MESSAGE,
+      retryAfterSeconds: BOT_RETRY_AFTER_SECONDS,
+    });
+    expect(rateLimiter.hit).not.toHaveBeenCalled();
+    expect(em.transactional).not.toHaveBeenCalled();
+  });
+
+  it("still creates a game with a person while the bot is off", async () => {
+    const { service, created } = setup();
+    await service.create({ kind: "account", userId: "user-1", opponent: { kind: "human" } });
+    expect(created.map(({ entity }) => entity)).toEqual([Game, GamePlayer, Invitation]);
   });
 });
 
@@ -300,8 +404,7 @@ describe("GameService.create for a guest (E02-S08)", () => {
     });
     expect(created[1]!.data).not.toHaveProperty("user");
     expect(em.getReference).not.toHaveBeenCalled();
-    expect(result.gameId).toBe("game-1");
-    expect(result.invitation.code).toBe("ABCD-EFGH");
+    expect(result).toMatchObject({ gameId: "game-1", invitation: { code: "ABCD-EFGH" } });
   });
 
   it("stops at the rate limit before anything else", async () => {
@@ -693,6 +796,28 @@ describe("GameService.getState", () => {
     });
     const unset = setup({ game: { status: "active" }, players: [creator, { ...agent, agentName: undefined }] });
     expect((await unset.service.getState({ playerId: "p1" }, "game-1")).players[1]).toMatchObject({ agentName: null });
+  });
+
+  it("names the bot by its level and strength and says so in `bot` (R9)", async () => {
+    const bot = { id: "p2", seat: 2, kind: "bot", user: null, nickname: null, botLevel: 2, botMemoryMb: 768, seenAt: NOW };
+    const strong = setup({ game: { status: "active", origin: "bot" }, players: [creator, bot] });
+    const state = await strong.service.getState({ playerId: "p1" }, "game-1");
+    expect(state.players[1]).toEqual({
+      seat: 2,
+      kind: "bot",
+      displayName: "Bot · poziom 2 · 16 MB",
+      bot: { level: 2, memoryMb: 768 },
+      seen: true,
+    });
+    expect(state.players[0]).not.toHaveProperty("bot");
+    expect(state).not.toHaveProperty("invitation");
+    expect(state).not.toHaveProperty("fromRematch");
+
+    const weak = setup({ game: { status: "active", origin: "bot" }, players: [creator, { ...bot, botLevel: 1, botMemoryMb: undefined }] });
+    expect((await weak.service.getState({ playerId: "p1" }, "game-1")).players[1]).toMatchObject({
+      displayName: "Bot · poziom 1",
+      bot: { level: 1, memoryMb: null },
+    });
   });
 
   it("does not show the invitation once the game is no longer waiting, and says it was cancelled", async () => {

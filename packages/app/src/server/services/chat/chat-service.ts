@@ -37,6 +37,7 @@ const CONTEXT_SQL = `
   select p.id as sender_id, p.seat, p.kind, p.chat_enabled as mine, o.chat_enabled as theirs,
     g.status, g.is_public,
     exists (select 1 from game_players d where d.game_id = g.id and d.kind = 'account' and d.user_id is null) as gone,
+    exists (select 1 from game_players b where b.game_id = g.id and b.kind = 'bot') as with_bot,
     (g.status = 'finished' and g.finished_at > now() - (? * interval '1 millisecond')) as window_open,
     (select extract(epoch from clock_timestamp() - max(m.created_at)) * 1000
        from chat_messages m where m.sender_id = p.id)::float8 as since_last_ms,
@@ -102,6 +103,8 @@ type Context = {
   is_public: boolean;
   /** A seat belongs to a deleted account (`user_id` NULL, `kind` still `account`). */
   gone: boolean;
+  /** The other seat is the bot (BR-54): a game with it has no chat (R14). */
+  with_bot: boolean;
   window_open: boolean;
   since_last_ms: number | null;
   total: number;
@@ -399,6 +402,8 @@ export class ChatService {
     // The account of the other side is deleted and its chat with it (BR-34): nobody to talk to, and
     // `seq` would restart from 1 under a client's cursor.
     if (context.gone) return "unavailable";
+    // The bot does not chat (N-15, R14): the game has no conversation at all.
+    if (context.with_bot) return "unavailable";
     return deriveChatState({
       status: context.status,
       windowOpen: context.window_open,

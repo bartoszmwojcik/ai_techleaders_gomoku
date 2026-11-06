@@ -1,4 +1,5 @@
 import {
+  botDisplayName,
   decodeHistoryCursor,
   defaultNickname,
   encodeHistoryCursor,
@@ -32,6 +33,9 @@ type Row = {
   opponent_nickname: string | null;
   opponent_name: string | null;
   opponent_agent_name: string | null;
+  /** Only for the bot (BR-54): its level and the memory its strength was read from (R9). */
+  opponent_bot_level: 1 | 2 | null;
+  opponent_bot_memory_mb: number | null;
 };
 
 // The history is a read model over finished games (engineering standards): one query from the
@@ -44,7 +48,8 @@ export const historySql = (afterCursor: boolean) => `
     to_char(g.finished_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as finished_at,
     g.end_reason, g.winner_seat, me.seat as my_seat,
     op.kind as opponent_kind, op.seat as opponent_seat, op.nickname as opponent_nickname,
-    op.agent_name as opponent_agent_name, coalesce(op.display_name, u.display_name) as opponent_name
+    op.agent_name as opponent_agent_name, op.bot_level as opponent_bot_level,
+    op.bot_memory_mb as opponent_bot_memory_mb, coalesce(op.display_name, u.display_name) as opponent_name
   from game_players me
   join games g on g.id = me.game_id and g.status = 'finished'
   join game_players op on op.game_id = g.id and op.seat <> me.seat
@@ -64,6 +69,9 @@ function opponentNameOf(row: Row): string | null {
     case "agent":
       // The model name the agent declared, if any (BR-31): unverified text.
       return row.opponent_agent_name;
+    case "bot":
+      // Minimal until E13-S05 (history of games with the bot): the name with its strength (R9).
+      return botDisplayName(row.opponent_bot_level!, row.opponent_bot_memory_mb);
   }
 }
 

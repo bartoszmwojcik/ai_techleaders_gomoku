@@ -88,3 +88,16 @@ export class TooManyRequestsError extends AppError {
     this.retryAfterSeconds = options.retryAfterSeconds;
   }
 }
+
+/** The service cannot take the request now (a feature switched off or out of resources); may carry `Retry-After`. */
+export class ServiceUnavailableError extends AppError {
+  readonly retryAfterSeconds?: number;
+
+  constructor(
+    message: string,
+    options: AppErrorOptions & { retryAfterSeconds?: number } = {},
+  ) {
+    super(503, options.code ?? "SERVICE_UNAVAILABLE", message, options.fieldErrors, options.data);
+    this.retryAfterSeconds = options.retryAfterSeconds;
+  }
+}

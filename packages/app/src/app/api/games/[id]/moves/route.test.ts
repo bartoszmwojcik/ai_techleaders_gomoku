@@ -1,26 +1,32 @@
 import { ConflictError, NotFoundError } from "@gomoku/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { connection, play, resolveParticipant, refreshGuestCookie } = vi.hoisted(() => ({
+const { connection, after, play, playDueMove, resolveParticipant, refreshGuestCookie } = vi.hoisted(() => ({
   connection: vi.fn(),
+  after: vi.fn(),
+  playDueMove: vi.fn(),
   refreshGuestCookie: vi.fn(),
   play: vi.fn(),
   resolveParticipant: vi.fn(),
 }));
-vi.mock("next/server", () => ({ connection }));
+vi.mock("next/server", () => ({ connection, after }));
 vi.mock("@/server/http/participant", () => ({ resolveParticipant }));
 vi.mock("@/server/http/guest-cookie", () => ({ refreshGuestCookie }));
 vi.mock("@/server/container", () => ({
   getContainer: async () => ({ cradle: { serverConfig: SERVER_CONFIG } }),
   withRequestScope: (fn: (scope: unknown) => unknown) =>
-    fn({ cradle: { gameMoveService: { play }, serverConfig: SERVER_CONFIG } }),
+    fn({ cradle: { gameMoveService: { play }, botTurnService: { playDueMove }, serverConfig: SERVER_CONFIG } }),
 }));
 
 import { POST } from "./route";
 
 const GAME = "4d293981-7b3c-4f81-a1af-0a9e3bf3636b";
 const SERVER_CONFIG = { sessionCookieSecure: false };
-const state = { status: "active", you: { seat: 1, kind: "account" }, moveCount: 1 };
+const players = [
+  { seat: 1, kind: "account" },
+  { seat: 2, kind: "guest" },
+];
+const state = { status: "active", you: { seat: 1, kind: "account" }, moveCount: 1, turnSeat: 2, players };
 const context = { params: Promise.resolve({ id: GAME }) };
 
 function request(body: unknown, headers: Record<string, string> = {}) {
@@ -40,6 +46,8 @@ beforeEach(() => {
   connection.mockReset().mockResolvedValue(undefined);
   refreshGuestCookie.mockReset().mockResolvedValue(undefined);
   play.mockReset().mockResolvedValue(state);
+  after.mockReset();
+  playDueMove.mockReset().mockResolvedValue("played");
   resolveParticipant
     .mockReset()
     .mockResolvedValue({ gameId: GAME, participant: { playerId: "player-1" } });
@@ -55,6 +63,25 @@ describe("POST /api/games/[id]/moves", () => {
     expect(resolveParticipant).toHaveBeenCalledWith(GAME);
     expect(play).toHaveBeenCalledWith({ playerId: "player-1" }, GAME, { x: 7, y: 7, moveNumber: 1 });
     expect(refreshGuestCookie).not.toHaveBeenCalled();
+    expect(after).not.toHaveBeenCalled();
+  });
+
+  it("answers at once and plays the bot's move after the answer when the bot is to move (hosted-bot R1)", async () => {
+    play.mockResolvedValue({ ...state, players: [players[0], { seat: 2, kind: "bot" }] });
+
+    const response = await POST(request({ x: 7, y: 7, moveNumber: 1 }), context);
+
+    expect(response.status).toBe(200);
+    expect(after).toHaveBeenCalledOnce();
+    expect(playDueMove).not.toHaveBeenCalled();
+    await after.mock.calls[0]![0]();
+    expect(playDueMove).toHaveBeenCalledWith(GAME);
+  });
+
+  it("schedules nothing when the player's move ended the game with the bot", async () => {
+    play.mockResolvedValue({ ...state, status: "finished", turnSeat: null, players: [players[0], { seat: 2, kind: "bot" }] });
+    await POST(request({ x: 7, y: 7, moveNumber: 1 }), context);
+    expect(after).not.toHaveBeenCalled();
   });
 
   it("slides the guest cookie after a guest's move", async () => {

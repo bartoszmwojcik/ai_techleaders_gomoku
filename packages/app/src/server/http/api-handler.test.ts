@@ -1,5 +1,6 @@
 import {
   ConflictError,
+  ServiceUnavailableError,
   TooManyRequestsError,
   ValidationError,
   registerSchema,
@@ -253,6 +254,20 @@ describe("apiHandler", () => {
 
     const unknown = await apiHandler(async () => {
       throw new TooManyRequestsError("Za dużo");
+    })(post());
+    expect(unknown.headers.has("Retry-After")).toBe(false);
+  });
+
+  it("sets Retry-After for 503 when known (BOT_UNAVAILABLE)", async () => {
+    const off = await apiHandler(async () => {
+      throw new ServiceUnavailableError("Bot jest teraz niedostępny.", { code: "BOT_UNAVAILABLE", retryAfterSeconds: 60 });
+    })(post());
+    expect(off.status).toBe(503);
+    expect(off.headers.get("Retry-After")).toBe("60");
+    expect((await off.json()).error.code).toBe("BOT_UNAVAILABLE");
+
+    const unknown = await apiHandler(async () => {
+      throw new ServiceUnavailableError("off");
     })(post());
     expect(unknown.headers.has("Retry-After")).toBe(false);
   });

@@ -23,6 +23,8 @@ const row = (over: Row = {}): Row => ({
   opponent_nickname: null,
   opponent_name: "Alicja_99",
   opponent_agent_name: null,
+  opponent_bot_level: null,
+  opponent_bot_memory_mb: null,
   ...over,
 });
 
@@ -152,13 +154,14 @@ describe("GameHistoryService.list", () => {
     expect(page.entries[0]).toMatchObject({ result, reason });
   });
 
-  it("names the opponents: a deleted account has no name, a guest has a nickname or a default, an agent the model name it declared or none", async () => {
+  it("names the opponents: a deleted account has no name, a guest has a nickname or a default, an agent the model name it declared or none, the bot its level", async () => {
     const { service } = setup([
       row({ opponent_name: null }),
       row({ opponent_kind: "guest", opponent_nickname: "Kasia", opponent_name: null }),
       row({ opponent_kind: "guest", opponent_nickname: null, opponent_seat: 2, opponent_name: null }),
       row({ opponent_kind: "agent", opponent_name: null }),
       row({ opponent_kind: "agent", opponent_name: null, opponent_agent_name: "claude opus 5.5" }),
+      row({ opponent_kind: "bot", opponent_name: null, opponent_bot_level: 2, opponent_bot_memory_mb: 768 }),
     ]);
 
     const page = await service.list(USER);
@@ -169,6 +172,7 @@ describe("GameHistoryService.list", () => {
       { kind: "guest", name: "Gracz 2" },
       { kind: "agent", name: null },
       { kind: "agent", name: "claude opus 5.5" },
+      { kind: "bot", name: "Bot · poziom 2 · 16 MB" },
     ]);
   });
 

@@ -22,6 +22,8 @@ import { ChatService } from "./services/chat/chat-service";
 import { AgentGameService } from "./services/games/agent-game-service";
 import { AgentSeatService } from "./services/games/agent-seat-service";
 import { AdminOverviewService } from "./services/admin/admin-overview-service";
+import { BotTurnService } from "./services/games/bot-turn-service";
+import { createMainThreadBotEngine, type BotEngine } from "./services/games/bot-engine";
 import { ColorDraw } from "./services/games/color-draw";
 import { GameMoveService } from "./services/games/game-move-service";
 import { RematchService } from "./services/games/rematch-service";
@@ -82,6 +84,10 @@ export type AppCradle = {
   /** The chat of a game (E07-S01): the browser's routes now, the agent's tools in S04. */
   chatService: ChatService;
   gameMoveService: GameMoveService;
+  /** The bot's engine (hosted-bot spec): the main thread in E13-S02, a worker thread from E13-S04. */
+  botEngine: BotEngine;
+  /** Plays the bot's move when it is due (R1); scheduled by the routes with `after()`. */
+  botTurnService: BotTurnService;
   rematchService: RematchService;
   invitationCodes: InvitationCodes;
   /** Draws who plays black when the opponent joins (#22 Q1). */
@@ -186,6 +192,8 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     chatConfig: asFunction(({ serverConfig }: AppCradle) => serverConfig.chat).singleton(),
     chatService: asClass(ChatService).scoped(),
     gameMoveService: asClass(GameMoveService).scoped(),
+    botEngine: asFunction(() => createMainThreadBotEngine()).singleton(),
+    botTurnService: asClass(BotTurnService).scoped(),
     rematchService: asClass(RematchService).scoped(),
     invitationCodes: asClass(InvitationCodes).singleton(),
     colorDraw: asClass(ColorDraw).singleton(),

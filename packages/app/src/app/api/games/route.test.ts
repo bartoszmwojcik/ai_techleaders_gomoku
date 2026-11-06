@@ -1,4 +1,4 @@
-import { ConflictError, TooManyRequestsError } from "@gomoku/core";
+import { ConflictError, ServiceUnavailableError, TooManyRequestsError } from "@gomoku/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { connection, create, getCurrentUser, getContainer, readGuestToken, setGuestCookie, clientKey } = vi.hoisted(
@@ -31,6 +31,8 @@ vi.mock("@/server/container", () => ({
 import { hashOpaqueToken } from "@/server/http/opaque-token";
 
 import { POST } from "./route";
+
+const HUMAN = { kind: "human" };
 
 const created = {
   gameId: "game-1",
@@ -73,19 +75,25 @@ describe("POST /api/games with a session", () => {
     expect(connection).toHaveBeenCalledOnce();
     expect(response.status).toBe(201);
     expect(JSON.parse(JSON.stringify(await response.json())).data.gameId).toBe("game-1");
-    expect(create).toHaveBeenCalledWith({ kind: "account", userId: "user-1", isPublic: undefined, settings: { variant: "classic", timeControlMs: 600_000 } });
+    expect(create).toHaveBeenCalledWith({ kind: "account", userId: "user-1", isPublic: undefined, settings: { variant: "classic", timeControlMs: 600_000 }, opponent: HUMAN });
     expect(setGuestCookie).not.toHaveBeenCalled();
   });
 
   it("ignores the guest fields, even an invalid nickname", async () => {
     const response = await POST(post({ nickname: "<>", cancelOwnWaitingGame: true }));
     expect(response.status).toBe(201);
-    expect(create).toHaveBeenCalledWith({ kind: "account", userId: "user-1", isPublic: undefined, settings: { variant: "classic", timeControlMs: 600_000 } });
+    expect(create).toHaveBeenCalledWith({ kind: "account", userId: "user-1", isPublic: undefined, settings: { variant: "classic", timeControlMs: 600_000 }, opponent: HUMAN });
   });
 });
 
 describe("POST /api/games variant settings (E11)", () => {
-  const paper = { kind: "account", userId: "user-1", isPublic: undefined, settings: { variant: "paper", timeControlMs: 120_000 } };
+  const paper = {
+    kind: "account",
+    userId: "user-1",
+    isPublic: undefined,
+    settings: { variant: "paper", timeControlMs: 120_000 },
+    opponent: HUMAN,
+  };
 
   it("passes the paper variant and its clock for a signed-in user", async () => {
     expect((await POST(post({ variant: "paper", timeControlMs: 120_000 }))).status).toBe(201);
@@ -117,7 +125,7 @@ describe("POST /api/games with a session, public flag (BR-40)", () => {
   it("passes isPublic from the body to the service", async () => {
     const response = await POST(post({ isPublic: true }));
     expect(response.status).toBe(201);
-    expect(create).toHaveBeenCalledWith({ kind: "account", userId: "user-1", isPublic: true, settings: { variant: "classic", timeControlMs: 600_000 } });
+    expect(create).toHaveBeenCalledWith({ kind: "account", userId: "user-1", isPublic: true, settings: { variant: "classic", timeControlMs: 600_000 }, opponent: HUMAN });
   });
 
   it.each([["a non-boolean flag", { isPublic: "yes" }], ["garbage", "{nope"]])(
@@ -153,6 +161,7 @@ describe("POST /api/games without a session (guest)", () => {
       limitKey: "games-create-guest:ip:abc",
       cancelOwnWaitingGame: undefined,
       settings: { variant: "classic", timeControlMs: 600_000 },
+      opponent: HUMAN,
     });
     const [config, token, maxAge] = setGuestCookie.mock.calls[0]!;
     expect(config).toBe(serverConfig);
@@ -237,5 +246,47 @@ describe("POST /api/games (common)", () => {
     const response = await POST(post());
     expect(response.status).toBe(409);
     expect(((await response.json()) as { error: { code: string } }).error.code).toBe("ACTIVE_GAME_EXISTS");
+  });
+});
+
+describe("POST /api/games with the bot (hosted-bot spec)", () => {
+  const botGame = { gameId: "game-bot", opponent: "bot", bot: { level: 2, name: "Bot · poziom 2 · 16 MB" } };
+
+  it("creates a game with the bot for an account: 201 without an invitation", async () => {
+    create.mockResolvedValue(botGame);
+    const response = await POST(post({ opponent: "bot", botLevel: 2 }));
+    expect(response.status).toBe(201);
+    expect((await response.json()).data).toEqual(botGame);
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ kind: "account", opponent: { kind: "bot", level: 2 } }));
+  });
+
+  it("gives a guest the cookie of a game in progress", async () => {
+    getCurrentUser.mockResolvedValue(null);
+    create.mockResolvedValue({ ...botGame, bot: { level: 1, name: "Bot · poziom 1" } });
+    const response = await POST(post({ acknowledgedGuestWarning: true, opponent: "bot", botLevel: 1 }));
+    expect(response.status).toBe(201);
+    expect(create.mock.calls[0]![0]).toMatchObject({ kind: "guest", opponent: { kind: "bot", level: 1 } });
+    expect(setGuestCookie).toHaveBeenCalledWith(serverConfig, expect.any(String), 2 * 3600);
+  });
+
+  it.each([
+    ["no level", { opponent: "bot" }],
+    ["a level without the bot", { botLevel: 1 }],
+    ["the paper game", { opponent: "bot", botLevel: 1, variant: "paper" }],
+    ["a public game", { opponent: "bot", botLevel: 1, isPublic: true }],
+    ["a clock", { opponent: "bot", botLevel: 1, timeControlMs: 60_000 }],
+  ])("answers 400 for %s, creating nothing", async (_name, body) => {
+    expect((await POST(post(body))).status).toBe(400);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("answers 503 BOT_UNAVAILABLE with Retry-After while the bot is switched off", async () => {
+    create.mockRejectedValue(
+      new ServiceUnavailableError("Bot jest teraz niedostępny.", { code: "BOT_UNAVAILABLE", retryAfterSeconds: 60 }),
+    );
+    const response = await POST(post({ opponent: "bot", botLevel: 1 }));
+    expect(response.status).toBe(503);
+    expect(response.headers.get("Retry-After")).toBe("60");
+    expect((await response.json()).error.code).toBe("BOT_UNAVAILABLE");
   });
 });

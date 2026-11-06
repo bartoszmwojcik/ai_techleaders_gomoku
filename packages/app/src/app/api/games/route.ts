@@ -1,4 +1,4 @@
-import { createAccountGameSchema, createGuestGameSchema, resolveGameSettings } from "@gomoku/core";
+import { createAccountGameSchema, createGuestGameSchema, resolveGameSettings, resolveOpponent } from "@gomoku/core";
 import { connection } from "next/server";
 
 import { withRequestScope } from "@/server/container";
@@ -24,6 +24,9 @@ import { createOpaqueToken, hashOpaqueToken } from "@/server/http/opaque-token";
  * default is private, and a signed-in user's body is optional. Both may choose the variant and
  * the clock: `{ variant?: 'classic' | 'paper', timeControlMs?: 60000 | 120000 | 180000 | 300000 }`
  * (E11); no variant is the classic game, a missing time in the paper game is three minutes.
+ * `{ opponent: 'bot', botLevel: 1 | 2 }` starts a classic, private game against the bot at once
+ * (spec 2026-11-05-hosted-bot): `201 { gameId, opponent: 'bot', bot: { level, name } }` without an
+ * invitation; `503 BOT_UNAVAILABLE` with `Retry-After` while `BOT_ENABLED` is off.
  */
 const createGame = apiHandler(async (request: Request) => {
   const user = await getCurrentUser();
@@ -36,6 +39,7 @@ const createGame = apiHandler(async (request: Request) => {
           userId: user.id,
           isPublic: input.isPublic,
           settings: resolveGameSettings(input),
+          opponent: resolveOpponent(input),
         }),
         status: 201,
       };
@@ -51,12 +55,11 @@ const createGame = apiHandler(async (request: Request) => {
       cancelOwnWaitingGame: input.cancelOwnWaitingGame,
       isPublic: input.isPublic,
       settings: resolveGameSettings(input),
+      opponent: resolveOpponent(input),
     });
-    await setGuestCookie(
-      cradle.serverConfig,
-      token,
-      guestCookieMaxAge({ status: "waiting", invitation: data.invitation }, cradle.clock.now()),
-    );
+    // A game with the bot is in progress at once: the cookie lives like the one of any game being played.
+    const game = "invitation" in data ? { status: "waiting", invitation: data.invitation } : { status: "active" };
+    await setGuestCookie(cradle.serverConfig, token, guestCookieMaxAge(game, cradle.clock.now()));
     return { data, status: 201 };
   });
 });

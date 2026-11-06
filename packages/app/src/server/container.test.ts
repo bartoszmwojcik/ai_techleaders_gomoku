@@ -162,6 +162,8 @@ describe("auth services", () => {
       expect(cradle.rematchService).toBe(cradle.rematchService);
       expect(cradle.invitationCodes).toBe(cradle.invitationCodes);
       expect(cradle.colorDraw).toBe(cradle.colorDraw);
+      expect(cradle.botTurnService).toBe(cradle.botTurnService);
+      expect(typeof cradle.botEngine.choose).toBe("function");
       expect(cradle.invitationService).toBe(cradle.invitationService);
       expect(cradle.agentSeatService).toBe(cradle.agentSeatService);
       expect(cradle.agentGameService).toBe(cradle.agentGameService);
