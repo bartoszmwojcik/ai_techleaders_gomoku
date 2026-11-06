@@ -4,6 +4,7 @@
 import { createOrm, type Orm } from "@gomoku/db";
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 
+import { ColorDraw } from "../../packages/app/src/server/services/games/color-draw";
 import { systemClock } from "../../packages/app/src/server/services/email/email-sender";
 import { GameMoveService } from "../../packages/app/src/server/services/games/game-move-service";
 import { GameService } from "../../packages/app/src/server/services/games/game-service";
@@ -288,6 +289,7 @@ describe("the write is all or nothing", () => {
       invitationCodes: new InvitationCodes(),
       timeoutSettler,
       serverConfig: { appOrigin: "https://gomoku.test" } as never,
+      colorDraw: new ColorDraw(),
     });
     // The state read is the last step of the transaction: when it fails, nothing may stay.
     gameService.stateOf = async () => {

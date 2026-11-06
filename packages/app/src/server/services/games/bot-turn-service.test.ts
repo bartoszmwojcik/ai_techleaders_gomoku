@@ -30,7 +30,7 @@ const due = (extra: Record<string, unknown> = {}) => ({
 function setup(options: { rows?: unknown[]; play?: () => Promise<unknown>; engine?: BotEngine } = {}) {
   const em = { execute: vi.fn(async () => options.rows ?? [due()]) };
   const play = vi.fn(options.play ?? (async () => ({})));
-  const choose = vi.fn((_turn: BotTurn) => cellOf(8, 8));
+  const choose = vi.fn<(turn: BotTurn) => number>(() => cellOf(8, 8));
   const engine = options.engine ?? { choose };
   const service = new BotTurnService({
     em: em as unknown as EntityManager,

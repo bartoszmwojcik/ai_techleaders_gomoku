@@ -198,6 +198,9 @@ export type CreatedGame =
   | { gameId: string; invitation: { code: string; url: string; mcpUrl: string; expiresAt: Date } }
   | { gameId: string; opponent: "bot"; bot: { level: BotLevel; name: string } };
 
+/** A game created for a person: waiting, with its invitation. */
+export type InvitedGame = Extract<CreatedGame, { invitation: unknown }>;
+
 /** The bot's seat as created (R2, R7): level 2 carries the memory and the depth limit it was given. */
 type BotSeat = { level: BotLevel; memoryMb: number | null; depthCap: number | null };
 

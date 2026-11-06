@@ -6,6 +6,8 @@ import { CREATE_GAME_LIMIT } from "@gomoku/core";
 import { createOrm, type Orm } from "@gomoku/db";
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 
+import { ColorDraw } from "../../packages/app/src/server/services/games/color-draw";
+import type { InvitedGame } from "../../packages/app/src/server/services/games/game-service";
 import { hashOpaqueToken } from "../../packages/app/src/server/http/opaque-token";
 import { GameParticipation } from "../../packages/app/src/server/services/auth/game-participation";
 import { systemClock } from "../../packages/app/src/server/services/email/email-sender";
@@ -41,6 +43,7 @@ function scope(codes: { generate(): string } = new InvitationCodes()) {
       invitationCodes: codes as never,
       timeoutSettler: new SqlTimeoutSettler({ em, clock: systemClock, paperSettler: new PaperSettler({ clock: systemClock, random: Math.random }) }),
       serverConfig: { appOrigin: "https://gomoku.test" } as never,
+      colorDraw: new ColorDraw(),
     }),
     participation: new GameParticipation({ em, clock: systemClock }),
   };
@@ -81,7 +84,7 @@ describe("GameService.create for a guest", () => {
     const token = newToken();
     const { games } = scope();
 
-    const { gameId, invitation } = await games.create(guest(token, { nickname: "Ala" }));
+    const { gameId, invitation } = (await games.create(guest(token, { nickname: "Ala" }))) as InvitedGame;
 
     expect(invitation.code).toMatch(/^[2-9A-HJKMNP-Z]{4}-[2-9A-HJKMNP-Z]{4}$/);
     expect(invitation.expiresAt.getTime()).toBeGreaterThan(Date.now() + 23 * 3_600_000);

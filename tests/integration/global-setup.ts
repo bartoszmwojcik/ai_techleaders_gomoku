@@ -118,6 +118,8 @@ export default async function setup(project: TestProject) {
         // Confirmation mails go to a file the tests read (no provider needed).
         EMAIL_TRANSPORT: "file",
         EMAIL_OUTBOX_PATH: EMAIL_OUTBOX,
+        // Games against the bot (hosted-bot R19): off by default, on here so its scenarios run.
+        BOT_ENABLED: "true",
       },
       detached: true,
       stdio: ["ignore", "pipe", "pipe"],

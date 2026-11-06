@@ -20,7 +20,7 @@ function turn(extra: Partial<BotTurn> = {}): BotTurn {
 
 describe("createMainThreadBotEngine (E13-S02)", () => {
   it("asks the engine with the fixed budget, the depth cap and the table of the memory tier", () => {
-    const choose = vi.fn((_input: ChooseMoveInput) => choice(5));
+    const choose = vi.fn<(input: ChooseMoveInput) => MoveChoice>(() => choice(5));
     const now = () => 42;
     const engine = createMainThreadBotEngine({ choose, now });
 
@@ -32,7 +32,7 @@ describe("createMainThreadBotEngine (E13-S02)", () => {
   });
 
   it("gives a seat without parameters the smallest tier", () => {
-    const choose = vi.fn((_input: ChooseMoveInput) => choice(5));
+    const choose = vi.fn<(input: ChooseMoveInput) => MoveChoice>(() => choice(5));
     createMainThreadBotEngine({ choose }).choose(turn({ level: 1, depthCap: null, memoryMb: null }));
     expect(choose.mock.calls[0]![0].budget).toMatchObject({ maxDepth: 6, ttBytes: 8 * 1024 * 1024 });
     createMainThreadBotEngine({ choose }).choose(turn({ memoryMb: 100 }));
@@ -53,11 +53,17 @@ describe("createMainThreadBotEngine (E13-S02)", () => {
     expect(createMainThreadBotEngine({ choose: broken }).choose(turn())).toBe(0);
   });
 
-  it("plays a legal move with the real engine on the main thread, by default", () => {
+  it("plays a legal move with the real engine on the main thread, by default, within the fixed budget", () => {
     const engine = createMainThreadBotEngine();
+    // Black in the centre and next to it, white beside: past the opening book, so level 2 searches.
+    const black = withStone(withStone(createBitboard(), CENTER), cellOf(8, 7));
+    const white = withStone(createBitboard(), cellOf(7, 8));
+    const taken = [CENTER, cellOf(8, 7), cellOf(7, 8)];
     for (const level of [1, 2] as const) {
-      const cell = engine.choose(turn({ level }));
-      expect(cell).not.toBe(CENTER);
+      const started = performance.now();
+      const cell = engine.choose(turn({ level, position: { black, white, moveCount: 3 } }));
+      expect(performance.now() - started).toBeLessThan(MAIN_THREAD_BUDGET.ceilingMs + 1000);
+      expect(taken).not.toContain(cell);
       expect(cell).toBeGreaterThanOrEqual(0);
       expect(cell).toBeLessThan(BOARD_CELLS);
     }

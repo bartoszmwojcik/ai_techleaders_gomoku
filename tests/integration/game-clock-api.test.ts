@@ -6,6 +6,7 @@ import { INITIAL_CLOCK_MS } from "@gomoku/core";
 import { createOrm, type Orm } from "@gomoku/db";
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 
+import { ColorDraw } from "../../packages/app/src/server/services/games/color-draw";
 import { systemClock, type Clock } from "../../packages/app/src/server/services/email/email-sender";
 import { GameService } from "../../packages/app/src/server/services/games/game-service";
 import { InvitationCodes } from "../../packages/app/src/server/services/games/invitation-codes";
@@ -274,6 +275,7 @@ describe("with an injected clock", () => {
         invitationCodes: new InvitationCodes(),
         timeoutSettler: new SqlTimeoutSettler({ em, clock, paperSettler: new PaperSettler({ clock, random: Math.random }) }),
         serverConfig: { appOrigin: "https://gomoku.test" } as never,
+        colorDraw: new ColorDraw(),
       }),
     };
   };
