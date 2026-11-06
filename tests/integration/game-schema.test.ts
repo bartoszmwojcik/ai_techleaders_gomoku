@@ -78,7 +78,7 @@ describe("games", () => {
   });
 
   it("rejects an unknown origin and status", async () => {
-    await expectViolation(insertGame({ origin: "bot" }), "games_origin_check");
+    await expectViolation(insertGame({ origin: "cpu" }), "games_origin_check");
     await expectViolation(insertGame({ status: "paused" }), "games_status_check");
   });
 
@@ -606,5 +606,52 @@ describe("paper variant (E11)", () => {
     await expectViolation(seek({ variant: "paper", time_control_ms: 600000 }), "lobby_seekers_time_control_check");
     const [row] = await run(`select variant, time_control_ms from lobby_seekers order by created_at limit 1`);
     expect(row).toEqual({ variant: "classic", time_control_ms: 600000 });
+  });
+});
+
+describe("the bot (hosted-bot spec, E13-S02-T01)", () => {
+  // Each case breaks exactly one rule and keeps the rest valid (PostgreSQL names the CHECKs in
+  // alphabetical order, so a second broken rule would hide the one under test).
+  const bot = (extra: Record<string, unknown> = {}) => ({ seat: 2, kind: "bot", bot_level: 1, ...extra });
+  const strong = { bot_level: 2, bot_memory_mb: 768, bot_depth_cap: 8 };
+  const botGame = () => insertGame({ origin: "bot" });
+
+  it("accepts the bot in seat 2 of a game with origin 'bot': level 1 bare, level 2 with its strength", async () => {
+    await expect(insertPlayer(await botGame(), bot())).resolves.toBeTruthy();
+    await expect(insertPlayer(await botGame(), bot(strong))).resolves.toBeTruthy();
+    const id = await insertPlayer(await botGame(), bot());
+    const [row] = await run(`select join_channel, user_id, guest_token_hash, agent_token_hash from game_players where id = ?`, [id]);
+    expect(row).toEqual({ join_channel: "web", user_id: null, guest_token_hash: null, agent_token_hash: null });
+  });
+
+  it("never seats the bot as the creator (seat 1) nor gives it an account", async () => {
+    await expectViolation(insertPlayer(await botGame(), bot({ seat: 1 })), "game_players_bot_seat_check");
+    await expectViolation(insertPlayer(await botGame(), bot({ user_id: await insertUser() })), "game_players_bot_no_user_check");
+  });
+
+  it("ties a level to the bot: no bot without a level, no level for anyone else, only levels 1 and 2", async () => {
+    await expectViolation(insertPlayer(await botGame(), bot({ bot_level: null })), "game_players_bot_kind_check");
+    await expectViolation(
+      insertPlayer(await insertGame(), { kind: "account", user_id: await insertUser(), bot_level: 1 }),
+      "game_players_bot_kind_check",
+    );
+    await expectViolation(insertPlayer(await botGame(), bot({ bot_level: 3 })), "game_players_bot_level_check");
+  });
+
+  it("requires the strength of level 2 and refuses it for level 1", async () => {
+    await expectViolation(insertPlayer(await botGame(), bot({ ...strong, bot_memory_mb: null })), "game_players_bot_params_check");
+    await expectViolation(insertPlayer(await botGame(), bot({ ...strong, bot_depth_cap: null })), "game_players_bot_params_check");
+    await expectViolation(insertPlayer(await botGame(), bot({ bot_memory_mb: 768, bot_depth_cap: 8 })), "game_players_bot_params_check");
+  });
+
+  it("keeps the tokens and the MCP channel away from the bot", async () => {
+    await expectViolation(insertPlayer(await botGame(), bot({ guest_token_hash: hash() })), "game_players_token_only_guest_check");
+    await expectViolation(insertPlayer(await botGame(), bot({ agent_token_hash: hash() })), "game_players_token_only_agent_check");
+    await expectViolation(insertPlayer(await botGame(), bot({ join_channel: "mcp" })), "game_players_agent_channel_check");
+  });
+
+  it("still refuses an unknown kind and origin", async () => {
+    await expectViolation(insertPlayer(await insertGame(), { seat: 2, kind: "robot" }), "game_players_kind_check");
+    await expectViolation(insertGame({ origin: "cpu" }), "games_origin_check");
   });
 });

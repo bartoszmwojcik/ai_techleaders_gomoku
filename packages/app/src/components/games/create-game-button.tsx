@@ -11,7 +11,9 @@ import { useRef, useState } from "react";
 import { rateLimitedError } from "@/components/feedback/rate-limited-error";
 import { GameSettingsPicker } from "@/components/games/game-settings-picker";
 import { useHomeRules } from "@/components/games/home-rules";
+import { OpponentPicker } from "@/components/games/opponent-picker";
 import { apiCall } from "@/lib/api-client";
+import { BOT_UNAVAILABLE_TEXT, DEFAULT_OPPONENT, opponentBody, playsBot, type OpponentSetting } from "@/lib/games/opponent";
 import { DEFAULT_SETTINGS, settingsBody, type GameSettingsChoice } from "@/lib/games/settings";
 
 /** The game the player already holds a slot in (from the server, `GameParticipation.currentGame`). */
@@ -21,15 +23,28 @@ type Failure =
   | { kind: "active" }
   | { kind: "limit"; retryAfterSeconds: number | undefined }
   | { kind: "signed-out" }
+  /** `503 BOT_UNAVAILABLE`: the bot is switched off or busy (hosted-bot spec). */
+  | { kind: "bot-unavailable" }
   | { kind: "server" }
   | { kind: "network" };
 
-/** "Utwórz zaproszenie" (p01): creates a waiting game and opens its page. */
-export function CreateGameButton({ heldGame }: { heldGame: HeldGame | null }) {
+type Props = {
+  heldGame: HeldGame | null;
+  /** `BOT_ENABLED` (hosted-bot R19): the "Przeciwnik" group shows only while the bot is on. */
+  botEnabled?: boolean;
+};
+
+/**
+ * "Utwórz zaproszenie" (p01): creates a waiting game and opens its page. While the bot is on, the
+ * creator may pick it instead of a person: "Zagraj z botem" opens a game already in progress.
+ */
+export function CreateGameButton({ heldGame, botEnabled = false }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
   const [settings, setSettings] = useState<GameSettingsChoice>(DEFAULT_SETTINGS);
+  const [opponent, setOpponent] = useState<OpponentSetting>(DEFAULT_OPPONENT);
+  const withBot = botEnabled && playsBot(opponent, settings.variant);
   const { setVariant } = useHomeRules();
   const [failure, setFailure] = useState<Failure | null>(null);
   // State alone lags a double click by one render; the ref closes that gap (two games would be a 409).
@@ -40,9 +55,11 @@ export function CreateGameButton({ heldGame }: { heldGame: HeldGame | null }) {
     inFlight.current = true;
     setBusy(true);
     setFailure(null);
-    const result = await apiCall<{ gameId: string }>("/api/games", {
-      ...(isPublic || settings.variant === "paper" ? { body: { ...(isPublic ? { isPublic: true } : {}), ...settingsBody(settings) } } : {}),
-    });
+    // A signed-in user's body is optional: the plain invitation sends none, as before.
+    const body = withBot
+      ? opponentBody(opponent, settings.variant)
+      : { ...(isPublic ? { isPublic: true } : {}), ...settingsBody(settings) };
+    const result = await apiCall<{ gameId: string }>("/api/games", Object.keys(body).length > 0 ? { body } : {});
     if (result.ok) {
       // Stay busy while the page navigates, so a second game cannot be created.
       router.push(`/games/${result.data.gameId}`);
@@ -59,6 +76,7 @@ export function CreateGameButton({ heldGame }: { heldGame: HeldGame | null }) {
     if (code === "ACTIVE_GAME_EXISTS") setFailure({ kind: "active" });
     else if (code === "RATE_LIMITED") setFailure({ kind: "limit", retryAfterSeconds });
     else if (code === "UNAUTHORIZED") setFailure({ kind: "signed-out" });
+    else if (code === "BOT_UNAVAILABLE") setFailure({ kind: "bot-unavailable" });
     else if (code === "network") setFailure({ kind: "network" });
     else setFailure({ kind: "server" });
   }
@@ -89,6 +107,7 @@ export function CreateGameButton({ heldGame }: { heldGame: HeldGame | null }) {
           <TextLink href="/login?next=%2F">Zaloguj się ponownie</TextLink>, żeby utworzyć zaproszenie.
         </Alert>
       )}
+      {failure?.kind === "bot-unavailable" && <Alert status="warning" title={BOT_UNAVAILABLE_TEXT} role="alert" />}
       {failure?.kind === "server" && (
         <Alert status="danger" title="Nie udało się utworzyć partii">
           Błąd po stronie serwera. Spróbuj ponownie.
@@ -109,16 +128,20 @@ export function CreateGameButton({ heldGame }: { heldGame: HeldGame | null }) {
         }}
         disabled={busy}
       />
-      <Checkbox
-        label="Partia publiczna"
-        hint="Po rozpoczęciu partii każdy z kodem lub linkiem będzie mógł ją oglądać."
-        checked={isPublic}
-        onCheckedChange={(value) => setIsPublic(value === true)}
-        disabled={busy}
-        data-testid="create-game-public"
-      />
+      {botEnabled && <OpponentPicker value={opponent} variant={settings.variant} onChange={setOpponent} disabled={busy} />}
+      {/* A game with the bot is always private (R14): no audience to open it to. */}
+      {!withBot && (
+        <Checkbox
+          label="Partia publiczna"
+          hint="Po rozpoczęciu partii każdy z kodem lub linkiem będzie mógł ją oglądać."
+          checked={isPublic}
+          onCheckedChange={(value) => setIsPublic(value === true)}
+          disabled={busy}
+          data-testid="create-game-public"
+        />
+      )}
       <Button data-testid="create-game" className="w-full md:w-auto" loading={busy} onClick={() => void onCreate()}>
-        {busy ? "Tworzenie zaproszenia…" : "Utwórz zaproszenie"}
+        {withBot ? (busy ? "Tworzenie partii…" : "Zagraj z botem") : busy ? "Tworzenie zaproszenia…" : "Utwórz zaproszenie"}
       </Button>
     </>
   );

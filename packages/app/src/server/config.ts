@@ -71,6 +71,11 @@ export type ServerConfig = {
   emailDailyLimit?: number;
   mcp: McpLimits;
   chat: ChatConfig;
+  /**
+   * Games against the bot hosted by us (`BOT_ENABLED`, spec 2026-11-05-hosted-bot R19): off by default;
+   * off refuses new games with the bot (`503 BOT_UNAVAILABLE`) and lets the running ones finish.
+   */
+  botEnabled: boolean;
 };
 
 export const EMAIL_TRANSPORTS = ["file", "brevo"] as const;
@@ -164,6 +169,13 @@ function parseIntInRange(
     throw new Error(`${name} must be an integer from ${min} to ${max}.`);
   }
   return value;
+}
+
+/** `BOT_ENABLED`: `true` turns the bot on; unset, empty or `false` leaves it off. */
+export function parseBotEnabled(raw: string | undefined): boolean {
+  if (raw === undefined || raw === "" || raw === "false") return false;
+  if (raw === "true") return true;
+  throw new Error("BOT_ENABLED must be true or false (or unset).");
 }
 
 function readChatConfig(env: Record<string, string | undefined>): ChatConfig {
@@ -298,5 +310,6 @@ export function readServerConfig(
       chatLimit: parsePositiveLimit("MCP_CHAT_LIMIT", env.MCP_CHAT_LIMIT, MCP_CHAT_LIMIT),
     },
     chat: readChatConfig(env),
+    botEnabled: parseBotEnabled(env.BOT_ENABLED),
   };
 }

@@ -72,6 +72,7 @@ function scope(overrides: { passwordHasher?: Pick<PasswordHasher, "verify"> } = 
       invitationCodes: new InvitationCodes(),
       timeoutSettler,
       serverConfig: { appOrigin: "https://gomoku.test" } as never,
+      colorDraw: new ColorDraw(),
     }),
   };
 }

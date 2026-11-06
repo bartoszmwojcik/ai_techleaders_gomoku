@@ -46,6 +46,7 @@ function scope() {
       invitationCodes: new InvitationCodes(),
       timeoutSettler,
       serverConfig: { appOrigin: "https://gomoku.test" } as never,
+      colorDraw: new ColorDraw(),
     }),
   };
 }

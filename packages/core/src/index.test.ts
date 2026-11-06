@@ -19,6 +19,9 @@ describe("@gomoku/core public API", () => {
       chooseMove: expect.any(Function),
       rngFor: expect.any(Function),
       runArena: expect.any(Function),
+      botDisplayName: expect.any(Function),
+      BOT_LEVELS: [1, 2],
+      resolveOpponent: expect.any(Function),
     });
   });
 });

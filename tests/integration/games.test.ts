@@ -6,6 +6,8 @@ import { TooManyRequestsError, READY_DEADLINE_MS } from "@gomoku/core";
 import { createOrm, type Orm } from "@gomoku/db";
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 
+import { ColorDraw } from "../../packages/app/src/server/services/games/color-draw";
+import type { InvitedGame } from "../../packages/app/src/server/services/games/game-service";
 import { GameParticipation } from "../../packages/app/src/server/services/auth/game-participation";
 import { systemClock } from "../../packages/app/src/server/services/email/email-sender";
 import { GameService } from "../../packages/app/src/server/services/games/game-service";
@@ -47,6 +49,7 @@ function scope() {
     invitationCodes: new InvitationCodes(),
     timeoutSettler: new SqlTimeoutSettler({ em, clock: systemClock, paperSettler: new PaperSettler({ clock: systemClock, random: Math.random }) }),
     serverConfig: { appOrigin: "https://gomoku.test" } as never,
+    colorDraw: new ColorDraw(),
   });
   return { gameService, participation: new GameParticipation({ em, clock: systemClock }) };
 }
@@ -73,7 +76,7 @@ describe("GameService.create", () => {
     const user = await insertUser();
     const { gameService } = scope();
 
-    const { gameId, invitation } = await gameService.create({ kind: "account", userId: user });
+    const { gameId, invitation } = (await gameService.create({ kind: "account", userId: user })) as InvitedGame;
 
     expect(invitation.code).toMatch(/^[2-9A-HJKMNP-Z]{4}-[2-9A-HJKMNP-Z]{4}$/);
     expect(invitation.url).toBe(`https://gomoku.test/invite/${invitation.code}`);
@@ -192,7 +195,7 @@ describe("GameService.getState", () => {
   it("sets seen_at once and shows the invitation only to the creator", async () => {
     const user = await insertUser();
     const opponent = await insertUser();
-    const { gameId, invitation } = await scope().gameService.create({ kind: "account", userId: user });
+    const { gameId, invitation } = (await scope().gameService.create({ kind: "account", userId: user })) as InvitedGame;
     const creatorPlayer = await playerOf(gameId, user);
 
     const first = await scope().gameService.getState({ playerId: creatorPlayer }, gameId);

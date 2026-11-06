@@ -2,15 +2,19 @@
 export const GAME_STATUSES = ["waiting", "active", "finished", "cancelled"] as const;
 export type GameStatus = (typeof GAME_STATUSES)[number];
 
-/** How a game came to be (D-21); `rematch` is a game proposed after a finished one. */
-export const GAME_ORIGINS = ["invite", "lobby", "rematch"] as const;
+/**
+ * How a game came to be (D-21); `rematch` is a game proposed after a finished one, `bot` a game
+ * against the bot hosted by us (spec 2026-11-05-hosted-bot), started at once without an invitation.
+ */
+export const GAME_ORIGINS = ["invite", "lobby", "rematch", "bot"] as const;
 export type GameOrigin = (typeof GAME_ORIGINS)[number];
 
 /**
- * Account holder, a guest identified by a one-game token (BR-22) or an agent that joined over MCP
- * with its own one-game token (BR-31, E06-S01).
+ * Account holder, a guest identified by a one-game token (BR-22), an agent that joined over MCP
+ * with its own one-game token (BR-31, E06-S01) or the bot hosted by us (BR-54): no account, no
+ * token, always seat 2; only the server moves for it.
  */
-export const PARTICIPANT_KINDS = ["account", "guest", "agent"] as const;
+export const PARTICIPANT_KINDS = ["account", "guest", "agent", "bot"] as const;
 export type ParticipantKind = (typeof PARTICIPANT_KINDS)[number];
 
 /** How a participant came into the game: the web page, or the MCP endpoint (`agent` only). */
@@ -39,5 +43,5 @@ export type EndReason = (typeof END_REASONS)[number];
 /** Outcome of a finished game; `winnerSeat` is `null` only for a draw. */
 export type GameResult = { winnerSeat: Seat | null; reason: EndReason };
 
-/** Who can create a game and so sit in seat 1: an agent never does (BR-30). */
-export type CreatorKind = Exclude<ParticipantKind, "agent">;
+/** Who can create a game and so sit in seat 1: an agent never does (BR-30), nor does the bot (BR-54). */
+export type CreatorKind = Exclude<ParticipantKind, "agent" | "bot">;

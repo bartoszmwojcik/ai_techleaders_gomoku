@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { GameView } from "@/server/http/game-view";
 
-import { cellLabel, cellName, colorOfSeat, knownMoves, mergeState, outcomeOf, paperStonesOf, playerName, playerNameOf, sideWords, stonesOf } from "./play";
+import { botOf, botThinking, cellLabel, cellName, colorOfSeat, knownMoves, mergeState, outcomeOf, paperStonesOf, playerName, playerNameOf, sideWords, stonesOf } from "./play";
 
 const view = (over: Partial<GameView> = {}): GameView => ({
   status: "active",
@@ -209,5 +209,27 @@ describe("the paper game", () => {
       });
       expect(outcomeOf(finished("resignation", 1, [3, 1]))?.title).toBe("Wygrana — przeciwnik poddał partię");
     });
+  });
+});
+
+describe("botOf and botThinking (hosted-bot spec)", () => {
+  const people = [
+    { seat: 1 as const, kind: "account" as const, displayName: "Ala", seen: true },
+    { seat: 2 as const, kind: "guest" as const, displayName: "Ola", seen: true },
+  ];
+  const bot = { seat: 2 as const, kind: "bot" as const, displayName: "Bot · poziom 1", seen: true };
+  const vsBot = [people[0]!, bot];
+
+  it("finds the bot's seat", () => {
+    expect(botOf({ players: vsBot })).toBe(bot);
+    expect(botOf({ players: people })).toBeUndefined();
+  });
+
+  it("is true only while the bot is to move in a game in progress", () => {
+    expect(botThinking({ status: "active", turnSeat: 2, players: vsBot })).toBe(true);
+    expect(botThinking({ status: "active", turnSeat: 1, players: vsBot })).toBe(false);
+    expect(botThinking({ status: "active", turnSeat: null, players: vsBot })).toBe(false);
+    expect(botThinking({ status: "finished", turnSeat: 2, players: vsBot })).toBe(false);
+    expect(botThinking({ status: "active", turnSeat: 2, players: people })).toBe(false);
   });
 });

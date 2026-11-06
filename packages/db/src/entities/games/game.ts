@@ -22,7 +22,7 @@ export const Game = defineEntity({
   tableName: "games",
   properties: {
     id: p.uuid().primary().defaultRaw("gen_random_uuid()"),
-    // `invite` | `lobby` | `rematch` (D-21); CHECK below.
+    // `invite` | `lobby` | `rematch` (D-21) | `bot` (spec 2026-11-05-hosted-bot); CHECK below.
     origin: p.string().length(16),
     // Public game (D-33, BR-40): set only when an invitation is created; lobby and rematch games stay private.
     isPublic: p.boolean().default(false),
@@ -77,7 +77,7 @@ export const Game = defineEntity({
   checks: [
     {
       name: "games_origin_check",
-      expression: `origin in ('invite', 'lobby', 'rematch')`,
+      expression: `origin in ('invite', 'lobby', 'rematch', 'bot')`,
     },
     {
       name: "games_status_check",

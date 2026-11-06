@@ -13,6 +13,7 @@ import {
   type AgentJoinGuard,
 } from "../../packages/app/src/server/services/games/agent-seat-service";
 import { ColorDraw } from "../../packages/app/src/server/services/games/color-draw";
+import type { InvitedGame } from "../../packages/app/src/server/services/games/game-service";
 import { GameService } from "../../packages/app/src/server/services/games/game-service";
 import { InvitationCodes } from "../../packages/app/src/server/services/games/invitation-codes";
 import { InvitationService } from "../../packages/app/src/server/services/games/invitation-service";
@@ -66,23 +67,24 @@ function scope() {
       invitationCodes: new InvitationCodes(),
       timeoutSettler,
       serverConfig: { appOrigin: "https://gomoku.test" } as never,
+      colorDraw: new ColorDraw(),
     }),
   };
 }
 
 async function newGame() {
   const creator = await insertUser();
-  const { gameId, invitation } = await scope().games.create({ kind: "account", userId: creator });
+  const { gameId, invitation } = (await scope().games.create({ kind: "account", userId: creator })) as InvitedGame;
   return { creator, gameId, code: invitation.code };
 }
 
 async function newGuestGame() {
   const tokenHash = hashOpaqueToken(`guest-${Date.now()}-${++counter}`);
-  const { gameId, invitation } = await scope().games.create({
+  const { gameId, invitation } = (await scope().games.create({
     kind: "guest",
     tokenHash,
     limitKey: `games-create-guest:test:${Date.now()}:${++counter}`,
-  });
+  })) as InvitedGame;
   return { tokenHash, gameId, code: invitation.code };
 }
 

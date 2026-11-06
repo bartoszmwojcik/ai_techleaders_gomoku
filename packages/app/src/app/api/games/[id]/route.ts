@@ -3,6 +3,7 @@ import { connection } from "next/server";
 
 import { withRequestScope } from "@/server/container";
 import { apiHandler } from "@/server/http/api-handler";
+import { botOnTurn, scheduleBotTurn } from "@/server/http/bot-turn";
 import {
   guestCookieMaxAge,
   readGuestToken,
@@ -18,7 +19,8 @@ type Context = { params: Promise<{ id: string }> };
  * for the creator of a waiting game, the invitation. Since #22 also the board: `moveCount`,
  * `blackSeat`, `turnSeat`, `result`, and the `moves` after the first `?after=` ones (default
  * all). After a finished game also `rematch` (offer, `expiresAt`, new `gameId` once
- * accepted). Everyone else gets `404`; an `after` outside the game is `400`.
+ * accepted). Everyone else gets `404`; an `after` outside the game is `400`. While the bot is to
+ * move, the read also schedules its move (lazy recovery after a lost computation, hosted-bot R1).
  */
 const getGame = apiHandler(async (request: Request, { params }: Context) => {
   const { id } = await params;
@@ -28,6 +30,7 @@ const getGame = apiHandler(async (request: Request, { params }: Context) => {
   const { gameId, participant } = await resolveParticipant(id);
   return withRequestScope(async ({ cradle }) => {
     const data = await cradle.gameService.getState(participant, gameId, after);
+    if (botOnTurn(data)) scheduleBotTurn(gameId);
     // Sliding cookie (#21 Q10): until #23 a game may outlast the cookie's two hours. The
     // server still decides the token's validity; accounts have no guest cookie to refresh.
     // A waiting game of a guest creator keeps it until its invitation expired + 1 h (L29).

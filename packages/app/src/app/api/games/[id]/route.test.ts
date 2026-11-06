@@ -10,7 +10,11 @@ const {
   readGuestToken,
   setGuestCookie,
   claimGuestSeat,
+  after,
+  playDueMove,
 } = vi.hoisted(() => ({
+  after: vi.fn(),
+  playDueMove: vi.fn(),
   readGuestToken: vi.fn(),
   setGuestCookie: vi.fn(),
   claimGuestSeat: vi.fn(),
@@ -20,7 +24,7 @@ const {
   getState: vi.fn(),
   resolveParticipant: vi.fn(),
 }));
-vi.mock("next/server", () => ({ connection }));
+vi.mock("next/server", () => ({ connection, after }));
 vi.mock("@/server/http/participant", () => ({ resolveParticipant }));
 vi.mock("@/server/http/guest-cookie", () => ({
   refreshGuestCookie,
@@ -34,6 +38,7 @@ vi.mock("@/server/container", () => ({
       cradle: {
         gameService: { getState },
         rematchService: { claimGuestSeat },
+        botTurnService: { playDueMove },
         serverConfig: SERVER_CONFIG,
         clock: { now: () => NOW },
       },
@@ -56,6 +61,8 @@ beforeEach(() => {
   readGuestToken.mockReset().mockResolvedValue("old-token");
   setGuestCookie.mockReset().mockResolvedValue(undefined);
   claimGuestSeat.mockReset().mockResolvedValue("new-token");
+  after.mockReset();
+  playDueMove.mockReset().mockResolvedValue("played");
   resolveParticipant
     .mockReset()
     .mockResolvedValue({ gameId: GAME, participant: { playerId: "player-1" } });
@@ -71,6 +78,25 @@ describe("GET /api/games/[id]", () => {
     expect(resolveParticipant).toHaveBeenCalledWith(GAME);
     expect(getState).toHaveBeenCalledWith({ playerId: "player-1" }, GAME, 0);
     expect(refreshGuestCookie).not.toHaveBeenCalled();
+    expect(after).not.toHaveBeenCalled();
+  });
+
+  it("schedules the bot's move after the answer while the bot is to move: the lazy recovery (hosted-bot R1)", async () => {
+    const bot = { seat: 2, kind: "bot" };
+    getState.mockResolvedValue({ ...state, status: "active", turnSeat: 2, players: [{ seat: 1, kind: "account" }, bot] });
+
+    const response = await GET(new Request(`https://gomoku.example/api/games/${GAME}`), context);
+
+    expect(response.status).toBe(200);
+    expect(after).toHaveBeenCalledOnce();
+    await after.mock.calls[0]![0]();
+    expect(playDueMove).toHaveBeenCalledWith(GAME);
+  });
+
+  it("schedules nothing while the player is to move against the bot", async () => {
+    getState.mockResolvedValue({ ...state, status: "active", turnSeat: 1, players: [{ seat: 1, kind: "account" }, { seat: 2, kind: "bot" }] });
+    await GET(new Request(`https://gomoku.example/api/games/${GAME}`), context);
+    expect(after).not.toHaveBeenCalled();
   });
 
   it("passes `after` on and rejects a malformed one before reading", async () => {

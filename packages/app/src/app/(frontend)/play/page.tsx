@@ -5,6 +5,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 
 import { getCurrentUser } from "@/server/http/auth";
+import { isBotEnabled } from "@/server/http/bot-availability";
 
 import { GuestCreateForm } from "./guest-create-form";
 
@@ -33,7 +34,7 @@ export default async function PlayPage() {
           </div>
         </>
       ) : (
-        <GuestCreateForm />
+        <GuestCreateForm botEnabled={await isBotEnabled()} />
       )}
     </main>
   );

@@ -6,6 +6,7 @@ import { REMATCH_OFFER_LIMIT, TooManyRequestsError } from "@gomoku/core";
 import { createOrm, type Orm } from "@gomoku/db";
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 
+import { ColorDraw } from "../../packages/app/src/server/services/games/color-draw";
 import { systemClock } from "../../packages/app/src/server/services/email/email-sender";
 import { GameService } from "../../packages/app/src/server/services/games/game-service";
 import { InvitationCodes } from "../../packages/app/src/server/services/games/invitation-codes";
@@ -80,6 +81,7 @@ function scope(configure?: (em: Em) => void) {
       invitationCodes: new InvitationCodes(),
       timeoutSettler,
       serverConfig: { appOrigin: "https://gomoku.test" } as never,
+      colorDraw: new ColorDraw(),
     }),
   };
 }

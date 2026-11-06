@@ -1,4 +1,6 @@
 import {
+  botDisplayName,
+  botTierOf,
   CREATE_GAME_LIMIT,
   CREATE_GAME_WINDOW_MS,
   ConflictError,
@@ -27,9 +29,12 @@ import {
   type RematchView,
   agentMcpUrl,
   invitationUrl,
+  type BotLevel,
   type GameStatus,
+  type OpponentChoice,
   type ParticipantKind,
   type Seat,
+  ServiceUnavailableError,
 } from "@gomoku/core";
 import {
   Game,
@@ -42,6 +47,7 @@ import {
 
 import type { ServerConfig } from "../../config";
 import type { Clock } from "../email/email-sender";
+import type { ColorDraw } from "./color-draw";
 import type { RateLimiter } from "../rate-limit/rate-limiter";
 import { readAudience, type Audience } from "./audience";
 import type { InvitationCodes } from "./invitation-codes";
@@ -65,6 +71,7 @@ type Deps = {
   invitationCodes: InvitationCodes;
   timeoutSettler: TimeoutSettler;
   serverConfig: ServerConfig;
+  colorDraw: ColorDraw;
 };
 
 /** Name of the partial unique index behind BR-13 (see the `games` migration). */
@@ -79,6 +86,15 @@ export const GAME_NOT_CANCELLABLE_MESSAGE =
 export const OWN_WAITING_GAME_MESSAGE =
   "Masz oczekującą partię. Anuluj ją, aby utworzyć nową.";
 const SESSION_REQUIRED_MESSAGE = "Zaloguj się, aby kontynuować.";
+export const BOT_UNAVAILABLE_MESSAGE = "Bot jest teraz niedostępny. Spróbuj za chwilę albo zaproś osobę.";
+/** How long a refused player should wait before asking for the bot again (`Retry-After`). */
+export const BOT_RETRY_AFTER_SECONDS = 60;
+
+/**
+ * The memory the strength of level 2 is chosen from (R7, R10). Until E13-S04 reads it from a resource
+ * probe, every game gets this fixed value: the 768 MB tier, a 16 MB table and depth 8.
+ */
+export const BOT_FIXED_MEMORY_MB = 768;
 export const GAME_NOT_FOUND_MESSAGE = "Nie znaleziono partii.";
 
 function activeGameExists(gameId: string): ConflictError {
@@ -160,7 +176,7 @@ const RELEASE_SLOTS_SQL = `update game_players set is_active = false where game_
  * rate-limit key of the client address (`games-create-guest:ip:...`).
  */
 export type GameCreator =
-  | { kind: "account"; userId: string; isPublic?: boolean; settings?: GameSettings }
+  | { kind: "account"; userId: string; isPublic?: boolean; settings?: GameSettings; opponent?: OpponentChoice }
   | GuestCreator;
 
 export type GuestCreator = {
@@ -173,12 +189,26 @@ export type GuestCreator = {
   isPublic?: boolean;
   /** Variant and clock of the game (E11); the classic game when absent. */
   settings?: GameSettings;
+  /** A person by invitation (the default) or the bot (spec 2026-11-05-hosted-bot). */
+  opponent?: OpponentChoice;
 };
 
-export type CreatedGame = {
-  gameId: string;
-  invitation: { code: string; url: string; mcpUrl: string; expiresAt: Date };
-};
+/** A game waiting for a person with its invitation, or a game with the bot, already in progress (R4). */
+export type CreatedGame =
+  | { gameId: string; invitation: { code: string; url: string; mcpUrl: string; expiresAt: Date } }
+  | { gameId: string; opponent: "bot"; bot: { level: BotLevel; name: string } };
+
+/** A game created for a person: waiting, with its invitation. */
+export type InvitedGame = Extract<CreatedGame, { invitation: unknown }>;
+
+/** The bot's seat as created (R2, R7): level 2 carries the memory and the depth limit it was given. */
+type BotSeat = { level: BotLevel; memoryMb: number | null; depthCap: number | null };
+
+/** What a new game is made of: an invitation for a person, the bot's seat for the bot. */
+type Draft = { isPublic: boolean; settings: GameSettings } & (
+  | { bot: null; code: string; expiresAt: Date }
+  | { bot: BotSeat; code?: never; expiresAt?: never }
+);
 
 /** Who is asking: the participant resolved from the session or the guest token. */
 export type GameParticipant = { playerId: string };
@@ -206,6 +236,8 @@ export type GameState = BoardView & {
      * text: the UI shows it as "Agent · {name} (deklarowane)" in plain text.
      */
     agentName?: string | null;
+    /** Only for the bot (BR-54): its level and, for level 2, the memory its strength was chosen from (R9). */
+    bot?: { level: BotLevel; memoryMb: number | null };
     /** Whether the player already opened the game page (#21 Q20). */
     seen: boolean;
   }[];
@@ -243,13 +275,18 @@ export type GameState = BoardView & {
   fromRematch?: true;
 };
 
-/** A guest's nickname, an account's name as it was when the seat was created (E05-S01); `null` for a deleted account and for an agent (BR-31). */
+/**
+ * A guest's nickname, an account's name as it was when the seat was created (E05-S01), the bot's
+ * name with its strength (R9); `null` for a deleted account and for an agent (BR-31).
+ */
 export function displayNameOf(player: {
   kind: string;
   seat: number;
   nickname?: string | null;
   displayName?: string | null;
   user?: { displayName: string } | null;
+  botLevel?: number | null;
+  botMemoryMb?: number | null;
 }): string | null {
   switch (player.kind as ParticipantKind) {
     case "guest":
@@ -258,6 +295,8 @@ export function displayNameOf(player: {
       return player.displayName ?? player.user?.displayName ?? null;
     case "agent":
       return null;
+    case "bot":
+      return botDisplayName(player.botLevel as BotLevel, player.botMemoryMb ?? null);
   }
 }
 
@@ -340,6 +379,7 @@ function playersOf(players: readonly StatePlayer[]): WatchableState["players"] {
     kind: player.kind as ParticipantKind,
     displayName: displayNameOf(player),
     ...(player.kind === "agent" && { agentName: player.agentName ?? null }),
+    ...(player.kind === "bot" && { bot: { level: player.botLevel as BotLevel, memoryMb: player.botMemoryMb ?? null } }),
     seen: player.seenAt != null,
   }));
 }
@@ -399,6 +439,7 @@ export class GameService {
   readonly #invitationCodes: InvitationCodes;
   readonly #timeoutSettler: TimeoutSettler;
   readonly #serverConfig: ServerConfig;
+  readonly #colorDraw: ColorDraw;
 
   constructor({
     em,
@@ -407,7 +448,9 @@ export class GameService {
     invitationCodes,
     timeoutSettler,
     serverConfig,
+    colorDraw,
   }: Deps) {
+    this.#colorDraw = colorDraw;
     this.#em = em;
     this.#clock = clock;
     this.#rateLimiter = rateLimiter;
@@ -427,7 +470,8 @@ export class GameService {
    * `OWN_WAITING_GAME` (`data.gameId`) unless `cancelOwnWaitingGame` is set.
    */
   async create(creator: GameCreator): Promise<CreatedGame> {
-    if (creator.kind === "guest") return this.#createForGuest(creator);
+    const bot = creator.opponent?.kind === "bot" ? this.#admitBot(creator.opponent.level) : null;
+    if (creator.kind === "guest") return this.#createForGuest(creator, bot);
     const { userId } = creator;
     await this.#rateLimiter.hit(
       `games-create:${userId}`,
@@ -437,7 +481,7 @@ export class GameService {
     await this.#timeoutSettler.settleFor(userId);
 
     const now = this.#clock.now();
-    const draft = this.#draft(now, creator.isPublic, creator.settings);
+    const draft = this.#draft(now, creator.isPublic, creator.settings, bot);
     try {
       const gameId = await this.#em.transactional(async (tx) => {
         const locked = await tx.execute<{ id: string; display_name: string }[]>(LOCK_USER_SQL, [userId]);
@@ -473,7 +517,7 @@ export class GameService {
    * A refusal is returned out of the transaction and thrown after the commit, so the lazy
    * closings written on the way are kept.
    */
-  async #createForGuest(creator: GuestCreator): Promise<CreatedGame> {
+  async #createForGuest(creator: GuestCreator, bot: BotSeat | null): Promise<CreatedGame> {
     await this.#rateLimiter.hit(
       creator.limitKey,
       CREATE_GAME_LIMIT,
@@ -482,7 +526,7 @@ export class GameService {
     await this.#timeoutSettler.settleForGuest(creator.tokenHash);
 
     const now = this.#clock.now();
-    const draft = this.#draft(now, creator.isPublic, creator.settings);
+    const draft = this.#draft(now, creator.isPublic, creator.settings, bot);
     const outcome = await this.#em.transactional(
       async (tx): Promise<{ gameId: string } | { refusal: ConflictError }> => {
         await tx.execute(ADVISORY_LOCK_SQL, [creator.tokenHash], "run");
@@ -529,8 +573,27 @@ export class GameService {
     return this.#created(outcome.gameId, draft);
   }
 
-  #draft(now: Date, isPublic = false, settings?: GameSettings) {
+  /**
+   * A game with the bot (spec 2026-11-05-hosted-bot) is admitted before anything is written or counted:
+   * while `BOT_ENABLED` is off it is refused. Level 2 gets its strength frozen here (BR-57).
+   * @throws AppError 503 `BOT_UNAVAILABLE` with `Retry-After`
+   */
+  #admitBot(level: BotLevel): BotSeat {
+    if (!this.#serverConfig.botEnabled) {
+      throw new ServiceUnavailableError(BOT_UNAVAILABLE_MESSAGE, {
+        code: "BOT_UNAVAILABLE",
+        retryAfterSeconds: BOT_RETRY_AFTER_SECONDS,
+      });
+    }
+    if (level === 1) return { level, memoryMb: null, depthCap: null };
+    return { level, memoryMb: BOT_FIXED_MEMORY_MB, depthCap: botTierOf(BOT_FIXED_MEMORY_MB)!.depthCap };
+  }
+
+  #draft(now: Date, isPublic = false, settings?: GameSettings, bot: BotSeat | null = null): Draft {
+    // The bot plays only the classic, private game (BR-56, R14); the input schemas refuse anything else.
+    if (bot) return { bot, isPublic: false, settings: resolveGameSettings() };
     return {
+      bot,
       isPublic,
       settings: resolveGameSettings(settings),
       code: this.#invitationCodes.generate(),
@@ -538,19 +601,26 @@ export class GameService {
     };
   }
 
-  /** Writes the game, its seat-1 player and the invitation through `tx`; returns the game id. */
+  /**
+   * Writes the game and its seat-1 player through `tx`, then the invitation, or, for a game with the
+   * bot, the bot in seat 2: such a game is `active` at once, without an invitation, with the colours
+   * drawn (R3, R4). The bot counts as having opened it, so the clock starts with the player's first read.
+   * Returns the game id.
+   */
   async #insertGame(
     tx: EntityManager,
-    { code, expiresAt, isPublic, settings }: { code: string; expiresAt: Date; isPublic: boolean; settings: GameSettings },
+    draft: Draft,
     now: Date,
     creator:
       | { kind: "account"; userId: string; displayName: string }
       | { kind: "guest"; guestTokenHash: string; nickname?: string },
   ): Promise<string> {
+    const { isPublic, settings, bot } = draft;
     const game = tx.create(Game, {
-      origin: "invite",
+      origin: bot ? "bot" : "invite",
       isPublic,
-      status: "waiting",
+      status: bot ? "active" : "waiting",
+      ...(bot && { startedAt: now, blackSeat: this.#colorDraw.drawBlackSeat() }),
       variant: settings.variant,
       timeControlMs: settings.timeControlMs,
       clockMs1: settings.timeControlMs,
@@ -566,13 +636,32 @@ export class GameService {
       isActive: true,
       joinedAt: now,
     });
-    tx.create(Invitation, { game, code, createdAt: now, expiresAt });
+    if (draft.bot) {
+      tx.create(GamePlayer, {
+        game,
+        seat: 2,
+        kind: "bot",
+        botLevel: draft.bot.level,
+        botMemoryMb: draft.bot.memoryMb,
+        botDepthCap: draft.bot.depthCap,
+        isActive: true,
+        joinedAt: now,
+        seenAt: now,
+      });
+    } else {
+      tx.create(Invitation, { game, code: draft.code, createdAt: now, expiresAt: draft.expiresAt });
+    }
     await tx.flush();
     if (settings.variant === "paper") await tx.execute(INSERT_PAPER_STATE_SQL, [game.id], "run");
     return game.id;
   }
 
-  #created(gameId: string, { code, expiresAt }: { code: string; expiresAt: Date }): CreatedGame {
+  #created(gameId: string, draft: Draft): CreatedGame {
+    if (draft.bot) {
+      const { level, memoryMb } = draft.bot;
+      return { gameId, opponent: "bot", bot: { level, name: botDisplayName(level, memoryMb) } };
+    }
+    const { code, expiresAt } = draft;
     return {
       gameId,
       invitation: {

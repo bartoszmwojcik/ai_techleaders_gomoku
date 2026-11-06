@@ -9,6 +9,7 @@ import { CreateGameButton } from "@/components/games/create-game-button";
 import { HomeRulesLine, HomeRulesProvider } from "@/components/games/home-rules";
 import { DismissibleNotice } from "@/components/games/dismissible-notice";
 import { getCurrentUserWith } from "@/server/http/auth";
+import { isBotEnabled } from "@/server/http/bot-availability";
 import { loadGuestCurrentGame } from "@/server/http/guest-game";
 
 // Static preview position: a few stones near the centre of the board.
@@ -94,6 +95,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                       status: currentGame.status,
                     }
                   }
+                  botEnabled={await isBotEnabled()}
                 />
                 <div className="flex w-full flex-wrap items-center justify-center gap-group md:justify-start">
                   <Button asChild variant="secondary">

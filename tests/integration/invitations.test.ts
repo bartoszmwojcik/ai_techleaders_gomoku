@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 import { hashOpaqueToken } from "../../packages/app/src/server/http/opaque-token";
 import { systemClock } from "../../packages/app/src/server/services/email/email-sender";
 import { ColorDraw } from "../../packages/app/src/server/services/games/color-draw";
+import type { InvitedGame } from "../../packages/app/src/server/services/games/game-service";
 import { GameService } from "../../packages/app/src/server/services/games/game-service";
 import { InvitationCodes } from "../../packages/app/src/server/services/games/invitation-codes";
 import {
@@ -66,6 +67,7 @@ function scope() {
       invitationCodes: new InvitationCodes(),
       timeoutSettler,
       serverConfig: { appOrigin: "https://gomoku.test" } as never,
+      colorDraw: new ColorDraw(),
     }),
   };
 }
@@ -73,7 +75,7 @@ function scope() {
 /** A creator with a waiting game; returns the dashed code as the user would type it. */
 async function newGame() {
   const creator = await insertUser();
-  const { gameId, invitation } = await scope().games.create({ kind: "account", userId: creator });
+  const { gameId, invitation } = (await scope().games.create({ kind: "account", userId: creator })) as InvitedGame;
   return { creator, gameId, code: invitation.code };
 }
 

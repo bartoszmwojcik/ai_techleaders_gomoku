@@ -18,6 +18,7 @@ import { PublicFlag } from "@/components/games/public-flag";
 import { PublicGameQr } from "@/components/games/public-game-qr";
 import { apiCall } from "@/lib/api-client";
 import {
+  botOf,
   cellLabel,
   cellName,
   colorOfSeat,
@@ -30,6 +31,7 @@ import {
 import { FIRST_STONE, lastPaperMove, opponentPaperMove, PAPER_LABELS, paperColors, paperRules, refusalText } from "@/lib/games/paper";
 import type { GameView } from "@/server/http/game-view";
 
+import { BotReplay } from "./bot-replay";
 import { GameClock } from "./game-clock";
 import { PlayerLabel } from "./player-label";
 import { RematchPanel } from "./rematch-panel";
@@ -118,6 +120,8 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
   const finished = game.status === "finished";
   const mine = game.players.find((player) => player.seat === game.you.seat);
   const other = game.players.find((player) => player.seat !== game.you.seat);
+  // A game with the bot (hosted-bot spec): no chat, no rematch, "Bot myśli…" while it is to move.
+  const bot = botOf(game);
   const myColor = colorOfSeat(game.blackSeat, game.you.seat)!;
   const paper = game.paper;
   const words = sideWords(game.variant);
@@ -229,7 +233,9 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
         ? "Twój czas minął — automat stawia znaki za Ciebie"
         : autoTurn
           ? "Automat stawia znak…"
-          : "Ruch przeciwnika";
+          : bot
+            ? "Bot myśli…"
+            : "Ruch przeciwnika";
   const scoreOf = (seat: 1 | 2) => ` · punkty: ${paper!.scores[seat - 1]}`;
   const autoNote = (seat: 1 | 2) => (paper?.autoSeat === seat ? " · Automat" : "");
   const nameWith = (name: ReturnType<typeof playerNameOf>, seat: 1 | 2, you = false) => (
@@ -447,14 +453,19 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
             />
           </div>
         )}
-        {finished && (
-          // D06: no component for the actions after the end; the block is built from Alert and Button.
-          <RematchPanel gameId={gameId} game={game} reopened={reopened ?? false} onState={onState} onRefresh={onRefresh} onAccepting={onAccepting} onGone={onGone} />
-        )}
+        {finished &&
+          (bot ? (
+            // R13: no rematch with the bot, a new game at the same level instead.
+            <BotReplay level={bot.bot!.level} guest={guest} />
+          ) : (
+            // D06: no component for the actions after the end; the block is built from Alert and Button.
+            <RematchPanel gameId={gameId} game={game} reopened={reopened ?? false} onState={onState} onRefresh={onRefresh} onAccepting={onAccepting} onGone={onGone} />
+          ))}
         {/* Under the controls, so it never pushes the board or its button off the first screen on a phone. */}
         <PublicGameQr gameId={gameId} audience={game.audience} />
         {/* E07-S01: under the controls and, on the result screen, under the rematch block, so it never pushes the main action down. */}
-        <ChatPanel gameId={gameId} game={game} onGone={onGone} />
+        {/* The bot does not chat (R14): a game with it has no chat panel at all. */}
+        {!bot && <ChatPanel gameId={gameId} game={game} onGone={onGone} />}
       </div>
     </>
   );

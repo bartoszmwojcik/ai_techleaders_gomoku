@@ -1,6 +1,7 @@
 import {
   AppError,
   ForbiddenError,
+  ServiceUnavailableError,
   TooManyRequestsError,
   ValidationError,
   toValidationError,
@@ -107,7 +108,7 @@ function errorResponse(error: AppError): Response {
   const body: ApiResult<never> = { ok: false, error: error.toBody() };
   const headers = new Headers({ "Cache-Control": NO_STORE });
   if (
-    error instanceof TooManyRequestsError &&
+    (error instanceof TooManyRequestsError || error instanceof ServiceUnavailableError) &&
     error.retryAfterSeconds !== undefined
   ) {
     headers.set("Retry-After", String(error.retryAfterSeconds));
