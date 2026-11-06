@@ -61,3 +61,10 @@ Właściciel o specyfikacji `.ai/specs/2026-11-05-hosted-bot.md` (E13-S01, #256,
 - **Pułap twardy w BR-57:** właściciel potwierdził, że jest zabezpieczeniem (`terminate()`), a nie ogranicznikiem siły bota; siłę poziomu 2 wyznaczają rozmiar tablicy transpozycji i limit głębokości, miękki cel czasu ogranicza każdy ruch.
 
 Skutek w briefie: Q-23 zamknięte; następny bloker to spike S04 i pomiar na Mikrusie.
+
+## Pomiar na Mikrusie i włączenie bota (2026-11-06)
+
+- Pomiar `bot:bench` na hoście docelowym (#264): jeden próg R18 niezaliczony (p99 opóźnienia pętli zdarzeń 59,7 ms przy progu 50), pozostałe zaliczone; sonda RAM czyta pamięć hosta (32767 MB), głębokość p50 3 (`.ai/runs/2026-11-06-e13-s04-bot-bench.md`).
+- Decyzja właściciela po przedstawieniu wyniku i trzech opcji (A: zostawić wyłączony, B: włączyć z `BOT_FIXED_MEMORY_MB=1024`, C: obniżyć budżet): „B, włącz z BOT_FIXED_MEMORY_MB=1024”. Charakter: osąd właściciela, wyjątek od R18; nie dowód, że bot spełnia progi.
+- Skutek: `BOT_ENABLED=true` i `BOT_FIXED_MEMORY_MB=1024` na produkcji od 2026-11-06; siła na tym hoście stała (tablica 16 MB, głębokość ≤ 8). A-21 i A-22 zaktualizowane w briefie.
+
