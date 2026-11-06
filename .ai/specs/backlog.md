@@ -70,7 +70,7 @@ Last filed: 2026-11-05
 | E13 | #255 | Przeciwnik komputerowy: bot algorytmiczny w klasyku | — | — | no |
 | E13-S01 | #256 | Właściciel ma zatwierdzoną specyfikację bota, która zamyka Q-23 | #255 | — | no |
 
-Uwagi 2026-11-05 (E13): bot algorytmiczny to upodobanie właściciela (D-36), popyt nieprzebadany (A-20); `SDLC.md` nie ma Definition of Ready. Zgłoszono tylko epik i E13-S01 (specyfikacja bota). Zaplanowane, ale niezgłoszone historie: S02 (wybór bota przy tworzeniu partii i gra do końca, + T01 migracja i uczestnik „Bot”), S03 (silnik: poziom 1 heurystyka i poziom 2 alfa-beta w `packages/core`, testy bot–bot), S04 (nazwa z poziomem i siłą zależną od RAM, bezpieczny limit), S05 (historia konta, licznik admina jako osobna para, `db:cleanup` dla partii gość–bot); kolejność S01 → (S02, S03) → (S04, S05). Powód: Q-23 je blokuje; jak przy E11 najpierw specyfikacja, potem backlog z niej. Epik #255 ma S01 jako podzgłoszenie.
+Uwagi 2026-11-05 (E13): bot algorytmiczny to upodobanie właściciela (D-36), popyt nieprzebadany (A-20); `SDLC.md` nie ma Definition of Ready. Pierwotnie zgłoszono tylko epik i E13-S01 (specyfikacja bota); historie S02–S05 zgłoszono 2026-11-06 (sekcja „.ai/specs/2026-11-05-hosted-bot.md”). Zakres historii: S02 (wybór bota przy tworzeniu partii i gra do końca, + T01 migracja i uczestnik „Bot”), S03 (silnik: poziom 1 heurystyka i poziom 2 alfa-beta w `packages/core`, testy bot–bot), S04 (nazwa z poziomem i siłą zależną od RAM, bezpieczny limit), S05 (historia konta, licznik admina jako osobna para, `db:cleanup` dla partii gość–bot); kolejność S01 → (S02, S03) → (S04, S05). Powód: Q-23 je blokuje; jak przy E11 najpierw specyfikacja, potem backlog z niej. Epik #255 ma S01 jako podzgłoszenie.
 
 Uwagi 2026-11-04 (E12): kod QR zaproszenia to osąd właściciela (D-35; przesłanka: pokaz na spotkaniu, A-19), bez dowodu popytu; zgoda na zależność `qrcode` (MIT), działanie na mikr.us do potwierdzenia po wdrożeniu; `SDLC.md` nie ma Definition of Ready. Q-22 (kto widzi kod w partii publicznej) nieblokujące. Id E11 zajęte przez źródło specyfikacji wariantu „papier i ołówek”.
 
@@ -129,6 +129,22 @@ Last filed: 2026-11-02
 
 Uwagi 2026-11-02 (E11): wariant to osąd właściciela (D-34), bez dowodu popytu (A-16, Q-21); `SDLC.md` nie ma Definition of Ready (formalny test gotowości pominięty). Zgłoszenia są podzgłoszeniami GitHub (epik → historie → zadania). Implementacja jednym PR-em zamykającym całe E11 (spec R11); specyfikacja na gałęzi `claude/paper-grid-pencil-game-0ycu0x` czeka na akceptację właściciela przed kodem.
 
+## .ai/specs/2026-11-05-hosted-bot.md
+Backlog source: .ai/specs/2026-11-05-hosted-bot.md
+Last filed: 2026-11-06
+
+| Id | Issue | Title | Epic | Depends on | Adopted |
+|---|---|---|---|---|---|
+| E13-S02 | #259 | Gracz wybiera bota przy tworzeniu partii klasycznej i gra z nim do końca | #255 | E13-S01 (#256, zrobione), E13-S02-T01 (#261) | no |
+| E13-S02-T01 | #261 | Migracja i model uczestnika „Bot” | #259 | — | no |
+| E13-S03 | #260 | Silnik bota: poziom 1 i 2 w packages/core z areną bot–bot | #255 | — | no |
+| E13-S04 | #262 | Siła, nazwa i polityka zasobów bota | #255 | E13-S02 (#259), E13-S03 (#260), E13-S04-T01 (#263), E13-S04-T02 (#264) | no |
+| E13-S04-T01 | #263 | Spike: worker_threads pod Turbopackiem w obrazie produkcyjnym | #262 | E13-S02 (#259) | no |
+| E13-S04-T02 | #264 | Pomiar kosztu ruchu bota (bot:bench) i decyzja wg R18 | #262 | E13-S04-T01 (#263) i reszta E13-S04 | no |
+| E13-S05 | #265 | Partie z botem w historii konta, licznik admina i sprzątanie db:cleanup | #255 | E13-S02 (#259) | no |
+
+Uwagi 2026-11-06 (E13): epik E13 (#255) i E13-S01 (#256) należą do źródła `.ai/specs/product-brief.md` (sekcja wyżej); historie S02–S05 i ich zadania zgłoszono ze specyfikacji, więc mają własne źródło, a epik wskazują linią `Epic: #255`. Zadania są podzgłoszeniami GitHub (epik → historie → zadania). Kolejność: S01 → (S02, S03) → (S04, S05). Flaga `BOT_ENABLED` zostaje wyłączona do końca S05 i zaakceptowanego pomiaru; wdrożenie po epiku zgodnie z decyzją właściciela.
+
 ## Stan E13 (2026-11-05)
 
-Źródło: `.ai/specs/2026-11-05-hosted-bot.md`. E13-S01 (#256) zatwierdzona przez właściciela 2026-11-05 (specyfikacja scalona w PR #258, Q-23 zamknięte). Historie S02–S05 można już zgłosić ze specyfikacji (plan faz); jeszcze niezgłoszone, czekają na potwierdzenie drzewa przez właściciela. Funkcja zostaje za flagą `BOT_ENABLED` do zaakceptowanego pomiaru na Mikrusie.
+Źródło: `.ai/specs/2026-11-05-hosted-bot.md`. E13-S01 (#256) zatwierdzona przez właściciela 2026-11-05 (specyfikacja scalona w PR #258, Q-23 zamknięte). Historie S02–S05 zgłoszono 2026-11-06 (#259–#265, sekcja „.ai/specs/2026-11-05-hosted-bot.md” wyżej). Funkcja zostaje za flagą `BOT_ENABLED` do zaakceptowanego pomiaru na Mikrusie.
