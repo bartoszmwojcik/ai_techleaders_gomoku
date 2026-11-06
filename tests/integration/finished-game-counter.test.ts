@@ -9,6 +9,7 @@ import { execFile } from "node:child_process";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 
+import { KNOWN_PAIRS } from "@gomoku/core";
 import { cleanupExpired, createOrm, readFinishedGameStats, type Orm } from "@gomoku/db";
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 
@@ -469,13 +470,18 @@ describe("the day in Europe/Warsaw and the read model", () => {
     await run(`delete from games where finished_at < '2002-01-01'`);
   });
 
-  async function finishedAt(at: string, kinds: [Kind, Kind]) {
+  // The bot sits on seat 2 (CHECK `game_players_bot_seat_check`), so it is always the second kind.
+  async function finishedAt(at: string, kinds: [Kind, Kind] | [Kind, "bot"]) {
     const [row] = await run(
       `insert into games (origin, status, started_at, finished_at, black_seat, winner_seat, end_reason)
-       values ('invite', 'finished', ?::timestamptz - interval '5 minutes', ?::timestamptz, 1, 1, 'resignation') returning id`,
-      [at, at],
+       values (?, 'finished', ?::timestamptz - interval '5 minutes', ?::timestamptz, 1, 1, 'resignation') returning id`,
+      [kinds[1] === "bot" ? "bot" : "invite", at, at],
     );
     for (const [index, kind] of kinds.entries()) {
+      if (kind === "bot") {
+        await run(`insert into game_players (game_id, seat, kind, is_active, bot_level) values (?, 2, 'bot', false, 1)`, [row!.id]);
+        continue;
+      }
       await run(
         kind === "agent"
           ? `insert into game_players (game_id, seat, kind, join_channel, is_active) values (?, ?, 'agent', 'mcp', false)`
@@ -505,6 +511,22 @@ describe("the day in Europe/Warsaw and the read model", () => {
     ]);
   });
 
+  it("stores the games with the bot under the two pairs KNOWN_PAIRS lists, in the same order (hosted-bot R12)", async () => {
+    await run(`delete from game_pair_counters where day < '2002-01-01'`);
+    await finishedAt(`${YEAR}-05-01T10:00:00Z`, ["account", "bot"]);
+    await finishedAt(`${YEAR}-05-01T11:00:00Z`, ["guest", "bot"]);
+    const rows = await run(
+      `select kind_a, kind_b, finished_count from game_pair_counters where day < '2002-01-01' order by kind_a, kind_b`,
+    );
+    expect(rows).toEqual([
+      { kind_a: "account", kind_b: "bot", finished_count: 1 },
+      { kind_a: "bot", kind_b: "guest", finished_count: 1 },
+    ]);
+    // What PostgreSQL's min/max stored is exactly a known pair: none of them falls among the unknown ones.
+    const known = KNOWN_PAIRS.map(([a, b]) => `${a}-${b}`);
+    for (const row of rows) expect(known).toContain(`${row.kind_a}-${row.kind_b}`);
+  });
+
   it("windows today and the last 7 days by the Warsaw day of the clock, and lists an unknown kind", async () => {
     await run(`delete from game_pair_counters where day < '2002-01-01'`);
     const seed = (day: string, a: string, b: string, n: number) =>
@@ -527,13 +549,15 @@ describe("the day in Europe/Warsaw and the read model", () => {
     expect(by("agent-guest")).toMatchObject({ total: await totalOf("agent-guest"), today: 0, last7Days: 4 });
     expect(by("guest-guest")).toMatchObject({ total: await totalOf("guest-guest"), today: 0, last7Days: 0 });
     expect(by("account-account").total).toBeGreaterThanOrEqual(3);
-    expect(stats.pairs.map(({ pair }) => pair).slice(5)).toEqual(["account-robot"]);
-    expect(stats.pairs.slice(0, 5).map(({ pair }) => pair)).toEqual([
+    expect(stats.pairs.map(({ pair }) => pair).slice(7)).toEqual(["account-robot"]);
+    expect(stats.pairs.slice(0, 7).map(({ pair }) => pair)).toEqual([
       "account-account",
       "account-guest",
       "account-agent",
       "guest-guest",
       "agent-guest",
+      "account-bot",
+      "bot-guest",
     ]);
     expect(stats.timeZone).toBe("Europe/Warsaw");
   });

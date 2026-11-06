@@ -407,7 +407,8 @@ describe("games rules (E02-S08, #39)", () => {
 });
 
 describe("guest-only games rules (#102, spec 2026-10-30-guest-only-games-cleanup)", () => {
-  type Kind = "guest" | "account" | "deleted-account" | "agent";
+  /** The bot sits on seat 2 only (CHECK `game_players_bot_seat_check`). */
+  type Kind = "guest" | "account" | "deleted-account" | "agent" | "bot";
   type Spec = {
     kinds?: [Kind, Kind];
     status?: "active" | "finished";
@@ -429,11 +430,14 @@ describe("guest-only games rules (#102, spec 2026-10-30-guest-only-games-cleanup
     const black = Math.ceil(moveCount / 2);
     const white = Math.floor(moveCount / 2);
     const finished = status === "finished";
+    // A game with the bot has no invitation (hosted-bot, "Data Model").
+    const withBot = kinds.includes("bot");
     const [game] = await orm.em.fork().execute<{ id: string }[]>(
       `insert into games (origin, status, created_at, started_at, black_seat, move_count, stones_black, stones_white, moves,
                           clock_ms_1, clock_ms_2, turn_started_at, finished_at, winner_seat, end_reason)
-       values ('invite', ?, ?, ?, ?, ?, ?::bit(225), ?::bit(225), decode(repeat('00', ?::int), 'hex'), ?, ?, ?, ?, ?, ?) returning id`,
+       values (?, ?, ?, ?, ?, ?, ?::bit(225), ?::bit(225), decode(repeat('00', ?::int), 'hex'), ?, ?, ?, ?, ?, ?) returning id`,
       [
+        withBot ? "bot" : "invite",
         status,
         ago(now, 30 * HOUR),
         spec.startedAt ?? ago(now, 29 * HOUR),
@@ -454,6 +458,11 @@ describe("guest-only games rules (#102, spec 2026-10-30-guest-only-games-cleanup
     for (const [index, kind] of kinds.entries()) {
       if (kind === "guest") {
         await sql(`insert into game_players (game_id, seat, kind, guest_token_hash, is_active) values (?, ?, 'guest', ?, false)`, [id, index + 1, hash()]);
+      } else if (kind === "bot") {
+        await sql(
+          `insert into game_players (game_id, seat, kind, bot_level, bot_memory_mb, bot_depth_cap, is_active) values (?, 2, 'bot', 2, 768, 8, false)`,
+          [id],
+        );
       } else if (kind === "agent") {
         await sql(
           `insert into game_players (game_id, seat, kind, agent_token_hash, agent_name, join_channel, is_active) values (?, ?, 'agent', ?, 'claude opus 5.5', 'mcp', false)`,
@@ -464,6 +473,7 @@ describe("guest-only games rules (#102, spec 2026-10-30-guest-only-games-cleanup
         await sql(`insert into game_players (game_id, seat, kind, user_id, is_active) values (?, ?, 'account', ?, false)`, [id, index + 1, userId]);
       }
     }
+    if (withBot) return id;
     await sql(`insert into invitations (game_id, code, created_at, expires_at) values (?, ?, ?, ?)`, [
       id,
       new InvitationCodes().generate(),
@@ -683,6 +693,94 @@ describe("guest-only games rules (#102, spec 2026-10-30-guest-only-games-cleanup
     }
     expect(await exists(recent)).toBe(true);
     for (const id of kept) expect(await exists(id), id).toBe(true);
+  });
+
+  describe("games with the bot (hosted-bot R11, E13-S05)", () => {
+    it("a guest-bot game goes 1 h after the end like one of two guests; the boundary stays", async () => {
+      const now = new Date();
+      const gone = await insertDuel(now, { kinds: ["guest", "bot"], status: "finished", finishedAt: ago(now, HOUR + SECOND) });
+      const onTheLine = await insertDuel(now, { kinds: ["guest", "bot"], status: "finished", finishedAt: ago(now, HOUR) });
+      const recent = await insertDuel(now, { kinds: ["guest", "bot"], status: "finished", finishedAt: ago(now, HOUR - SECOND) });
+
+      const result = await cleanupExpired({ em: orm.em.fork(), now });
+
+      expect(result.errors).toEqual([]);
+      expect(result.guestOnlyFinishedGames).toBeGreaterThanOrEqual(1);
+      expect(await exists(gone)).toBe(false);
+      expect(await dependents(gone)).toBe(0);
+      expect(await exists(onTheLine)).toBe(true);
+      expect(await exists(recent)).toBe(true);
+    });
+
+    it("an abandoned guest-bot game goes 1 h past its clock or ready deadline, unsettled", async () => {
+      const now = new Date();
+      const expired = await insertDuel(now, { kinds: ["guest", "bot"], turnStartedAt: expiredAt(now, HOUR + SECOND) });
+      const expiredOnTheLine = await insertDuel(now, { kinds: ["guest", "bot"], turnStartedAt: expiredAt(now, HOUR) });
+      // Never opened by the guest: the clock never started (Q21), the ready deadline counts.
+      const neverOpened = await insertDuel(now, { kinds: ["guest", "bot"], turnStartedAt: null, startedAt: ago(now, HOUR + READY_DEADLINE_MS + SECOND) });
+      const running = await insertDuel(now, { kinds: ["guest", "bot"], turnStartedAt: ago(now, SECOND) });
+
+      const result = await cleanupExpired({ em: orm.em.fork(), now });
+
+      expect(result.guestOnlyActiveGames).toBeGreaterThanOrEqual(2);
+      for (const id of [expired, neverOpened]) {
+        expect(await exists(id), id).toBe(false);
+        expect(await dependents(id)).toBe(0);
+      }
+      for (const id of [expiredOnTheLine, running]) expect(await exists(id), id).toBe(true);
+    });
+
+    it("an account-bot game stays as the account's history, finished or abandoned (negative)", async () => {
+      const now = new Date();
+      const kept = [
+        await insertDuel(now, { kinds: ["account", "bot"], status: "finished", finishedAt: ago(now, 30 * HOUR) }),
+        await insertDuel(now, { kinds: ["account", "bot"], turnStartedAt: expiredAt(now, 5 * HOUR) }),
+        await insertDuel(now, { kinds: ["account", "bot"], turnStartedAt: null, startedAt: ago(now, 5 * HOUR) }),
+        // A deleted account still has `kind = 'account'`: no guest-only rule takes its active game.
+        await insertDuel(now, { kinds: ["deleted-account", "bot"], turnStartedAt: expiredAt(now, 5 * HOUR) }),
+      ];
+
+      await cleanupExpired({ em: orm.em.fork(), now });
+
+      for (const id of kept) {
+        expect(await exists(id), id).toBe(true);
+        expect(await rows("game_players", `game_id = '${id}'`)).toBe("2");
+      }
+      // The bot's row keeps its strength, so the history still names it (R9).
+      expect(await rows("game_players", `game_id = '${kept[0]}' and kind = 'bot' and bot_level = 2 and bot_memory_mb = 768`)).toBe("1");
+    });
+
+    it("a finished game of a deleted account and the bot is orphaned: it goes 1 h after the end", async () => {
+      const now = new Date();
+      const gone = await insertDuel(now, { kinds: ["deleted-account", "bot"], status: "finished", finishedAt: ago(now, HOUR + SECOND) });
+      const recent = await insertDuel(now, { kinds: ["deleted-account", "bot"], status: "finished", finishedAt: ago(now, HOUR - SECOND) });
+
+      const result = await cleanupExpired({ em: orm.em.fork(), now });
+
+      expect(result.orphanedFinishedGames).toBeGreaterThanOrEqual(1);
+      expect(await exists(gone)).toBe(false);
+      expect(await exists(recent)).toBe(true);
+    });
+
+    it("leaves the rules of the other pairs as they were: guest-guest and guest-agent go, an account next to a guest stays", async () => {
+      const now = new Date();
+      const finished = { status: "finished" as const, finishedAt: ago(now, 5 * HOUR) };
+      const gone = [
+        await insertDuel(now, finished),
+        await insertDuel(now, { ...finished, kinds: ["guest", "agent"] }),
+        await insertDuel(now, { ...finished, kinds: ["guest", "bot"] }),
+      ];
+      const kept = [
+        await insertDuel(now, { ...finished, kinds: ["account", "guest"] }),
+        await insertDuel(now, { ...finished, kinds: ["account", "agent"] }),
+        await insertDuel(now, { ...finished, kinds: ["account", "bot"] }),
+      ];
+
+      await cleanupExpired({ em: orm.em.fork(), now });
+
+      for (const id of gone) expect(await exists(id), id).toBe(false);
+      for (const id of kept) expect(await exists(id), id).toBe(true);
+    });
   });
 
   it("clears the agent token hash 1 h after the end, and keeps the row with its declared name (E06-S01)", async () => {

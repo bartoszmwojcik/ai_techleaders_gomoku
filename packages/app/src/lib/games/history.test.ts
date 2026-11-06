@@ -41,6 +41,20 @@ describe("opponentNameOf", () => {
   });
 });
 
+describe("opponentNameOf, the bot (E13-S05)", () => {
+  it("names the bot by the name with its strength the server computed, which starts with Bot", () => {
+    expect(opponentNameOf({ kind: "bot", name: "Bot · poziom 2 · 16 MB" })).toEqual({
+      nick: "Bot · poziom 2 · 16 MB",
+      guest: false,
+      label: "Bot · poziom 2 · 16 MB",
+    });
+  });
+
+  it("is just Bot, never a deleted player, when no name came", () => {
+    expect(opponentNameOf({ kind: "bot", name: null }).label).toBe("Bot");
+  });
+});
+
 describe("historyDetailOf", () => {
   it("is the reason for the classic game", () => {
     expect(historyDetailOf({ variant: "classic", reason: "timeout" })).toBe("Koniec czasu");

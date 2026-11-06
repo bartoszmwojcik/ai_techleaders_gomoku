@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   BOT_FAILURE_GAMES,
   BOT_MAX_FAILURES,
+  BOT_TERMINATE_WAIT_MS,
   botFailures,
   createWorkerBotEngine,
   firstFreeCell,
@@ -143,6 +144,76 @@ describe("createWorkerBotEngine (hosted-bot R5, R6)", () => {
       ceilingMs: 3000,
       depth: 5,
     });
+  });
+
+  it("raises the stop flag only after the first completed iteration, however late it comes (PR #269 review)", async () => {
+    const { engine, workers, jobs } = setup();
+    // A 45 s clock: soft 1500 ms, ceiling 3000 ms.
+    const move = engine.choose(turn({ remainingClockMs: 45_000 }));
+    await started();
+    const flag = new Int32Array(jobs[0]!.stop);
+    vi.advanceTimersByTime(2000);
+    // Past the soft target without a result: depth 1 must be allowed to finish.
+    expect(Atomics.load(flag, 0)).toBe(0);
+    workers[0]!.send({ type: "iteration", choice: choice(12, 1) });
+    expect(Atomics.load(flag, 0)).toBe(1);
+    workers[0]!.send({ type: "done", choice: choice(12, 1) });
+    await expect(move).resolves.toBe(12);
+  });
+
+  it("keeps the ceiling hard when no iteration ever completes", async () => {
+    const { engine, workers, jobs } = setup();
+    const move = engine.choose(turn());
+    await started();
+    vi.advanceTimersByTime(3000);
+    expect(Atomics.load(new Int32Array(jobs[0]!.stop), 0)).toBe(0);
+    await expect(move).resolves.toBe(inlineLevel1(turn()));
+    expect(workers[0]!.terminate).toHaveBeenCalledOnce();
+  });
+
+  it("holds the move and the gate until the killed thread has ended (R8, PR #269 review)", async () => {
+    const { engine, workers } = setup();
+    let ended!: (code: number) => void;
+    const first = engine.choose(turn({ gameId: "a" }));
+    const second = engine.choose(turn({ gameId: "b" }));
+    await started();
+    workers[0]!.terminate.mockImplementation(() => new Promise<number>((resolve) => (ended = resolve)));
+    let played: number | null = null;
+    void first.then((cell) => (played = cell));
+    vi.advanceTimersByTime(3000);
+    await started();
+    expect(workers[0]!.terminate).toHaveBeenCalledOnce();
+    expect(played).toBeNull();
+    // The second computation has not started: one thread at a time.
+    expect(workers).toHaveLength(1);
+    ended(1);
+    await expect(first).resolves.toBe(inlineLevel1(turn({ gameId: "a" })));
+    await started();
+    expect(workers).toHaveLength(2);
+    workers[1]!.send({ type: "done", choice: choice(9) });
+    await expect(second).resolves.toBe(9);
+  });
+
+  it("releases the gate after a bounded wait when the thread does not end", async () => {
+    const { engine, workers } = setup();
+    const move = engine.choose(turn());
+    await started();
+    workers[0]!.terminate.mockImplementation(() => new Promise<number>(() => undefined));
+    workers[0]!.send({ type: "done", choice: choice(21) });
+    await started();
+    vi.advanceTimersByTime(BOT_TERMINATE_WAIT_MS - 1);
+    let played: number | null = null;
+    void move.then((cell) => (played = cell));
+    await started();
+    expect(played).toBeNull();
+    vi.advanceTimersByTime(1);
+    await expect(move).resolves.toBe(21);
+  });
+
+  it("does not start a thread when the clock leaves no time for one", async () => {
+    const { engine, spawn } = setup();
+    await expect(engine.choose(turn({ remainingClockMs: 5 }))).resolves.toBe(inlineLevel1(turn()));
+    expect(spawn).not.toHaveBeenCalled();
   });
 
   it("plays level 1 inline at the ceiling when no iteration completed", async () => {

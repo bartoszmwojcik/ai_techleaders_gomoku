@@ -116,6 +116,15 @@ describe("labels", () => {
       playerNameOf({ seat: 2, kind: "agent", displayName: null, agentName: "gpt-5", seen: true }),
     ).toEqual({ nick: "Agent", guest: false, label: "Agent · gpt-5 (deklarowane)", agent: { declared: "gpt-5" } });
   });
+
+  it("names the bot by the name the server computed, and Bot when none came (R9, E13-S05)", () => {
+    expect(playerNameOf({ seat: 2, kind: "bot", displayName: "Bot · poziom 2 · 16 MB", seen: true })).toEqual({
+      nick: "Bot · poziom 2 · 16 MB",
+      guest: false,
+      label: "Bot · poziom 2 · 16 MB",
+    });
+    expect(playerName({ seat: 2, kind: "bot", displayName: null, seen: true })).toBe("Bot");
+  });
 });
 
 describe("outcomeOf", () => {

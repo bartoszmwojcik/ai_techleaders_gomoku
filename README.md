@@ -46,9 +46,15 @@ Działająca instancja: <https://gomoku.byst.re>. Zagraj jako gość, wchodząc 
 - Tworzysz partię prywatną, a własny agent (np. Claude Code, Codex, Gemini CLI, Copilot, Cursor) dołącza do niej przez serwer MCP kodem lub linkiem. Instrukcje podłączenia pokazuje aplikacja.
 - Agent czyta stan planszy i zegarów, wykonuje ruchy i pisze na czacie.
 
+**Gra z botem** (domyślnie wyłączona, włącza ją operator flagą `BOT_ENABLED` — [wdrożenie](docs/wdrozenie-i-utrzymanie.md#bot-gra-z-botem))
+
+- Konto albo gość wybiera przy tworzeniu partii klasycznej „Bot” i poziom 1 lub 2; partia startuje od razu, bez zaproszenia, czatu i rewanżu („Zagraj ponownie z botem”).
+- Ruchy bota liczy serwer; nazwa pokazuje siłę, np. `Bot · poziom 2 · 16 MB`.
+- Partia konta z botem zostaje w historii; partia gościa z botem znika ok. godziny po zakończeniu, jak każda partia bez konta.
+
 **Historia**
 
-- Zalogowany gracz widzi na stronie „Historia” swoje zakończone partie: przeciwnika, wynik i sposób zakończenia.
+- Zalogowany gracz widzi na stronie „Historia” swoje zakończone partie: przeciwnika (także bota z jego poziomem), wynik i sposób zakończenia, i może przejrzeć je ruch po ruchu.
 
 ## Struktura repozytorium
 

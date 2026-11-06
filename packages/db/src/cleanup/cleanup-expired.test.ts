@@ -102,7 +102,7 @@ describe("cleanupExpired", () => {
     const finished = sqls.find((sql) => sql.startsWith("delete from games") && sql.includes("status = 'finished'"))!;
     for (const sql of [active, finished]) {
       expect(sql).toMatch(/^delete from games where id in/);
-      expect(sql).toContain("p.kind not in ('guest', 'agent')");
+      expect(sql).toContain("p.kind not in ('guest', 'agent', 'bot')");
       expect(sql).not.toContain("user_id");
     }
     expect(active).toContain(`started_at + ${READY_DEADLINE_MS} * interval '1 millisecond'`);

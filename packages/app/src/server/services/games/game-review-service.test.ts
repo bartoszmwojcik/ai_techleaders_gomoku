@@ -81,6 +81,17 @@ describe("GameReviewService.open", () => {
     expect(review?.players[1]).toEqual({ seat: 2, kind: "agent", displayName: null, agentName: null });
   });
 
+  it("names the bot by its frozen strength and lets the account review its moves (E13-S05, R9)", async () => {
+    const bot = { seat: 2, kind: "bot", user: null, botLevel: 2, botMemoryMb: 768, botDepthCap: 8 };
+    const { service } = setup(game(), [mine, bot]);
+
+    const review = await service.open({ kind: "account", userId: ME }, ID);
+
+    expect(review?.players[1]).toEqual({ seat: 2, kind: "bot", displayName: "Bot · poziom 2 · 16 MB" });
+    expect(review?.moves.length).toBeGreaterThan(0);
+    expect(review?.viewerSeat).toBe(1);
+  });
+
   it("answers null for a malformed id without reading anything", async () => {
     const { service, findOne } = setup(game());
 

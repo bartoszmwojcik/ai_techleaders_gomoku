@@ -72,6 +72,27 @@ describe("HistoryView: the list", () => {
     expect(rows[3]).toContain("Agent · claude opus 5.5 (deklarowane)");
   });
 
+  it("names a bot opponent by its level and memory, marked Bot (E13-S05)", () => {
+    render(
+      <HistoryView
+        initial={{
+          entries: [
+            entry({ gameId: "b2", opponent: { kind: "bot", name: "Bot · poziom 2 · 16 MB" } }),
+            entry({ gameId: "b1", result: "loss", opponent: { kind: "bot", name: "Bot · poziom 1" } }),
+          ],
+          nextCursor: null,
+        }}
+      />,
+    );
+
+    const rows = screen.getAllByRole("listitem");
+    expect(rows[0]!.textContent).toContain("Bot · poziom 2 · 16 MB");
+    expect(rows[0]!.textContent).not.toContain("(gość)");
+    expect(rows[1]!.textContent).toContain("Bot · poziom 1");
+    expect(rows[1]!.textContent).toContain("Porażka");
+    expect(within(rows[0]!).getByRole("link", { name: "Przejrzyj partię" }).getAttribute("href")).toBe("/games/b2/review");
+  });
+
   it("keeps the whole name of a guest with a 24-character nickname in the title", () => {
     const nick = "Bardzo_Dlugi_Nick_Goscia";
     render(<HistoryView initial={{ entries: [entry({ opponent: { kind: "guest", name: nick } })], nextCursor: null }} />);

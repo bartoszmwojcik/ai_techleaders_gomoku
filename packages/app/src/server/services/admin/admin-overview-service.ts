@@ -9,7 +9,7 @@ export type GameCounters = {
   /** Games in the database right now (the cleanup removes finished/cancelled ones without accounts after ~1 h). */
   byStatus: { waiting: number; active: number; finished: number; cancelled: number };
   /** Finished games still in the database. */
-  finishedByOrigin: { invite: number; lobby: number; rematch: number };
+  finishedByOrigin: { invite: number; lobby: number; rematch: number; bot: number };
   finishedByEndReason: { five_in_row: number; draw: number; timeout: number; resignation: number; points: number };
 };
 
@@ -45,6 +45,7 @@ const GAME_COUNTERS_SQL = `
     count(*) filter (where status = 'finished' and origin = 'invite')::int as invite,
     count(*) filter (where status = 'finished' and origin = 'lobby')::int as lobby,
     count(*) filter (where status = 'finished' and origin = 'rematch')::int as rematch,
+    count(*) filter (where status = 'finished' and origin = 'bot')::int as bot,
     count(*) filter (where status = 'finished' and end_reason = 'five_in_row')::int as five_in_row,
     count(*) filter (where status = 'finished' and end_reason = 'draw')::int as draw,
     count(*) filter (where status = 'finished' and end_reason = 'timeout')::int as timeout,
@@ -100,7 +101,7 @@ export class AdminOverviewService {
     const r = row!;
     return {
       byStatus: { waiting: r.waiting!, active: r.active!, finished: r.finished!, cancelled: r.cancelled! },
-      finishedByOrigin: { invite: r.invite!, lobby: r.lobby!, rematch: r.rematch! },
+      finishedByOrigin: { invite: r.invite!, lobby: r.lobby!, rematch: r.rematch!, bot: r.bot! },
       finishedByEndReason: {
         five_in_row: r.five_in_row!,
         draw: r.draw!,

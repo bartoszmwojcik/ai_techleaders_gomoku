@@ -43,6 +43,17 @@ describe("ReviewView", { timeout: 30_000 }, () => {
     expect(document.querySelector('[role="grid"]')?.getAttribute("aria-readonly")).toBe("true");
   });
 
+  it("names a bot opponent by its strength, marked Bot (E13-S05)", () => {
+    const players: GameReview["players"] = [
+      { seat: 1, kind: "account", displayName: "Ala" },
+      { seat: 2, kind: "bot", displayName: "Bot · poziom 2 · 16 MB" },
+    ];
+    render(<ReviewView review={review({ players })} back={back} />);
+
+    expect(screen.getByTestId("review-players").textContent).toBe("Czarne: Ty (Ala)Białe: Bot · poziom 2 · 16 MB");
+    expect(step()).toBe("Ruch 3 z 3: czarny, kolumna H, rząd 9");
+  });
+
   it("steps back and forward one move at a time and jumps to the start and the end", async () => {
     render(<ReviewView review={review()} back={back} />);
 

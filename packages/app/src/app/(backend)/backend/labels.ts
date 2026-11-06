@@ -11,6 +11,7 @@ export const ORIGIN_LABELS = [
   ["invite", "z zaproszenia"],
   ["lobby", "z lobby"],
   ["rematch", "rewanż"],
+  ["bot", "z botem"],
 ] as const;
 
 export const END_REASON_LABELS = [
@@ -21,7 +22,7 @@ export const END_REASON_LABELS = [
   ["points", "punkty"],
 ] as const;
 
-const KIND_LABELS: Record<string, string> = { account: "konto", guest: "gość", agent: "agent" };
+const KIND_LABELS: Record<string, string> = { account: "konto", guest: "gość", agent: "agent", bot: "bot" };
 
 /** "konto – gość" for a pair of participant kinds; an unknown kind is shown as it is. */
 export function pairLabel({ kinds }: Pick<PairCounter, "kinds">): string {
