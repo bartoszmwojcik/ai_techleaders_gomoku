@@ -1,8 +1,6 @@
 // `npm run bot:bench` (spec 2026-11-05-hosted-bot, section 5 and R18; E13-S04-T02): the cost of a
 // level-2 move measured through the production path — the worker thread, the gate, the budget of the
 // memory tier — on positions from bot–bot games in three phases (moves 10, 30, 60). Prints JSON.
-import type { IntervalHistogram } from "node:perf_hooks";
-
 import {
   ARENA_BUDGET,
   botStrengthFor,
@@ -20,6 +18,9 @@ import type { MemoryReading } from "../server/services/games/resource-probe";
 /** The phases of the spec: positions after 10, 30 and 60 moves. */
 export const BENCH_PHASES = [10, 30, 60] as const;
 export const DEFAULT_BENCH_POSITIONS = 200;
+
+/** The part of `monitorEventLoopDelay()` the bench reads (nanoseconds). */
+export type LoopHistogram = { enable(): unknown; disable(): unknown; percentile(p: number): number; max: number };
 
 export type BenchPosition = { seed: number; phase: number; position: BotPosition };
 
@@ -63,7 +64,7 @@ export type BenchDeps = {
   /** The engine of the app, logging through `logger` (its `bot_move` lines are the measurement). */
   createEngine: (logger: Pick<Console, "info" | "warn" | "error">) => BotEngine;
   /** The main thread's event-loop delay (`monitorEventLoopDelay`). */
-  createHistogram: () => IntervalHistogram;
+  createHistogram: () => LoopHistogram;
   rssMb: () => number;
   now: () => number;
   /** A read of another game (`GET`) while the bot computes; measured only when given. */

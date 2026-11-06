@@ -41,6 +41,16 @@ x-app: &app
     CHAT_AGENT_MAX_LENGTH: ${CHAT_AGENT_MAX_LENGTH:-}
     CHAT_AGENT_MIN_INTERVAL_MS: ${CHAT_AGENT_MIN_INTERVAL_MS:-}
     CHAT_MAX_MESSAGES_PER_GAME: ${CHAT_MAX_MESSAGES_PER_GAME:-}
+    # Games against the bot (hosted-bot spec, R19): off unless BOT_ENABLED=true; see "Bot" in docs/wdrozenie-i-utrzymanie.md.
+    # The rest: empty means the starting values of the spec (R6-R8, R10).
+    BOT_ENABLED: ${BOT_ENABLED:-}
+    BOT_MAX_ACTIVE_GAMES: ${BOT_MAX_ACTIVE_GAMES:-}
+    BOT_MIN_AVAILABLE_MB: ${BOT_MIN_AVAILABLE_MB:-}
+    BOT_FIXED_MEMORY_MB: ${BOT_FIXED_MEMORY_MB:-}
+    BOT_L1_SOFT_MS: ${BOT_L1_SOFT_MS:-}
+    BOT_L1_CEILING_MS: ${BOT_L1_CEILING_MS:-}
+    BOT_L2_SOFT_MS: ${BOT_L2_SOFT_MS:-}
+    BOT_L2_CEILING_MS: ${BOT_L2_CEILING_MS:-}
 
 services:
   postgres:

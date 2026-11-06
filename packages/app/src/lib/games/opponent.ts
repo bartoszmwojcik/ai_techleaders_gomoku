@@ -39,7 +39,7 @@ export const botLevelOf = (value: string): BotLevel => (value === "2" ? 2 : 1);
  * The nickname a guest takes into "Zagraj ponownie z botem": their own one, not the default name
  * derived from the seat (which the new game derives again). Nothing for an account.
  */
-export function guestNickname(kind: string, displayName: string | undefined, seat: Seat): string | undefined {
-  if (kind !== "guest" || displayName === undefined || displayName === defaultNickname(seat)) return undefined;
+export function guestNickname(kind: string, displayName: string | null | undefined, seat: Seat): string | undefined {
+  if (kind !== "guest" || !displayName || displayName === defaultNickname(seat)) return undefined;
   return displayName;
 }

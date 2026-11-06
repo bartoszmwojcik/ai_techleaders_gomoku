@@ -49,6 +49,7 @@ describe("opponent setting (hosted-bot UI/UX)", () => {
     expect(guestNickname("guest", "Ala", 1)).toBe("Ala");
     expect(guestNickname("guest", "Gracz 1", 1)).toBeUndefined();
     expect(guestNickname("guest", undefined, 1)).toBeUndefined();
+    expect(guestNickname("guest", null, 1)).toBeUndefined();
     expect(guestNickname("account", "Ala", 1)).toBeUndefined();
   });
 });
