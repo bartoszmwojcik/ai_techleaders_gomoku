@@ -28,6 +28,7 @@ import {
   sideWords,
   stonesOf,
 } from "@/lib/games/play";
+import { guestNickname } from "@/lib/games/opponent";
 import { FIRST_STONE, lastPaperMove, opponentPaperMove, PAPER_LABELS, paperColors, paperRules, refusalText } from "@/lib/games/paper";
 import type { GameView } from "@/server/http/game-view";
 
@@ -456,7 +457,7 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
         {finished &&
           (bot ? (
             // R13: no rematch with the bot, a new game at the same level instead.
-            <BotReplay level={bot.bot!.level} guest={guest} />
+            <BotReplay level={bot.bot!.level} guest={guest} nickname={guestNickname(game.you.kind, mine?.displayName, game.you.seat)} />
           ) : (
             // D06: no component for the actions after the end; the block is built from Alert and Button.
             <RematchPanel gameId={gameId} game={game} reopened={reopened ?? false} onState={onState} onRefresh={onRefresh} onAccepting={onAccepting} onGone={onGone} />

@@ -1,12 +1,13 @@
-import { ConflictError, NotFoundError, cellOf, coordsOf, rngFor } from "@gomoku/core";
+import { ConflictError, NotFoundError, ValidationError, cellOf, coordsOf } from "@gomoku/core";
 import type { EntityManager } from "@gomoku/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createMainThreadBotEngine, type BotEngine, type BotTurn } from "./bot-engine";
+import { inlineLevel1, type BotEngine, type BotTurn } from "./bot-engine";
 import { BotTurnService, botTurnsInFlight } from "./bot-turn-service";
 import type { GameMoveService } from "./game-move-service";
 
 const GAME = "game-1";
+const NOW = new Date("2026-11-06T10:00:00Z");
 const BOARD = "0".repeat(225);
 const withCell = (cell: number) => BOARD.slice(0, cell) + "1" + BOARD.slice(cell + 1);
 
@@ -24,18 +25,20 @@ const due = (extra: Record<string, unknown> = {}) => ({
   bot_level: 2,
   bot_memory_mb: 768,
   bot_depth_cap: 8,
+  remaining_ms: 590_000,
   ...extra,
 });
 
 function setup(options: { rows?: unknown[]; play?: () => Promise<unknown>; engine?: BotEngine } = {}) {
   const em = { execute: vi.fn(async () => options.rows ?? [due()]) };
   const play = vi.fn(options.play ?? (async () => ({})));
-  const choose = vi.fn<(turn: BotTurn) => number>(() => cellOf(8, 8));
+  const choose = vi.fn<(turn: BotTurn) => Promise<number>>(async () => cellOf(8, 8));
   const engine = options.engine ?? { choose };
   const service = new BotTurnService({
     em: em as unknown as EntityManager,
     gameMoveService: { play } as unknown as GameMoveService,
     botEngine: engine,
+    clock: { now: () => NOW },
   });
   return { service, em, play, choose };
 }
@@ -56,12 +59,20 @@ describe("BotTurnService.playDueMove (hosted-bot R1)", () => {
     const [sql, params] = em.execute.mock.calls[0] as unknown as [string, unknown[]];
     expect(sql).toContain("p.kind = 'bot'");
     expect(sql).not.toContain("for update");
-    expect(params).toEqual([GAME]);
+    expect(sql).toContain("remaining_ms");
+    expect(params).toEqual([NOW, GAME]);
     const [turn] = choose.mock.calls[0]!;
-    expect(turn).toMatchObject({ level: 2, depthCap: 8, memoryMb: 768, position: { moveCount: 1 } });
+    // R16: the seed depends on the game and the number of the bot's move only; R6: the clock left.
+    expect(turn).toMatchObject({
+      gameId: GAME,
+      moveNumber: 2,
+      level: 2,
+      depthCap: 8,
+      memoryMb: 768,
+      remainingClockMs: 590_000,
+      position: { moveCount: 1 },
+    });
     expect(turn.position.black[0]).toBeDefined();
-    // R16: the seed depends on the game and the number of the bot's move only.
-    expect(turn.rng()).toBe(rngFor(GAME, 2)());
     expect(play).toHaveBeenCalledWith({ playerId: "bot-seat" }, GAME, { x: 8, y: 8, moveNumber: 2 });
     expect(botTurnsInFlight().size).toBe(0);
   });
@@ -122,13 +133,28 @@ describe("BotTurnService.playDueMove (hosted-bot R1)", () => {
     const { service } = setup({ play: async () => Promise.reject(new NotFoundError("gone")) });
     await expect(service.playDueMove(GAME)).resolves.toBe("failed");
     const [line] = error.mock.calls[0]! as [string];
-    expect(JSON.parse(line)).toEqual({ event: "bot.turn_failed", ts: expect.any(String), gameId: GAME, error: "NotFoundError" });
+    expect(JSON.parse(line)).toEqual({ event: "bot.turn_failed", ts: expect.any(String), gameId: GAME, error: "NotFoundError", code: "NOT_FOUND" });
     expect(line).not.toMatch(/stones|0000/);
     expect(botTurnsInFlight().size).toBe(0);
   });
 
+  it("logs a plain error without a code, and a refused cell with its code", async () => {
+    const plain = setup({ play: async () => Promise.reject(new Error("db down")) });
+    await expect(plain.service.playDueMove(GAME)).resolves.toBe("failed");
+    expect(JSON.parse(error.mock.calls[0]![0] as string)).not.toHaveProperty("code");
+    const occupied = setup({ play: async () => Promise.reject(new ValidationError("taken", { code: "CELL_OCCUPIED" })) });
+    await expect(occupied.service.playDueMove(GAME)).resolves.toBe("failed");
+    expect(JSON.parse(error.mock.calls[1]![0] as string)).toMatchObject({ code: "CELL_OCCUPIED" });
+  });
+
+  it("gives the engine no time when the clock reads nothing", async () => {
+    const { service, choose } = setup({ rows: [due({ remaining_ms: null })] });
+    await service.playDueMove(GAME);
+    expect(choose.mock.calls[0]![0].remainingClockMs).toBe(0);
+  });
+
   it("recovers after an interrupted computation: the next read plays the same move (R1, R16)", async () => {
-    const engine = createMainThreadBotEngine();
+    const engine: BotEngine = { choose: async (turn) => inlineLevel1(turn) };
     const crashed = setup({ engine, rows: [due({ bot_level: 1, bot_memory_mb: null, bot_depth_cap: null })], play: async () => Promise.reject(new Error("restart")) });
     await expect(crashed.service.playDueMove(GAME)).resolves.toBe("failed");
 

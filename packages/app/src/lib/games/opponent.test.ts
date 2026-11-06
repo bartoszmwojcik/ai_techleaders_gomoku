@@ -4,7 +4,9 @@ import {
   BOT_LEVEL_OPTIONS,
   DEFAULT_OPPONENT,
   OPPONENT_OPTIONS,
+  BOT_UNAVAILABLE_TEXT,
   botLevelOf,
+  guestNickname,
   opponentBody,
   opponentOf,
   playsBot,
@@ -37,5 +39,16 @@ describe("opponent setting (hosted-bot UI/UX)", () => {
     expect(botLevelOf("2")).toBe(2);
     expect(botLevelOf("1")).toBe(1);
     expect(botLevelOf("x")).toBe(1);
+  });
+
+  it("shares the refusal text with the server", () => {
+    expect(BOT_UNAVAILABLE_TEXT).toBe("Bot jest teraz niedostępny. Spróbuj za chwilę albo zaproś osobę.");
+  });
+
+  it("keeps only a guest's own nickname for the next game with the bot", () => {
+    expect(guestNickname("guest", "Ala", 1)).toBe("Ala");
+    expect(guestNickname("guest", "Gracz 1", 1)).toBeUndefined();
+    expect(guestNickname("guest", undefined, 1)).toBeUndefined();
+    expect(guestNickname("account", "Ala", 1)).toBeUndefined();
   });
 });

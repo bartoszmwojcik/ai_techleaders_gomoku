@@ -18,6 +18,8 @@ type Props = {
   level: BotLevel;
   /** A guest sends the acknowledgement again: the warning about the browser stays on the game page. */
   guest: boolean;
+  /** A guest's own nickname, kept in the new game; absent for an account or a guest with the default name. */
+  nickname?: string;
 };
 
 type Problem =
@@ -31,7 +33,7 @@ type Problem =
  * new game at the same level, which may be refused like any create (the bot is off, a game is held,
  * the limit). The new game reads the resources afresh (BR-57), so its strength may differ.
  */
-export function BotReplay({ level, guest }: Props) {
+export function BotReplay({ level, guest, nickname }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
@@ -44,7 +46,11 @@ export function BotReplay({ level, guest }: Props) {
     setBusy(true);
     setProblem(null);
     const result = await apiCall<{ gameId: string }>("/api/games", {
-      body: { ...(guest ? { acknowledgedGuestWarning: true } : {}), opponent: "bot", botLevel: level },
+      body: {
+        ...(guest ? { acknowledgedGuestWarning: true, ...(nickname === undefined ? {} : { nickname }) } : {}),
+        opponent: "bot",
+        botLevel: level,
+      },
     });
     if (result.ok) {
       // Stay busy while the page navigates, so a second game cannot be created.

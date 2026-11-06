@@ -1,6 +1,5 @@
 import {
   botDisplayName,
-  botTierOf,
   CREATE_GAME_LIMIT,
   CREATE_GAME_WINDOW_MS,
   ConflictError,
@@ -30,11 +29,11 @@ import {
   agentMcpUrl,
   invitationUrl,
   type BotLevel,
+  type BotStrength,
   type GameStatus,
   type OpponentChoice,
   type ParticipantKind,
   type Seat,
-  ServiceUnavailableError,
 } from "@gomoku/core";
 import {
   Game,
@@ -47,6 +46,7 @@ import {
 
 import type { ServerConfig } from "../../config";
 import type { Clock } from "../email/email-sender";
+import type { BotAdmission } from "./bot-admission";
 import type { ColorDraw } from "./color-draw";
 import type { RateLimiter } from "../rate-limit/rate-limiter";
 import { readAudience, type Audience } from "./audience";
@@ -72,6 +72,7 @@ type Deps = {
   timeoutSettler: TimeoutSettler;
   serverConfig: ServerConfig;
   colorDraw: ColorDraw;
+  botAdmission: BotAdmission;
 };
 
 /** Name of the partial unique index behind BR-13 (see the `games` migration). */
@@ -86,15 +87,6 @@ export const GAME_NOT_CANCELLABLE_MESSAGE =
 export const OWN_WAITING_GAME_MESSAGE =
   "Masz oczekującą partię. Anuluj ją, aby utworzyć nową.";
 const SESSION_REQUIRED_MESSAGE = "Zaloguj się, aby kontynuować.";
-export const BOT_UNAVAILABLE_MESSAGE = "Bot jest teraz niedostępny. Spróbuj za chwilę albo zaproś osobę.";
-/** How long a refused player should wait before asking for the bot again (`Retry-After`). */
-export const BOT_RETRY_AFTER_SECONDS = 60;
-
-/**
- * The memory the strength of level 2 is chosen from (R7, R10). Until E13-S04 reads it from a resource
- * probe, every game gets this fixed value: the 768 MB tier, a 16 MB table and depth 8.
- */
-export const BOT_FIXED_MEMORY_MB = 768;
 export const GAME_NOT_FOUND_MESSAGE = "Nie znaleziono partii.";
 
 function activeGameExists(gameId: string): ConflictError {
@@ -202,7 +194,7 @@ export type CreatedGame =
 export type InvitedGame = Extract<CreatedGame, { invitation: unknown }>;
 
 /** The bot's seat as created (R2, R7): level 2 carries the memory and the depth limit it was given. */
-type BotSeat = { level: BotLevel; memoryMb: number | null; depthCap: number | null };
+type BotSeat = BotStrength;
 
 /** What a new game is made of: an invitation for a person, the bot's seat for the bot. */
 type Draft = { isPublic: boolean; settings: GameSettings } & (
@@ -440,6 +432,7 @@ export class GameService {
   readonly #timeoutSettler: TimeoutSettler;
   readonly #serverConfig: ServerConfig;
   readonly #colorDraw: ColorDraw;
+  readonly #botAdmission: BotAdmission;
 
   constructor({
     em,
@@ -449,7 +442,9 @@ export class GameService {
     timeoutSettler,
     serverConfig,
     colorDraw,
+    botAdmission,
   }: Deps) {
+    this.#botAdmission = botAdmission;
     this.#colorDraw = colorDraw;
     this.#em = em;
     this.#clock = clock;
@@ -470,7 +465,9 @@ export class GameService {
    * `OWN_WAITING_GAME` (`data.gameId`) unless `cancelOwnWaitingGame` is set.
    */
   async create(creator: GameCreator): Promise<CreatedGame> {
-    const bot = creator.opponent?.kind === "bot" ? this.#admitBot(creator.opponent.level) : null;
+    // A game with the bot is admitted before anything is written or counted (R7, R8, R19): the memory
+    // read here is frozen in the bot's seat (BR-57).
+    const bot = creator.opponent?.kind === "bot" ? await this.#botAdmission.admit(creator.opponent.level) : null;
     if (creator.kind === "guest") return this.#createForGuest(creator, bot);
     const { userId } = creator;
     await this.#rateLimiter.hit(
@@ -571,22 +568,6 @@ export class GameService {
     );
     if ("refusal" in outcome) throw outcome.refusal;
     return this.#created(outcome.gameId, draft);
-  }
-
-  /**
-   * A game with the bot (spec 2026-11-05-hosted-bot) is admitted before anything is written or counted:
-   * while `BOT_ENABLED` is off it is refused. Level 2 gets its strength frozen here (BR-57).
-   * @throws AppError 503 `BOT_UNAVAILABLE` with `Retry-After`
-   */
-  #admitBot(level: BotLevel): BotSeat {
-    if (!this.#serverConfig.botEnabled) {
-      throw new ServiceUnavailableError(BOT_UNAVAILABLE_MESSAGE, {
-        code: "BOT_UNAVAILABLE",
-        retryAfterSeconds: BOT_RETRY_AFTER_SECONDS,
-      });
-    }
-    if (level === 1) return { level, memoryMb: null, depthCap: null };
-    return { level, memoryMb: BOT_FIXED_MEMORY_MB, depthCap: botTierOf(BOT_FIXED_MEMORY_MB)!.depthCap };
   }
 
   #draft(now: Date, isPublic = false, settings?: GameSettings, bot: BotSeat | null = null): Draft {

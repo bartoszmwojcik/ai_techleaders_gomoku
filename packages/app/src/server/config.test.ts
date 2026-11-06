@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseBotEnabled, readAdminEmail, readServerConfig } from "./config";
+import { parseBotEnabled, readAdminEmail, readBotConfig, readServerConfig } from "./config";
 
 const MCP_DEFAULTS = { requestLimit: 300, joinLimit: 10, lookupLimit: 20, lookupGlobalLimit: 300, tokenLimit: 60, chatLimit: 30 };
 
@@ -8,6 +8,12 @@ const CHAT_DEFAULTS = {
   human: { maxLength: 200, minIntervalMs: 2000 },
   agent: { maxLength: 200, minIntervalMs: 2000 },
   maxMessagesPerGame: 500,
+};
+
+const BOT_DEFAULTS = {
+  maxActiveGames: 3,
+  minAvailableMb: 256,
+  limits: { 1: { softMs: 50, ceilingMs: 250 }, 2: { softMs: 1500, ceilingMs: 3000 } },
 };
 
 const production = {
@@ -31,6 +37,62 @@ describe("BOT_ENABLED (hosted-bot R19)", () => {
   });
 });
 
+describe("BOT_* resource policy (hosted-bot R6-R8, R10)", () => {
+  it("takes the starting values of the spec when unset or empty", () => {
+    expect(readBotConfig({})).toEqual(BOT_DEFAULTS);
+    expect(
+      readBotConfig({
+        BOT_MAX_ACTIVE_GAMES: "",
+        BOT_MIN_AVAILABLE_MB: "",
+        BOT_FIXED_MEMORY_MB: "",
+        BOT_L1_SOFT_MS: "",
+        BOT_L1_CEILING_MS: "",
+        BOT_L2_SOFT_MS: "",
+        BOT_L2_CEILING_MS: "",
+      }),
+    ).toEqual(BOT_DEFAULTS);
+  });
+
+  it("reads every variable", () => {
+    expect(
+      readBotConfig({
+        BOT_MAX_ACTIVE_GAMES: "5",
+        BOT_MIN_AVAILABLE_MB: "512",
+        BOT_FIXED_MEMORY_MB: "768",
+        BOT_L1_SOFT_MS: "20",
+        BOT_L1_CEILING_MS: "100",
+        BOT_L2_SOFT_MS: "1000",
+        BOT_L2_CEILING_MS: "2000",
+      }),
+    ).toEqual({
+      maxActiveGames: 5,
+      minAvailableMb: 512,
+      fixedMemoryMb: 768,
+      limits: { 1: { softMs: 20, ceilingMs: 100 }, 2: { softMs: 1000, ceilingMs: 2000 } },
+    });
+  });
+
+  it("raises an unset ceiling to a soft target set above it", () => {
+    expect(readBotConfig({ BOT_L2_SOFT_MS: "4000" }).limits[2]).toEqual({ softMs: 4000, ceilingMs: 4000 });
+  });
+
+  it.each([
+    [{ BOT_MAX_ACTIVE_GAMES: "0" }, "BOT_MAX_ACTIVE_GAMES must be an integer from 1 to 1000."],
+    [{ BOT_MIN_AVAILABLE_MB: "255" }, "BOT_MIN_AVAILABLE_MB must be an integer from 256 to 32767."],
+    [{ BOT_FIXED_MEMORY_MB: "0" }, "BOT_FIXED_MEMORY_MB must be an integer from 1 to 1000000."],
+    [{ BOT_FIXED_MEMORY_MB: "lots" }, "BOT_FIXED_MEMORY_MB must be an integer from 1 to 1000000."],
+    [{ BOT_L1_SOFT_MS: "0" }, "BOT_L1_SOFT_MS must be an integer from 1 to 60000."],
+    [{ BOT_L2_CEILING_MS: "60001" }, "BOT_L2_CEILING_MS must be an integer from 1 to 60000."],
+    [{ BOT_L2_SOFT_MS: "2000", BOT_L2_CEILING_MS: "1000" }, "BOT_L2_CEILING_MS must not be lower than BOT_L2_SOFT_MS."],
+  ])("refuses %o", (env, message) => {
+    expect(() => readBotConfig(env)).toThrow(message);
+  });
+
+  it("is part of the server config", () => {
+    expect(readServerConfig({ BOT_MAX_ACTIVE_GAMES: "2" }).bot.maxActiveGames).toBe(2);
+  });
+});
+
 describe("readServerConfig", () => {
   it("uses defaults outside production", () => {
     expect(readServerConfig({})).toEqual({
@@ -47,6 +109,7 @@ describe("readServerConfig", () => {
       mcp: MCP_DEFAULTS,
       chat: CHAT_DEFAULTS,
       botEnabled: false,
+      bot: BOT_DEFAULTS,
     });
     expect(
       readServerConfig({
@@ -78,6 +141,7 @@ describe("readServerConfig", () => {
       mcp: MCP_DEFAULTS,
       chat: CHAT_DEFAULTS,
       botEnabled: false,
+      bot: BOT_DEFAULTS,
     });
   });
 
@@ -106,6 +170,7 @@ describe("readServerConfig", () => {
       mcp: MCP_DEFAULTS,
       chat: CHAT_DEFAULTS,
       botEnabled: false,
+      bot: BOT_DEFAULTS,
     });
     for (const bad of ["3", "32", "abc", "12.5", "-4", "004", "1e1"]) {
       expect(() => readServerConfig({ PASSWORD_HASH_COST: bad })).toThrow(

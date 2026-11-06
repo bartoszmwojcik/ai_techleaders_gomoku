@@ -20,4 +20,5 @@ export {
   type CleanupResult,
 } from "./cleanup/cleanup-expired";
 export { LONGEST_RATE_LIMIT_WINDOW_MS } from "./cleanup/rules";
+export { gameDeadlineSql } from "./games/game-deadline-sql";
 export { readFinishedGameStats } from "./stats/read-finished-game-stats";

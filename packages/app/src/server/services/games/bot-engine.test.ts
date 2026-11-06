@@ -1,82 +1,229 @@
-import { BOARD_CELLS, cellOf, createBitboard, withStone, type ChooseMoveInput, type MoveChoice } from "@gomoku/core";
-import { describe, expect, it, vi } from "vitest";
+import { EventEmitter } from "node:events";
 
-import { createMainThreadBotEngine, firstFreeCell, MAIN_THREAD_BUDGET, type BotTurn } from "./bot-engine";
+import { BOARD_CELLS, DEFAULT_BOT_TIME_LIMITS, cellOf, createBitboard, withStone, type MoveChoice } from "@gomoku/core";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import {
+  BOT_FAILURE_GAMES,
+  BOT_MAX_FAILURES,
+  botFailures,
+  createWorkerBotEngine,
+  firstFreeCell,
+  inlineLevel1,
+  type BotTurn,
+  type BotWorkerHandle,
+} from "./bot-engine";
+import type { BotJob, BotWorkerMessage } from "./bot-worker";
+import { ComputeGate } from "./compute-gate";
 
 const CENTER = cellOf(7, 7);
-const choice = (cell: number): MoveChoice => ({ cell, depth: 1, nodes: 1, score: 0, reason: "search", stoppedBy: "completed" });
+const position = { black: withStone(createBitboard(), CENTER), white: createBitboard(), moveCount: 1 };
 
-function turn(extra: Partial<BotTurn> = {}): BotTurn {
-  const black = withStone(createBitboard(), CENTER);
+const turn = (extra: Partial<BotTurn> = {}): BotTurn => ({
+  gameId: "game-1",
+  moveNumber: 2,
+  position,
+  level: 2,
+  depthCap: 8,
+  memoryMb: 768,
+  remainingClockMs: 600_000,
+  ...extra,
+});
+
+const choice = (cell: number, depth = 3): MoveChoice => ({ cell, depth, nodes: 10, score: 0, reason: "search", stoppedBy: "completed" });
+
+class FakeWorker extends EventEmitter implements BotWorkerHandle {
+  terminate = vi.fn(async () => 1);
+  send(message: BotWorkerMessage) {
+    this.emit("message", message);
+  }
+}
+
+function setup({ spawnError, terminateError }: { spawnError?: Error; terminateError?: boolean } = {}) {
+  const workers: FakeWorker[] = [];
+  const jobs: BotJob[] = [];
+  const spawn = vi.fn((job: BotJob) => {
+    if (spawnError) throw spawnError;
+    const worker = new FakeWorker();
+    if (terminateError) worker.terminate.mockRejectedValue(new Error("gone"));
+    workers.push(worker);
+    jobs.push(job);
+    return worker;
+  });
+  const logger = { warn: vi.fn(), error: vi.fn() };
+  let clock = 0;
+  const engine = createWorkerBotEngine({
+    limits: DEFAULT_BOT_TIME_LIMITS,
+    spawn,
+    gate: new ComputeGate(),
+    now: () => clock,
+    logger,
+  });
   return {
-    position: { black, white: createBitboard(), moveCount: 1 },
-    level: 2,
-    depthCap: 8,
-    memoryMb: 768,
-    rng: () => 0.5,
-    ...extra,
+    engine,
+    spawn,
+    workers,
+    jobs,
+    logger,
+    tick: (ms: number) => {
+      clock += ms;
+    },
   };
 }
 
-describe("createMainThreadBotEngine (E13-S02)", () => {
-  it("asks the engine with the fixed budget, the depth cap and the table of the memory tier", () => {
-    const choose = vi.fn<(input: ChooseMoveInput) => MoveChoice>(() => choice(5));
-    const now = () => 42;
-    const engine = createMainThreadBotEngine({ choose, now });
+/** Lets the gate start the task: microtasks only, so the fake timers do not move (unlike `vi.waitFor`). */
+async function started() {
+  for (let turn = 0; turn < 10; turn++) await Promise.resolve();
+}
 
-    expect(engine.choose(turn())).toBe(5);
+beforeEach(() => {
+  vi.useFakeTimers();
+  botFailures().clear();
+});
+afterEach(() => vi.useRealTimers());
 
-    const [input] = choose.mock.calls[0]!;
-    expect(input).toMatchObject({ level: 2, now, budget: { ...MAIN_THREAD_BUDGET, maxDepth: 8, ttBytes: 16 * 1024 * 1024 } });
-    expect(input.rng()).toBe(0.5);
-  });
-
-  it("gives a seat without parameters the smallest tier", () => {
-    const choose = vi.fn<(input: ChooseMoveInput) => MoveChoice>(() => choice(5));
-    createMainThreadBotEngine({ choose }).choose(turn({ level: 1, depthCap: null, memoryMb: null }));
-    expect(choose.mock.calls[0]![0].budget).toMatchObject({ maxDepth: 6, ttBytes: 8 * 1024 * 1024 });
-    createMainThreadBotEngine({ choose }).choose(turn({ memoryMb: 100 }));
-    expect(choose.mock.calls[1]![0].budget.ttBytes).toBe(8 * 1024 * 1024);
-  });
-
-  it("falls back to level 1 when the search throws, and to the first free cell when that throws too", () => {
-    const onlyLevel1 = vi.fn((input: ChooseMoveInput) => {
-      if (input.level === 2) throw new Error("boom");
-      return choice(9);
+describe("createWorkerBotEngine (hosted-bot R5, R6)", () => {
+  it("sends the job to a thread with the budget of the frozen strength and plays its move", async () => {
+    const { engine, workers, jobs, spawn } = setup();
+    const move = engine.choose(turn());
+    await vi.waitFor(() => expect(spawn).toHaveBeenCalledOnce());
+    expect(jobs[0]).toMatchObject({
+      kind: "gomoku-bot-job",
+      gameId: "game-1",
+      moveNumber: 2,
+      level: 2,
+      budget: { softMs: 1500, ceilingMs: 3000, maxDepth: 8, ttBytes: 16 * 1024 * 1024 },
     });
-    expect(createMainThreadBotEngine({ choose: onlyLevel1 }).choose(turn())).toBe(9);
-    expect(onlyLevel1.mock.calls.map(([input]) => input.level)).toEqual([2, 1]);
-
-    const broken = () => {
-      throw new Error("boom");
-    };
-    expect(createMainThreadBotEngine({ choose: broken }).choose(turn())).toBe(0);
+    expect(jobs[0]!.stop.byteLength).toBe(4);
+    workers[0]!.send({ type: "iteration", choice: choice(10) });
+    workers[0]!.send({ type: "done", choice: choice(20) });
+    await expect(move).resolves.toBe(20);
+    expect(workers[0]!.terminate).toHaveBeenCalledOnce();
+    // Events after the move are ignored (the thread's exit after terminate()).
+    workers[0]!.emit("exit", 1);
+    workers[0]!.emit("error", new Error("late"));
+    expect(botFailures().size).toBe(0);
   });
 
-  it("plays a legal move with the real engine on the main thread, by default, within the fixed budget", () => {
-    const engine = createMainThreadBotEngine();
-    // Black in the centre and next to it, white beside: past the opening book, so level 2 searches.
-    const black = withStone(withStone(createBitboard(), CENTER), cellOf(8, 7));
-    const white = withStone(createBitboard(), cellOf(7, 8));
-    const taken = [CENTER, cellOf(8, 7), cellOf(7, 8)];
-    for (const level of [1, 2] as const) {
-      const started = performance.now();
-      const cell = engine.choose(turn({ level, position: { black, white, moveCount: 3 } }));
-      expect(performance.now() - started).toBeLessThan(MAIN_THREAD_BUDGET.ceilingMs + 1000);
-      expect(taken).not.toContain(cell);
-      expect(cell).toBeGreaterThanOrEqual(0);
-      expect(cell).toBeLessThan(BOARD_CELLS);
-    }
+  it("raises the stop flag at the soft target and kills the thread at the ceiling, playing the last iteration", async () => {
+    const { engine, workers, jobs, logger } = setup();
+    const move = engine.choose(turn());
+    await started();
+    expect(workers).toHaveLength(1);
+    const flag = new Int32Array(jobs[0]!.stop);
+    workers[0]!.send({ type: "iteration", choice: choice(30, 5) });
+    vi.advanceTimersByTime(1499);
+    expect(Atomics.load(flag, 0)).toBe(0);
+    vi.advanceTimersByTime(1);
+    expect(Atomics.load(flag, 0)).toBe(1);
+    vi.advanceTimersByTime(1500);
+    await expect(move).resolves.toBe(30);
+    expect(workers[0]!.terminate).toHaveBeenCalledOnce();
+    expect(JSON.parse(logger.warn.mock.calls[0]![0] as string)).toMatchObject({
+      event: "bot_ceiling",
+      gameId: "game-1",
+      moveNumber: 2,
+      level: 2,
+      ceilingMs: 3000,
+      depth: 5,
+    });
+  });
+
+  it("plays level 1 inline at the ceiling when no iteration completed", async () => {
+    const { engine, logger } = setup({ terminateError: true });
+    const move = engine.choose(turn());
+    await started();
+    vi.advanceTimersByTime(3000);
+    await expect(move).resolves.toBe(inlineLevel1(turn()));
+    expect(JSON.parse(logger.warn.mock.calls[0]![0] as string)).toMatchObject({ depth: null });
+  });
+
+  it("cuts the budget by the clock, including the time spent waiting for the gate (R6)", async () => {
+    const { engine, jobs, tick, workers } = setup();
+    const first = engine.choose(turn({ gameId: "a" }));
+    const second = engine.choose(turn({ gameId: "b", remainingClockMs: 31_000 }));
+    await vi.waitFor(() => expect(workers).toHaveLength(1));
+    tick(1000);
+    workers[0]!.send({ type: "done", choice: choice(1) });
+    await first;
+    await vi.waitFor(() => expect(workers).toHaveLength(2));
+    expect(jobs[1]!.budget).toMatchObject({ softMs: 1000, ceilingMs: 3000 });
+    workers[1]!.send({ type: "done", choice: choice(2) });
+    await expect(second).resolves.toBe(2);
+  });
+
+  it("asks a level-1 search of the thread when the clock is under a second", async () => {
+    const { engine, jobs, workers } = setup();
+    const move = engine.choose(turn({ remainingClockMs: 900 }));
+    await vi.waitFor(() => expect(workers).toHaveLength(1));
+    expect(jobs[0]).toMatchObject({ level: 1, budget: { softMs: 30, ceilingMs: 90 } });
+    workers[0]!.send({ type: "done", choice: choice(5) });
+    await expect(move).resolves.toBe(5);
+  });
+
+  it.each([
+    ["an error in the thread", (worker: FakeWorker) => worker.emit("error", new RangeError("heap"))],
+    ["an exit without a move", (worker: FakeWorker) => worker.emit("exit", 1)],
+  ])("falls back after %s and logs it without the position", async (_name, crash) => {
+    const { engine, workers, logger } = setup();
+    const move = engine.choose(turn());
+    await vi.waitFor(() => expect(workers).toHaveLength(1));
+    crash(workers[0]!);
+    await expect(move).resolves.toBe(inlineLevel1(turn()));
+    const line = logger.error.mock.calls[0]![0] as string;
+    expect(JSON.parse(line)).toMatchObject({ event: "bot_engine_error", gameId: "game-1", failures: 1 });
+    expect(line).not.toMatch(/black|white|position/);
+    expect(botFailures().get("game-1")).toBe(1);
+  });
+
+  it("keeps the last completed iteration when the thread dies after it", async () => {
+    const { engine, workers } = setup();
+    const move = engine.choose(turn());
+    await vi.waitFor(() => expect(workers).toHaveLength(1));
+    workers[0]!.send({ type: "iteration", choice: choice(44) });
+    workers[0]!.emit("error", new Error("boom"));
+    await expect(move).resolves.toBe(44);
+  });
+
+  it("falls back when the thread cannot even start", async () => {
+    const { engine, logger } = setup({ spawnError: new Error("no threads") });
+    await expect(engine.choose(turn())).resolves.toBe(inlineLevel1(turn()));
+    expect(JSON.parse(logger.error.mock.calls[0]![0] as string)).toMatchObject({ message: "no threads" });
+  });
+
+  it("plays level 1 inline to the end of a game after repeated failures", async () => {
+    const { engine, spawn } = setup({ spawnError: new Error("no threads") });
+    for (let failure = 0; failure < BOT_MAX_FAILURES; failure++) await engine.choose(turn());
+    expect(spawn).toHaveBeenCalledTimes(BOT_MAX_FAILURES);
+    await expect(engine.choose(turn())).resolves.toBe(inlineLevel1(turn()));
+    expect(spawn).toHaveBeenCalledTimes(BOT_MAX_FAILURES);
+  });
+
+  it("remembers the failures of a bounded number of games", async () => {
+    const { engine } = setup({ spawnError: new Error("no threads") });
+    for (let game = 0; game < BOT_FAILURE_GAMES; game++) botFailures().set(`old-${game}`, 1);
+    await engine.choose(turn());
+    expect(botFailures().size).toBe(BOT_FAILURE_GAMES);
+    expect(botFailures().has("old-0")).toBe(false);
+    expect(botFailures().get("game-1")).toBe(1);
+  });
+
+  it("uses the process-wide gate, the real clock and the console by default", () => {
+    expect(typeof createWorkerBotEngine({ limits: DEFAULT_BOT_TIME_LIMITS }).choose).toBe("function");
+    expect(botFailures()).toBe((globalThis as { __gomokuBotFailures?: unknown }).__gomokuBotFailures);
   });
 });
 
-describe("firstFreeCell", () => {
-  it("skips the stones of both colours and finds nothing on a full board", () => {
-    const black = withStone(createBitboard(), 0);
-    const white = withStone(createBitboard(), 1);
-    expect(firstFreeCell({ black, white, moveCount: 2 })).toBe(2);
-    let full = createBitboard();
-    for (let cell = 0; cell < BOARD_CELLS; cell++) full = withStone(full, cell);
-    expect(firstFreeCell({ black: full, white: createBitboard(), moveCount: BOARD_CELLS })).toBe(-1);
+describe("inlineLevel1 and firstFreeCell", () => {
+  it("answers a level-1 move next to the stones", () => {
+    const cell = inlineLevel1(turn());
+    expect(cell).not.toBe(CENTER);
+    expect(Math.abs((cell % 15) - 7)).toBeLessThanOrEqual(2);
+  });
+
+  it("falls back to the first free cell when the engine throws, and -1 on a full board", () => {
+    const full = { black: createBitboard().fill(0xff), white: createBitboard(), moveCount: BOARD_CELLS };
+    expect(inlineLevel1({ gameId: "g", moveNumber: 1, position: full })).toBe(-1);
+    expect(firstFreeCell(position)).toBe(0);
   });
 });

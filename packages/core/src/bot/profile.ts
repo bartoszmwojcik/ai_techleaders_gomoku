@@ -37,3 +37,6 @@ export function botDisplayName(level: BotLevel, memoryMb: number | null): string
   const tier = level === 2 && memoryMb !== null ? botTierOf(memoryMb) : null;
   return tier ? `${name} · ${tier.ttMb} MB` : name;
 }
+
+/** What a refused player reads (`503 BOT_UNAVAILABLE`): the server's error and the client's alert share it. */
+export const BOT_UNAVAILABLE_MESSAGE = "Bot jest teraz niedostępny. Spróbuj za chwilę albo zaproś osobę.";

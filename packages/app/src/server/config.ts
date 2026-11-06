@@ -11,6 +11,11 @@ import {
   MCP_JOIN_LIMIT,
   MCP_REQUEST_LIMIT,
   MCP_TOKEN_LIMIT,
+  BOT_MEMORY_MB_MAX,
+  BOT_MIN_MEMORY_MB,
+  DEFAULT_BOT_TIME_LIMITS,
+  type BotLevel,
+  type BotTimeLimits,
 } from "@gomoku/core";
 
 export const CLIENT_IP_HEADERS = [
@@ -44,6 +49,22 @@ export type ChatConfig = {
   maxMessagesPerGame: number;
 };
 
+/** Resource policy of the bot (spec 2026-11-05-hosted-bot R6-R8, R10); see `BOT_*` in `.env.example`. */
+export type BotConfig = {
+  /** Games with the bot in progress at once; one more is refused with `503 BOT_UNAVAILABLE` (R8). */
+  maxActiveGames: number;
+  /** Below this much available memory no game with the bot starts (R7); never under the lowest tier. */
+  minAvailableMb: number;
+  /** Replaces the memory reading (tests, an operator on a host that reports it wrong, R10). */
+  fixedMemoryMb?: number;
+  /** The soft target and the ceiling of one move per level (R6). */
+  limits: Record<BotLevel, BotTimeLimits>;
+};
+
+export const DEFAULT_BOT_MAX_ACTIVE_GAMES = 3;
+/** The longest ceiling of one move an operator may set: a minute is already far beyond any use. */
+export const BOT_MAX_CEILING_MS = 60_000;
+
 export type ServerConfig = {
   production: boolean;
   /** Number of our own proxies in front of the app (>= 1); unset only outside production. */
@@ -76,6 +97,7 @@ export type ServerConfig = {
    * off refuses new games with the bot (`503 BOT_UNAVAILABLE`) and lets the running ones finish.
    */
   botEnabled: boolean;
+  bot: BotConfig;
 };
 
 export const EMAIL_TRANSPORTS = ["file", "brevo"] as const;
@@ -176,6 +198,40 @@ export function parseBotEnabled(raw: string | undefined): boolean {
   if (raw === undefined || raw === "" || raw === "false") return false;
   if (raw === "true") return true;
   throw new Error("BOT_ENABLED must be true or false (or unset).");
+}
+
+function readBotLimits(env: Record<string, string | undefined>, level: BotLevel): BotTimeLimits {
+  const prefix = `BOT_L${level}_`;
+  const defaults = DEFAULT_BOT_TIME_LIMITS[level];
+  const softMs = parseIntInRange(`${prefix}SOFT_MS`, env[`${prefix}SOFT_MS`], defaults.softMs, 1, BOT_MAX_CEILING_MS);
+  const ceilingMs = parseIntInRange(
+    `${prefix}CEILING_MS`,
+    env[`${prefix}CEILING_MS`],
+    Math.max(defaults.ceilingMs, softMs),
+    1,
+    BOT_MAX_CEILING_MS,
+  );
+  if (ceilingMs < softMs) throw new Error(`${prefix}CEILING_MS must not be lower than ${prefix}SOFT_MS.`);
+  return { softMs, ceilingMs };
+}
+
+/** `BOT_*` (hosted-bot R6-R8, R10): empty or unset means the starting values of the spec. */
+export function readBotConfig(env: Record<string, string | undefined>): BotConfig {
+  const fixed = env.BOT_FIXED_MEMORY_MB;
+  return {
+    maxActiveGames: parseIntInRange("BOT_MAX_ACTIVE_GAMES", env.BOT_MAX_ACTIVE_GAMES, DEFAULT_BOT_MAX_ACTIVE_GAMES, 1, 1000),
+    minAvailableMb: parseIntInRange(
+      "BOT_MIN_AVAILABLE_MB",
+      env.BOT_MIN_AVAILABLE_MB,
+      BOT_MIN_MEMORY_MB,
+      BOT_MIN_MEMORY_MB,
+      BOT_MEMORY_MB_MAX,
+    ),
+    ...(fixed !== undefined && fixed !== "" && {
+      fixedMemoryMb: parseIntInRange("BOT_FIXED_MEMORY_MB", fixed, 0, 1, 1_000_000),
+    }),
+    limits: { 1: readBotLimits(env, 1), 2: readBotLimits(env, 2) },
+  };
 }
 
 function readChatConfig(env: Record<string, string | undefined>): ChatConfig {
@@ -311,5 +367,6 @@ export function readServerConfig(
     },
     chat: readChatConfig(env),
     botEnabled: parseBotEnabled(env.BOT_ENABLED),
+    bot: readBotConfig(env),
   };
 }
