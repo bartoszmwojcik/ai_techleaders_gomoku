@@ -37,6 +37,15 @@ describe("BotReplay (hosted-bot R13)", () => {
     expect(apiCall).toHaveBeenCalledWith("/api/games", { body: { acknowledgedGuestWarning: true, opponent: "bot", botLevel: 1 } });
   });
 
+  it("keeps the guest's nickname in the new game", async () => {
+    apiCall.mockResolvedValue({ ok: true, data: { gameId: "g2" } });
+    render(<BotReplay level={1} guest nickname="Ala" />);
+    await userEvent.setup().click(button());
+    expect(apiCall).toHaveBeenCalledWith("/api/games", {
+      body: { acknowledgedGuestWarning: true, nickname: "Ala", opponent: "bot", botLevel: 1 },
+    });
+  });
+
   it("sends one request on a double click", async () => {
     let finish!: (value: unknown) => void;
     apiCall.mockReturnValue(new Promise((resolve) => (finish = resolve)));

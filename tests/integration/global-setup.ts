@@ -120,6 +120,11 @@ export default async function setup(project: TestProject) {
         EMAIL_OUTBOX_PATH: EMAIL_OUTBOX,
         // Games against the bot (hosted-bot R19): off by default, on here so its scenarios run.
         BOT_ENABLED: "true",
+        // The strength of level 2 frozen from a fixed reading (R10): 768 MB is the 16 MB / depth 8 tier on
+        // any machine. The limit of games with the bot is lifted: every file creates its own (the limit's
+        // SQL is checked in game-bot-worker.test.ts against this database).
+        BOT_FIXED_MEMORY_MB: "768",
+        BOT_MAX_ACTIVE_GAMES: "1000",
       },
       detached: true,
       stdio: ["ignore", "pipe", "pipe"],

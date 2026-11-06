@@ -20,6 +20,7 @@ vi.mock("@gomoku/db", () => ({
   PasswordResetToken,
   EmailChangeToken,
   GamePlayer,
+  gameDeadlineSql: () => "now()",
 }));
 
 const globalForOrm = globalThis as typeof globalThis & {
@@ -102,6 +103,7 @@ describe("getContainer", () => {
       PasswordResetToken,
       EmailChangeToken,
       GamePlayer,
+      gameDeadlineSql: () => "now()",
     }));
     const { getContainer: forRoutes } = await loadContainer();
     vi.doMock("@gomoku/db", () => ({
@@ -110,6 +112,7 @@ describe("getContainer", () => {
       PasswordResetToken,
       EmailChangeToken,
       GamePlayer,
+      gameDeadlineSql: () => "now()",
     }));
 
     expect((await forRoutes()).cradle.orm).toBe(routeOrm);
@@ -164,6 +167,8 @@ describe("auth services", () => {
       expect(cradle.colorDraw).toBe(cradle.colorDraw);
       expect(cradle.botTurnService).toBe(cradle.botTurnService);
       expect(typeof cradle.botEngine.choose).toBe("function");
+      expect(cradle.botAdmission).toBe(cradle.botAdmission);
+      expect(cradle.resourceProbe.read().availableMb).toBeGreaterThanOrEqual(0);
       expect(cradle.invitationService).toBe(cradle.invitationService);
       expect(cradle.agentSeatService).toBe(cradle.agentSeatService);
       expect(cradle.agentGameService).toBe(cradle.agentGameService);

@@ -47,6 +47,8 @@ function scope() {
       timeoutSettler,
       serverConfig: { appOrigin: "https://gomoku.test" } as never,
       colorDraw: new ColorDraw(),
+      // No game with the bot is created here.
+      botAdmission: {} as never,
     }),
   };
 }

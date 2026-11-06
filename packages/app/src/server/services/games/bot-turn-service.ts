@@ -3,17 +3,17 @@ import {
   BOARD_CELLS,
   coordsOf,
   decodeBitboard,
-  rngFor,
   seatOnTurn,
   type BotLevel,
   type Seat,
 } from "@gomoku/core";
 import type { EntityManager } from "@gomoku/db";
 
+import type { Clock } from "../email/email-sender";
 import type { BotEngine } from "./bot-engine";
 import type { GameMoveService } from "./game-move-service";
 
-type Deps = { em: EntityManager; gameMoveService: GameMoveService; botEngine: BotEngine };
+type Deps = { em: EntityManager; gameMoveService: GameMoveService; botEngine: BotEngine; clock: Clock };
 
 type PeekRow = {
   status: string;
@@ -29,6 +29,8 @@ type PeekRow = {
   bot_level: number;
   bot_memory_mb: number | null;
   bot_depth_cap: number | null;
+  /** What is left on the bot's clock now (R6); `null` before the clock starts. */
+  remaining_ms: number | null;
 };
 
 // A read without a lock (R1): the search must not hold the game row or a pooled connection. The
@@ -36,7 +38,9 @@ type PeekRow = {
 const PEEK_SQL = `
   select g.status, g.variant, g.black_seat, g.move_count, g.stones_black::text as stones_black,
     g.stones_white::text as stones_white, g.turn_started_at is not null as started,
-    p.id as bot_id, p.seat as bot_seat, p.bot_level, p.bot_memory_mb, p.bot_depth_cap
+    p.id as bot_id, p.seat as bot_seat, p.bot_level, p.bot_memory_mb, p.bot_depth_cap,
+    greatest(0, (case when p.seat = 1 then g.clock_ms_1 else g.clock_ms_2 end)
+      - floor(extract(epoch from (?::timestamptz - g.turn_started_at)) * 1000))::int as remaining_ms
   from games g join game_players p on p.game_id = g.id and p.kind = 'bot'
   where g.id = ?`;
 
@@ -80,8 +84,10 @@ export class BotTurnService {
   readonly #em: EntityManager;
   readonly #gameMoveService: GameMoveService;
   readonly #engine: BotEngine;
+  readonly #clock: Clock;
 
-  constructor({ em, gameMoveService, botEngine }: Deps) {
+  constructor({ em, gameMoveService, botEngine, clock }: Deps) {
+    this.#clock = clock;
     this.#em = em;
     this.#gameMoveService = gameMoveService;
     this.#engine = botEngine;
@@ -92,10 +98,13 @@ export class BotTurnService {
     if (inFlight.has(gameId)) return "busy";
     inFlight.add(gameId);
     try {
-      const [row] = await this.#em.execute<PeekRow[]>(PEEK_SQL, [gameId]);
+      const [row] = await this.#em.execute<PeekRow[]>(PEEK_SQL, [this.#clock.now(), gameId]);
       if (!row || !isDue(row)) return "idle";
       const moveNumber = row.move_count + 1;
-      const cell = this.#engine.choose({
+      // In a worker thread, one search at a time in the process; the row is not locked meanwhile.
+      const cell = await this.#engine.choose({
+        gameId,
+        moveNumber,
         position: {
           black: decodeBitboard(row.stones_black),
           white: decodeBitboard(row.stones_white),
@@ -104,16 +113,22 @@ export class BotTurnService {
         level: row.bot_level as BotLevel,
         depthCap: row.bot_depth_cap,
         memoryMb: row.bot_memory_mb,
-        rng: rngFor(gameId, moveNumber),
+        remainingClockMs: row.remaining_ms ?? 0,
       });
       // Written as the bot's seat: the same checks, clock charge and end of game as a person's move (BR-58).
       await this.#gameMoveService.play({ playerId: row.bot_id }, gameId, { ...coordsOf(cell), moveNumber });
       return "played";
     } catch (error) {
       if (error instanceof AppError && LOST_RACE.has(error.code)) return "lost";
-      // No position in the log: only the game and what failed.
+      // No position in the log: only the game and what failed (with the code of an application error).
       console.error(
-        JSON.stringify({ event: "bot.turn_failed", ts: new Date().toISOString(), gameId, error: (error as Error).name }),
+        JSON.stringify({
+          event: "bot.turn_failed",
+          ts: new Date().toISOString(),
+          gameId,
+          error: (error as Error).name,
+          ...(error instanceof AppError && { code: error.code }),
+        }),
       );
       return "failed";
     } finally {

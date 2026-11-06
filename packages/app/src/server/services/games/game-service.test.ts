@@ -6,8 +6,11 @@ import {
   INVITATION_TTL_MS,
   NotFoundError,
   READY_DEADLINE_MS,
+  BOT_UNAVAILABLE_MESSAGE,
   ServiceUnavailableError,
   TooManyRequestsError,
+  botStrengthFor,
+  type BotLevel,
 } from "@gomoku/core";
 import {
   Game,
@@ -19,10 +22,8 @@ import {
 } from "@gomoku/db";
 import { describe, expect, it, vi } from "vitest";
 
+import { BOT_RETRY_AFTER_SECONDS } from "./bot-admission";
 import {
-  BOT_FIXED_MEMORY_MB,
-  BOT_RETRY_AFTER_SECONDS,
-  BOT_UNAVAILABLE_MESSAGE,
   ACTIVE_GAME_EXISTS_MESSAGE,
   ACTIVE_SLOT_CONSTRAINT,
   GAME_NOT_CANCELLABLE_MESSAGE,
@@ -119,7 +120,20 @@ function setup(options: {
     settleGame: vi.fn(async () => false),
     settleExpired: vi.fn(async () => false),
   };
+  // The admission is tested on its own (`bot-admission.test.ts`): here it follows the flag and freezes 768 MB.
+  const botAdmission = {
+    admit: vi.fn(async (level: BotLevel) => {
+      if (!options.config?.botEnabled) {
+        throw new ServiceUnavailableError(BOT_UNAVAILABLE_MESSAGE, {
+          code: "BOT_UNAVAILABLE",
+          retryAfterSeconds: BOT_RETRY_AFTER_SECONDS,
+        });
+      }
+      return botStrengthFor(level, 768)!;
+    }),
+  };
   const service = new GameService({
+    botAdmission: botAdmission as never,
     em: em as unknown as EntityManager,
     clock: { now: options.now ?? (() => NOW) },
     rateLimiter: rateLimiter as never,
@@ -283,7 +297,7 @@ describe("GameService.create with the bot (hosted-bot spec)", () => {
       seat: 2,
       kind: "bot",
       botLevel: 2,
-      botMemoryMb: BOT_FIXED_MEMORY_MB,
+      botMemoryMb: 768,
       botDepthCap: 8,
       isActive: true,
       joinedAt: NOW,

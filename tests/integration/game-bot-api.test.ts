@@ -258,6 +258,8 @@ describe("the bot's seat cannot be taken by any client (hosted-bot, autoryzacja)
       timeoutSettler: new SqlTimeoutSettler({ em, clock, paperSettler: new PaperSettler({ clock, random: Math.random }) }),
       serverConfig: { appOrigin: "https://gomoku.test" } as never,
       colorDraw: new ColorDraw(),
+      // No game with the bot is created here.
+      botAdmission: {} as never,
     });
     const [bot] = await run(`select id, user_id, guest_token_hash, agent_token_hash from game_players where game_id = ? and kind = 'bot'`, [gameId]);
     expect(bot).toMatchObject({ user_id: null, guest_token_hash: null, agent_token_hash: null });

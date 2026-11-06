@@ -351,6 +351,8 @@ Każdy krok ma testy jednostkowe ze 100% pokryciem (statements, branches, functi
 
 ### Faza S04 — siła, nazwa i polityka zasobów
 
+> **Status (2026-11-06):** zaimplementowane w PR dla #262/#263 (T02 #264 — pomiar lokalny w `.ai/runs/2026-11-06-e13-s04-bot-bench.md`: czas i pętla zdarzeń w progach R18, RSS przy TT 16 MB 103 MB w benchu przez `tsx` (artefakt), odczyt innej partii niezmierzony; pomiar na hoście docelowym czeka na zgodę właściciela). **Spike (krok 3) udany:** `new Worker(new URL("./bot-worker.ts", import.meta.url))` w module serwerowym działa po `next build` + `next start` (Turbopack emituje fragment `[worker thread]`), także w obrazie produkcyjnym (`LOW_MEMORY=1`, `node:22-slim`, Node 22.23.4) uruchomionym z `--cpus=1 --memory=2g --memory-swap=2g`: rozruch wątku 39–84 ms, przyrost RSS procesu w czasie obliczenia +17…+34 MB przy TT 16 MB, sterta wątku ~10 MB; plan awaryjny niepotrzebny (lekcja `2026-11-06-worker-threads-under-turbopack`). W kontenerze `process.availableMemory()` = 1892 MB (limit cgroup), `os.freemem()` = pamięć hosta. Odstępstwa: flaga stopu ustawiana po `softMs` liczonym od startu wątku (silnik i tak sam kończy po celu, gdy ma wynik); po awarii wątku gra ostatnia ukończona iteracja, jeśli jest, inaczej poziom 1 inline; limit aktywnych partii sprawdzany przed transakcją (dwa równoczesne utworzenia mogą go przekroczyć o jeden — bramka nadal liczy po jednym); dodatkowe logi `bot_move` (każdy ruch) i `bot.refused` (odmowa). `.env.example` nie został uzupełniony w tym PR (plik niedostępny dla sesji agenta) — lista zmiennych w opisie PR i w `docs/wdrozenie-i-utrzymanie.md`.
+
 1. **Sonda i progi.** `ResourceProbe` (wstrzykiwana; tryb `BOT_FIXED_MEMORY_MB`), `budgetFor` w `core` (progi R7 i zegar bota R6), `BotAdmission` z odmową (`BOT_UNAVAILABLE`), zamrożenie w `bot_memory_mb`/`bot_depth_cap`, nazwa R9. Testy: wszystkie progi i granice, sonda z fałszywymi źródłami (`process.availableMemory`/`os.freemem` zamockowane).
 2. **Bramka współbieżności i limit partii.** `ComputeGate` (FIFO, `globalThis`), limit 3 aktywnych partii (wspólna definicja terminu zegara wyniesiona z `cleanup/rules.ts`). Testy: kolejność, zwalnianie po błędzie, limit; integracja: dwie partie jednocześnie.
 3. **Spike wątku roboczego.** Weryfikacja `new Worker(new URL(…))` w `next build` + `next start` (obraz Dockera, `LOW_MEMORY=1`); wynik i decyzja (wątek albo plan awaryjny) zapisane w tej specyfikacji / lekcji. Jeśli wątek się nie sprawdzi — **stop i powrót do właściciela**, nie ciche przejście na główny wątek.
@@ -382,8 +384,8 @@ Każdy krok ma testy jednostkowe ze 100% pokryciem (statements, branches, functi
 ## Czego nie zweryfikowano w kodzie lub na hoście
 
 - Zachowanie `process.availableMemory()`/`os.freemem()` oraz plików cgroup w LXC Mikrusa (czy zwracają limit kontenera, czy hosta).
-- Pakowanie i start `worker_threads` w `next build`/`next start` z Turbopackiem w obrazie produkcyjnym (spike S04.3).
+- ~~Pakowanie i start `worker_threads` w `next build`/`next start` z Turbopackiem w obrazie produkcyjnym (spike S04.3).~~ Sprawdzone 2026-11-06 (status fazy S04).
 - Rzeczywista wydajność silnika na jednym współdzielonym rdzeniu Mikrusa; mikrobenchmark lokalny (16 GB, 8 rdzeni, naiwny prototyp) dał tylko rząd wielkości.
-- Narzut RSS wątku roboczego w obrazie `node:22-slim`; koszt rozruchu wątku.
+- ~~Narzut RSS wątku roboczego w obrazie `node:22-slim`; koszt rozruchu wątku.~~ Zmierzone lokalnie 2026-11-06 (status fazy S04); na mikr.us nie.
 - Że `after()` w trasach działa w zbudowanym `next start` w kontenerze tak samo jak w dev (dokumentacja potwierdza obsługę przy `SIGTERM`).
 - Zachowanie całego frontu (`GameRoom`, polling 750 ms) — dopiero w S02.5.
