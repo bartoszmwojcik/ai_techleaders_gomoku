@@ -132,6 +132,8 @@ describe("createWorkerBotEngine (hosted-bot R5, R6)", () => {
     expect(Atomics.load(flag, 0)).toBe(1);
     vi.advanceTimersByTime(1500);
     await expect(move).resolves.toBe(30);
+    workers[0]!.send({ type: "done", choice: choice(31) });
+    expect(logger.info).not.toHaveBeenCalled();
     expect(workers[0]!.terminate).toHaveBeenCalledOnce();
     expect(JSON.parse(logger.warn.mock.calls[0]![0] as string)).toMatchObject({
       event: "bot_ceiling",

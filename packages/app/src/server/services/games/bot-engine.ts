@@ -99,8 +99,8 @@ export function createWorkerBotEngine({
       const base = { gameId: turn.gameId, moveNumber: turn.moveNumber, level };
       const startedAt = now();
 
+      // Called once: every caller checks `settled`, and the timers are cleared with it.
       const finish = (cell: number) => {
-        if (settled) return;
         settled = true;
         timers.forEach(clearTimeout);
         worker?.terminate().catch(() => undefined);
@@ -131,6 +131,8 @@ export function createWorkerBotEngine({
         return;
       }
       worker.on("message", (message) => {
+        // A move that arrives after the ceiling is not played and not logged.
+        if (settled) return;
         if (message.type === "iteration") {
           last = message.choice;
           return;
