@@ -78,7 +78,7 @@ describe("games", () => {
   });
 
   it("rejects an unknown origin and status", async () => {
-    await expectViolation(insertGame({ origin: "bot" }), "games_origin_check");
+    await expectViolation(insertGame({ origin: "cpu" }), "games_origin_check");
     await expectViolation(insertGame({ status: "paused" }), "games_status_check");
   });
 
