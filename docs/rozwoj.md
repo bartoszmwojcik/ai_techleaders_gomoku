@@ -20,6 +20,22 @@ npm run dev                      # http://localhost:3000
 
 Opcja `npm run setup -- --with-browser` dodatkowo instaluje Chrome dla testów integracyjnych, a `npm run setup -- --help` pokazuje wszystkie opcje.
 
+### Jedno polecenie: `scripts/gomoku-local.sh`
+
+Skrypt łączy przygotowanie i start (sprawdza Node.js, npm, Docker i wolność portu, uruchamia `npm run setup`, a potem serwer), więc nowa osoba potrzebuje jednej komendy. Jest idempotentny i działa w `sh` (macOS, Linux, WSL2, Git Bash).
+
+```bash
+scripts/gomoku-local.sh                 # serwer deweloperski, http://localhost:3000
+scripts/gomoku-local.sh --bot           # z włączonym botem (BOT_ENABLED=true; domyślnie wyłączony)
+scripts/gomoku-local.sh --prod          # build produkcyjny i next start (jak na serwerze, HTTP, poczta do pliku)
+scripts/gomoku-local.sh --port 3100     # inny port (APP_ORIGIN dopasowuje się, żeby ochrona CSRF działała)
+scripts/gomoku-local.sh --no-setup      # pomiń npm run setup
+scripts/gomoku-local.sh --check         # tylko sprawdź wymagania, nic nie uruchamiaj
+scripts/gomoku-local.sh --stop          # zatrzymaj lokalny PostgreSQL (dane zostają w wolumenie)
+```
+
+Tryb `--prod` ustawia zmienne wymagane przez produkcyjną konfigurację na HTTP w sieci lokalnej: `TRUST_PROXY_HOPS=1`, `ADMIN_EMAIL` (domyślnie `admin@example.test`), `SESSION_COOKIE_SECURE=false`, `EMAIL_TRANSPORT=file` z plikiem w katalogu tymczasowym (`GOMOKU_EMAIL_OUTBOX` zmienia ścieżkę). Zmienne ustawione w środowisku mają pierwszeństwo. Skrypt nie ma testów jednostkowych (to powłoka, poza progiem pokrycia) i CI go nie uruchamia, więc zmiany w nim sprawdzaj ręcznie opcjami `--help` i `--check`.
+
 ### Instalacja ręczna
 
 ```bash
