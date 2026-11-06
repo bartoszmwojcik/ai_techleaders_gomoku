@@ -13,6 +13,8 @@ const stats: FinishedGameStats = {
   pairs: [
     { pair: "account-account", kinds: ["account", "account"], total: 4, today: 1, last7Days: 3 },
     { pair: "account-guest", kinds: ["account", "guest"], total: 0, today: 0, last7Days: 0 },
+    { pair: "account-bot", kinds: ["account", "bot"], total: 2, today: 1, last7Days: 2 },
+    { pair: "bot-guest", kinds: ["bot", "guest"], total: 0, today: 0, last7Days: 0 },
   ],
 };
 
@@ -22,7 +24,7 @@ describe("GameCountersSection", () => {
       accounts={{ total: 12, verified: 10, unverified: 2 }}
       games={{
         byStatus: { waiting: 1, active: 2, finished: 9, cancelled: 3 },
-        finishedByOrigin: { invite: 5, lobby: 3, rematch: 1 },
+        finishedByOrigin: { invite: 5, lobby: 3, rematch: 1, bot: 7 },
         finishedByEndReason: { five_in_row: 4, draw: 1, timeout: 2, resignation: 2, points: 3 },
       }}
       stats={stats}
@@ -45,6 +47,7 @@ describe("GameCountersSection", () => {
     stat("anulowane", 3);
     stat("z zaproszenia", 5);
     stat("rewanż", 1);
+    stat("z botem", 7);
     stat("pięć w linii", 4);
     stat("poddanie", 2);
     stat("punkty", 3);
@@ -57,6 +60,9 @@ describe("GameCountersSection", () => {
     stat("Razem", 8);
     stat("konto – konto", 4);
     stat("konto – gość", 0);
+    // The games with the bot (hosted-bot R12).
+    stat("konto – bot", 2);
+    stat("bot – gość", 0);
     expect(html).toContain("Europe/Warsaw");
   });
 });

@@ -2,8 +2,10 @@
 export const FINISHED_STATS_TIME_ZONE = "Europe/Warsaw";
 
 /**
- * The five pairs of participant kinds a game can have, in display order. Each is in the
- * canonical alphabetical order the counter stores. An agent never plays another agent (BR-30).
+ * The seven pairs of participant kinds a game can have, in display order. Each is in the
+ * canonical alphabetical order the counter stores (`min(kind)`, `max(kind)` in
+ * `recordFinishedGame`). An agent never plays another agent (BR-30); the bot plays only an
+ * account or a guest (hosted-bot R12, BR-58).
  */
 export const KNOWN_PAIRS: readonly (readonly [string, string])[] = [
   ["account", "account"],
@@ -11,6 +13,8 @@ export const KNOWN_PAIRS: readonly (readonly [string, string])[] = [
   ["account", "agent"],
   ["guest", "guest"],
   ["agent", "guest"],
+  ["account", "bot"],
+  ["bot", "guest"],
 ];
 
 export type PairCounter = {
@@ -29,7 +33,7 @@ export type FinishedGameStats = {
   total: number;
   today: number;
   last7Days: number;
-  /** The five known pairs always (zeros included), then unknown ones alphabetically. */
+  /** The known pairs always (zeros included), then unknown ones alphabetically. */
   pairs: PairCounter[];
 };
 

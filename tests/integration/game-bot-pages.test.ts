@@ -1,7 +1,7 @@
 // A game against the bot in a real browser (hosted-bot spec, E13-S02 step 5), with BOT_ENABLED on
 // (global-setup): "Przeciwnik" and "Poziom bota" on the home page and on /play, "Zagraj z botem", the board at
 // once, the player's move and the bot's answer without a reload, resigning, and "Zagraj ponownie z botem"
-// instead of a rematch; also at 320 px. Screenshots go to $GOMOKU_SHOTS_DIR in the theme $GOMOKU_SHOTS_THEME
+// instead of a rematch, then the game in the history and its review (E13-S05); also at 320 px. Screenshots go to $GOMOKU_SHOTS_DIR in the theme $GOMOKU_SHOTS_THEME
 // (default light) when the directory is set.
 import { createOrm, type Orm } from "@gomoku/db";
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
@@ -115,6 +115,33 @@ describe("playing the bot in the browser", () => {
     await browser.waitFor("[role=alertdialog]");
     await browser.click("[role=alertdialog] button:last-child");
     await bodyHas("Koniec partii");
+
+    // E13-S05: both games are in the account's history, the bot named by its strength, and the first one
+    // can be reviewed move by move (BR-44).
+    await browser.open(`${baseUrl}/history`);
+    await browser.waitFor("[data-testid=history-review]");
+    const opponents = await browser.evaluate<string[]>(
+      `[...document.querySelectorAll('ul[aria-label="Zakończone partie"] > li')].map((row) => row.textContent)`,
+    );
+    expect(opponents).toHaveLength(2);
+    for (const row of opponents) {
+      expect(row).toContain("Bot · poziom 2 · 16 MB");
+      expect(row).toContain("Poddanie");
+    }
+    await shot("bot-history");
+    await browser.click(`a[href="/games/${gameId}/review"]`);
+    await browser.waitFor("[data-testid=review-step]");
+    expect(await browser.evaluate<string>(`document.querySelector("[data-testid=review-players]").textContent`)).toContain(
+      "Bot · poziom 2 · 16 MB",
+    );
+    const total = await moveCount(gameId);
+    expect(total).toBeGreaterThanOrEqual(2);
+    expect(await browser.text("[data-testid=review-step]")).toMatch(new RegExp(`^Ruch ${total} z ${total}`));
+    await browser.click("[data-testid=review-start]");
+    await browser.waitForFn(`document.querySelector("[data-testid=review-step]").textContent.startsWith("Początek")`);
+    await browser.click("[data-testid=review-next]");
+    await browser.waitForFn(`document.querySelector("[data-testid=review-step]").textContent.startsWith("Ruch 1 z ${total}")`);
+    await shot("bot-review");
   });
 
   it("lets a guest play the bot from /play and fits 320 px", async () => {

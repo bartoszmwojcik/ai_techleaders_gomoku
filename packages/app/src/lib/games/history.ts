@@ -1,6 +1,6 @@
 import type { EndReason, HistoryEntry, HistoryResult } from "@gomoku/core";
 
-import { agentNameOf, type PlayerName } from "./play";
+import { agentNameOf, BOT_LABEL, type PlayerName } from "./play";
 import { VARIANT_NAME } from "./settings";
 
 export const RESULT_LABEL: Record<HistoryResult, string> = {
@@ -23,12 +23,13 @@ export const DELETED_PLAYER_LABEL = "Usunięty gracz";
 /**
  * The opponent as the history names them, in the one place that decides: an account by its name,
  * a deleted account (`name` null) "Usunięty gracz" (BR-17), a guest "{nick} (gość)" (BR-24, BR-29),
- * an agent "Agent" or, when it declared a model name, "Agent · {name} (deklarowane)" (BR-31).
+ * an agent "Agent" or, when it declared a model name, "Agent · {name} (deklarowane)" (BR-31), the
+ * bot by the name with its strength the server computes, "Bot · poziom 2 · 16 MB" (hosted-bot R9, E13-S05).
  */
 export function opponentNameOf({ kind, name }: HistoryEntry["opponent"]): PlayerName {
   if (kind === "agent") return agentNameOf(name);
   const guest = kind === "guest";
-  const nick = name ?? DELETED_PLAYER_LABEL;
+  const nick = name ?? (kind === "bot" ? BOT_LABEL : DELETED_PLAYER_LABEL);
   return { nick, guest, label: guest ? `${nick} (gość)` : nick };
 }
 

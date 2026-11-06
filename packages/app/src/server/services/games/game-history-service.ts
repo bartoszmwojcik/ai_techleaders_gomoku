@@ -70,7 +70,8 @@ function opponentNameOf(row: Row): string | null {
       // The model name the agent declared, if any (BR-31): unverified text.
       return row.opponent_agent_name;
     case "bot":
-      // Minimal until E13-S05 (history of games with the bot): the name with its strength (R9).
+      // The name with its strength, from the parameters frozen in its row (R9, BR-57): never a
+      // stored name, so it reads the same in the room, the history and the review (E13-S05).
       return botDisplayName(row.opponent_bot_level!, row.opponent_bot_memory_mb);
   }
 }

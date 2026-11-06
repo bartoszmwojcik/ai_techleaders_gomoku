@@ -10,13 +10,15 @@ const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 
 /**
- * Games with no participant of another kind than `guest` and `agent` (BR-24, BR-29, BR-31): without
- * an account nobody has a history of the game, so a guest-agent game goes like a guest-guest one.
+ * Games with no participant of another kind than `guest`, `agent` and `bot` (BR-24, BR-29, BR-31,
+ * hosted-bot R11): without an account nobody has a history of the game, so a guest-agent and a
+ * guest-bot game go like a guest-guest one, while an account-bot game stays as the account's history.
  * `kind`, not `user_id IS NULL`: a deleted account (#37) has `user_id = NULL` but stays
- * `kind = 'account'`, so its opponent's history is protected. Static text only.
+ * `kind = 'account'`, so its opponent's history is protected (and its own game with the bot is left
+ * to `orphanedFinishedGames`). Static text only.
  */
 const GUEST_ONLY_SQL =
-  "not exists (select 1 from game_players p where p.game_id = games.id and p.kind not in ('guest', 'agent'))";
+  "not exists (select 1 from game_players p where p.game_id = games.id and p.kind not in ('guest', 'agent', 'bot'))";
 
 const GAME_DEADLINE_SQL = gameDeadlineSql("games");
 const CHAT_GAME_DEADLINE_SQL = gameDeadlineSql("g");
@@ -165,8 +167,9 @@ export const CLEANUP_RULES: readonly CleanupRule[] = [
     graceMs: 25 * HOUR_MS,
   },
   {
-    // A dead game of guests only (no account, so no history, BR-24): the clock of the player on
-    // turn ran out (or the clock never started within the ready deadline) more than 1 h ago.
+    // A dead game of guests only (no account, so no history, BR-24), with an agent or the bot
+    // included: the clock of the player on turn ran out (or the clock never started within the
+    // ready deadline) more than 1 h ago — for a guest-bot game also the one a guest abandoned.
     // Not settled here (the result stays unwritten, Q4): the 1 h is the guest token window, so a
     // returning player can still open the game and see the lazy "lost on time". Rows of players
     // and the invitation go with the game (`on delete cascade`).
@@ -177,8 +180,9 @@ export const CLEANUP_RULES: readonly CleanupRule[] = [
     graceMs: GUEST_TOKEN_GRACE_MS,
   },
   {
-    // A finished game of guests only, 1 h after the end (the token window). Stands before
-    // `guestTokens` only to spare it an `UPDATE` on rows that vanish in the same run.
+    // A finished game of guests only (guest-guest, guest-agent, guest-bot), 1 h after the end
+    // (the token window). Stands before `guestTokens` only to spare it an `UPDATE` on rows that
+    // vanish in the same run.
     key: "guestOnlyFinishedGames",
     table: "games",
     primaryKey: "id",

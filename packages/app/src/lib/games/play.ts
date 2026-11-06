@@ -120,6 +120,8 @@ export type PlayerName = {
 };
 
 export const AGENT_LABEL = "Agent";
+/** The bot's name always starts with it (`Bot · poziom 2 · 16 MB`, R9); alone when the server gave none. */
+export const BOT_LABEL = "Bot";
 export const DECLARED_LABEL = "(deklarowane)";
 
 /** The name of an agent opponent; `declared` is plain text, never markup (BR-31, decision 7 of #138). */
@@ -136,12 +138,13 @@ export function agentNameOf(declared: string | null | undefined): PlayerName {
 /**
  * `displayName` is the nickname (never empty for a guest: the server fills in "Gracz N") or the
  * account name (`null` for a deleted account). The "(gość)" suffix comes from `kind`, here in the UI layer;
- * an agent has no `displayName` and is named by `kind` and its declared `agentName`.
+ * an agent has no `displayName` and is named by `kind` and its declared `agentName`; the bot's name
+ * (`Bot · poziom 2 · 16 MB`) is computed by the server and is itself its "Bot" mark (hosted-bot R9).
  */
 export function playerNameOf(player: (Omit<GameView["players"][number], "seen"> & { seen?: boolean }) | undefined): PlayerName {
   if (player?.kind === "agent") return agentNameOf(player.agentName);
   const guest = player?.kind === "guest";
-  const nick = player?.displayName ?? "Usunięty gracz";
+  const nick = player?.displayName ?? (player?.kind === "bot" ? BOT_LABEL : "Usunięty gracz");
   return { nick, guest, label: guest ? `${nick} (gość)` : nick };
 }
 

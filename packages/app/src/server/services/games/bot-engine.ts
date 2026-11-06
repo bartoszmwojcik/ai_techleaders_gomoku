@@ -46,6 +46,12 @@ export type BotWorkerHandle = {
 export const BOT_MAX_FAILURES = 3;
 /** Games whose failures are remembered; the oldest is forgotten beyond it (bounded memory). */
 export const BOT_FAILURE_GAMES = 1000;
+/**
+ * How long the gate waits for a killed thread to end before letting the next computation in: the move
+ * is held back until then, so two threads (and their heaps) never overlap (R8). `terminate()` takes
+ * milliseconds; the bound only keeps a stuck one from blocking the gate for good.
+ */
+export const BOT_TERMINATE_WAIT_MS = 500;
 
 // Per process, on `globalThis` like the gate: pages and routes hold separate copies of this module.
 const globalForFailures = globalThis as typeof globalThis & { __gomokuBotFailures?: Map<string, number> };
@@ -77,10 +83,12 @@ export type WorkerEngineDeps = {
 /**
  * The bot's engine in a worker thread (spec 2026-11-05-hosted-bot R5, R6, R8): one thread per move,
  * one computation at a time in the process (`ComputeGate`). After `softMs` the stop flag in a
- * `SharedArrayBuffer` asks the search to end; after `ceilingMs` the thread is killed (`terminate()`)
- * and the last completed iteration is played. A thread that fails or exits without a move is replaced
- * by a level-1 move computed inline (< 5 ms); after `BOT_MAX_FAILURES` in a game the bot stays on that
- * inline level 1 to its end. The bot ALWAYS plays a legal move. Logs never carry the position.
+ * `SharedArrayBuffer` asks the search to end — never before its first completed iteration, so a low
+ * clock does not cut level 2 down to the fallback; after `ceilingMs` (hard) the thread is killed and
+ * the last completed iteration is played. The move is returned (and the gate released) only once the
+ * thread has ended (`terminate()`, bounded by `BOT_TERMINATE_WAIT_MS`). A thread that fails or exits
+ * without a move is replaced by a level-1 move computed inline (< 5 ms); after `BOT_MAX_FAILURES` in a
+ * game the bot stays on that inline level 1 to its end. The bot ALWAYS plays a legal move. Logs never carry the position.
  */
 export function createWorkerBotEngine({
   limits,
@@ -96,6 +104,9 @@ export function createWorkerBotEngine({
       let last: MoveChoice | null = null;
       let worker: BotWorkerHandle | null = null;
       let settled = false;
+      // The soft target passed with no completed iteration yet: the flag waits for the first one.
+      let softPassed = false;
+      const raiseStop = () => Atomics.store(new Int32Array(stop), 0, 1);
       const base = { gameId: turn.gameId, moveNumber: turn.moveNumber, level };
       const startedAt = now();
 
@@ -103,8 +114,15 @@ export function createWorkerBotEngine({
       const finish = (cell: number) => {
         settled = true;
         timers.forEach(clearTimeout);
-        worker?.terminate().catch(() => undefined);
-        resolve(cell);
+        if (!worker) return resolve(cell);
+        const waited = setTimeout(() => resolve(cell), BOT_TERMINATE_WAIT_MS);
+        void worker
+          .terminate()
+          .catch(() => undefined)
+          .then(() => {
+            clearTimeout(waited);
+            resolve(cell);
+          });
       };
       const fail = (error: Error) => {
         if (settled) return;
@@ -135,6 +153,7 @@ export function createWorkerBotEngine({
         if (settled) return;
         if (message.type === "iteration") {
           last = message.choice;
+          if (softPassed) raiseStop();
           return;
         }
         const { cell, depth, nodes, stoppedBy } = message.choice;
@@ -147,7 +166,10 @@ export function createWorkerBotEngine({
       worker.on("error", fail);
       worker.on("exit", (code) => fail(new Error(`The bot's thread exited with code ${code} before a move`)));
       timers.push(
-        setTimeout(() => Atomics.store(new Int32Array(stop), 0, 1), budget.softMs),
+        setTimeout(() => {
+          if (last) raiseStop();
+          else softPassed = true;
+        }, budget.softMs),
         setTimeout(() => {
           logger.warn(
             JSON.stringify({ event: "bot_ceiling", ts: new Date().toISOString(), ...base, ceilingMs: budget.ceilingMs, depth: last?.depth ?? null }),
@@ -166,6 +188,8 @@ export function createWorkerBotEngine({
         const remainingClockMs = turn.remainingClockMs - (now() - queuedAt);
         if ((botFailures().get(turn.gameId) ?? 0) >= BOT_MAX_FAILURES) return inlineLevel1(turn);
         const { level, budget } = budgetFor({ ...turn, remainingClockMs, limits });
+        // No time for a thread at all (the clock is about to run out): no point in starting one.
+        if (budget.ceilingMs <= 0) return inlineLevel1(turn);
         return compute(turn, level, budget);
       });
     },

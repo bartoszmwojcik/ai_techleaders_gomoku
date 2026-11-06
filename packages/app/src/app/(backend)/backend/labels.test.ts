@@ -6,6 +6,8 @@ describe("pairLabel", () => {
   it("names the kinds in Polish and keeps an unknown one", () => {
     expect(pairLabel({ kinds: ["account", "guest"] })).toBe("konto – gość");
     expect(pairLabel({ kinds: ["agent", "guest"] })).toBe("agent – gość");
+    expect(pairLabel({ kinds: ["account", "bot"] })).toBe("konto – bot");
+    expect(pairLabel({ kinds: ["bot", "guest"] })).toBe("bot – gość");
     expect(pairLabel({ kinds: ["account", "robot"] })).toBe("konto – robot");
   });
 });
