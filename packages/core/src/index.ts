@@ -57,3 +57,6 @@ export * from "./chat/state";
 export * from "./chat/agent-view";
 export * from "./chat/secret";
 export * from "./games/paper/view";
+export * from "./bot/choose-move";
+export * from "./bot/seed";
+export * from "./bot/arena";

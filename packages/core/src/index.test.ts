@@ -13,4 +13,12 @@ describe("@gomoku/core public API", () => {
       WIN_LENGTH: 5,
     });
   });
+
+  it("exposes the bot engine, its seeds and the arena", () => {
+    expect(core).toMatchObject({
+      chooseMove: expect.any(Function),
+      rngFor: expect.any(Function),
+      runArena: expect.any(Function),
+    });
+  });
 });
