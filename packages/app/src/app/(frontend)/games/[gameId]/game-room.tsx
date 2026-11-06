@@ -28,13 +28,15 @@ import { usePageVisibility } from "@/components/games/use-page-visibility";
 import { apiCall } from "@/lib/api-client";
 import { AGENT_CLIENT_COPY } from "@/lib/games/agent-clients";
 import { formatValidUntil } from "@/lib/format-date-time";
-import { knownMoves, mergeState, playerName, playerNameOf } from "@/lib/games/play";
+import { botThinking, knownMoves, mergeState, playerName, playerNameOf } from "@/lib/games/play";
 import type { GameView } from "@/server/http/game-view";
 
 /** Polling of a waiting game (#21 Q6): short polling every 3 s until a transport from #30 exists. */
 export const POLL_INTERVAL_MS = 3000;
 /** Polling of a game in progress (#22 Q5): the opponent's move is read every 2 s. */
 export const PLAY_POLL_INTERVAL_MS = 2000;
+/** While the bot is to move its answer is read every 750 ms (hosted-bot R15): one player, a short wait. */
+export const BOT_POLL_INTERVAL_MS = 750;
 /** "Przeciwnik dołączył" stays this long before the page moves on (A-04 of the prototype). */
 export const JOIN_STEP_MS = 2500;
 /** Failed polls in a row before the banner appears (L02). */
@@ -151,6 +153,8 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
   // `waiting` waits for the opponent; `active` waits for the player who has not opened the page yet (Q20).
   const waitingForOpponent = game.status === "waiting" || (game.status === "active" && !everyoneSeen);
   const playing = game.status === "active" && everyoneSeen;
+  // A change of this restarts the polling timer, so the faster pace begins right after the player's move.
+  const waitingForBot = playing && botThinking(game);
 
   // The move just played answers with the new state (`after` = moves known before it).
   const applyState = useCallback((next: GameView, after: number) => {
@@ -245,14 +249,14 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
   // The pace of the next read, or `null` when none is due any more. A result screen slows down when
   // nothing happens on it (an offer, an answer, the player's return), and a guest's stops with the token.
   const nextDelay = useCallback((): number | null => {
-    if (playing) return PLAY_POLL_INTERVAL_MS;
+    if (playing) return waitingForBot ? BOT_POLL_INTERVAL_MS : PLAY_POLL_INTERVAL_MS;
     if (latest.current.status !== "finished") return POLL_INTERVAL_MS;
     if (pastGuestWindow(latest.current)) return null;
     const now = Date.now();
     if (latest.current.rematch?.state === "pending") quietSince.current = now;
     quietSince.current ??= now;
     return now - quietSince.current >= REMATCH_IDLE_AFTER_MS ? REMATCH_IDLE_POLL_INTERVAL_MS : POLL_INTERVAL_MS;
-  }, [playing]);
+  }, [playing, waitingForBot]);
 
   useEffect(() => {
     if (!needsPolling) return;

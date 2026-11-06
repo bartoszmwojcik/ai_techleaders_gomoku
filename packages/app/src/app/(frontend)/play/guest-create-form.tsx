@@ -14,13 +14,17 @@ import { useRef, useState, type FormEvent } from "react";
 
 import { rateLimitedError } from "@/components/feedback/rate-limited-error";
 import { GameSettingsPicker } from "@/components/games/game-settings-picker";
+import { OpponentPicker } from "@/components/games/opponent-picker";
 import { apiCall } from "@/lib/api-client";
+import { BOT_UNAVAILABLE_TEXT, DEFAULT_OPPONENT, opponentBody, playsBot, type OpponentSetting } from "@/lib/games/opponent";
 import { DEFAULT_SETTINGS, settingsBody, type GameSettingsChoice } from "@/lib/games/settings";
 
 type Failure =
   | { kind: "limit"; retryAfterSeconds: number | undefined }
   | { kind: "server" }
   | { kind: "network" }
+  /** `503 BOT_UNAVAILABLE`: the bot is switched off or busy (hosted-bot spec). */
+  | { kind: "bot-unavailable" }
   /** BR-13: the browser holds a game in progress. */
   | { kind: "active"; gameId: string | undefined }
   /** BR-13: the browser waits in a game of its own; it may be given up (L32). */
@@ -30,8 +34,9 @@ type Failure =
  * p08 "Zagraj ze znajomym bez konta" (E02-S08): the nickname, the warning about losing the game
  * with the browser and one button that sends `acknowledgedGuestWarning: true`, creates the game
  * and opens its page. The server validates the nickname too; its refusal sits next to the field.
+ * While the bot is on (`botEnabled`, hosted-bot R19) the visitor may play it instead: the game starts at once.
  */
-export function GuestCreateForm() {
+export function GuestCreateForm({ botEnabled = false }: { botEnabled?: boolean }) {
   const router = useRouter();
   const [nickname, setNickname] = useState("");
   const [nicknameError, setNicknameError] = useState<string | null>(null);
@@ -39,6 +44,8 @@ export function GuestCreateForm() {
   const [busy, setBusy] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
   const [settings, setSettings] = useState<GameSettingsChoice>(DEFAULT_SETTINGS);
+  const [opponent, setOpponent] = useState<OpponentSetting>(DEFAULT_OPPONENT);
+  const withBot = botEnabled && playsBot(opponent, settings.variant);
   const [asking, setAsking] = useState(false);
   // State alone lags a double click by one render; the ref closes that gap (a second game would be a 409).
   const inFlight = useRef(false);
@@ -68,8 +75,7 @@ export function GuestCreateForm() {
         acknowledgedGuestWarning: true,
         ...(checked.data === undefined ? {} : { nickname: checked.data }),
         ...(cancelOwnWaitingGame ? { cancelOwnWaitingGame: true } : {}),
-        ...(isPublic ? { isPublic: true } : {}),
-        ...settingsBody(settings),
+        ...(withBot ? opponentBody(opponent, settings.variant) : { ...(isPublic ? { isPublic: true } : {}), ...settingsBody(settings) }),
       },
     });
     if (result.ok) {
@@ -86,6 +92,7 @@ export function GuestCreateForm() {
     else if (code === "RATE_LIMITED") setFailure({ kind: "limit", retryAfterSeconds });
     else if (code === "ACTIVE_GAME_EXISTS") setFailure({ kind: "active", gameId: heldGame });
     else if (code === "OWN_WAITING_GAME") setFailure({ kind: "waiting", gameId: heldGame });
+    else if (code === "BOT_UNAVAILABLE") setFailure({ kind: "bot-unavailable" });
     else if (code === "network") setFailure({ kind: "network" });
     else setFailure({ kind: "server" });
   }
@@ -102,6 +109,7 @@ export function GuestCreateForm() {
           Limit to {CREATE_GAME_LIMIT} utworzeń na godzinę. {rateLimitedError(failure.retryAfterSeconds).details}
         </Alert>
       )}
+      {failure?.kind === "bot-unavailable" && <Alert status="warning" title={BOT_UNAVAILABLE_TEXT} role="alert" />}
       {failure?.kind === "server" && <Alert status="danger" title="Nie udało się utworzyć zaproszenia. Spróbuj ponownie." />}
       {failure?.kind === "network" && (
         <Alert status="danger" title="Brak połączenia">
@@ -142,21 +150,33 @@ export function GuestCreateForm() {
           )}
         </Field>
         <GameSettingsPicker value={settings} onChange={setSettings} disabled={busy} />
-        <Checkbox
-          label="Partia publiczna"
-          hint="Po rozpoczęciu partii każdy z kodem lub linkiem będzie mógł ją oglądać."
-          checked={isPublic}
-          onCheckedChange={(value) => setIsPublic(value === true)}
-          disabled={busy}
-          data-testid="guest-create-public"
-        />
+        {botEnabled && <OpponentPicker value={opponent} variant={settings.variant} onChange={setOpponent} disabled={busy} />}
+        {/* A game with the bot is always private (R14). */}
+        {!withBot && (
+          <Checkbox
+            label="Partia publiczna"
+            hint="Po rozpoczęciu partii każdy z kodem lub linkiem będzie mógł ją oglądać."
+            checked={isPublic}
+            onCheckedChange={(value) => setIsPublic(value === true)}
+            disabled={busy}
+            data-testid="guest-create-public"
+          />
+        )}
         <Alert status="warning" title="Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii">
           Jeśli zmienisz przeglądarkę albo wyczyścisz dane, stracisz dostęp do tej partii.
+          {/* BR-24: a guest has no history, so a game with the bot is not kept either. */}
+          {withBot && " Partia z botem nie zostanie zapisana w historii."}
         </Alert>
-        <p className="m-0 text-body text-text-secondary">Zaproszenie jest ważne 24 godziny.</p>
+        {!withBot && <p className="m-0 text-body text-text-secondary">Zaproszenie jest ważne 24 godziny.</p>}
         <div className="flex flex-wrap items-center gap-group">
           <Button type="submit" data-testid="guest-create" loading={busy && !asking}>
-            {busy && !asking ? "Tworzenie zaproszenia…" : "Rozumiem, utwórz zaproszenie"}
+            {busy && !asking
+              ? withBot
+                ? "Tworzenie partii…"
+                : "Tworzenie zaproszenia…"
+              : withBot
+                ? "Rozumiem, zagraj z botem"
+                : "Rozumiem, utwórz zaproszenie"}
           </Button>
           {(failure?.kind === "server" || failure?.kind === "network") && (
             <Button variant="secondary" onClick={() => void submit()}>

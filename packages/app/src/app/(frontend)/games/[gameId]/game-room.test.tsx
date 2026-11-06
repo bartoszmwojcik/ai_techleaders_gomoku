@@ -16,7 +16,7 @@ vi.mock("@/components/chat/chat-panel", () => ({
 
 import type { GameView } from "@/server/http/game-view";
 
-import { GameRoom, GUEST_RESULT_WINDOW_MS, JOIN_STEP_MS, REMATCH_IDLE_AFTER_MS, REMATCH_IDLE_POLL_INTERVAL_MS, PLAY_POLL_INTERVAL_MS, POLL_INTERVAL_MS, POLL_TIMEOUT_MS, RETURN_NOTICE_MS } from "./game-room";
+import { BOT_POLL_INTERVAL_MS, GameRoom, GUEST_RESULT_WINDOW_MS, JOIN_STEP_MS, REMATCH_IDLE_AFTER_MS, REMATCH_IDLE_POLL_INTERVAL_MS, PLAY_POLL_INTERVAL_MS, POLL_INTERVAL_MS, POLL_TIMEOUT_MS, RETURN_NOTICE_MS } from "./game-room";
 
 vi.setConfig({ testTimeout: 20_000 });
 
@@ -1183,5 +1183,46 @@ describe("GameRoom, the chat (E07-S01)", () => {
     cleanup();
     room({ ...waiting(), status: "cancelled", closedReason: "expired", invitation: undefined });
     expect(screen.queryByTestId("chat-panel-stub")).toBeNull();
+  });
+});
+
+describe("GameRoom against the bot (hosted-bot R15)", () => {
+  const vsBot = (over: Partial<GameView> = {}): GameView =>
+    active({
+      players: [
+        { seat: 1, kind: "account", displayName: "Ala_7", seen: true },
+        { seat: 2, kind: "bot", displayName: "Bot · poziom 1", bot: { level: 1, memoryMb: null }, seen: true },
+      ],
+      ...over,
+    });
+
+  it("reads every 750 ms while the bot thinks and goes back to 2 s once it has moved", async () => {
+    apiCall.mockResolvedValue({ ok: true, data: vsBot({ turnSeat: 2, moveCount: 1, moves: [112] }) });
+    room(vsBot({ turnSeat: 2, moveCount: 1, moves: [112] }));
+    expect(screen.getByText("Bot myśli…")).toBeTruthy();
+    await tick(BOT_POLL_INTERVAL_MS);
+    expect(apiCall).toHaveBeenCalledTimes(1);
+    await tick(BOT_POLL_INTERVAL_MS);
+    expect(apiCall).toHaveBeenCalledTimes(2);
+
+    apiCall.mockResolvedValue({ ok: true, data: vsBot({ turnSeat: 1, moveCount: 2, moves: [112, 113] }) });
+    await tick(BOT_POLL_INTERVAL_MS);
+    expect(apiCall).toHaveBeenCalledTimes(3);
+    expect(screen.queryByText("Bot myśli…")).toBeNull();
+    apiCall.mockClear();
+    await tick(BOT_POLL_INTERVAL_MS * 2);
+    expect(apiCall).not.toHaveBeenCalled();
+    await tick(PLAY_POLL_INTERVAL_MS - BOT_POLL_INTERVAL_MS * 2);
+    expect(apiCall).toHaveBeenCalledTimes(1);
+  });
+
+  it("speeds up right after the player's own move, without waiting for the slow timer", async () => {
+    apiCall.mockResolvedValue({ ok: true, data: vsBot({ turnSeat: 2, moveCount: 1, moves: [112] }) });
+    room(vsBot());
+    await press(document.querySelector<HTMLElement>('[aria-label="Kolumna H, rząd 8, puste"]')!);
+    expect(apiCall).toHaveBeenCalledWith("/api/games/g1/moves", { body: { x: 7, y: 7, moveNumber: 1 } });
+    apiCall.mockClear();
+    await tick(BOT_POLL_INTERVAL_MS);
+    expect(apiCall).toHaveBeenCalledWith("/api/games/g1?after=1", { method: "GET", signal: expect.any(AbortSignal) });
   });
 });

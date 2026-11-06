@@ -10,9 +10,10 @@ const { connection, getCurrentUserWith, currentGame, loadGuestCurrentGame } = vi
 vi.mock("next/server", () => ({ connection }));
 vi.mock("@/server/http/auth", () => ({ getCurrentUserWith }));
 vi.mock("@/server/http/guest-game", () => ({ loadGuestCurrentGame }));
+vi.mock("@/server/http/bot-availability", () => ({ isBotEnabled: async () => true }));
 vi.mock("@/components/games/create-game-button", () => ({
-  CreateGameButton: ({ heldGame }: { heldGame: unknown }) => (
-    <button data-testid="create" data-held={JSON.stringify(heldGame)}>
+  CreateGameButton: ({ heldGame, botEnabled }: { heldGame: unknown; botEnabled?: boolean }) => (
+    <button data-testid="create" data-held={JSON.stringify(heldGame)} data-bot={String(botEnabled)}>
       Utwórz zaproszenie
     </button>
   ),
@@ -110,7 +111,7 @@ describe("HomePage", () => {
     // The lobby is for accounts only (BR-22): the link is there for a signed-in player (#25 Q11).
     expect(html).toContain('href="/lobby"');
     expect(html).toContain("Lobby</a>");
-    expect(html).toContain('data-testid="create" data-held="null"');
+    expect(html).toContain('data-testid="create" data-held="null" data-bot="true"');
     expect(html).toContain('href="/join"');
     expect(html).not.toContain('href="/account"');
     expect(html).not.toContain('href="/history"');

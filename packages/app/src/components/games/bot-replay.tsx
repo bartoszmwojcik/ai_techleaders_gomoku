@@ -1,0 +1,96 @@
+"use client";
+
+import { CREATE_GAME_LIMIT } from "@gomoku/core";
+import type { BotLevel } from "@gomoku/core/bot/choose-move";
+import { Alert } from "@gomoku/ui/game/alert";
+import { Button } from "@gomoku/ui/game/button";
+import { TextLink } from "@gomoku/ui/game/text-link";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
+
+import { rateLimitedError } from "@/components/feedback/rate-limited-error";
+import { apiCall } from "@/lib/api-client";
+import { BOT_UNAVAILABLE_TEXT } from "@/lib/games/opponent";
+
+type Props = {
+  /** The level of the bot just played: the new game keeps it (R13). */
+  level: BotLevel;
+  /** A guest sends the acknowledgement again: the warning about the browser stays on the game page. */
+  guest: boolean;
+};
+
+type Problem =
+  | { kind: "bot-unavailable" }
+  | { kind: "active"; gameId: string | undefined }
+  | { kind: "limit"; retryAfterSeconds: number | undefined }
+  | { kind: "failed"; network: boolean };
+
+/**
+ * The end of a game with the bot (hosted-bot R13): no rematch, but "Zagraj ponownie z botem" creates a
+ * new game at the same level, which may be refused like any create (the bot is off, a game is held,
+ * the limit). The new game reads the resources afresh (BR-57), so its strength may differ.
+ */
+export function BotReplay({ level, guest }: Props) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<Problem | null>(null);
+  // State alone lags a double click by one render; the ref closes that gap (a second game would be a 409).
+  const inFlight = useRef(false);
+
+  async function playAgain() {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy(true);
+    setProblem(null);
+    const result = await apiCall<{ gameId: string }>("/api/games", {
+      body: { ...(guest ? { acknowledgedGuestWarning: true } : {}), opponent: "bot", botLevel: level },
+    });
+    if (result.ok) {
+      // Stay busy while the page navigates, so a second game cannot be created.
+      router.push(`/games/${result.data.gameId}`);
+      return;
+    }
+    inFlight.current = false;
+    setBusy(false);
+    const { code, retryAfterSeconds, data } = result.error;
+    if (code === "BOT_UNAVAILABLE") setProblem({ kind: "bot-unavailable" });
+    else if (code === "ACTIVE_GAME_EXISTS") setProblem({ kind: "active", gameId: typeof data?.gameId === "string" ? data.gameId : undefined });
+    else if (code === "RATE_LIMITED") setProblem({ kind: "limit", retryAfterSeconds });
+    else setProblem({ kind: "failed", network: code === "network" });
+  }
+
+  return (
+    <section aria-labelledby="bot-replay-h" className="flex flex-col gap-stack" data-testid="bot-replay">
+      <h2 id="bot-replay-h" className="m-0 text-subsection font-strong">
+        Następna partia
+      </h2>
+      <p className="m-0 text-body text-text-secondary">Z botem nie ma rewanżu: nowa partia zaczyna się od losowania kolorów.</p>
+      {problem?.kind === "bot-unavailable" && <Alert status="warning" title={BOT_UNAVAILABLE_TEXT} role="alert" />}
+      {problem?.kind === "active" && (
+        <Alert status="warning" title="Masz już partię" role="alert">
+          Najpierw dokończ bieżącą partię.{" "}
+          {problem.gameId && <TextLink href={`/games/${problem.gameId}`}>Przejdź do partii</TextLink>}
+        </Alert>
+      )}
+      {problem?.kind === "limit" && (
+        <Alert status="danger" title="Zbyt wiele nowych partii" role="alert">
+          Limit to {CREATE_GAME_LIMIT} utworzeń na godzinę. {rateLimitedError(problem.retryAfterSeconds).details}
+        </Alert>
+      )}
+      {problem?.kind === "failed" && (
+        <Alert status="danger" title="Nie udało się utworzyć partii" role="alert">
+          {problem.network ? "Nie udało się połączyć z serwerem. " : "Błąd po stronie serwera. "}Spróbuj ponownie.
+        </Alert>
+      )}
+      <div className="flex flex-wrap items-center gap-group">
+        <Button loading={busy} onClick={() => void playAgain()} data-testid="bot-replay-button">
+          {busy ? "Tworzenie partii…" : "Zagraj ponownie z botem"}
+        </Button>
+        <Button asChild variant="secondary">
+          <Link href="/">Wróć do panelu głównego</Link>
+        </Button>
+      </div>
+    </section>
+  );
+}

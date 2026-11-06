@@ -834,3 +834,28 @@ describe("PlayField, the paper game (E11)", () => {
     });
   });
 });
+
+describe("PlayField against the bot (hosted-bot spec)", () => {
+  const botPlayer = { seat: 2 as const, kind: "bot" as const, displayName: "Bot · poziom 2 · 16 MB", bot: { level: 2 as const, memoryMb: 768 }, seen: true };
+  const vsBot = (over: Partial<GameView> = {}) => game({ players: [player(1, "Ala_7"), botPlayer], ...over });
+
+  it("names the bot with its strength and says it thinks while it is to move, without a chat", () => {
+    field(vsBot({ turnSeat: 2, moveCount: 1, moves: [112] }));
+    expect(screen.getByText("Bot myśli…")).toBeTruthy();
+    expect(screen.getByText("Bot · poziom 2 · 16 MB")).toBeTruthy();
+    expect(screen.queryByTestId("chat-panel-stub")).toBeNull();
+  });
+
+  it("says it is the player's move otherwise", () => {
+    field(vsBot());
+    expect(screen.getByText("Twój ruch (czarne)")).toBeTruthy();
+    expect(screen.queryByText("Bot myśli…")).toBeNull();
+  });
+
+  it("offers a new game with the bot instead of a rematch at the end (R13)", () => {
+    field(vsBot({ status: "finished", turnSeat: null, result: { winnerSeat: 2, reason: "five_in_row", winLine: [0, 1, 2, 3, 4] } }));
+    expect(screen.getByRole("button", { name: "Zagraj ponownie z botem" })).toBeTruthy();
+    expect(screen.queryByTestId("rematch-box")).toBeNull();
+    expect(screen.queryByTestId("chat-panel-stub")).toBeNull();
+  });
+});

@@ -232,3 +232,33 @@ describe("GuestCreateForm, game settings (E11)", () => {
     });
   });
 });
+
+describe("GuestCreateForm with the bot (hosted-bot UI/UX)", () => {
+  it("hides the opponent while the bot is switched off (R19)", () => {
+    render(<GuestCreateForm />);
+    expect(screen.queryByRole("radiogroup", { name: "Przeciwnik" })).toBeNull();
+  });
+
+  it("creates a private game with the bot, says it is not kept in a history (BR-24) and opens it", async () => {
+    apiCall.mockResolvedValue(ok);
+    render(<GuestCreateForm botEnabled />);
+    const u = userEvent.setup();
+    await u.click(screen.getByRole("radio", { name: "Bot" }));
+    expect(screen.queryByRole("checkbox", { name: /Partia publiczna/ })).toBeNull();
+    expect(screen.queryByText("Zaproszenie jest ważne 24 godziny.")).toBeNull();
+    expect(screen.getByText(/Partia z botem nie zostanie zapisana w historii\./)).toBeTruthy();
+    await u.click(screen.getByRole("button", { name: "Rozumiem, zagraj z botem" }));
+    expect(apiCall).toHaveBeenCalledWith("/api/games", { body: { acknowledgedGuestWarning: true, opponent: "bot", botLevel: 1 } });
+    expect(push).toHaveBeenCalledWith("/games/g1");
+    expect((screen.getByRole("button", { name: "Tworzenie partii…" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("says the bot is unavailable on 503", async () => {
+    apiCall.mockResolvedValue(failure({ code: "BOT_UNAVAILABLE" }));
+    render(<GuestCreateForm botEnabled />);
+    const u = userEvent.setup();
+    await u.click(screen.getByRole("radio", { name: "Bot" }));
+    await u.click(screen.getByRole("button", { name: "Rozumiem, zagraj z botem" }));
+    expect(screen.getAllByRole("alert").some((alert) => alert.textContent?.includes("Bot jest teraz niedostępny."))).toBe(true);
+  });
+});

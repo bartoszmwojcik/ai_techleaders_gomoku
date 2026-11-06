@@ -196,3 +196,13 @@ export function outcomeOf(game: { result: GameView["result"]; you: { seat: Seat 
       return pointsOutcome(result.winnerSeat, game.you.seat, result.scores);
   }
 }
+
+/** The bot's seat in a game with the bot (hosted-bot spec), or `undefined`. */
+export function botOf(game: Pick<GameView, "players">): GameView["players"][number] | undefined {
+  return game.players.find((player) => player.kind === "bot");
+}
+
+/** The bot is to move: the page says "Bot myśli…" and reads the state every 750 ms (R15). */
+export function botThinking(game: Pick<GameView, "status" | "turnSeat" | "players">): boolean {
+  return game.status === "active" && game.turnSeat !== null && botOf(game)?.seat === game.turnSeat;
+}

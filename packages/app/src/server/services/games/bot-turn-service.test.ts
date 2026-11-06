@@ -84,7 +84,7 @@ describe("BotTurnService.playDueMove (hosted-bot R1)", () => {
   it("plays when the bot has black and moves first", async () => {
     const { service, play } = setup({ rows: [due({ black_seat: 2, move_count: 0, stones_black: BOARD })] });
     await expect(service.playDueMove(GAME)).resolves.toBe("played");
-    expect(play.mock.calls[0]![2]).toMatchObject({ moveNumber: 1 });
+    expect((play.mock.calls[0] as unknown[])[2]).toMatchObject({ moveNumber: 1 });
   });
 
   it("computes one move per game at a time in the process: a second read meanwhile does nothing", async () => {

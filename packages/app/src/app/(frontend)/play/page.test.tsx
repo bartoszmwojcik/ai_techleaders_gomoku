@@ -4,7 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const { connection, getCurrentUser } = vi.hoisted(() => ({ connection: vi.fn(), getCurrentUser: vi.fn() }));
 vi.mock("next/server", () => ({ connection }));
 vi.mock("@/server/http/auth", () => ({ getCurrentUser }));
-vi.mock("./guest-create-form", () => ({ GuestCreateForm: () => <form data-testid="guest-form" /> }));
+vi.mock("@/server/http/bot-availability", () => ({ isBotEnabled: async () => true }));
+vi.mock("./guest-create-form", () => ({
+  GuestCreateForm: ({ botEnabled }: { botEnabled?: boolean }) => <form data-testid="guest-form" data-bot={String(botEnabled)} />,
+}));
 
 import PlayPage, { metadata } from "./page";
 
@@ -20,6 +23,7 @@ describe("PlayPage", () => {
     expect(connection).toHaveBeenCalledOnce();
     expect(html).toContain("Zagraj ze znajomym bez konta</h1>");
     expect(html).toContain('data-testid="guest-form"');
+    expect(html).toContain('data-bot="true"');
     expect(metadata.title).toBe("Zagraj ze znajomym bez konta — Gomoku");
   });
 

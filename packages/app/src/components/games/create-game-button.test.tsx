@@ -170,3 +170,45 @@ describe("CreateGameButton, game settings (E11)", () => {
     expect(apiCall).toHaveBeenCalledWith("/api/games", { body: { isPublic: true, variant: "paper", timeControlMs: 180_000 } });
   });
 });
+
+describe("CreateGameButton with the bot (hosted-bot UI/UX)", () => {
+  it("hides the opponent while the bot is switched off (R19)", () => {
+    render(<CreateGameButton heldGame={null} />);
+    expect(screen.queryByRole("radiogroup", { name: "Przeciwnik" })).toBeNull();
+  });
+
+  it("creates a game with the bot at the picked level, private, and opens it", async () => {
+    apiCall.mockResolvedValue({ ok: true, data: { gameId: "g-bot" } });
+    render(<CreateGameButton heldGame={null} botEnabled />);
+    const u = userEvent.setup();
+    await u.click(screen.getByRole("radio", { name: "Bot" }));
+    // A game with the bot cannot be public (R14): the box is gone.
+    expect(screen.queryByRole("checkbox", { name: /Partia publiczna/ })).toBeNull();
+    await u.click(screen.getByRole("radio", { name: "Poziom 2" }));
+    await u.click(screen.getByRole("button", { name: "Zagraj z botem" }));
+    expect(apiCall).toHaveBeenCalledWith("/api/games", { body: { opponent: "bot", botLevel: 2 } });
+    expect(push).toHaveBeenCalledWith("/games/g-bot");
+    expect((screen.getByRole("button", { name: "Tworzenie partii…" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("goes back to an invitation when the paper game is picked (BR-56)", async () => {
+    apiCall.mockResolvedValue({ ok: true, data: { gameId: "g1" } });
+    render(<CreateGameButton heldGame={null} botEnabled />);
+    const u = userEvent.setup();
+    await u.click(screen.getByRole("radio", { name: "Bot" }));
+    await u.click(screen.getByRole("radio", { name: "Papier i ołówek" }));
+    expect(screen.getByText("Bot gra tylko w klasyka.")).toBeTruthy();
+    await u.click(screen.getByRole("button", { name: "Utwórz zaproszenie" }));
+    expect(apiCall).toHaveBeenCalledWith("/api/games", { body: { variant: "paper", timeControlMs: 180_000 } });
+  });
+
+  it("says the bot is unavailable on 503 and lets the player try again", async () => {
+    apiCall.mockResolvedValue(failure({ code: "BOT_UNAVAILABLE" }));
+    render(<CreateGameButton heldGame={null} botEnabled />);
+    const u = userEvent.setup();
+    await u.click(screen.getByRole("radio", { name: "Bot" }));
+    await u.click(screen.getByRole("button", { name: "Zagraj z botem" }));
+    expect(screen.getByRole("alert").textContent).toContain("Bot jest teraz niedostępny. Spróbuj za chwilę albo zaproś osobę.");
+    expect((screen.getByRole("button", { name: "Zagraj z botem" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+});
