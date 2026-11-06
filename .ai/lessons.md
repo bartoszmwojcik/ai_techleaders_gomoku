@@ -58,3 +58,4 @@ Indeks lekcji. Jedna linia na wpis: `- [Tytuł](lessons/YYYY-MM-DD-slug.md) — 
 - [Miejsce automatu nie rusza ręcznie](lessons/2026-11-03-automat-seat-must-not-move-by-hand.md) — w teście tury sprawdzaj oba miejsca w obu pozycjach; `onTurn !== seat` nie wyklucza prowadzącego, gdy to jego kolej.
 - [Worktree potrzebuje własnych node_modules](lessons/2026-11-03-worktree-needs-own-node-modules.md) — `npm ci` w worktree zamiast symlinków; pokrycie i przeglądarka w kopii pod `/tmp` z krótkim `TMPDIR`.
 - [Wariant nie wynika z zakończenia](lessons/2026-11-03-review-variant-not-guessed-from-reason.md) — zachowanie zależne od wariantu czyta `variant` z serwera; testuj każdy sposób zakończenia w każdym wariancie.
+- [`worker_threads` pod Turbopackiem](lessons/2026-11-06-worker-threads-under-turbopack.md) — wątek tylko literalnym `new Worker(new URL("./plik.ts", import.meta.url))`; pętla wątku sprawdza `workerData.kind`; liczb z `tsx` nie porównuj z buildem.
