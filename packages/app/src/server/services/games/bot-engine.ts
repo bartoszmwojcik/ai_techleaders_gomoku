@@ -86,9 +86,9 @@ export type WorkerEngineDeps = {
  * `SharedArrayBuffer` asks the search to end — never before its first completed iteration, so a low
  * clock does not cut level 2 down to the fallback; after `ceilingMs` (hard) the thread is killed and
  * the last completed iteration is played. The move is returned (and the gate released) only once the
- * thread has ended (`terminate()`, bounded by `BOT_TERMINATE_WAIT_MS`). A thread that fails or exits without a move is replaced
- * by a level-1 move computed inline (< 5 ms); after `BOT_MAX_FAILURES` in a game the bot stays on that
- * inline level 1 to its end. The bot ALWAYS plays a legal move. Logs never carry the position.
+ * thread has ended (`terminate()`, bounded by `BOT_TERMINATE_WAIT_MS`). A thread that fails or exits
+ * without a move is replaced by a level-1 move computed inline (< 5 ms); after `BOT_MAX_FAILURES` in a
+ * game the bot stays on that inline level 1 to its end. The bot ALWAYS plays a legal move. Logs never carry the position.
  */
 export function createWorkerBotEngine({
   limits,

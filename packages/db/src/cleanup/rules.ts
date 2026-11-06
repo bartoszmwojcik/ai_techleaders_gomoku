@@ -181,8 +181,8 @@ export const CLEANUP_RULES: readonly CleanupRule[] = [
   },
   {
     // A finished game of guests only (guest-guest, guest-agent, guest-bot), 1 h after the end
-    // (the token window). Stands before
-    // `guestTokens` only to spare it an `UPDATE` on rows that vanish in the same run.
+    // (the token window). Stands before `guestTokens` only to spare it an `UPDATE` on rows that
+    // vanish in the same run.
     key: "guestOnlyFinishedGames",
     table: "games",
     primaryKey: "id",
