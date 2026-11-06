@@ -4,9 +4,10 @@ import { User } from "../auth/user";
 import { Game } from "./game";
 
 /**
- * A participant of a game: an account, a guest with a one-game token (BR-22) or an agent that
- * joined over MCP with a one-game token of its own (BR-31, E06-S01).
- * `user` is NULL for a guest, an agent and a deleted account (#37).
+ * A participant of a game: an account, a guest with a one-game token (BR-22), an agent that
+ * joined over MCP with a one-game token of its own (BR-31, E06-S01) or the bot hosted by us
+ * (BR-54, spec 2026-11-05-hosted-bot): no account, no token, always seat 2.
+ * `user` is NULL for a guest, an agent, the bot and a deleted account (#37).
  */
 export const GamePlayer = defineEntity({
   name: "GamePlayer",
@@ -16,7 +17,7 @@ export const GamePlayer = defineEntity({
     game: () => p.manyToOne(Game).deleteRule("cascade"),
     // 1 = creator, 2 = joining player (#21 Q14).
     seat: p.smallint(),
-    // `account` | `guest` | `agent`; CHECK below.
+    // `account` | `guest` | `agent` | `bot`; CHECK below.
     kind: p.string().length(16),
     user: () => p.manyToOne(User).deleteRule("set null").nullable(),
     // SHA-256 of the guest token. Nullable even for a guest: NULL means the token was
@@ -48,11 +49,19 @@ export const GamePlayer = defineEntity({
     // An account's name as it was when this row was created (E05-S01): a later change of
     // `users.display_name` reaches new games only. NULL for a guest, an agent and a deleted account (BR-17).
     displayName: p.string().length(24).nullable(),
+    // The bot's level (BR-55): 1 or 2, set exactly for `kind = 'bot'`. Its name is derived on read (R9).
+    botLevel: p.smallint().nullable(),
+    // Level 2 only: the available memory read when the game was created (R10) and the depth limit
+    // chosen from it (R7). Frozen in the row, so the bot's strength never changes during a game (BR-57).
+    botMemoryMb: p.smallint().nullable(),
+    botDepthCap: p.smallint().nullable(),
   },
   indexes: [
     // Lookups by account: the `set null` action of `DELETE FROM users` (#37), the cleanup rule of
     // unverified accounts (9.4) and the history (#27) would otherwise scan the whole table.
     { name: "game_players_user_id_index", properties: ["user"] },
+    // The bot's seat of a game in progress: counting active games with the bot, finding the bot's row.
+    { name: "game_players_bot_active_index", properties: ["game"], where: "kind = 'bot' and is_active" },
   ],
   uniques: [
     { name: "game_players_game_id_seat_unique", properties: ["game", "seat"] },
@@ -67,7 +76,7 @@ export const GamePlayer = defineEntity({
   ],
   checks: [
     { name: "game_players_seat_check", expression: `seat in (1, 2)` },
-    { name: "game_players_kind_check", expression: `kind in ('account', 'guest', 'agent')` },
+    { name: "game_players_kind_check", expression: `kind in ('account', 'guest', 'agent', 'bot')` },
     {
       name: "game_players_guest_no_user_check",
       expression: `kind <> 'guest' or user_id is null`,
@@ -114,5 +123,15 @@ export const GamePlayer = defineEntity({
       name: "game_players_nickname_only_guest_check",
       expression: `kind = 'guest' or nickname is null`,
     },
+    // The bot (BR-54): a level exactly when the seat is the bot's, never an account, always seat 2.
+    // The token CHECKs above already keep tokens away from it; it joins on the web channel (R21).
+    { name: "game_players_bot_level_check", expression: `bot_level is null or bot_level in (1, 2)` },
+    { name: "game_players_bot_kind_check", expression: `(kind = 'bot') = (bot_level is not null)` },
+    {
+      name: "game_players_bot_params_check",
+      expression: `(bot_level is distinct from 2 or (bot_memory_mb is not null and bot_depth_cap is not null)) and (bot_level = 2 or (bot_memory_mb is null and bot_depth_cap is null))`,
+    },
+    { name: "game_players_bot_no_user_check", expression: `kind <> 'bot' or user_id is null` },
+    { name: "game_players_bot_seat_check", expression: `kind <> 'bot' or seat = 2` },
   ],
 });

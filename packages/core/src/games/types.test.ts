@@ -15,8 +15,8 @@ import {
 describe("game domain constants", () => {
   it("lists the lifecycle, origins, kinds, seats and rematch states", () => {
     expect(GAME_STATUSES).toEqual(["waiting", "active", "finished", "cancelled"]);
-    expect(GAME_ORIGINS).toEqual(["invite", "lobby", "rematch"]);
-    expect(PARTICIPANT_KINDS).toEqual(["account", "guest", "agent"]);
+    expect(GAME_ORIGINS).toEqual(["invite", "lobby", "rematch", "bot"]);
+    expect(PARTICIPANT_KINDS).toEqual(["account", "guest", "agent", "bot"]);
     expect(PARTICIPANT_JOIN_CHANNELS).toEqual(["web", "mcp"]);
     expect(SEATS).toEqual([1, 2]);
     expect(REMATCH_STATES).toEqual(["pending", "accepted", "declined"]);
