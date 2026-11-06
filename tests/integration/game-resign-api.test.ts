@@ -290,6 +290,8 @@ describe("the write is all or nothing", () => {
       timeoutSettler,
       serverConfig: { appOrigin: "https://gomoku.test" } as never,
       colorDraw: new ColorDraw(),
+      // No game with the bot is created here.
+      botAdmission: {} as never,
     });
     // The state read is the last step of the transaction: when it fails, nothing may stay.
     gameService.stateOf = async () => {

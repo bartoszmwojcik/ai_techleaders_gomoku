@@ -276,6 +276,8 @@ describe("with an injected clock", () => {
         timeoutSettler: new SqlTimeoutSettler({ em, clock, paperSettler: new PaperSettler({ clock, random: Math.random }) }),
         serverConfig: { appOrigin: "https://gomoku.test" } as never,
         colorDraw: new ColorDraw(),
+        // No game with the bot is created here.
+        botAdmission: {} as never,
       }),
     };
   };

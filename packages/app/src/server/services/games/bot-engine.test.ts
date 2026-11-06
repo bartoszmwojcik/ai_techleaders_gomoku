@@ -14,7 +14,10 @@ import {
   type BotWorkerHandle,
 } from "./bot-engine";
 import type { BotJob, BotWorkerMessage } from "./bot-worker";
+import { spawnBotWorker } from "./bot-worker-spawn";
 import { ComputeGate } from "./compute-gate";
+
+vi.mock("./bot-worker-spawn", () => ({ spawnBotWorker: vi.fn() }));
 
 const CENTER = cellOf(7, 7);
 const position = { black: withStone(createBitboard(), CENTER), white: createBitboard(), moveCount: 1 };
@@ -50,7 +53,7 @@ function setup({ spawnError, terminateError }: { spawnError?: Error; terminateEr
     jobs.push(job);
     return worker;
   });
-  const logger = { warn: vi.fn(), error: vi.fn() };
+  const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
   let clock = 0;
   const engine = createWorkerBotEngine({
     limits: DEFAULT_BOT_TIME_LIMITS,
@@ -84,7 +87,7 @@ afterEach(() => vi.useRealTimers());
 
 describe("createWorkerBotEngine (hosted-bot R5, R6)", () => {
   it("sends the job to a thread with the budget of the frozen strength and plays its move", async () => {
-    const { engine, workers, jobs, spawn } = setup();
+    const { engine, workers, jobs, spawn, logger } = setup();
     const move = engine.choose(turn());
     await vi.waitFor(() => expect(spawn).toHaveBeenCalledOnce());
     expect(jobs[0]).toMatchObject({
@@ -98,6 +101,17 @@ describe("createWorkerBotEngine (hosted-bot R5, R6)", () => {
     workers[0]!.send({ type: "iteration", choice: choice(10) });
     workers[0]!.send({ type: "done", choice: choice(20) });
     await expect(move).resolves.toBe(20);
+    expect(JSON.parse(logger.info.mock.calls[0]![0] as string)).toEqual({
+      event: "bot_move",
+      ts: expect.any(String),
+      gameId: "game-1",
+      moveNumber: 2,
+      level: 2,
+      depth: 3,
+      nodes: 10,
+      stoppedBy: "completed",
+      ms: 0,
+    });
     expect(workers[0]!.terminate).toHaveBeenCalledOnce();
     // Events after the move are ignored (the thread's exit after terminate()).
     workers[0]!.emit("exit", 1);
@@ -208,8 +222,17 @@ describe("createWorkerBotEngine (hosted-bot R5, R6)", () => {
     expect(botFailures().get("game-1")).toBe(1);
   });
 
-  it("uses the process-wide gate, the real clock and the console by default", () => {
-    expect(typeof createWorkerBotEngine({ limits: DEFAULT_BOT_TIME_LIMITS }).choose).toBe("function");
+  it("uses the real spawner, the process-wide gate and the real clock by default", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    const worker = new FakeWorker();
+    vi.mocked(spawnBotWorker).mockReturnValue(worker as never);
+    const move = createWorkerBotEngine({ limits: DEFAULT_BOT_TIME_LIMITS }).choose(turn());
+    await started();
+    expect(spawnBotWorker).toHaveBeenCalledOnce();
+    worker.send({ type: "done", choice: choice(7) });
+    await expect(move).resolves.toBe(7);
+    expect(info).toHaveBeenCalledOnce();
+    info.mockRestore();
     expect(botFailures()).toBe((globalThis as { __gomokuBotFailures?: unknown }).__gomokuBotFailures);
   });
 });

@@ -8,7 +8,8 @@
     "build": "NODE_ENV=production next build",
     "start": "NODE_ENV=production next start",
     "typecheck": "next typegen && tsc --noEmit",
-    "admin:create": "tsx src/cli/admin-create-cli.ts"
+    "admin:create": "tsx src/cli/admin-create-cli.ts",
+    "bot:bench": "tsx src/cli/bot-bench-cli.ts"
   },
   "dependencies": {
     "@gomoku/core": "*",

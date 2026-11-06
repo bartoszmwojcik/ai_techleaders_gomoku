@@ -63,7 +63,7 @@ function recordFailure(gameId: string): number {
   return count;
 }
 
-type Logger = Pick<Console, "warn" | "error">;
+type Logger = Pick<Console, "info" | "warn" | "error">;
 
 export type WorkerEngineDeps = {
   /** `BOT_L*_SOFT_MS`/`_CEILING_MS` (R6). */
@@ -97,6 +97,7 @@ export function createWorkerBotEngine({
       let worker: BotWorkerHandle | null = null;
       let settled = false;
       const base = { gameId: turn.gameId, moveNumber: turn.moveNumber, level };
+      const startedAt = now();
 
       const finish = (cell: number) => {
         if (settled) return;
@@ -130,8 +131,16 @@ export function createWorkerBotEngine({
         return;
       }
       worker.on("message", (message) => {
-        if (message.type === "iteration") last = message.choice;
-        else finish(message.choice.cell);
+        if (message.type === "iteration") {
+          last = message.choice;
+          return;
+        }
+        const { cell, depth, nodes, stoppedBy } = message.choice;
+        // One line per computed move (no position): the operator's view of the real cost (A-22).
+        logger.info(
+          JSON.stringify({ event: "bot_move", ts: new Date().toISOString(), ...base, depth, nodes, stoppedBy, ms: Math.round(now() - startedAt) }),
+        );
+        finish(cell);
       });
       worker.on("error", fail);
       worker.on("exit", (code) => fail(new Error(`The bot's thread exited with code ${code} before a move`)));
@@ -174,7 +183,8 @@ export function inlineLevel1(turn: Pick<BotTurn, "gameId" | "moveNumber" | "posi
       level: 1,
       budget: INLINE_BUDGET,
       rng: rngFor(turn.gameId, turn.moveNumber),
-      now: () => 0,
+      // Level 1 never reads the time.
+      now: Date.now,
     }).cell;
   } catch {
     return firstFreeCell(turn.position);

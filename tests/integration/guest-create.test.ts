@@ -44,6 +44,8 @@ function scope(codes: { generate(): string } = new InvitationCodes()) {
       timeoutSettler: new SqlTimeoutSettler({ em, clock: systemClock, paperSettler: new PaperSettler({ clock: systemClock, random: Math.random }) }),
       serverConfig: { appOrigin: "https://gomoku.test" } as never,
       colorDraw: new ColorDraw(),
+      // No game with the bot is created here.
+      botAdmission: {} as never,
     }),
     participation: new GameParticipation({ em, clock: systemClock }),
   };
