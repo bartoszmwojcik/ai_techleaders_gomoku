@@ -148,3 +148,7 @@ Uwagi 2026-11-06 (E13): epik E13 (#255) i E13-S01 (#256) należą do źródła `
 ## Stan E13 (2026-11-05)
 
 Źródło: `.ai/specs/2026-11-05-hosted-bot.md`. E13-S01 (#256) zatwierdzona przez właściciela 2026-11-05 (specyfikacja scalona w PR #258, Q-23 zamknięte). Historie S02–S05 zgłoszono 2026-11-06 (#259–#265, sekcja „.ai/specs/2026-11-05-hosted-bot.md” wyżej). Funkcja zostaje za flagą `BOT_ENABLED` do zaakceptowanego pomiaru na Mikrusie.
+
+## Stan E14 (2026-11-09)
+
+Stan E14 (2026-11-09): specyfikacja zatwierdzona; historie S01–S04 do zgłoszenia z `.ai/specs/2026-11-09-show-mode.md` (jeszcze niezgłoszone). Zgłoszenie #275 to zgłoszenie funkcji epiku E14 i zostaje otwarte.
