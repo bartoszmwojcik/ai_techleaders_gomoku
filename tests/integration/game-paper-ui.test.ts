@@ -42,7 +42,9 @@ async function signedUp(browser: Browser) {
   const n = `${Date.now().toString(36)}${++counter}`;
   const response = await api("POST", "/api/auth/register", {
     email: `paper-${n}@example.com`,
-    displayName: `Paper_${n}`,
+    // A fixed name (the only account of this file): the phone measurement below depends on whether the opponent's
+    // clock line wraps, and random letters of a proportional font made that a coin toss (issue 249).
+    displayName: "Paper_UI",
     password: "secret123",
   });
   expect(response.status).toBe(201);
@@ -166,8 +168,9 @@ describe("the paper and pencil game", () => {
       await guest.setViewport(width, 568);
       expect(await horizontalOverflow(guest), `no sideways scrolling at ${width} px`).toBe(false);
       expect(await rows(guest), `15 fields at ${width} px`).toBe(15);
-      // Known deviation: at 320×568 a long opponent name wraps in the clock and pushes the button up to ~34 px
-      // below the window edge (the spec budget is ≈ 544 px); 360 px and wider must fit.
+      // Known deviation: at 320×568 the button ends ~34 px below the window edge with a one-line opponent clock
+      // (the spec budget is ≈ 544 px); a name long enough to wrap that line adds one more line (~21 px, 55 px in total).
+      // 360 px and wider must fit.
       expect(await buttonOverflow(guest), `the "Postaw …" button below the window edge (px) at ${width} px`).toBeLessThanOrEqual(width === 320 ? 40 : 0);
       for (const level of [17, 19, 21]) {
         await guest.click(byLabel("Oddal"));
