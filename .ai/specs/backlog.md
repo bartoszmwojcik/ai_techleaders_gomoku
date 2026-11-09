@@ -169,3 +169,7 @@ Uwagi 2026-11-10 (E14): pokaz to osąd właściciela (D-37), bez dowodu popytu g
 ## Stan E14 (2026-11-10)
 
 Specyfikacja `.ai/specs/2026-11-09-show-mode.md` zatwierdzona 2026-11-09. Epik E14 to #275 (zaadoptowany, otwarty); historie S01–S04 i zadania zgłoszono 2026-11-10 (#280–#286, sekcja „.ai/specs/2026-11-09-show-mode.md” wyżej). Implementacja jeszcze nie rozpoczęta.
+
+## Stan E15 (2026-11-10)
+
+Stan E15 (2026-11-10): specyfikacja zatwierdzona; historie E15-S01…S09 do zgłoszenia z `.ai/specs/2026-11-10-i18n.md` (jeszcze niezgłoszone). Zgłoszenie #289 to zgłoszenie funkcji epiku E15 i zostaje otwarte.
