@@ -149,6 +149,23 @@ Uwagi 2026-11-06 (E13): epik E13 (#255) i E13-S01 (#256) należą do źródła `
 
 Źródło: `.ai/specs/2026-11-05-hosted-bot.md`. E13-S01 (#256) zatwierdzona przez właściciela 2026-11-05 (specyfikacja scalona w PR #258, Q-23 zamknięte). Historie S02–S05 zgłoszono 2026-11-06 (#259–#265, sekcja „.ai/specs/2026-11-05-hosted-bot.md” wyżej). Funkcja zostaje za flagą `BOT_ENABLED` do zaakceptowanego pomiaru na Mikrusie.
 
-## Stan E14 (2026-11-09)
+## .ai/specs/2026-11-09-show-mode.md
+Backlog source: .ai/specs/2026-11-09-show-mode.md
+Last filed: 2026-11-10
 
-Stan E14 (2026-11-09): specyfikacja zatwierdzona; historie S01–S04 do zgłoszenia z `.ai/specs/2026-11-09-show-mode.md` (jeszcze niezgłoszone). Zgłoszenie #275 to zgłoszenie funkcji epiku E14 i zostaje otwarte.
+| Id | Issue | Title | Epic | Depends on | Adopted |
+|---|---|---|---|---|---|
+| E14 | #275 | Pokaz: prywatna partia bez miejsca człowieka (bot vs bot, bot vs agent), podgląd administratora | — | — | yes (source rename) |
+| E14-S01 | #280 | Administrator tworzy pokaz bot vs bot i ogląda go na stronie tylko do odczytu (faza a) | #275 | E14-S01-T01 (#281) | no |
+| E14-S01-T01 | #281 | Migracja: origin = 'show', usunięcie CHECK „bot tylko miejsce 2”, typy, konfiguracja | #280 | — | no |
+| E14-S02 | #282 | Boty w pokazie grają same, napędzane pollingiem widoku (faza b) | #275 | E14-S01 (#280) | no |
+| E14-S03 | #283 | Agent MCP gra przeciwko botowi w pokazie bot vs agent (faza c) | #275 | E14-S01 (#280), E14-S02 (#282) | no |
+| E14-S04 | #284 | Bot vs bot poziomu 2 po dostrojeniu tempa, pomiar i runbook (faza d) | #275 | E14-S01 (#280), E14-S02 (#282), E14-S04-T01 (#285), E14-S04-T02 (#286) | no |
+| E14-S04-T01 | #285 | bot:bench --show, pauza i przycinanie, pokrętła tempa | #284 | E14-S01 (#280) | no |
+| E14-S04-T02 | #286 | Strojenie i pomiar na Mikrusie (T1→T3) i próba generalna | #284 | E14-S04-T01 (#285) | no |
+
+Uwagi 2026-11-10 (E14): pokaz to osąd właściciela (D-37), bez dowodu popytu graczy; epik zaadoptowano z #275 (zgoda właściciela, zmiana źródła z briefu na specyfikację); historie i zadania mają priority-medium (decyzja właściciela), epik zostaje priority-low. Zadania są podzgłoszeniami GitHub (epik → historie → zadania). Kolejność: S01 → S02 → (S03, S04). Flagi `SHOW_*` zostają wyłączone do końca epiku; wdrożenie po epiku zgodnie z decyzją właściciela; brak dotykania produkcji bez zgody właściciela.
+
+## Stan E14 (2026-11-10)
+
+Specyfikacja `.ai/specs/2026-11-09-show-mode.md` zatwierdzona 2026-11-09. Epik E14 to #275 (zaadoptowany, otwarty); historie S01–S04 i zadania zgłoszono 2026-11-10 (#280–#286, sekcja „.ai/specs/2026-11-09-show-mode.md” wyżej). Implementacja jeszcze nie rozpoczęta.
