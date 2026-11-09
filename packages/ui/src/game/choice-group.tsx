@@ -1,3 +1,4 @@
+import { Check } from "lucide-react";
 import { RadioGroup } from "radix-ui";
 import { useId, type ReactNode } from "react";
 
@@ -17,9 +18,14 @@ type ChoiceGroupProps = {
   className?: string;
 };
 
-// Radio group shown as a row of touch-sized chips: the checked chip is filled and ticked by weight, not by colour alone.
+// A choice is not an action (issue 273): radio group drawn as neutral joined segments, smaller than a
+// button and never in the action colour. The checked segment is marked by a stronger border, a tick and
+// weight, not by colour alone. The 1 px gaps show the divider colour of the container, so wrapped rows
+// stay joined too; the container clips the square corners and the focus ring is drawn inside.
 function ChoiceGroup({ label, options, value, onValueChange, disabled, className, "data-testid": testId }: ChoiceGroupProps) {
   const labelId = useId();
+  // Up to two options always share one row; more fill two columns on a phone and one row from `sm`.
+  const layout = options.length <= 2 ? "grid-flow-col auto-cols-fr" : "grid-cols-2 sm:grid-flow-col sm:auto-cols-fr";
   return (
     <div className={cn("flex flex-col gap-1", className)}>
       <span id={labelId} className="text-meta text-text-secondary">
@@ -31,16 +37,19 @@ function ChoiceGroup({ label, options, value, onValueChange, disabled, className
         onValueChange={onValueChange}
         disabled={disabled}
         data-testid={testId}
-        className="flex flex-wrap gap-1"
+        className={cn("grid gap-px overflow-hidden rounded-base border border-border-control bg-border-control", layout)}
       >
         {options.map((option) => (
           <RadioGroup.Item
             key={option.value}
             value={option.value}
             data-testid={testId ? `${testId}-${option.value}` : undefined}
-            className="motion-fast inline-flex min-h-target min-w-target items-center justify-center rounded-base border border-border-control bg-surface-page px-3 text-body text-text-primary transition-colors focus-visible:focus-ring disabled:cursor-not-allowed disabled:text-text-muted data-[state=checked]:border-action-primary-bg data-[state=checked]:bg-action-primary-bg data-[state=checked]:font-strong data-[state=checked]:text-action-primary-text"
+            className="motion-fast inline-flex min-h-target min-w-0 items-center justify-center gap-1 border-2 border-transparent bg-surface-page px-1 text-center text-meta text-text-primary transition-colors hover:bg-surface-raised focus-visible:focus-ring-inset disabled:cursor-not-allowed disabled:text-text-muted max-sm:odd:last:col-span-2 data-[state=checked]:border-segment-checked-border data-[state=checked]:bg-segment-checked-bg data-[state=checked]:font-strong"
           >
-            {option.label}
+            <RadioGroup.Indicator asChild>
+              <Check aria-hidden="true" className="size-(--icon-size-sm) shrink-0" />
+            </RadioGroup.Indicator>
+            <span className="break-words">{option.label}</span>
           </RadioGroup.Item>
         ))}
       </RadioGroup.Root>

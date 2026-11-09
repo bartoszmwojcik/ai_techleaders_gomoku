@@ -169,7 +169,7 @@ export function GuestCreateForm({ botEnabled = false }: { botEnabled?: boolean }
         </Alert>
         {!withBot && <p className="m-0 text-body text-text-secondary">Zaproszenie jest ważne 24 godziny.</p>}
         <div className="flex flex-wrap items-center gap-group">
-          <Button type="submit" data-testid="guest-create" loading={busy && !asking}>
+          <Button type="submit" size="large" data-testid="guest-create" loading={busy && !asking}>
             {busy && !asking
               ? withBot
                 ? "Tworzenie partii…"

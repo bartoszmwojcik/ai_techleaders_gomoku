@@ -42,6 +42,17 @@ Pozwala graczowi wykonać jedną akcję na stronie: założyć konto, dołączy�
 
 <Canvas of={Stories.Warianty} />
 
+### Rozmiary
+
+| Rozmiar | Kiedy wybrać |
+|---|---|
+| `default` | Każda akcja poza główną akcją ekranu; wysokość 44 px (`--target-min`), pismo `text-body`. |
+| `large` | Jedyna główna akcja ekranu („Utwórz zaproszenie”, „Rozumiem, utwórz zaproszenie”); wysokość 56 px (`--target-large`), pismo `text-lead`. Na telefonie na pełną szerokość. |
+
+Wybór opcji to nie akcja: do tego służy [Grupa wyboru](?path=/docs/produkt-partia-grupa-wyboru--docs) (neutralne segmenty), nigdy rząd przycisków. Dwie równorzędne akcje pomocnicze pod główną to dwa równe `secondary` w siatce dwóch kolumn.
+
+<Canvas of={Stories.Rozmiary} />
+
 ## 6. Stany
 
 Domyślny, najechanie, fokus, wciśnięty, zablokowany i ładowanie.

@@ -21,7 +21,7 @@ Gra planszowa dla dwóch osób online: ciemna strona, drewniana plansza, jeden p
 
 | Komponent | Import | Kiedy | Kiedy nie |
 |---|---|---|---|
-| Przycisk | `@gomoku/ui/game/button` | wysłanie formularza, „Załóż konto”, „Dołącz do partii”, akcja destrukcyjna (wariant danger) | przejście na inną stronę (Link tekstowy), wybór opcji (Pole wyboru) |
+| Przycisk | `@gomoku/ui/game/button` | wysłanie formularza, „Załóż konto”, „Dołącz do partii”, akcja destrukcyjna (wariant danger). `size="large"` (56 px, `text-lead`) dla jedynej głównej akcji ekranu; dwie równorzędne akcje pod nią to dwa równe `secondary` w `grid grid-cols-2` | przejście na inną stronę w zdaniu (Link tekstowy), wybór opcji (Grupa wyboru), kilka `large` na jednym ekranie |
 | Link tekstowy | `@gomoku/ui/game/text-link` | odnośnik w zdaniu, „Nie pamiętasz hasła?”, „Konto” w nagłówku | akcja zmieniająca stan na serwerze (Przycisk) |
 | Przełącznik motywu | `@gomoku/ui/game/theme-switch` | jeden przycisk jasny/ciemny (sama ikona z `aria-label`) w rogu layoutu strony gracza | wybór spośród wielu opcji, akcja na serwerze (Przycisk) |
 | Pole tekstowe | `@gomoku/ui/game/text-input` | zawsze wewnątrz Pola formularza | samodzielnie bez etykiety; długi tekst; wybór z listy (Lista wyboru) |
@@ -42,7 +42,7 @@ Gra planszowa dla dwóch osób online: ciemna strona, drewniana plansza, jeden p
 | Znak „papier i ołówek” | `@gomoku/ui/game/paper-mark` | × i ○ wariantu `paper` poza planszą: obok imienia, w statusie tury (`framed`) | partia klasyczna, ozdoba |
 | Zegar gracza | `@gomoku/ui/game/player-clock` | nad i pod planszą w partii | odliczanie statusu w lobby, odmierzanie czasu w komponencie |
 | Status tury | `@gomoku/ui/game/turn-status` | nad planszą w trakcie partii | wynik partii (Baner wyniku), czas (Zegar) |
-| Grupa wyboru | `@gomoku/ui/game/choice-group` | 2–5 krótkich opcji (wariant, czas na gracza) | długa lista (Select), wiele wyborów naraz (Checkbox) |
+| Grupa wyboru | `@gomoku/ui/game/choice-group` | 2–5 krótkich opcji (wariant, przeciwnik, czas): neutralne połączone segmenty, zaznaczony = mocna ramka + ptaszek + pogrubienie, nigdy kolor akcji | długa lista (Select), wiele wyborów naraz (Checkbox), akcja (Przycisk), rząd osobnych przycisków udający wybór |
 | Baner wyniku | `@gomoku/ui/game/game-result-banner` | po zakończeniu partii | w trakcie partii, lista historii (Znacznik statusu) |
 | Karta kodu zaproszenia | `@gomoku/ui/game/invite-code-card` | strona oczekującej partii | wpisywanie kodu przez zaproszonego (Pole formularza) |
 | Kod QR | `@gomoku/ui/game/qr-code` | link do zeskanowania: karta zaproszenia (`qr`), trwająca partia publiczna | ozdoba, link, który i tak trzeba kliknąć na tym samym urządzeniu |
@@ -87,7 +87,8 @@ Nie ma jeszcze: radio, przełącznika, pola wielowierszowego, popovera, podpowie
 | `text-title / -section / -subsection / -lead / -body / -meta` | `text-title (48), text-section (28), text-subsection (20), text-lead (18), text-body (16), text-meta (14)` | role typografii |
 | `font-regular, font-strong` | `font-regular (400), font-strong (700)` | grubości |
 | `motion-fast, motion-base` | `motion-fast (150 ms), motion-base (200 ms)` | ruch; przy reduced-motion wyłączony |
-| `target-min` | `min-h-target, min-w-target` | cel dotyku 44 px |
+| `target-min`, `target-large` | `min-h-target, min-w-target, min-h-target-large` | cel dotyku 44 px; 56 px dla przycisku `large` |
+| `segment-checked-bg`, `segment-checked-border` | `bg-segment-checked-bg, border-segment-checked-border` | zaznaczony segment Grupy wyboru (neutralny, zależny od motywu) |
 
 Surowe wartości (`palette-*`, `space-*`) są tylko w `packages/ui/src/styles/game-tokens.css`.
 
@@ -95,7 +96,8 @@ Surowe wartości (`palette-*`, `space-*`) są tylko w `packages/ui/src/styles/ga
 
 | Jeśli… | to użyj |
 |---|---|
-| akcja zmienia coś na serwerze | Przycisk (nieodwracalna: `danger` w Dialogu potwierdzenia) |
+| akcja zmienia coś na serwerze | Przycisk (nieodwracalna: `danger` w Dialogu potwierdzenia); jedyna główna akcja ekranu: `size="large"` |
+| użytkownik ustawia opcję przed akcją (wariant, przeciwnik, czas) | Grupa wyboru (neutralne segmenty), a pod nią, oddzielona kreską, główna akcja `large` |
 | prowadzi na inną stronę | Link tekstowy (jak główna akcja: `Button asChild` z `<a>`) |
 | pole formularza | Pole formularza + Pole tekstowe (hasło: Pole hasła) |
 | zgoda tak/nie przed akcją | Pole wyboru |

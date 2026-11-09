@@ -8,7 +8,10 @@ const meta = {
   title: "Prymitywy/Przycisk",
   component: Button,
   args: { children: "Załóż konto", onClick: fn() },
-  argTypes: { variant: { control: "inline-radio", options: ["primary", "secondary", "danger"] } },
+  argTypes: {
+    variant: { control: "inline-radio", options: ["primary", "secondary", "danger"] },
+    size: { control: "inline-radio", options: ["default", "large"] },
+  },
 } satisfies Meta<typeof Button>;
 
 export default meta;
@@ -24,6 +27,20 @@ export const Warianty: Story = {
       <Button {...args} variant="secondary">Dołącz</Button>
       <Button {...args} variant="danger">Usuń konto na zawsze</Button>
     </div>
+  ),
+};
+
+export const Rozmiary: Story = {
+  render: (args) => (
+    <Narrow>
+      <div className="flex flex-col gap-group">
+        <Button {...args} size="large" className="w-full">Utwórz zaproszenie</Button>
+        <div className="grid grid-cols-2 gap-group">
+          <Button {...args} variant="secondary">Lobby</Button>
+          <Button {...args} variant="secondary">Masz kod?</Button>
+        </div>
+      </div>
+    </Narrow>
   ),
 };
 

@@ -37,6 +37,11 @@ describe("GuestCreateForm", () => {
     expect(screen.getByRole("link", { name: "Wróć" }).getAttribute("href")).toBe("/");
   });
 
+  it("makes the create button the large main action", () => {
+    render(<GuestCreateForm />);
+    expect(create().className).toContain("min-h-target-large");
+  });
+
   it("creates the game with the acknowledgement alone when the nickname is empty, and opens it staying busy", async () => {
     apiCall.mockResolvedValue(ok);
     render(<GuestCreateForm />);
