@@ -170,6 +170,25 @@ Uwagi 2026-11-10 (E14): pokaz to osąd właściciela (D-37), bez dowodu popytu g
 
 Specyfikacja `.ai/specs/2026-11-09-show-mode.md` zatwierdzona 2026-11-09. Epik E14 to #275 (zaadoptowany, otwarty); historie S01–S04 i zadania zgłoszono 2026-11-10 (#280–#286, sekcja „.ai/specs/2026-11-09-show-mode.md” wyżej). Implementacja jeszcze nie rozpoczęta.
 
+## .ai/specs/2026-11-10-i18n.md
+Backlog source: .ai/specs/2026-11-10-i18n.md
+Last filed: 2026-11-10
+
+| Id | Issue | Title | Epic | Depends on | Adopted |
+|---|---|---|---|---|---|
+| E15 | #289 | Wielojęzyczność: fundament i18n, widok pokazu, pozostałe ekrany | — | — | yes (source rename) |
+| E15-S01 | #291 | E15-S01 — Gracz przełącza język interfejsu (PL/EN/FR), nagłówek w wybranym języku — fundament i18n (faza A) | #289 | — | no |
+| E15-S02 | #292 | E15-S02 — Widok pokazu w PL/EN/FR, język z linku, recenzja francuskiego przed pokazem (faza B) | #289 | E15-S01 (#291); w czasie E14-S01 (#280), E14-S02 (#282), E14-S03 (#283) | no |
+| E15-S03 | #293 | E15-S03 — Wejście do gry w PL/EN/FR (paczka C1) | #289 | E15-S01 (#291) | no |
+| E15-S04 | #294 | E15-S04 — Pokój gry i czat w PL/EN/FR (paczka C2) | #289 | E15-S01 (#291) | no |
+| E15-S05 | #295 | E15-S05 — Lobby, historia i przegląd partii w PL/EN/FR (paczka C3) | #289 | E15-S01 (#291) | no |
+| E15-S06 | #296 | E15-S06 — Konto i logowanie w PL/EN/FR (paczka C4) | #289 | E15-S01 (#291) | no |
+| E15-S07 | #297 | E15-S07 — Błędy API i walidatory tłumaczone po kodzie (paczka C5) | #289 | E15-S01 (#291) | no |
+| E15-S08 | #298 | E15-S08 — Pełny niemiecki: parzystość, recenzja, włączenie w przełączniku (paczka C6) | #289 | E15-S01 (#291); po E15-S03…S07 | no |
+| E15-S09 | #299 | E15-S09 — Decyzje: e-maile (`users.locale`), teksty MCP, strona o przetwarzaniu danych — bez kodu | #289 | — | no |
+
+Uwagi 2026-11-10 (E15): epik zaadoptowano z #289 (zgoda właściciela „tak, zgłoś to drzewo”; tytuł `E15 — …`, `Backlog id: E15`, ryzyko risk-medium → risk-high). Historie mają priority-medium (S01 faza A, S02 faza B, S03–S08 paczki C1–C6 po pokazie, S09 decyzje bez kodu); ryzyko: S06, S07, S09 risk-high, pozostałe risk-medium. S01 nie ma zadań (kroki A1–A10 jako lista kontrolna w treści). Zgłoszenia GitHub: historie są podzgłoszeniami epiku. Noty o wpływie na E14 dodano jako komentarze w #275, #280–#286 (`Depends on: E15-S01` dla #280). Kolejność: E15-S01 → (#281 równolegle) → #280 → #282/#283 z E15-S02 (termin: dzień pokazu minus 5) → S03…S08.
+
 ## Stan E15 (2026-11-10)
 
-Stan E15 (2026-11-10): specyfikacja zatwierdzona; historie E15-S01…S09 do zgłoszenia z `.ai/specs/2026-11-10-i18n.md` (jeszcze niezgłoszone). Zgłoszenie #289 to zgłoszenie funkcji epiku E15 i zostaje otwarte.
+Specyfikacja `.ai/specs/2026-11-10-i18n.md` zatwierdzona 2026-11-10 (PR #290). Epik E15 to #289 (zaadoptowany, otwarty); historie S01–S09 zgłoszono 2026-11-10 (#291–#299, sekcja „.ai/specs/2026-11-10-i18n.md” wyżej). Implementacja jeszcze nie rozpoczęta.
