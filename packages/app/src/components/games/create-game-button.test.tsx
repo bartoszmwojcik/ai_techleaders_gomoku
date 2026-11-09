@@ -38,6 +38,14 @@ describe("CreateGameButton", () => {
     expect(busy.disabled).toBe(true);
   });
 
+  it("makes the create button the large main action, set apart from the settings", () => {
+    render(<CreateGameButton heldGame={null} />);
+    const button = screen.getByRole("button", { name: "Utwórz zaproszenie" });
+    expect(button.className).toContain("min-h-target-large");
+    expect(button.className).toContain("w-full");
+    expect(button.parentElement?.className).toContain("border-t");
+  });
+
   it("offers 'Partia publiczna', unticked, and sends isPublic only when it is ticked (BR-40)", async () => {
     apiCall.mockResolvedValue({ ok: true, data: { gameId: "g1" } });
     render(<CreateGameButton heldGame={null} />);

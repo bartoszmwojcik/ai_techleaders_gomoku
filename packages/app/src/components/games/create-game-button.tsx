@@ -140,9 +140,12 @@ export function CreateGameButton({ heldGame, botEnabled = false }: Props) {
           data-testid="create-game-public"
         />
       )}
-      <Button data-testid="create-game" className="w-full md:w-auto" loading={busy} onClick={() => void onCreate()}>
-        {withBot ? (busy ? "Tworzenie partii…" : "Zagraj z botem") : busy ? "Tworzenie zaproszenia…" : "Utwórz zaproszenie"}
-      </Button>
+      {/* Choice vs action (issue 273): a rule sets the settings above apart from the one main action. */}
+      <div className="border-t border-border-default pt-stack">
+        <Button data-testid="create-game" size="large" className="w-full" loading={busy} onClick={() => void onCreate()}>
+          {withBot ? (busy ? "Tworzenie partii…" : "Zagraj z botem") : busy ? "Tworzenie zaproszenia…" : "Utwórz zaproszenie"}
+        </Button>
+      </div>
     </>
   );
 }

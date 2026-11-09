@@ -17,6 +17,15 @@ describe("Button", () => {
     expect(html).not.toMatch(/\sdisabled(?:=|\s|>)/);
   });
 
+  it("is the default size unless asked for the large one (the main action of a screen)", () => {
+    const large = renderToStaticMarkup(<Button size="large">Utwórz zaproszenie</Button>);
+
+    expect(large).toContain("min-h-target-large");
+    expect(large).toContain("text-lead");
+    expect(large).not.toContain("text-body");
+    expect(renderToStaticMarkup(<Button size="default">A</Button>)).toContain("text-body");
+  });
+
   it("applies the secondary and danger variants", () => {
     expect(renderToStaticMarkup(<Button variant="secondary">A</Button>)).toContain("border-border-control");
     expect(renderToStaticMarkup(<Button variant="danger">A</Button>)).toContain("active:bg-action-danger-bg-pressed");

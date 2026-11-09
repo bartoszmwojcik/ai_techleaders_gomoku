@@ -236,3 +236,12 @@ Plansza wariantu pokazuje znaki zamiast kamieni. Nowy komponent `src/game/paper-
 | `paper-auto` (automat, podgląd) | 6,26 / 5,46 / 6,99 | 4,30 / 3,68 / 5,29 |
 | `paper-pencil` (ramka, piątka) | 6,01 / 5,25 / 6,72 | 4,32 / 3,70 / 5,33 |
 | `paper-mark-fill` / `paper-ink` (wnętrze ○) | 16,74 | 16,74 |
+
+## Wybór a akcja (Grupa wyboru, Przycisk `large`)
+
+Decyzja właściciela 2026-11-09 (kierunek A, globalnie; zgłoszenie #273): kontrolki wyboru nie mogą wyglądać jak przyciski akcji. Zmiany:
+
+- **Grupa wyboru:** neutralne, połączone segmenty (`gap-px` na tle koloru ramki, ramka z zaokrągleniem i obcięciem), pismo `text-meta`, cel 44 px. Zaznaczony: tło `segment-checked-bg`, ramka 2 px `segment-checked-border`, ptaszek (`Check`, `aria-hidden`) i `font-strong`. Fokus rysowany wewnątrz segmentu (`focus-ring-inset`), bo kontener obcina wszystko na zewnątrz. Do dwóch opcji jeden rząd; więcej: dwie kolumny na telefonie, jeden rząd od `sm`. Nowe tokeny: `segment-checked-bg`, `segment-checked-border` (oba motywy), `target-large`, narzędzie `focus-ring-inset`.
+- **Przycisk:** `size` = `default` | `large` (56 px, `text-lead`); `large` dla jedynej głównej akcji ekranu (strona główna, `/play`).
+- **Strona główna zalogowanego:** ustawienia oddzielone kreską od głównej akcji, pod nią dwa równe przyciski `secondary` („Lobby”, „Masz kod?”) w siatce dwóch kolumn.
+- **Kontrast (wzór WCAG):** wartości w `docs/product/choice-group.mdx` (tekst na zaznaczonym 9,4 / 13,9; ramka zaznaczonego 16,0 / 16,7 względem tła; ramka niezaznaczonych 3,7 / 4,6).

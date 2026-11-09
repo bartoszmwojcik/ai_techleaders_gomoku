@@ -112,7 +112,10 @@ describe("HomePage", () => {
     expect(html).toContain('href="/lobby"');
     expect(html).toContain("Lobby</a>");
     expect(html).toContain('data-testid="create" data-held="null" data-bot="true"');
-    expect(html).toContain('href="/join"');
+    // Two equal secondary buttons side by side, "Masz kod?" no longer a text link.
+    expect(html).toContain("grid grid-cols-2");
+    expect(html).toMatch(/<a [^>]*href="\/join"[^>]*>Masz kod\?<\/a>/);
+    expect(html).not.toMatch(/<a [^>]*href="\/join"[^>]*underline/);
     expect(html).not.toContain('href="/account"');
     expect(html).not.toContain('href="/history"');
     expect(html).not.toContain("Wyloguj");

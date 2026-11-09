@@ -117,6 +117,8 @@
 
   /* tokens.md target-min (propozycja, BR-20 phone). */
   --target-min: 44px;
+  /* Button size "large": the one main action of a screen. */
+  --target-large: 56px;
 
   /* R01.8: focus ring geometry. */
   --focus-ring-width: 2px;
@@ -169,6 +171,9 @@
   --action-danger-bg-pressed: var(--palette-clay-700); /* propozycja */
   --focus-ring: var(--palette-orange-400); /* R01.8 */
   --border-default: var(--palette-stone-700); /* R02.4, decorative only */
+  /* Choice group (segments, #273): the checked segment is neutral, never the action colour. */
+  --segment-checked-bg: var(--palette-stone-700);
+  --segment-checked-border: var(--palette-stone-100);
   --surface-overlay: rgb(0 0 0 / 0.6); /* propozycja: scrim behind a dialog, no blur (A02) */
   --status-success: var(--palette-olive-300); /* propozycja (Q4) */
   --status-warning: var(--palette-amber-400); /* propozycja (Q4) */
@@ -197,6 +202,8 @@
   --action-danger-bg-pressed: var(--palette-clay-900);
   --focus-ring: var(--palette-orange-800);
   --border-default: var(--palette-stone-200);
+  --segment-checked-bg: var(--palette-stone-200);
+  --segment-checked-border: var(--palette-stone-900);
   --surface-overlay: rgb(28 25 23 / 0.5);
   --status-success: var(--palette-olive-700);
   --status-warning: var(--palette-amber-800);
@@ -245,6 +252,7 @@
   --text-title--line-height: var(--line-height-title);
 
   --spacing-target: var(--target-min); /* min-h-target, min-w-target: touch target (BR-20) */
+  --spacing-target-large: var(--target-large); /* min-h-target-large: Button size large */
   --spacing-group: var(--space-group);
   --spacing-stack: var(--space-stack);
   --spacing-panel: var(--space-panel);
@@ -272,6 +280,8 @@
   --color-focus-ring: var(--focus-ring);
   --color-border-default: var(--border-default);
   --color-border-control: var(--border-control);
+  --color-segment-checked-bg: var(--segment-checked-bg);
+  --color-segment-checked-border: var(--segment-checked-border);
   --color-status-success: var(--status-success);
   --color-status-warning: var(--status-warning);
   --color-status-danger: var(--status-danger);
@@ -297,6 +307,11 @@
 @utility focus-ring {
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--focus-ring-offset);
+}
+/* The same ring drawn inside the element: for joined segments in a clipped container (choice group). */
+@utility focus-ring-inset {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: calc(-1 * (var(--focus-ring-width) + var(--focus-ring-offset)));
 }
 
 /* R01.5: wood grain drawn in code (two layers of thin stripes at a slight angle), no image. */

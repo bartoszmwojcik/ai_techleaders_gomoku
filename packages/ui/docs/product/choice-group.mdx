@@ -8,7 +8,7 @@ import * as Stories from "./choice-group.stories";
 
 ## 1. Do czego służy
 
-Wybór jednej opcji z kilku krótkich (wariant gry, czas na gracza) jako rząd przycisków radiowych o celu 44 px.
+Wybór jednej opcji z kilku krótkich (wariant gry, czas na gracza) jako neutralna kontrolka segmentowa (połączone segmenty o celu 44 px). Wybór nie jest akcją: nie ma koloru akcji i nie wygląda jak [Przycisk](?path=/docs/prymitywy-przycisk--docs).
 
 <Canvas of={Stories.Playground} />
 
@@ -25,7 +25,7 @@ Wybór jednej opcji z kilku krótkich (wariant gry, czas na gracza) jako rząd p
 ## 4. Anatomia
 
 1. **Nazwa grupy** (wymagana, widoczna).
-2. **Przyciski radiowe** (min. 2), zaznaczony wypełniony i pogrubiony.
+2. **Segmenty** (min. 2) we wspólnej ramce, rozdzielone cienką kreską; pismo `text-meta`. Zaznaczony: neutralne tło (`--segment-checked-bg`), mocna ramka 2 px (`--segment-checked-border`), ptaszek i pogrubienie. Niezaznaczony: tło strony.
 
 ## 5. Warianty
 
@@ -35,7 +35,11 @@ Brak wariantów wyglądu.
 
 ## 6. Stany
 
-Zaznaczony, niezaznaczony, fokus (obrys), zablokowany. Zaznaczenie niesie wypełnienie i grubość pisma, nie sam kolor.
+Zaznaczony, niezaznaczony, najechanie, fokus (obrys wewnątrz segmentu), zablokowany. Zaznaczenie niesie ramka, ptaszek i grubość pisma, nie sam kolor; pomarańcz nie występuje w grupie wyboru wcale.
+
+<Canvas of={Stories.Stany} />
+
+Kontrast (wzór WCAG): tekst na zaznaczonym segmencie 9,4:1 (ciemny) i 13,9:1 (jasny); ramka zaznaczonego względem tła strony 16,0:1 i 16,7:1; ramka niezaznaczonych (`--border-control`) 3,7:1 i 4,6:1. Tło zaznaczonego samo nie wystarcza (1,7:1 i 1,2:1), dlatego niesie go ramka.
 
 <Canvas of={Stories.Zablokowana} />
 
@@ -50,9 +54,11 @@ Komponent nie ma wbudowanych tekstów; etykiety przez propsy.
 
 ## 9. Responsywność
 
-Opcje zawijają się do kolejnych wierszy.
+Do dwóch opcji zawsze jeden rząd; trzy i więcej na telefonie układają się w dwie kolumny (połączone rzędy), od `sm` w jednym rzędzie. Długa etykieta zawija się w segmencie. Sprawdzone przy 320, 360 i 390 px bez poziomego przewijania.
 
 <Canvas of={Stories.NaWaskimEkranie} />
+
+<Canvas of={Stories.Segmenty} />
 
 ## 10. API
 

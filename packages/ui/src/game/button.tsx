@@ -7,7 +7,7 @@ import type { ComponentProps } from "react";
 // R02.1, R02.3: one strong action in the action colour; R01.8: visible focus ring; A02: no shadow,
 // no pills. The label is always text (no icon-only buttons here).
 const buttonVariants = cva(
-  "motion-fast inline-flex min-h-target min-w-target items-center justify-center gap-group rounded-base px-4 py-3 text-center text-body font-strong transition-colors focus-visible:focus-ring disabled:cursor-not-allowed disabled:border disabled:border-border-control disabled:bg-transparent disabled:text-text-muted [&_svg]:size-(--icon-size-md) [&_svg]:shrink-0",
+  "motion-fast inline-flex min-w-target items-center justify-center gap-group rounded-base px-4 py-3 text-center font-strong transition-colors focus-visible:focus-ring disabled:cursor-not-allowed disabled:border disabled:border-border-control disabled:bg-transparent disabled:text-text-muted [&_svg]:size-(--icon-size-md) [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -15,8 +15,13 @@ const buttonVariants = cva(
         secondary: "border border-border-control bg-transparent text-text-primary hover:bg-surface-raised active:bg-border-default",
         danger: "bg-action-danger-bg text-action-danger-text hover:bg-action-danger-bg-hover active:bg-action-danger-bg-pressed",
       },
+      // "large": the one main action of a screen, taller and in the lead size.
+      size: {
+        default: "min-h-target text-body",
+        large: "min-h-target-large text-lead",
+      },
     },
-    defaultVariants: { variant: "primary" },
+    defaultVariants: { variant: "primary", size: "default" },
   },
 );
 
@@ -31,6 +36,7 @@ type ButtonProps = ComponentProps<"button"> &
 function Button({
   className,
   variant,
+  size,
   loading = false,
   asChild = false,
   type = "button",
@@ -38,7 +44,7 @@ function Button({
   children,
   ...props
 }: ButtonProps) {
-  const classes = cn(buttonVariants({ variant }), className);
+  const classes = cn(buttonVariants({ variant, size }), className);
 
   if (asChild) {
     return (

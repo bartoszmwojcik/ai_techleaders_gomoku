@@ -79,7 +79,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             </p>
             <HomeRulesLine />
             {user ? (
-              <div className="flex flex-col items-center gap-stack md:items-start">
+              <div className="flex flex-col gap-stack text-left">
                 {currentGame && (
                   <Alert status="info" title="Masz partię">
                     {GAME_PHASE_TEXT[currentGame.status]}{" "}
@@ -97,13 +97,14 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   }
                   botEnabled={await isBotEnabled()}
                 />
-                <div className="flex w-full flex-wrap items-center justify-center gap-group md:justify-start">
+                {/* Two equal secondary buttons: a link to another page is still a link (role=link). */}
+                <div className="grid grid-cols-2 gap-group">
                   <Button asChild variant="secondary">
                     <a href="/lobby">Lobby</a>
                   </Button>
-                  <TextLink href="/join" placement="standalone">
-                    Masz kod?
-                  </TextLink>
+                  <Button asChild variant="secondary">
+                    <a href="/join">Masz kod?</a>
+                  </Button>
                 </div>
               </div>
             ) : (
