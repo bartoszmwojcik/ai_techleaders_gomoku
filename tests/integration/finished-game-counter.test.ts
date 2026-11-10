@@ -470,7 +470,7 @@ describe("the day in Europe/Warsaw and the read model", () => {
     await run(`delete from games where finished_at < '2002-01-01'`);
   });
 
-  // The bot sits on seat 2 (CHECK `game_players_bot_seat_check`), so it is always the second kind.
+  // Outside a show the bot sits on seat 2 (BR-54), so it is always the second kind.
   async function finishedAt(at: string, kinds: [Kind, Kind] | [Kind, "bot"]) {
     const [row] = await run(
       `insert into games (origin, status, started_at, finished_at, black_seat, winner_seat, end_reason)

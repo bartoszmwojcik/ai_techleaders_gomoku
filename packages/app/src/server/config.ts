@@ -61,6 +61,27 @@ export type BotConfig = {
   limits: Record<BotLevel, BotTimeLimits>;
 };
 
+/**
+ * The show: a private game without a human seat (spec 2026-11-09-show-mode, P2, P9); see `SHOW_*` and
+ * `BOT_SHOW_PAUSE_*` in `.env.example`. Every flag is off by default; `botEnabled` is still required.
+ */
+export type ShowConfig = {
+  /** The whole feature (`SHOW_ENABLED`); turning it off does not stop a running show. */
+  enabled: boolean;
+  /** The bot vs bot layout (`SHOW_BOT_VS_BOT_ENABLED`). */
+  botVsBotEnabled: boolean;
+  /** Level 2 in bot vs bot (`SHOW_BOT_LEVEL2_ENABLED`), off until the pace is tuned (P17). */
+  botLevel2Enabled: boolean;
+  /** Range of the bot's pause before a move in a show (`BOT_SHOW_PAUSE_MIN_MS` <= `_MAX_MS`). */
+  pauseMinMs: number;
+  pauseMaxMs: number;
+};
+
+export const DEFAULT_SHOW_PAUSE_MIN_MS = 1000;
+export const DEFAULT_SHOW_PAUSE_MAX_MS = 2000;
+/** The longest pause of the bot in a show (approved with the spec, 2026-11-09). */
+export const SHOW_PAUSE_MAX_CEILING_MS = 8000;
+
 export const DEFAULT_BOT_MAX_ACTIVE_GAMES = 3;
 /** The longest ceiling of one move an operator may set: a minute is already far beyond any use. */
 export const BOT_MAX_CEILING_MS = 60_000;
@@ -98,6 +119,7 @@ export type ServerConfig = {
    */
   botEnabled: boolean;
   bot: BotConfig;
+  show: ShowConfig;
 };
 
 export const EMAIL_TRANSPORTS = ["file", "brevo"] as const;
@@ -193,11 +215,44 @@ function parseIntInRange(
   return value;
 }
 
-/** `BOT_ENABLED`: `true` turns the bot on; unset, empty or `false` leaves it off. */
-export function parseBotEnabled(raw: string | undefined): boolean {
+/** A feature flag: `true` turns it on; unset, empty or `false` leaves it off. */
+export function parseFlag(name: string, raw: string | undefined): boolean {
   if (raw === undefined || raw === "" || raw === "false") return false;
   if (raw === "true") return true;
-  throw new Error("BOT_ENABLED must be true or false (or unset).");
+  throw new Error(`${name} must be true or false (or unset).`);
+}
+
+/** `BOT_ENABLED`: `true` turns the bot on; unset, empty or `false` leaves it off. */
+export function parseBotEnabled(raw: string | undefined): boolean {
+  return parseFlag("BOT_ENABLED", raw);
+}
+
+/** `SHOW_*` and `BOT_SHOW_PAUSE_*` (show-mode P2, P9): flags off, pause 1000-2000 ms, at most 8000 ms. */
+export function readShowConfig(env: Record<string, string | undefined>): ShowConfig {
+  const pauseMaxMs = parseIntInRange(
+    "BOT_SHOW_PAUSE_MAX_MS",
+    env.BOT_SHOW_PAUSE_MAX_MS,
+    DEFAULT_SHOW_PAUSE_MAX_MS,
+    0,
+    SHOW_PAUSE_MAX_CEILING_MS,
+  );
+  const pauseMinMs = parseIntInRange(
+    "BOT_SHOW_PAUSE_MIN_MS",
+    env.BOT_SHOW_PAUSE_MIN_MS,
+    Math.min(DEFAULT_SHOW_PAUSE_MIN_MS, pauseMaxMs),
+    0,
+    SHOW_PAUSE_MAX_CEILING_MS,
+  );
+  if (pauseMinMs > pauseMaxMs) {
+    throw new Error("BOT_SHOW_PAUSE_MIN_MS must not be greater than BOT_SHOW_PAUSE_MAX_MS.");
+  }
+  return {
+    enabled: parseFlag("SHOW_ENABLED", env.SHOW_ENABLED),
+    botVsBotEnabled: parseFlag("SHOW_BOT_VS_BOT_ENABLED", env.SHOW_BOT_VS_BOT_ENABLED),
+    botLevel2Enabled: parseFlag("SHOW_BOT_LEVEL2_ENABLED", env.SHOW_BOT_LEVEL2_ENABLED),
+    pauseMinMs,
+    pauseMaxMs,
+  };
 }
 
 function readBotLimits(env: Record<string, string | undefined>, level: BotLevel): BotTimeLimits {
@@ -368,5 +423,6 @@ export function readServerConfig(
     chat: readChatConfig(env),
     botEnabled: parseBotEnabled(env.BOT_ENABLED),
     bot: readBotConfig(env),
+    show: readShowConfig(env),
   };
 }

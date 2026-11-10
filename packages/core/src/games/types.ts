@@ -4,15 +4,18 @@ export type GameStatus = (typeof GAME_STATUSES)[number];
 
 /**
  * How a game came to be (D-21); `rematch` is a game proposed after a finished one, `bot` a game
- * against the bot hosted by us (spec 2026-11-05-hosted-bot), started at once without an invitation.
+ * against the bot hosted by us (spec 2026-11-05-hosted-bot), started at once without an invitation,
+ * `show` a private game without a human seat (bot vs bot, bot vs agent) created by the administrator
+ * (spec 2026-11-09-show-mode, D-37).
  */
-export const GAME_ORIGINS = ["invite", "lobby", "rematch", "bot"] as const;
+export const GAME_ORIGINS = ["invite", "lobby", "rematch", "bot", "show"] as const;
 export type GameOrigin = (typeof GAME_ORIGINS)[number];
 
 /**
  * Account holder, a guest identified by a one-game token (BR-22), an agent that joined over MCP
  * with its own one-game token (BR-31, E06-S01) or the bot hosted by us (BR-54): no account, no
- * token, always seat 2; only the server moves for it.
+ * token, seat 2 — or seat 1 too, in a show only (BR-54, spec 2026-11-09-show-mode); only the server
+ * moves for it.
  */
 export const PARTICIPANT_KINDS = ["account", "guest", "agent", "bot"] as const;
 export type ParticipantKind = (typeof PARTICIPANT_KINDS)[number];
@@ -45,3 +48,9 @@ export type GameResult = { winnerSeat: Seat | null; reason: EndReason };
 
 /** Who can create a game and so sit in seat 1: an agent never does (BR-30), nor does the bot (BR-54). */
 export type CreatorKind = Exclude<ParticipantKind, "agent" | "bot">;
+
+/**
+ * Who sits in seat 1 of a game an agent joins: the creator, or the bot of a show waiting for its
+ * agent (spec 2026-11-09-show-mode, P4). Never another agent (agent vs agent is out of scope).
+ */
+export type OpponentOfAgentKind = Exclude<ParticipantKind, "agent">;
