@@ -31,7 +31,6 @@ const show = {
     back: "Wróć do pokazu",
     formBlocked: "Nowy pokaz rozpoczniesz, gdy ten się zakończy.",
     formTitle: "Nowy pokaz",
-    formLayout: "Układ: bot vs bot",
     botVsBotDisabled: "Układ bot vs bot jest wyłączony: ustaw SHOW_BOT_VS_BOT_ENABLED=true.",
     levelLabel: "Bot na miejscu {seat}",
     level: "Poziom {level}",

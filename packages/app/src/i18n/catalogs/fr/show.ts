@@ -27,7 +27,6 @@ const show: Translation<"show"> = {
     back: "Revenir à la démonstration",
     formBlocked: "Vous pourrez lancer une nouvelle démonstration quand celle-ci sera terminée.",
     formTitle: "Nouvelle démonstration",
-    formLayout: "Configuration : bot contre bot",
     botVsBotDisabled: "La configuration bot contre bot est désactivée : définissez SHOW_BOT_VS_BOT_ENABLED=true.",
     levelLabel: "Bot à la place {seat}",
     level: "Niveau {level}",

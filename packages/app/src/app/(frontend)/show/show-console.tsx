@@ -114,7 +114,7 @@ export function ShowConsole({ initial, locale, dict }: Props) {
         </Panel>
       )}
       <Panel title={t("console.formTitle")}>
-        <p className="m-0">{t("console.formLayout")}</p>
+        <p className="m-0">{t("console.runningLayout", { layout: t("layout.bot-bot") })}</p>
         {!initial.botVsBotEnabled && <Alert status="warning" title={t("console.botVsBotDisabled")} />}
         {([0, 1] as const).map((index) => (
           <Field

@@ -27,7 +27,6 @@ const show: Translation<"show"> = {
     back: "Back to the show",
     formBlocked: "You can start a new show once this one has ended.",
     formTitle: "New show",
-    formLayout: "Layout: bot vs bot",
     botVsBotDisabled: "The bot vs bot layout is switched off: set SHOW_BOT_VS_BOT_ENABLED=true.",
     levelLabel: "Bot in seat {seat}",
     level: "Level {level}",
