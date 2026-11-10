@@ -13,13 +13,14 @@ vi.mock("next/headers", () => ({
         ? { name, value: cookieStore.value }
         : undefined,
   }),
+  headers: async () => new Headers(),
 }));
 
 vi.mock("@/components/auth/session-menu", () => ({
   SessionMenu: () => <button data-testid="session-menu">menu</button>,
 }));
 
-import FrontendLayout, { metadata } from "./layout";
+import FrontendLayout, { generateMetadata } from "./layout";
 
 async function render(cookie: string | undefined) {
   cookieStore.value = cookie;
@@ -87,8 +88,8 @@ describe("FrontendLayout", () => {
     expect(html).toContain("group-has-[[data-theme-overlay]]/body:max-sm:max-w-28");
   });
 
-  it("describes the game for search engines", () => {
-    expect(metadata).toEqual({
+  it("describes the game for search engines", async () => {
+    expect(await generateMetadata()).toEqual({
       title: "Gomoku",
       description: expect.stringContaining("plansza 15×15"),
     });
