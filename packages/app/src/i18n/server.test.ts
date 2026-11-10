@@ -12,7 +12,7 @@ vi.mock("next/headers", () => ({
   headers: async () => new Headers(request.acceptLanguage === null ? {} : { "accept-language": request.acceptLanguage }),
 }));
 
-import { getI18n, getLocale } from "./server";
+import { clientI18n, getI18n, getLocale } from "./server";
 
 beforeEach(() => {
   request.cookie = undefined;
@@ -46,5 +46,12 @@ describe("getI18n", () => {
     expect(locale).toBe("fr");
     expect(dict.theme.dark).toBe("Thème sombre");
     expect(t("session.menuLabel", { name: "Ala" })).toBe("Connecté en tant que Ala, menu du compte");
+  });
+
+  it("hands a client component nothing in Polish and the language with the namespace otherwise", async () => {
+    expect(clientI18n(await getI18n("header"))).toEqual({});
+    request.cookie = "en";
+    const english = await getI18n("header");
+    expect(clientI18n(english)).toEqual({ locale: "en", dict: english.dict });
   });
 });

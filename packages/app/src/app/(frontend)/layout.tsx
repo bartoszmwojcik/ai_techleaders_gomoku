@@ -11,7 +11,7 @@ import type { ReactNode } from "react";
 import { SessionMenu } from "@/components/auth/session-menu";
 import { LanguageSwitch } from "@/components/i18n/language-switch";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
-import { getI18n } from "@/i18n/server";
+import { clientI18n, getI18n } from "@/i18n/server";
 
 import "./frontend.css";
 
@@ -24,11 +24,12 @@ export default async function FrontendLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
-  const { locale, dict } = await getI18n("header");
+  const header = await getI18n("header");
+  const texts = clientI18n(header);
 
   return (
     // The init script may set data-theme before hydration, hence suppressHydrationWarning.
-    <html lang={locale} data-theme={theme ?? undefined} suppressHydrationWarning>
+    <html lang={header.locale} data-theme={theme ?? undefined} suppressHydrationWarning>
       <head>
         {theme === null && (
           <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
@@ -48,11 +49,11 @@ export default async function FrontendLayout({
             >
               Gomoku
             </TextLink>
-            <ThemeToggle initialTheme={theme} dict={dict} />
-            <LanguageSwitch locale={locale} dict={dict} />
+            <ThemeToggle initialTheme={theme} dict={texts.dict} />
+            <LanguageSwitch {...texts} />
           </div>
           <div className="flex min-w-0 justify-end group-has-[[data-theme-overlay]]/body:max-sm:max-w-28">
-            <SessionMenu locale={locale} dict={dict} />
+            <SessionMenu {...texts} />
           </div>
         </header>
         {children}

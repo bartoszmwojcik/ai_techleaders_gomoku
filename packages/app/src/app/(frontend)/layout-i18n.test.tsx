@@ -11,8 +11,8 @@ vi.mock("next/headers", () => ({
 }));
 
 vi.mock("@/components/auth/session-menu", () => ({
-  SessionMenu: ({ locale, dict }: { locale: string; dict: { session: { account: string } } }) => (
-    <button data-testid="session-menu">{`${locale}:${dict.session.account}`}</button>
+  SessionMenu: ({ locale, dict }: { locale?: string; dict?: { session: { account: string } } }) => (
+    <button data-testid="session-menu">{`${locale ?? "default"}:${dict?.session.account ?? "default"}`}</button>
   ),
 }));
 
@@ -35,6 +35,14 @@ describe("FrontendLayout: language", () => {
     expect(html).toContain('aria-label="Langue : Français, changer de langue"');
     expect(html).toContain('data-testid="session-menu">fr:Compte<');
     expect(await generateMetadata()).toEqual({ title: "Gomoku", description: expect.stringContaining("plateau 15×15") });
+  });
+
+  it("hands no texts to the client components in Polish: their defaults are the Polish catalog", async () => {
+    const html = await render();
+
+    expect(html).toMatch(/^<html lang="pl">/);
+    expect(html).toContain('data-testid="session-menu">default:default<');
+    expect(html).toContain('aria-label="Ciemny motyw"');
   });
 
   it("follows the browser without a cookie and shows the language switch after the theme switch", async () => {

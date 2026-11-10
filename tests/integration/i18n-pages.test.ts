@@ -97,6 +97,11 @@ describe("language of a request", () => {
     const page = await (await get("/", { cookie: `${session}; gomoku_lang=fr` })).text();
 
     expect(page).toContain(`aria-label="Connecté en tant que ${input.displayName}, menu du compte"`);
+
+    // In Polish the client components use their bundled default: no catalog is serialised into the page.
+    const polish = await (await get("/", { cookie: session })).text();
+    expect(polish).toContain(`aria-label="Zalogowano jako ${input.displayName}, menu konta"`);
+    expect(polish).not.toContain("Trwa partia");
   });
 
   it("keeps the admin panel in Polish", async () => {
