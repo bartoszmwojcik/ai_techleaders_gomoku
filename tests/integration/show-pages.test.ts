@@ -111,6 +111,8 @@ describe("Widok pod projektor (P20, criteria i-vii)", () => {
     expect(await boardWidth()).toBe(576);
     expect(await browser.evaluate<string>(`getComputedStyle(document.querySelector('[role="timer"]')).fontSize`)).toBe("48px");
     expect(await browser.evaluate<number>(`Math.round(document.querySelector('[role="grid"]').getBoundingClientRect().bottom)`)).toBeLessThanOrEqual(720);
+    // The page itself fits the screen: no vertical scrolling in the projector view (QA of #304).
+    expect(await browser.evaluate<number>(`document.documentElement.scrollHeight`)).toBeLessThanOrEqual(720);
 
     // (iii) a reload keeps it, also with empty storage.
     await browser.evaluate(`localStorage.clear()`);

@@ -230,7 +230,7 @@ function writeAddress(on: boolean) {
 function Shell({ projector, children }: { projector: boolean; children: React.ReactNode }) {
   return (
     <main
-      className={`mx-auto flex w-full flex-1 flex-col gap-stack px-panel py-section ${projector ? "" : "max-w-(--layout-width-dialog)"}`}
+      className={`mx-auto flex w-full flex-1 flex-col gap-stack px-panel ${projector ? "py-stack" : "max-w-(--layout-width-dialog) py-section"}`}
     >
       {children}
     </main>
