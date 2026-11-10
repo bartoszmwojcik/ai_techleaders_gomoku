@@ -1,17 +1,18 @@
 "use client";
 
+import type { Locale } from "@gomoku/core/i18n/locales";
+import { createTranslator } from "@gomoku/core/i18n/translator";
 import { ConfirmDialog } from "@gomoku/ui/game/confirm-dialog";
 import { UserMenu, UserMenuAction, UserMenuLink } from "@gomoku/ui/game/user-menu";
 import { useRef, useState } from "react";
 
+import plHeader from "@/i18n/catalogs/pl/header";
+import type { NamespaceDict } from "@/i18n/catalogs/types";
 import { apiCall } from "@/lib/api-client";
 
 import { useSignOut } from "./use-sign-out";
 
-const REASON_TEXT = {
-  game: "Trwa partia — po wylogowaniu zegar biegnie dalej. Wylogować?",
-  unknown: "Nie udało się sprawdzić, czy trwa partia. Jeśli trwa, po wylogowaniu zegar biegnie dalej. Wylogować?",
-} as const;
+const REASON_KEY = { game: "logout.gameRunning", unknown: "logout.gameUnknown" } as const;
 
 /** A read that hangs must not leave "Wyloguj" dead; after this long it counts as failed, and the menu asks. */
 const LOBBY_READ_TIMEOUT_MS = 5_000;
@@ -21,10 +22,20 @@ const LOBBY_READ_TIMEOUT_MS = 5_000;
  * which does not render again when a game starts on the page below it, so the game is read when the player chooses
  * "Wyloguj"; a read that fails asks too, because asking costs less than leaving a running game unawares.
  */
-export function AccountMenu({ displayName }: { displayName: string }) {
+export function AccountMenu({
+  displayName,
+  locale = "pl",
+  dict = plHeader,
+}: {
+  displayName: string;
+  /** Language and `header` namespace from the server; Polish by default. */
+  locale?: Locale;
+  dict?: NamespaceDict<"header">;
+}) {
+  const t = createTranslator(locale, dict);
   const { pending, failed, signOut, clearFailed } = useSignOut();
   const [asking, setAsking] = useState(false);
-  const [reason, setReason] = useState<keyof typeof REASON_TEXT | null>(null);
+  const [reason, setReason] = useState<keyof typeof REASON_KEY | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   // State alone lags a double activation by one render, and the read below takes a while.
   const inFlight = useRef(false);
@@ -60,23 +71,23 @@ export function AccountMenu({ displayName }: { displayName: string }) {
     <>
       <UserMenu
         name={displayName}
-        label={`Zalogowano jako ${displayName}, menu konta`}
+        label={t("session.menuLabel", { name: displayName })}
         triggerRef={trigger}
         data-testid="signed-in-as"
       >
-        <UserMenuLink href="/account">Konto</UserMenuLink>
-        <UserMenuLink href="/history">Historia</UserMenuLink>
-        <UserMenuAction onSelect={() => void onLogout()}>Wyloguj</UserMenuAction>
+        <UserMenuLink href="/account">{t("session.account")}</UserMenuLink>
+        <UserMenuLink href="/history">{t("session.history")}</UserMenuLink>
+        <UserMenuAction onSelect={() => void onLogout()}>{t("session.logout")}</UserMenuAction>
       </UserMenu>
       <ConfirmDialog
         open={asking}
         onOpenChange={setAsking}
         tone="primary"
-        title="Wylogować?"
-        description={reason && REASON_TEXT[reason]}
-        message={failed && "Nie udało się wylogować. Spróbuj ponownie."}
-        confirmLabel="Wyloguj"
-        cancelLabel="Zostań zalogowany"
+        title={t("logout.title")}
+        description={reason && t(REASON_KEY[reason])}
+        message={failed && t("logout.failed")}
+        confirmLabel={t("logout.confirm")}
+        cancelLabel={t("logout.cancel")}
         confirming={pending}
         onConfirm={() => void attempt()}
         onCloseAutoFocus={(event) => {

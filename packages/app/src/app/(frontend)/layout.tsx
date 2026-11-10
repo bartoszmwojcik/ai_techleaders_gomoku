@@ -9,24 +9,26 @@ import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
 import { SessionMenu } from "@/components/auth/session-menu";
+import { LanguageSwitch } from "@/components/i18n/language-switch";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { getI18n } from "@/i18n/server";
 
 import "./frontend.css";
 
-export const metadata: Metadata = {
-  title: "Gomoku",
-  description:
-    "Gomoku 1:1 online — swobodne zasady, plansza 15×15, zegar 10 minut na gracza.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getI18n("common");
+  return { title: "Gomoku", description: t("meta.description") };
+}
 
 export default async function FrontendLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
+  const { locale, dict } = await getI18n("header");
 
   return (
     // The init script may set data-theme before hydration, hence suppressHydrationWarning.
-    <html lang="pl" data-theme={theme ?? undefined} suppressHydrationWarning>
+    <html lang={locale} data-theme={theme ?? undefined} suppressHydrationWarning>
       <head>
         {theme === null && (
           <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
@@ -46,10 +48,11 @@ export default async function FrontendLayout({
             >
               Gomoku
             </TextLink>
-            <ThemeToggle initialTheme={theme} />
+            <ThemeToggle initialTheme={theme} dict={dict} />
+            <LanguageSwitch locale={locale} dict={dict} />
           </div>
           <div className="flex min-w-0 justify-end group-has-[[data-theme-overlay]]/body:max-sm:max-w-28">
-            <SessionMenu />
+            <SessionMenu locale={locale} dict={dict} />
           </div>
         </header>
         {children}
