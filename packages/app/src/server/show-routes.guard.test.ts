@@ -30,10 +30,12 @@ export function findUnguarded(files: Record<string, string>): string[] {
     .filter(([name, text]) => {
       const code = stripComments(text);
       if (isRoute(name)) {
-        // Every handler of the file: the number of `apiHandler(` equals the number of gates passed to it.
+        // Every handler of the file: the number of `apiHandler(` equals the number of gates passed to it, and every
+        // exported HTTP method has its own gated handler (a bare `export async function DELETE` would bypass it).
         const handlers = code.match(/\bapiHandler\(/g)?.length ?? 0;
         const gates = code.match(/\bgate:\s*requireAdminApi\b/g)?.length ?? 0;
-        return handlers === 0 || gates !== handlers;
+        const methods = code.match(/\bexport\s+(?:async\s+)?(?:function\s+|const\s+)(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b/g)?.length ?? 0;
+        return handlers === 0 || gates !== handlers || methods > gates;
       }
       if (isPage(name) || isAction(text)) return !/\brequireAdmin\(\)/.test(code);
       return false;
@@ -56,6 +58,13 @@ describe("the findUnguarded helper", () => {
       findUnguarded({ "api/show/route.ts": "apiHandler(f, { gate: requireAdminApi }); apiHandler(g);" }),
     ).toEqual(["api/show/route.ts"]);
     expect(findUnguarded({ "api/show/route.ts": "apiHandler(f, { gate: requireAdmin });" })).toEqual(["api/show/route.ts"]);
+    // A second method exported without its own gated handler (review of #304).
+    expect(
+      findUnguarded({
+        "api/show/route.ts":
+          "const a = apiHandler(f, { gate: requireAdminApi });\nexport async function GET(r) { return a(r); }\nexport async function DELETE() { return new Response(); }",
+      }),
+    ).toEqual(["api/show/route.ts"]);
   });
 
   it("accepts guarded entry points and skips other files", () => {
