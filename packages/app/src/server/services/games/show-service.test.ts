@@ -151,24 +151,43 @@ describe("ShowService.create (bot vs bot)", () => {
     expect(created).toHaveLength(3);
     // The lock comes before the check of a show in progress, both in the one transaction.
     const order = sqls(calls);
-    expect(order[0]).toBe("select pg_advisory_xact_lock(hashtext(?))");
-    expect(calls[0]!.params).toEqual(["show:create"]);
-    expect(order[1]).toContain("g.origin = 'show' and g.status in ('waiting', 'active')");
+    const lock = order.indexOf("select pg_advisory_xact_lock(hashtext(?))");
+    expect(order[0]).toContain("g.origin = 'show' and g.status in ('waiting', 'active')");
+    expect(calls[lock]!.params).toEqual(["show:create"]);
+    expect(order[lock + 1]).toContain("g.origin = 'show' and g.status in ('waiting', 'active')");
   });
 
-  it("refuses a second show with SHOW_RUNNING and its id, after settling the open ones lazily", async () => {
-    const { service, created, timeoutSettler, calls } = setup({ open: [[{ id: OTHER }], [{ id: OTHER, status: "active", bots: 2 }]] });
+  it("refuses a second show with SHOW_RUNNING and its id before the pool and the admission (review)", async () => {
+    const { service, created, timeoutSettler, calls, rateLimiter, botAdmission } = setup({
+      open: [[{ id: OTHER }], [{ id: OTHER, status: "active", bots: 2 }]],
+    });
 
     const error = await errorOf(service.create("admin-1", BOT_BOT));
 
     expect(error).toMatchObject({ status: 409, code: "SHOW_RUNNING", data: { gameId: OTHER } });
     expect(timeoutSettler.settleExpired).toHaveBeenCalledWith(OTHER, expect.anything(), NOW);
     expect(sqls(calls).some((sql) => sql.startsWith("with expired as"))).toBe(true);
+    // A running show is never answered as a busy bot, and refusing it costs no attempt of the pool.
+    expect(rateLimiter.hit).not.toHaveBeenCalled();
+    expect(botAdmission.admitShow).not.toHaveBeenCalled();
+    expect(sqls(calls).some((sql) => sql.includes("pg_advisory_xact_lock"))).toBe(false);
+    expect(created).toHaveLength(0);
+  });
+
+  it("still refuses under the lock a show created between the early check and the transaction (race)", async () => {
+    // Reads of open shows: early check (none), in the transaction (one, settled), then its row.
+    const { service, created, rateLimiter } = setup({ open: [[], [{ id: OTHER }], [{ id: OTHER, status: "active", bots: 2 }]] });
+
+    const error = await errorOf(service.create("admin-1", BOT_BOT));
+
+    expect(error).toMatchObject({ status: 409, code: "SHOW_RUNNING", data: { gameId: OTHER } });
+    expect(rateLimiter.hit).toHaveBeenCalledOnce();
     expect(created).toHaveLength(0);
   });
 
   it("creates the show once the open one has ended on its clock", async () => {
-    const { service, created } = setup({ open: [[{ id: OTHER }], []] });
+    // The early check and the locked one both settle the show that ran out of time.
+    const { service, created } = setup({ open: [[{ id: OTHER }], [], [{ id: OTHER }], []] });
 
     await expect(service.create("admin-1", BOT_BOT)).resolves.toMatchObject({ gameId: GAME });
     expect(created).toHaveLength(3);
@@ -205,7 +224,10 @@ describe("ShowService.create (bot vs bot)", () => {
     const busy = setup();
     busy.botAdmission.admitShow.mockRejectedValue(new Error("503"));
     await expect(busy.service.create("admin-1", BOT_BOT)).rejects.toThrow("503");
-    expect(busy.em.transactional).not.toHaveBeenCalled();
+    // Only the early look at the open shows ran: no lock, no insert.
+    expect(busy.em.transactional).toHaveBeenCalledOnce();
+    expect(sqls(busy.calls).some((sql) => sql.includes("pg_advisory_xact_lock"))).toBe(false);
+    expect(busy.created).toHaveLength(0);
   });
 });
 

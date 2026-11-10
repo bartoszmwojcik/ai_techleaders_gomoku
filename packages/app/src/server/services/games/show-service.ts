@@ -184,6 +184,11 @@ export class ShowService {
     if (!show.enabled) throw unavailable("disabled");
     if (!show.botVsBotEnabled) throw unavailable("bot_vs_bot_disabled");
     if (!show.botLevel2Enabled && input.levels.includes(2)) throw refuse("level2_not_allowed", {}, true);
+    // A show in progress is the answer before the pool and the admission: it holds a slot of the bot itself, so the
+    // admission would otherwise refuse with `busy`, and every such refusal would spend the pool. The locked check
+    // in the transaction below still decides a race.
+    const open = await this.current();
+    if (open) throw running(open.gameId);
     await this.#rateLimiter.hit(`show-create:${userId}`, SHOW_CREATE_LIMIT, SHOW_CREATE_WINDOW_MS);
     const bots = await this.#botAdmission.admitShow(input.levels);
 
@@ -194,9 +199,7 @@ export class ShowService {
       if (running) return { running: running.gameId };
       return { gameId: await this.#insert(tx, bots, now) };
     });
-    if ("running" in outcome) {
-      throw new ConflictError(SHOW_RUNNING_MESSAGE, { code: "SHOW_RUNNING", data: { gameId: outcome.running } });
-    }
+    if ("running" in outcome) throw running(outcome.running);
     return {
       gameId: outcome.gameId,
       layout: "bot-bot",
@@ -337,6 +340,10 @@ export class ShowService {
     if (game.status === "finished" && game.finishedAt) state.finishedAt = game.finishedAt;
     return state;
   }
+}
+
+function running(gameId: string): ConflictError {
+  return new ConflictError(SHOW_RUNNING_MESSAGE, { code: "SHOW_RUNNING", data: { gameId } });
 }
 
 /** Two bots make bot vs bot; one bot (waiting for its agent, or with it) is bot vs agent. */
