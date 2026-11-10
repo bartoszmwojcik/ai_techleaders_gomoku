@@ -195,7 +195,8 @@ Aplikacja zapisuje zdarzenia bezpieczeństwa (OWASP A09:2025, `docs/security/thr
 | --- | --- | --- |
 | `security.rate_limited` | pierwsze odrzucenie (429) puli w oknie licznika; kolejne odrzucenia tego samego okna nie dopisują linii, więc zalew 429 daje jedną linię na pulę i okno | `scope`: nazwa puli, np. `login:ip`, `login:email-ip`, `mcp:ip`, `invitation-lookup:ip` |
 | `security.csrf_rejected` | zmiana stanu bez właściwego `Origin` lub bez nagłówka `X-Gomoku-Request` | `reason`: `origin` albo `missing_header` |
-| `security.admin_denied` | `/backend` otwarty przez kogoś, kto nie jest administratorem (w tym boty szukające panelu) | brak |
+| `security.admin_denied` | `/backend`, `/show*` lub `/api/show*` otwarte przez kogoś, kto nie jest administratorem (w tym boty szukające panelu) | brak |
+| `security.show_created`, `security.show_ended` | administrator utworzył albo zakończył pokaz (E14, jedyne zapisy administratora) | brak (bez id partii i konta) |
 | `security.login_failed` | złe hasło lub nieznany e-mail (jedna linia dla obu przypadków) | brak |
 | `security.invitation_lookup_failed` | nieznany lub nieważny kod zaproszenia (przeglądarka i agent MCP) | `scope`: `invitation-lookup:ip`, `agent-lookup:ip` lub `...:global` |
 | `security.mcp_token_invalid` | wywołanie narzędzia MCP z nieznanym tokenem partii | brak |

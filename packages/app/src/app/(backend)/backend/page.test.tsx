@@ -82,6 +82,7 @@ describe("BackendHomePage", () => {
     expect(html).not.toContain("Nie udało się wczytać danych");
     expect(html).toMatch(/Rozmiar planszy<\/td><td[^>]*>15×15<\/td>/);
     expect(html).toMatch(/Kamieni w linii do wygranej<\/td><td[^>]*>5<\/td>/);
+    expect(html).toMatch(/<a [^>]*href="\/show"[^>]*>Pokaz partii botów/);
   });
 
   it("passes the parsed search parameters to the account list", async () => {
