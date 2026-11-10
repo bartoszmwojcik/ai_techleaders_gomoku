@@ -241,7 +241,7 @@ Mechanism-specific details depend on OD-2; the requirements below do not.
 ### Code Quality
 
 - TypeScript strict; no `any` — narrow unknown values at runtime.
-- Identifiers and comments in English; UI copy in Polish.
+- Identifiers and comments in English; UI copy lives in the Polish catalog (source, `packages/app/src/i18n/catalogs/pl`); EN/FR (and DE) are translations kept in parity. A new UI text in a component or page of an already migrated group (`ENFORCED_GROUPS`) is a test failure (spec `2026-11-10-i18n.md`, I11/I23).
 - Self-documenting code; a comment only for a non-obvious *why*.
 - Three similar lines are fine; a copy-pasted block with branching logic is not.
 - One level of abstraction per function; early returns instead of nested `if`s.

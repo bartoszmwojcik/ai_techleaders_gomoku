@@ -320,12 +320,27 @@ Konfiguracja (`.env.example`, puste = wartości początkowe): `CHAT_MAX_LENGTH` 
 
 Testy: `packages/core/src/chat/*.test.ts` i `validators/chat/*.test.ts` (walidacja tabelaryczna), `chat-service.test.ts`, `chat/route.test.ts`, `components/chat/*.test.tsx`, integracyjne `tests/integration/chat-service.test.ts` (PostgreSQL: współbieżność, kursor, idempotencja, okno 1 h, kaskady) i `chat.test.ts` (dwie przeglądarki, API, log serwera); stories `Ekrany/Partia` (warianty „Czat”).
 
+#### Wielojęzyczność (E15, fundament E15-S01 #291)
+
+Interfejs gracza mówi po polsku (domyślnie), angielsku i francusku; niemiecki jest wybieralny przez `?lang=de`, ale ukryty w przełączniku do czasu recenzji. Bez nowej zależności (bez `next-intl`) i bez prefiksu w adresie (`/fr/…`). Specyfikacja: `.ai/specs/2026-11-10-i18n.md`.
+
+- **Moduły.** Czysta logika w `packages/core/src/i18n/`: `locales.ts` (lista języków, ciasteczko `gomoku_lang`, negocjacja `Accept-Language`, łańcuch zapasowy FR → EN → PL), `translator.ts` (`createTranslator(locale, dict)` — klucze kropkowe, parametry `{name}`, liczba mnoga przez `Intl.PluralRules` z polem `count`), `format.ts` (`Intl` dla liczb, megabajtów — „16 Mo” po francusku — i dat w stałej strefie `Europe/Warsaw`). Teksty i spięcie z Next.js w `packages/app/src/i18n/`: katalogi `catalogs/<język>/<przestrzeń>.ts`, `catalogs/index.ts` (`loadNamespace`, tylko serwer), `catalogs/status.ts` (stan recenzji: `draft`/`reviewed`), `server.ts` (`getLocale`, `getI18n`).
+- **Kolejność rozwiązywania języka:** ciasteczko `gomoku_lang` z poprawnym kodem → pierwszy obsługiwany język z `Accept-Language` (`fr-CA` → `fr`) → polski. `getLocale()` czyta to raz na żądanie (React `cache`), więc layout, strona i komponenty serwerowe renderują ten sam język, a klient nie czyta `navigator.language` — HTML i hydracja zawsze się zgadzają.
+- **`?lang=`.** `packages/app/src/proxy.ts` (Next 16 `proxy`) działa tylko dla stron gracza z parametrem `lang` (bez `/api`, `/_next`, `/backend` i plików): zapisuje ciasteczko (`Path=/`, rok, `SameSite=Lax`, `HttpOnly`, `Secure` jak ciasteczko sesji) i odpowiada `307` na ten sam adres bez `lang`, z pozostałymi parametrami. Nieobsługiwana wartość jest tylko usuwana. Ciasteczko nigdy nie powstaje z `Accept-Language`, tylko z jawnego wyboru. Przeglądarka bez ciasteczek zobaczy wybrany język tylko na jednej stronie.
+- **Serwer rozwiązuje, klient dostaje propsy.** Komponent serwerowy: `const { t, dict, locale } = await getI18n("header")`. Komponent kliencki dostaje `dict` (pełna przestrzeń po scaleniu łańcucha zapasowego) i `locale` przez propsy; ich domyślne wartości to katalog PL, więc komponent bez propsów (i jego testy) mówi po polsku. Do bundla klienta trafia tylko katalog PL (to te same teksty, które były literałami); EN/FR/DE ładuje wyłącznie serwer.
+- **Nagłówek** (`(frontend)/layout.tsx`): `<html lang>` zgodny z językiem, opis strony z `generateMetadata`, przełącznik języka (`components/i18n/language-switch.tsx`: menu z kodem `PL`/`EN`/`FR` na przycisku i endonimami jako linkami `?lang=xx`), przełącznik motywu i menu konta z tekstami z przestrzeni `header`. Panel `(backend)`, e-maile i opisy narzędzi MCP zostają po polsku.
+- **Jak dodać tekst:** dopisz klucz do `catalogs/pl/<przestrzeń>.ts` (źródło typów), a w tym samym PR do `en` i `fr` (kompilator wymaga tego samego kształtu, a `catalogs.test.ts` sprawdza klucze, parametry i formy liczby mnogiej); `de` może mieć luki (zapas EN). Nowa przestrzeń: plik w każdym języku, wpis w `catalogs/types.ts` (`Namespaces`, `NAMESPACES`), w `LOADERS` (`catalogs/index.ts`) i w `CATALOG_STATUS`.
+- **Jak dodać język:** kod w `LOCALES` i `fallbackChain` (`core/i18n/locales.ts`), katalogi, wpis w `LOADERS` i `CATALOG_STATUS`; do przełącznika (`SWITCHER_LOCALES`) dopiero po recenzji.
+- **Brak polskich literałów:** `no-ui-literals.test.ts` skanuje (kompilatorem TypeScript) pliki z `ENFORCED_GROUPS` i zgłasza polskie napisy w JSX, atrybutach etykiet i łańcuchach; wyjątki z powodem w `i18n-allowlist.ts`. Każda paczka migracji dopisuje swoje globy.
+- **Testy integracyjne:** helper `tests/integration/browser.ts` uruchamia Chrome z `--lang=pl --accept-lang=pl` (domyślny agent-browser wysyła `en-US,en;q=0.9`), więc istniejące scenariusze widzą polski; `fetch` bez nagłówka dostaje polski. Scenariusze języka: `tests/integration/i18n-pages.test.ts`.
+
 ### `@gomoku/core` — części wielokrotnego użytku
 
 Czysty TypeScript bez zależności od frameworków:
 
 - `createAppContainer()` — fabryka kontenera Awilix z ustawieniami projektu (tryb `PROXY`, `strict`), plus reeksport `asClass`, `asFunction` i `asValue`;
-- zasady gry (`BOARD_SIZE`, `WIN_LENGTH`), a w przyszłości silnik gry, zegar i typy domenowe.
+- zasady gry (`BOARD_SIZE`, `WIN_LENGTH`), a w przyszłości silnik gry, zegar i typy domenowe;
+- `i18n/*` — języki, negocjacja języka, translator i formatowanie `Intl` (sekcja „Wielojęzyczność” wyżej).
 
 ### `@gomoku/db` — dane
 

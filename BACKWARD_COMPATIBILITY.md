@@ -18,6 +18,7 @@ Eksporty z pól `exports` w `package.json` pakietów:
 |---|---|---|
 | `@gomoku/core` | `.` (`createAppContainer`, reeksporty Awilix `asClass`/`asFunction`/`asValue`/`Lifetime`, `BOARD_SIZE`, `WIN_LENGTH`) oraz `./*` (każdy moduł `src/*.ts`) | `@gomoku/app`, `@gomoku/db` |
 | `@gomoku/db` | `.` (`createOrm`, `createOrmConfig`, `entities`, typy `Orm`, `EntityManager`, `OrmConfig`) | `@gomoku/app` |
+| `@gomoku/core/i18n/*` (E15-S01, addytywne) | `locales` (`LOCALES`, `Locale`, `LANG_COOKIE`, `isLocale`, `resolveLocale`, `parseAcceptLanguage`, `fallbackChain`, `langCookieAttributes`, `langSwitchHref`), `translator` (`createTranslator`, `Dict`, `Catalog`, `MessageKey`), `format` (`formatNumber`, `formatMegabytes`, `formatDateTime`) | `@gomoku/app` |
 | `@gomoku/ui` | `./globals.css`, `./components/*`, `./hooks/*`, `./lib/*` | `@gomoku/app` (panel `/backend`) |
 
 Pakiety są prywatne (`"private": true`) i nie są publikowane — wszyscy konsumenci są w tym repozytorium.
@@ -32,11 +33,14 @@ Pakiety są prywatne (`"private": true`) i nie są publikowane — wszyscy konsu
 | przyszłe `/api/*` | koperta `{ ok: true, data }` / `{ ok: false, error: { code, message, fieldErrors? } }` (standardy inżynierskie) | klient przeglądarkowy, klient czasu rzeczywistego |
 
 **Łamiące:** zmiana ścieżki, metody, kodów statusu, nazw lub typów pól, znaczenia `status`; ujawnienie `reason` w produkcji (regresja bezpieczeństwa).
+**Wielojęzyczność (E15):** `error.message` w kopercie zostaje polskim zapasem i kontraktem; klient tłumaczy komunikat po `error.code` (faza C5). Planowane pola addytywne (opcjonalne, bez zmiany istniejących): `bot?: { level, tableMb }` obok `displayName`/`bot.name` (E14/C2) i `fieldIssues` obok `fieldErrors` (C5, decyzja przed paczką).
 **Ścieżka:** nowe pole opcjonalne — bez ograniczeń. Zmiana łamiąca `/api/health` — zaktualizuj w tym samym PR `smoke.mjs`, testy integracyjne i opis w README, a w opisie PR wymień konfigurację infrastruktury do zmiany. Po pierwszym wdrożeniu: zmiana łamiąca API używanego przez przeglądarkę wymaga zgodności z poprzednim kształtem przez co najmniej jedno wydanie (otwarte karty i klient czasu rzeczywistego działają na starym kodzie).
 
 ### 3. Adresy URL stron
 
 `/` (strona graczy), `/backend` (panel; w produkcji celowo `404` do czasu roli administratora, #152), a w przyszłości linki zaproszeń (BR-09, BR-11) i adresy partii.
+
+Parametr `?lang=<pl|en|fr|de>` (E15-S01) działa na każdej stronie gracza: `proxy.ts` zapisuje ciasteczko `gomoku_lang` (tylko kod języka) i odpowiada `307` na ten sam adres bez `lang`, zachowując pozostałe parametry (np. `?projektor=1`); nieobsługiwana wartość jest tylko usuwana. Linki z `?lang=` wysyłane poza aplikację (np. pokaz) muszą działać dalej; zmiana nazwy parametru lub ciasteczka to zmiana łamiąca. `/api/*`, `/backend` i pliki statyczne nie przechodzą przez proxy.
 
 **Łamiące:** zmiana lub usunięcie ścieżki, zmiana formatu linku zaproszenia lub kodu.
 **Ścieżka:** po pierwszym wdrożeniu stary adres przekierowuje (`redirects` w `next.config.ts` lub strona przejściowa) na nowy. Linki zaproszeń są wysyłane poza aplikację — ich format musi być akceptowany do końca ważności wszystkich wydanych zaproszeń.

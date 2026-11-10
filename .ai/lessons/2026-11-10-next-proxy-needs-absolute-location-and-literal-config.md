@@ -1,0 +1,6 @@
+# `proxy.ts` w Next 16: literalny `config` i bezwzględny `Location`
+
+- **Problem:** (1) `next build` odrzucił `config.matcher[0].has[0].key = LANG_QUERY_PARAM` („must be a string”) — Next czyta `config` statycznie z kodu, a nie z wartości po wykonaniu. (2) Proxy zwracające `new NextResponse(null, { status: 307, headers: { Location: "/lobby" } })` przechodziło test jednostkowy z prawdziwym `NextRequest`, ale pod `next start` każde żądanie z `?lang=` kończyło się `500` (`TypeError: Invalid URL`, `input: '/lobby'` w `tests/integration/server.log`): adapter proxy parsuje nagłówek `Location` przez `new URL()`.
+- **Kontekst:** E15-S01 (#291), fundament i18n; adres względny miał chronić przed wewnętrznym originem za odwrotnym proxy.
+- **Reguła:** w `proxy.ts` (i dawnym `middleware.ts`) wartości w `export const config` piszemy literałami (stałą sprawdza test); przekierowanie robimy przez `NextResponse.redirect(new URL(ścieżka, request.nextUrl), 307)` — Next sam zamienia adres tej samej domeny na względny przed wysłaniem. Każdą nową logikę proxy uruchamiamy na zbudowanej aplikacji (scenariusz integracyjny), bo test jednostkowy nie przechodzi przez adapter.
+- **Powiązane:** `.ai/specs/2026-11-10-i18n.md` (I5), `packages/app/src/proxy.ts`, `tests/integration/i18n-pages.test.ts`.
