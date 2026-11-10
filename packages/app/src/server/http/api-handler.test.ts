@@ -219,6 +219,25 @@ describe("apiHandler", () => {
     expect(fn).not.toHaveBeenCalled();
   });
 
+  it("runs the gate first: its error is the answer, before CSRF and the route", async () => {
+    const fn = vi.fn(async () => ({ data: null }));
+    const gate = vi.fn(async () => {
+      throw new ConflictError("nope", { code: "GATED" });
+    });
+    const response = await apiHandler(fn, { gate })(post({ origin: "https://evil.example" }));
+    expect(response.status).toBe(409);
+    expect((await response.json()).error.code).toBe("GATED");
+    expect(fn).not.toHaveBeenCalled();
+    expect(getContainer).not.toHaveBeenCalled();
+  });
+
+  it("goes on to CSRF and the route once the gate lets the request through", async () => {
+    const gate = vi.fn(async () => ({ id: "admin" }));
+    expect((await apiHandler(async () => ({ data: 1 }), { gate })(post({ origin: "https://evil.example" }))).status).toBe(403);
+    expect((await apiHandler(async () => ({ data: 1 }), { gate })(post())).status).toBe(200);
+    expect(gate).toHaveBeenCalledTimes(2);
+  });
+
   it("fails closed with 500 when the configuration is invalid", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     getContainer.mockRejectedValue(new Error("APP_ORIGIN is required"));

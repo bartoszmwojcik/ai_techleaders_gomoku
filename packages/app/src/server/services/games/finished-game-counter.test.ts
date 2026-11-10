@@ -12,7 +12,7 @@ describe("recordFinishedGame", () => {
     expect(execute).toHaveBeenCalledOnce();
     const [sql, params, mode] = execute.mock.calls[0]!;
     expect(sql).toContain("insert into game_pair_counters");
-    expect(sql).toContain("g.status = 'finished'");
+    expect(sql).toContain("g.status = 'finished' and g.origin <> 'show'");
     expect(sql).toContain("Europe/Warsaw");
     expect(sql).toContain("on conflict (day, kind_a, kind_b)");
     expect(sql).not.toContain("$1");

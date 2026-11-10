@@ -33,7 +33,7 @@ describe("AdminOverviewService.gameCounters", () => {
       finishedByEndReason: { five_in_row: 4, draw: 1, timeout: 2, resignation: 2, points: 3 },
     });
     expect(execute).toHaveBeenCalledOnce();
-    expect(normalized(String(execute.mock.calls[0]![0]))).toContain("from games");
+    expect(normalized(String(execute.mock.calls[0]![0]))).toContain("from games where origin <> 'show'");
   });
 });
 

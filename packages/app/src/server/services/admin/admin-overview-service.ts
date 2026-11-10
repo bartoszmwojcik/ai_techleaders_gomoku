@@ -35,6 +35,7 @@ export type AdminAccountPage = {
   pageCount: number;
 };
 
+// A show (show-mode P15) is the administrator's demonstration, not a game of the players: never counted.
 // Static SQL: values are bound parameters (`?`), identifiers and order clauses come from this file only.
 const GAME_COUNTERS_SQL = `
   select
@@ -51,7 +52,7 @@ const GAME_COUNTERS_SQL = `
     count(*) filter (where status = 'finished' and end_reason = 'timeout')::int as timeout,
     count(*) filter (where status = 'finished' and end_reason = 'resignation')::int as resignation,
     count(*) filter (where status = 'finished' and end_reason = 'points')::int as points
-  from games`;
+  from games where origin <> 'show'`;
 
 const ACCOUNT_TOTALS_SQL = `
   select count(*)::int as total, count(*) filter (where email_verified_at is not null)::int as verified from users`;

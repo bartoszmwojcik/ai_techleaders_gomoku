@@ -3,7 +3,7 @@ import type { EntityManager } from "@gomoku/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ServerConfig } from "../../config";
-import { BOT_RETRY_AFTER_SECONDS, BotAdmission } from "./bot-admission";
+import { BOT_RETRY_AFTER_SECONDS, BotAdmission, refuse as refuseBot } from "./bot-admission";
 import type { MemorySource } from "./resource-probe";
 
 const NOW = new Date("2026-11-06T10:00:00Z");
@@ -89,5 +89,65 @@ describe("BotAdmission (hosted-bot R7, R8, R19)", () => {
     await refusal(setup({ active: 3 }).admission.admit(2));
     expect(JSON.parse(String(warn.mock.calls[0]![0]))).toMatchObject({ reason: "busy", activeGames: 3 });
     await refusal(setup({ active: 1, maxActiveGames: 1 }).admission.admit(1));
+  });
+
+  it("names no reason to a player", async () => {
+    const error = await setup({ active: 3 }).admission.admit(1).catch((e: unknown) => e);
+    expect((error as ServiceUnavailableError).data).toBeUndefined();
+  });
+});
+
+describe("BotAdmission.admitShow (show-mode)", () => {
+  let warn: ReturnType<typeof vi.spyOn>;
+  beforeEach(() => {
+    warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  });
+  afterEach(() => warn.mockRestore());
+
+  async function reason(promise: Promise<unknown>) {
+    const error = await promise.catch((e: unknown) => e);
+    await refusal(Promise.reject(error));
+    return (error as ServiceUnavailableError).data;
+  }
+
+  it("freezes one reading of the memory in both bots and counts the show once", async () => {
+    const { admission, execute, read } = setup({ availableMb: 1892 });
+    await expect(admission.admitShow([1, 2])).resolves.toEqual([
+      { level: 1, memoryMb: null, depthCap: null },
+      { level: 2, memoryMb: 1892, depthCap: 10 },
+    ]);
+    expect(read).toHaveBeenCalledOnce();
+    expect(execute).toHaveBeenCalledOnce();
+  });
+
+  it("refuses with the reason for the administrator", async () => {
+    expect(await reason(setup({ enabled: false }).admission.admitShow([1, 1]))).toEqual({ reason: "disabled" });
+    expect(await reason(setup({ availableMb: 255 }).admission.admitShow([1, 1]))).toEqual({ reason: "memory" });
+    // A minimum below the lowest tier still refuses a memory without a tier.
+    expect(await reason(setup({ availableMb: 200, minAvailableMb: 100 }).admission.admitShow([2, 1]))).toEqual({ reason: "memory" });
+    expect(await reason(setup({ active: 3 }).admission.admitShow([1, 1]))).toEqual({ reason: "busy" });
+    expect(warn.mock.calls.map((call: unknown[]) => JSON.parse(String(call[0])).reason)).toEqual(["memory", "memory", "busy"]);
+  });
+});
+
+describe("BotAdmission.inspect", () => {
+  it("reports the flag, the memory and the games with the bot without refusing", async () => {
+    const { admission } = setup({ enabled: false, availableMb: 100, active: 5, maxActiveGames: 3, minAvailableMb: 256 });
+    await expect(admission.inspect()).resolves.toEqual({
+      enabled: false,
+      availableMb: 100,
+      minAvailableMb: 256,
+      activeGames: 5,
+      maxActiveGames: 3,
+    });
+  });
+});
+
+describe("refuse", () => {
+  it("does not log a refusal by a switch", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    expect(refuseBot("level2_not_allowed", {}, true).data).toEqual({ reason: "level2_not_allowed" });
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 });

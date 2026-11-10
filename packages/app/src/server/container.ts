@@ -33,6 +33,7 @@ import { FinishedGameStatsService } from "./services/games/finished-game-stats-s
 import { GameHistoryService } from "./services/games/game-history-service";
 import { GameReviewService } from "./services/games/game-review-service";
 import { InviteQrService } from "./services/games/invite-qr-service";
+import { ShowService } from "./services/games/show-service";
 import { SpectatorService } from "./services/games/spectator-service";
 import { GameService } from "./services/games/game-service";
 import { InvitationCodes } from "./services/games/invitation-codes";
@@ -110,6 +111,8 @@ export type AppCradle = {
   /** A finished game for review: the one rule of who may read it (E09-S01). */
   gameReviewService: GameReviewService;
   spectatorService: SpectatorService;
+  /** The administrator's show without a human seat (show-mode, phase a): create, read, end. */
+  showService: ShowService;
   inviteQrService: InviteQrService;
   /** Finished games per pair of participant kinds (E06-S03); the admin panel reads the same. */
   finishedGameStatsService: FinishedGameStatsService;
@@ -214,6 +217,7 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     gameHistoryService: asClass(GameHistoryService).scoped(),
     gameReviewService: asClass(GameReviewService).scoped(),
     spectatorService: asClass(SpectatorService).scoped(),
+    showService: asClass(ShowService).scoped(),
     inviteQrService: asClass(InviteQrService).scoped(),
     finishedGameStatsService: asClass(FinishedGameStatsService).scoped(),
     lobbyService: asClass(LobbyService).scoped(),
