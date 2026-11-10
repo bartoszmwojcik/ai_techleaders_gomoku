@@ -50,7 +50,9 @@ export default async function FrontendLayout({
               Gomoku
             </TextLink>
             <ThemeToggle initialTheme={theme} dict={texts.dict} />
-            <LanguageSwitch {...texts} />
+            {/* On the board below sm the bar floats over the heading, which leaves room for the theme switch only: the
+                language menu is on every other page (and `?lang=` works here too). */}
+            <LanguageSwitch {...texts} className="group-has-[[data-theme-overlay]]/body:max-sm:hidden" />
           </div>
           <div className="flex min-w-0 justify-end group-has-[[data-theme-overlay]]/body:max-sm:max-w-28">
             <SessionMenu {...texts} />

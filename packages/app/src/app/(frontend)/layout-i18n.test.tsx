@@ -53,5 +53,9 @@ describe("FrontendLayout: language", () => {
     expect(html.indexOf('data-testid="theme-switch"')).toBeLessThan(html.indexOf('data-testid="language-switch"'));
     expect(html.indexOf('data-testid="language-switch"')).toBeLessThan(html.indexOf('data-testid="session-menu"'));
     expect(html).toContain(">EN<");
+    // Below sm the board's heading shares the row with the floating bar: no room for the language menu there.
+    const at = html.indexOf('data-testid="language-switch"');
+    const trigger = html.slice(html.lastIndexOf("<button", at), html.indexOf(">", at));
+    expect(trigger).toContain("group-has-[[data-theme-overlay]]/body:max-sm:hidden");
   });
 });

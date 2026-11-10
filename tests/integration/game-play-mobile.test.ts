@@ -115,7 +115,7 @@ describe("the board on a phone", () => {
       `(() => {
         const ink = (e) => { if (e.tagName !== "H1") return e.getBoundingClientRect(); const g = document.createRange(); g.selectNodeContents(e); return g.getBoundingClientRect(); };
         const hit = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
-        const bar = [...document.querySelectorAll("[data-testid=theme-switch], [data-testid=signed-in-as]")];
+        const bar = [...document.querySelectorAll("[data-testid=theme-switch], [data-testid=language-switch], [data-testid=signed-in-as]")];
         const below = [...document.querySelectorAll("h1, [role=grid], [data-testid*=clock]")];
         return bar.flatMap((s) => below.filter((e) => hit(ink(s), ink(e))).map((e) => s.dataset.testid + " on " + e.tagName));
       })()`,
