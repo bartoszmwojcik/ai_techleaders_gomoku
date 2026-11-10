@@ -407,7 +407,7 @@ describe("games rules (E02-S08, #39)", () => {
 });
 
 describe("guest-only games rules (#102, spec 2026-10-30-guest-only-games-cleanup)", () => {
-  /** The bot sits on seat 2 only (CHECK `game_players_bot_seat_check`). */
+  /** Outside a show the bot sits on seat 2 only (BR-54). */
   type Kind = "guest" | "account" | "deleted-account" | "agent" | "bot";
   type Spec = {
     kinds?: [Kind, Kind];

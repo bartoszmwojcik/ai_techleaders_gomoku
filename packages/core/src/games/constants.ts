@@ -1,6 +1,12 @@
 /** Invitation validity (#21 Q3): a friend may answer after a few hours. */
 export const INVITATION_TTL_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * A show waiting for its agent (spec 2026-11-09-show-mode, P11): its invitation is valid this long, so
+ * the bot's slot and the game are not held for the day of `INVITATION_TTL_MS`.
+ */
+export const SHOW_WAITING_TTL_MS = 30 * 60 * 1000;
+
 /** A guest token keeps working this long after the game finished (BR-22, #21 Q10). */
 export const GUEST_TOKEN_GRACE_MS = 60 * 60 * 1000;
 

@@ -624,8 +624,7 @@ describe("the bot (hosted-bot spec, E13-S02-T01)", () => {
     expect(row).toEqual({ join_channel: "web", user_id: null, guest_token_hash: null, agent_token_hash: null });
   });
 
-  it("never seats the bot as the creator (seat 1) nor gives it an account", async () => {
-    await expectViolation(insertPlayer(await botGame(), bot({ seat: 1 })), "game_players_bot_seat_check");
+  it("never gives the bot an account", async () => {
     await expectViolation(insertPlayer(await botGame(), bot({ user_id: await insertUser() })), "game_players_bot_no_user_check");
   });
 
@@ -648,6 +647,22 @@ describe("the bot (hosted-bot spec, E13-S02-T01)", () => {
     await expectViolation(insertPlayer(await botGame(), bot({ guest_token_hash: hash() })), "game_players_token_only_guest_check");
     await expectViolation(insertPlayer(await botGame(), bot({ agent_token_hash: hash() })), "game_players_token_only_agent_check");
     await expectViolation(insertPlayer(await botGame(), bot({ join_channel: "mcp" })), "game_players_agent_channel_check");
+  });
+
+  it("seats two bots in a show, the first in seat 1 (show-mode spec, E14-S01-T01)", async () => {
+    const show = await insertGame({ origin: "show" });
+    await expect(insertPlayer(show, bot({ seat: 1 }))).resolves.toBeTruthy();
+    await expect(insertPlayer(show, bot(strong))).resolves.toBeTruthy();
+    // The CHECK is gone; the service creating a show keeps the bot out of seat 1 elsewhere (P5).
+    expect(await run(`select 1 from pg_constraint where conname = 'game_players_bot_seat_check'`)).toHaveLength(0);
+  });
+
+  it("still refuses a bot without a level and an account for it in a show", async () => {
+    await expectViolation(insertPlayer(await insertGame({ origin: "show" }), bot({ seat: 1, bot_level: null })), "game_players_bot_kind_check");
+    await expectViolation(
+      insertPlayer(await insertGame({ origin: "show" }), bot({ seat: 1, user_id: await insertUser() })),
+      "game_players_bot_no_user_check",
+    );
   });
 
   it("still refuses an unknown kind and origin", async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseBotEnabled, readAdminEmail, readBotConfig, readServerConfig } from "./config";
+import { parseBotEnabled, readAdminEmail, readBotConfig, readServerConfig, readShowConfig } from "./config";
 
 const MCP_DEFAULTS = { requestLimit: 300, joinLimit: 10, lookupLimit: 20, lookupGlobalLimit: 300, tokenLimit: 60, chatLimit: 30 };
 
@@ -15,6 +15,8 @@ const BOT_DEFAULTS = {
   minAvailableMb: 256,
   limits: { 1: { softMs: 50, ceilingMs: 250 }, 2: { softMs: 1500, ceilingMs: 3000 } },
 };
+
+const SHOW_DEFAULTS = { enabled: false, botVsBotEnabled: false, botLevel2Enabled: false, pauseMinMs: 1000, pauseMaxMs: 2000 };
 
 const production = {
   NODE_ENV: "production",
@@ -34,6 +36,57 @@ describe("BOT_ENABLED (hosted-bot R19)", () => {
 
   it.each(["1", "yes", "TRUE"])("refuses %s", (raw) => {
     expect(() => parseBotEnabled(raw)).toThrow("BOT_ENABLED must be true or false");
+  });
+});
+
+describe("SHOW_* and BOT_SHOW_PAUSE_* (show-mode P2, P9)", () => {
+  it("keeps every flag off and the pause at 1000-2000 ms when unset or empty", () => {
+    expect(readShowConfig({})).toEqual(SHOW_DEFAULTS);
+    expect(
+      readShowConfig({
+        SHOW_ENABLED: "",
+        SHOW_BOT_VS_BOT_ENABLED: "false",
+        SHOW_BOT_LEVEL2_ENABLED: "",
+        BOT_SHOW_PAUSE_MIN_MS: "",
+        BOT_SHOW_PAUSE_MAX_MS: "",
+      }),
+    ).toEqual(SHOW_DEFAULTS);
+  });
+
+  it("reads every variable, up to the 8000 ms ceiling", () => {
+    expect(
+      readServerConfig({
+        SHOW_ENABLED: "true",
+        SHOW_BOT_VS_BOT_ENABLED: "true",
+        SHOW_BOT_LEVEL2_ENABLED: "true",
+        BOT_SHOW_PAUSE_MIN_MS: "4000",
+        BOT_SHOW_PAUSE_MAX_MS: "8000",
+      }).show,
+    ).toEqual({ enabled: true, botVsBotEnabled: true, botLevel2Enabled: true, pauseMinMs: 4000, pauseMaxMs: 8000 });
+    expect(readShowConfig({ BOT_SHOW_PAUSE_MIN_MS: "0", BOT_SHOW_PAUSE_MAX_MS: "0" })).toMatchObject({ pauseMinMs: 0, pauseMaxMs: 0 });
+    expect(readShowConfig({ BOT_SHOW_PAUSE_MIN_MS: "2000" })).toMatchObject({ pauseMinMs: 2000, pauseMaxMs: 2000 });
+  });
+
+  it("lowers an unset minimum to a maximum set below it", () => {
+    expect(readShowConfig({ BOT_SHOW_PAUSE_MAX_MS: "500" })).toMatchObject({ pauseMinMs: 500, pauseMaxMs: 500 });
+  });
+
+  it.each([
+    [{ SHOW_ENABLED: "1" }, "SHOW_ENABLED must be true or false (or unset)."],
+    [{ SHOW_BOT_VS_BOT_ENABLED: "yes" }, "SHOW_BOT_VS_BOT_ENABLED must be true or false (or unset)."],
+    [{ SHOW_BOT_LEVEL2_ENABLED: "TRUE" }, "SHOW_BOT_LEVEL2_ENABLED must be true or false (or unset)."],
+    [{ BOT_SHOW_PAUSE_MAX_MS: "8001" }, "BOT_SHOW_PAUSE_MAX_MS must be an integer from 0 to 8000."],
+    [{ BOT_SHOW_PAUSE_MIN_MS: "9000" }, "BOT_SHOW_PAUSE_MIN_MS must be an integer from 0 to 8000."],
+    [{ BOT_SHOW_PAUSE_MIN_MS: "-1" }, "BOT_SHOW_PAUSE_MIN_MS must be an integer from 0 to 8000."],
+    [{ BOT_SHOW_PAUSE_MAX_MS: "1.5" }, "BOT_SHOW_PAUSE_MAX_MS must be an integer from 0 to 8000."],
+    [{ BOT_SHOW_PAUSE_MIN_MS: "3000" }, "BOT_SHOW_PAUSE_MIN_MS must not be greater than BOT_SHOW_PAUSE_MAX_MS."],
+    [
+      { BOT_SHOW_PAUSE_MIN_MS: "1500", BOT_SHOW_PAUSE_MAX_MS: "1000" },
+      "BOT_SHOW_PAUSE_MIN_MS must not be greater than BOT_SHOW_PAUSE_MAX_MS.",
+    ],
+  ])("refuses %o", (env, message) => {
+    expect(() => readShowConfig(env)).toThrow(message);
+    expect(() => readServerConfig(env)).toThrow(message);
   });
 });
 
@@ -110,6 +163,7 @@ describe("readServerConfig", () => {
       chat: CHAT_DEFAULTS,
       botEnabled: false,
       bot: BOT_DEFAULTS,
+      show: SHOW_DEFAULTS,
     });
     expect(
       readServerConfig({
@@ -142,6 +196,7 @@ describe("readServerConfig", () => {
       chat: CHAT_DEFAULTS,
       botEnabled: false,
       bot: BOT_DEFAULTS,
+      show: SHOW_DEFAULTS,
     });
   });
 
@@ -171,6 +226,7 @@ describe("readServerConfig", () => {
       chat: CHAT_DEFAULTS,
       botEnabled: false,
       bot: BOT_DEFAULTS,
+      show: SHOW_DEFAULTS,
     });
     for (const bad of ["3", "32", "abc", "12.5", "-4", "004", "1e1"]) {
       expect(() => readServerConfig({ PASSWORD_HASH_COST: bad })).toThrow(

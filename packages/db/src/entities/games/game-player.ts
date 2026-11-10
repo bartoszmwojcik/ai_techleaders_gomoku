@@ -123,8 +123,10 @@ export const GamePlayer = defineEntity({
       name: "game_players_nickname_only_guest_check",
       expression: `kind = 'guest' or nickname is null`,
     },
-    // The bot (BR-54): a level exactly when the seat is the bot's, never an account, always seat 2.
-    // The token CHECKs above already keep tokens away from it; it joins on the web channel (R21).
+    // The bot (BR-54): a level exactly when the seat is the bot's, never an account. It sits in seat 2,
+    // in seat 1 only in a show (spec 2026-11-09-show-mode, P5): a CHECK cannot see `games.origin`, so the
+    // service creating the show keeps that rule. The token CHECKs above already keep tokens away from
+    // it; it joins on the web channel (R21).
     { name: "game_players_bot_level_check", expression: `bot_level is null or bot_level in (1, 2)` },
     { name: "game_players_bot_kind_check", expression: `(kind = 'bot') = (bot_level is not null)` },
     {
@@ -132,6 +134,5 @@ export const GamePlayer = defineEntity({
       expression: `(bot_level is distinct from 2 or (bot_memory_mb is not null and bot_depth_cap is not null)) and (bot_level = 2 or (bot_memory_mb is null and bot_depth_cap is null))`,
     },
     { name: "game_players_bot_no_user_check", expression: `kind <> 'bot' or user_id is null` },
-    { name: "game_players_bot_seat_check", expression: `kind <> 'bot' or seat = 2` },
   ],
 });

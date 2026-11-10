@@ -1143,11 +1143,6 @@
           "definition": "check ((bot_level is distinct from 2 or (bot_memory_mb is not null and bot_depth_cap is not null)) and (bot_level = 2 or (bot_memory_mb is null and bot_depth_cap is null)))"
         },
         {
-          "name": "game_players_bot_seat_check",
-          "expression": "kind <> 'bot' or seat = 2",
-          "definition": "check (kind <> 'bot' or seat = 2)"
-        },
-        {
           "name": "game_players_display_name_only_account_check",
           "expression": "kind = 'account' or display_name is null",
           "definition": "check (kind = 'account' or display_name is null)"
@@ -1972,8 +1967,8 @@
         },
         {
           "name": "games_origin_check",
-          "expression": "origin in ('invite', 'lobby', 'rematch', 'bot')",
-          "definition": "check (origin in ('invite', 'lobby', 'rematch', 'bot'))"
+          "expression": "origin in ('invite', 'lobby', 'rematch', 'bot', 'show')",
+          "definition": "check (origin in ('invite', 'lobby', 'rematch', 'bot', 'show'))"
         },
         {
           "name": "games_paper_board_empty_check",
