@@ -4,7 +4,9 @@ import { NextResponse, type NextRequest } from "next/server";
 /**
  * Runs only for player pages whose address has `lang` (spec I5): never for the API, Next's assets, the admin panel or
  * files with an extension, and never for a request without the parameter, so every other request costs nothing.
- * Next reads `config` statically, so the key is a literal (`LANG_QUERY_PARAM`, checked in the test).
+ * Next reads `config` statically, so the key is a literal (`LANG_QUERY_PARAM`, checked in the test). Next's `has` needs a
+ * non-empty value, so an empty `?lang=` (or a bare `?lang`) never reaches the proxy and stays in the address; it selects
+ * nothing, so the page renders as without it.
  */
 export const config = {
   matcher: [

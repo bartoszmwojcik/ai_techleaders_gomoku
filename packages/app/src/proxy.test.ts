@@ -72,4 +72,9 @@ describe("proxy: matcher", () => {
     expect(matches("/backend/users?lang=fr")).toBe(false);
     expect(matches("/favicon.ico?lang=fr")).toBe(false);
   });
+
+  it("does not run for an empty lang: Next's `has` needs a value, so the page renders as without it", () => {
+    expect(matches("/?lang=")).toBe(false);
+    expect(matches("/lobby?lang")).toBe(false);
+  });
 });
