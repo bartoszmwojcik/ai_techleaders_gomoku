@@ -77,7 +77,7 @@ export const Game = defineEntity({
   checks: [
     {
       name: "games_origin_check",
-      expression: `origin in ('invite', 'lobby', 'rematch', 'bot')`,
+      expression: `origin in ('invite', 'lobby', 'rematch', 'bot', 'show')`,
     },
     {
       name: "games_status_check",

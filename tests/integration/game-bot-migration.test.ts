@@ -44,7 +44,7 @@ describe("migration bot_participant", () => {
     await run(`insert into games (origin, status) values ('invite', 'waiting')`);
     expect(await botColumns()).toBe(0);
 
-    await scratch.migrator.up();
+    await scratch.migrator.up({ to: MIGRATION });
 
     expect(await botColumns()).toBe(3);
     expect(await indexExists()).toBe(true);
@@ -77,7 +77,7 @@ describe("migration bot_participant", () => {
     expect(await definition("games_origin_check")).not.toContain("'bot'");
     expect(await count(`select count(*)::int as n from games`)).toBe(1);
 
-    await scratch.migrator.up();
+    await scratch.migrator.up({ to: MIGRATION });
     expect(await botColumns()).toBe(3);
   });
 });
