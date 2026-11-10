@@ -202,10 +202,21 @@ describe("creating a show (bot vs bot, phase a)", () => {
 describe("ending a show (P7)", () => {
   it("cancels it, frees its seats, is harmless to repeat and lets the next show start", async () => {
     const show = await createShow();
+    // The bot on turn (black, no moves yet) has used 90 s of its clock.
+    await run(`update games set turn_started_at = now() - interval '90 seconds' where id = ?`, [show]);
+    const [{ black_seat: black }] = (await run(`select black_seat from games where id = ?`, [show])) as [{ black_seat: number }];
 
     const response = await post(`/api/show/${show}/end`, undefined, admin);
     expect(response.status).toBe(200);
-    expect((await response.json()).data).toMatchObject({ status: "cancelled", closedReason: "ended" });
+    const ended = (await response.json()).data;
+    expect(ended).toMatchObject({ status: "cancelled", closedReason: "ended" });
+    // The clocks stop where they were (QA of #304): the one that ran keeps the time it used, the other is untouched.
+    const [clocks] = await run(`select clock_ms_1, clock_ms_2 from games where id = ?`, [show]);
+    const used = 600_000 - Number(clocks![`clock_ms_${black}`]);
+    expect(used).toBeGreaterThanOrEqual(90_000);
+    expect(used).toBeLessThan(95_000);
+    expect(Number(clocks![`clock_ms_${3 - black}`])).toBe(600_000);
+    expect(ended.clock.remainingMs[black - 1]).toBe(Number(clocks![`clock_ms_${black}`]));
     expect((await run(`select count(*)::int as n from game_players where game_id = ? and is_active`, [show]))[0]!.n).toBe(0);
     expect((await post(`/api/show/${show}/end`, undefined, admin)).status).toBe(200);
 

@@ -115,9 +115,17 @@ const START_SHOW_CLOCK_SQL = `
   where id = ? and origin = 'show' and status = 'active' and turn_started_at is null
     and not exists (select 1 from game_players p where p.game_id = games.id and p.seen_at is null)`;
 
-// P7: the administrator ends a show at any moment before its end; no result, no counter.
+// P7: the administrator ends a show at any moment before its end; no result, no counter. The clock that was running
+// keeps the time it used (computed in SQL, lesson 2026-10-29), so the ended view shows the clocks as they stopped.
+// The seat on turn: black (`black_seat`) after an even number of moves. `?` binds: now, now, the game id.
+const chargeSql = (seat: 1 | 2) => `
+  clock_ms_${seat} = case
+    when status = 'active' and turn_started_at is not null
+      and (case when move_count % 2 = 0 then black_seat else 3 - black_seat end) = ${seat}
+    then greatest(0, clock_ms_${seat} - floor(extract(epoch from (?::timestamptz - turn_started_at)) * 1000)::int)
+    else clock_ms_${seat} end`;
 const END_SHOW_SQL = `
-  update games set status = 'cancelled'
+  update games set status = 'cancelled', ${chargeSql(1)}, ${chargeSql(2)}
   where id = ? and origin = 'show' and status in ('waiting', 'active') returning id`;
 const RELEASE_SLOTS_SQL = `update game_players set is_active = false where game_id = ? and is_active`;
 
@@ -240,7 +248,7 @@ export class ShowService {
       const now = this.#clock.now();
       await tx.execute(EXPIRE_WAITING_OF_GAME, [now, gameId], "run");
       await this.#timeoutSettler.settleGame(gameId, tx, now);
-      const ended = await tx.execute<{ id: string }[]>(END_SHOW_SQL, [gameId]);
+      const ended = await tx.execute<{ id: string }[]>(END_SHOW_SQL, [now, now, gameId]);
       if (ended.length > 0) await tx.execute(RELEASE_SLOTS_SQL, [gameId], "run");
       const state = await this.#stateOf(tx, gameId, 0, now);
       return state.status === "finished" ? { finished: true } : { state };

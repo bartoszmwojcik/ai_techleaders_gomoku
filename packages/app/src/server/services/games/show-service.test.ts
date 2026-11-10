@@ -328,7 +328,13 @@ describe("ShowService.end", () => {
     const order = sqls(calls);
     expect(order[0]).toBe("select status from games where id = ? and origin = 'show' for update");
     expect(timeoutSettler.settleGame).toHaveBeenCalledWith(GAME, expect.anything(), NOW);
-    expect(order).toContain("update games set status = 'cancelled' where id = ? and origin = 'show' and status in ('waiting', 'active') returning id");
+    const end = calls.find((call) => call.sql.includes("update games set status = 'cancelled'"))!;
+    expect(end.params).toEqual([NOW, NOW, GAME]);
+    expect(end.sql.replace(/\s+/g, " ")).toContain("where id = ? and origin = 'show' and status in ('waiting', 'active') returning id");
+    // The running clock keeps the time it used (QA of #304): both seats, the one on turn by the colour and the move count.
+    expect(end.sql).toContain("clock_ms_1 = case");
+    expect(end.sql).toContain("clock_ms_2 = case");
+    expect(end.sql).toContain("then black_seat else 3 - black_seat end) = 2");
     expect(order).toContain("update game_players set is_active = false where game_id = ? and is_active");
     expect(state).toMatchObject({ status: "cancelled", closedReason: "ended" });
   });
