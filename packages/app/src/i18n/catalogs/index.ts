@@ -9,10 +9,10 @@ type Loader = () => Promise<{ default: Dict }>;
 
 // Literal dynamic imports, so the bundler splits every catalog on its own and only the server ever loads them.
 export const LOADERS: Readonly<Record<Locale, Readonly<Record<Namespace, Loader>>>> = {
-  pl: { common: () => import("./pl/common"), header: () => import("./pl/header") },
-  en: { common: () => import("./en/common"), header: () => import("./en/header") },
-  fr: { common: () => import("./fr/common"), header: () => import("./fr/header") },
-  de: { common: () => import("./de/common"), header: () => import("./de/header") },
+  pl: { common: () => import("./pl/common"), header: () => import("./pl/header"), show: () => import("./pl/show") },
+  en: { common: () => import("./en/common"), header: () => import("./en/header"), show: () => import("./en/show") },
+  fr: { common: () => import("./fr/common"), header: () => import("./fr/header"), show: () => import("./fr/show") },
+  de: { common: () => import("./de/common"), header: () => import("./de/header"), show: () => import("./de/show") },
 };
 
 /**

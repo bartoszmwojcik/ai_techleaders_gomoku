@@ -10,6 +10,8 @@ type Props = {
   activeLabel: string;
   /** The clock budget of the game; sets the "mało czasu" threshold (a minute, at most a quarter of it). */
   timeControlMs?: number;
+  /** Extra classes of the clock row (the show's projector view enlarges it with type tokens). */
+  className?: string;
 };
 
 /**
@@ -18,9 +20,9 @@ type Props = {
  * so the variant is this wrapper (`.low-clock` in `frontend.css`, tokens only), as in the approved
  * prototype; the announcement for screen readers is a hidden live region in `PlayField`.
  */
-export function GameClock({ name, remainingMs, active, activeLabel, timeControlMs }: Props) {
+export function GameClock({ name, remainingMs, active, activeLabel, timeControlMs, className }: Props) {
   return (
-    <div className="low-clock" data-slot="clock" data-low={isLow(remainingMs, timeControlMs) || undefined}>
+    <div className={className ? `low-clock ${className}` : "low-clock"} data-slot="clock" data-low={isLow(remainingMs, timeControlMs) || undefined}>
       <PlayerClock name={name} remainingMs={remainingMs} active={active} activeLabel={activeLabel} />
     </div>
   );

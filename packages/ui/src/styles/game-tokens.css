@@ -112,6 +112,8 @@
   --layout-width-content: 1040px;
   --layout-width-narrow: 384px;
   --layout-width-board: 448px; /* przyklad-tokeny.html: max width of the board */
+  /* Show-mode P20 (owner, 2026-11-09): the board of the projector view only; the height bounds it, so header + board fit 1280x720 and 1920x1080. */
+  --layout-width-board-show: min(80vh, 960px);
   --layout-width-dialog: 480px; /* propozycja: dialog fits a sentence and two buttons */
   --layout-width-qr: 200px; /* E12: readable from arm's length, still fits a panel at 320 px wide */
 

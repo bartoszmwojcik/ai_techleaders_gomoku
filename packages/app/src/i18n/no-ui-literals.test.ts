@@ -20,6 +20,9 @@ export const ENFORCED_GROUPS: readonly string[] = [
   "components/auth/session-menu.tsx",
   "components/auth/account-menu.tsx",
   "components/auth/logout-button.tsx",
+  // E14-S01 (#280, E15 note f): the administrator's show, its console and its view.
+  "app/(frontend)/show/**/*.tsx",
+  "lib/show/*.ts",
 ];
 
 const isTest = (file: string) => /\.test\.tsx?$/.test(file);
