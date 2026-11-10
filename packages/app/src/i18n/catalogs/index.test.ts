@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { LOADERS, loadNamespace, mergeFallback } from "./index";
+import { NAMESPACES } from "./types";
 import enCommon from "./en/common";
 import enHeader from "./en/header";
 import frHeader from "./fr/header";
@@ -77,6 +78,14 @@ describe("loadNamespace", () => {
     expect(de).toEqual(enCommon);
     expect(Object.keys(LOADERS)).toEqual(["pl", "en", "fr", "de"]);
     expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("loads every namespace in every language, complete", async () => {
+    for (const locale of Object.keys(LOADERS) as (keyof typeof LOADERS)[]) {
+      for (const namespace of NAMESPACES) {
+        expect(Object.keys(await loadNamespace(locale, namespace)), `${locale}/${namespace}`).toEqual(Object.keys((await LOADERS.pl[namespace]()).default));
+      }
+    }
   });
 
   it("only reports what the requested language itself lacks", async () => {

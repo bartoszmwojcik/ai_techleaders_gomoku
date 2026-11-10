@@ -125,6 +125,10 @@ export default async function setup(project: TestProject) {
         // SQL is checked in game-bot-worker.test.ts against this database).
         BOT_FIXED_MEMORY_MB: "768",
         BOT_MAX_ACTIVE_GAMES: "1000",
+        // The administrator's show (E14, show-mode P2): off by default, on here so tests/integration/show-*.test.ts run.
+        // Level 2 in bot vs bot stays off, as in production until the pace is tuned.
+        SHOW_ENABLED: "true",
+        SHOW_BOT_VS_BOT_ENABLED: "true",
       },
       detached: true,
       stdio: ["ignore", "pipe", "pipe"],

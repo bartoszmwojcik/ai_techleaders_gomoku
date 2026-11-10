@@ -114,10 +114,8 @@ export function ShowRoom({ gameId, initial, projector: fromAddress, locale, dict
 
   // The seats are listed in order; the clocks go by colour, black first.
   const seats = game.blackSeat === 2 ? [...game.players].reverse() : game.players;
-  const nameOf = (seat: number | null) => {
-    const player = game.players.find((each) => each.seat === seat);
-    return player ? seatName(t, player) : "";
-  };
+  // Only called for a seat the server named (on turn, the winner), which is always among the players.
+  const nameOf = (seat: number) => seatName(t, game.players.find((each) => each.seat === seat)!);
 
   const heading = (
     <>
@@ -180,31 +178,26 @@ export function ShowRoom({ gameId, initial, projector: fromAddress, locale, dict
   );
 
   // The normal view is one column; the projector view puts the board first and everything else beside it, so the
-  // whole board fits the screen (P20).
+  // whole board fits the screen (P20). The tree keeps its shape, so the switch keeps the focus when it is toggled.
   return (
     <Shell projector={projector}>
-      {projector ? (
-        <div data-testid="show-stage" data-projector="true" className="flex flex-col gap-stack lg:flex-row lg:items-start">
-          {board}
-          <div className="flex min-w-0 flex-1 flex-col gap-stack">
-            {heading}
-            {rest}
-          </div>
-        </div>
-      ) : (
-        <>
+      <div
+        data-testid="show-stage"
+        data-projector={projector || undefined}
+        className={projector ? "flex flex-col gap-stack lg:flex-row lg:items-start" : "flex max-w-(--layout-width-board) flex-col gap-stack"}
+      >
+        {projector && board}
+        <div className="flex min-w-0 flex-1 flex-col gap-stack">
           {heading}
-          <div data-testid="show-stage" className="flex max-w-(--layout-width-board) flex-col gap-stack">
-            {board}
-            {rest}
-          </div>
-        </>
-      )}
+          {!projector && board}
+          {rest}
+        </div>
+      </div>
     </Shell>
   );
 }
 
-function Status({ game, t, nameOf }: { game: ShowView; t: ShowTranslator; nameOf: (seat: number | null) => string }) {
+function Status({ game, t, nameOf }: { game: ShowView; t: ShowTranslator; nameOf: (seat: number) => string }) {
   if (game.status === "cancelled") {
     return <Alert status="warning" role="status" title={game.closedReason === "expired" ? t("room.expired") : t("room.ended")} />;
   }
@@ -212,14 +205,14 @@ function Status({ game, t, nameOf }: { game: ShowView; t: ShowTranslator; nameOf
     const { winnerSeat, reason } = game.result;
     const color = winnerSeat === null ? null : colorOfSeat(game.blackSeat, winnerSeat);
     return (
-      <GameResultBanner result={color ? "win" : "draw"} title={color ? t(`room.wins.${color}`, { name: nameOf(winnerSeat) }) : t("room.draw")}>
+      <GameResultBanner result={color ? "win" : "draw"} title={color ? t(`room.wins.${color}`, { name: nameOf(winnerSeat!) }) : t("room.draw")}>
         {t(`room.reason.${reason}`)}
       </GameResultBanner>
     );
   }
   const color = game.turnSeat === null ? null : colorOfSeat(game.blackSeat, game.turnSeat);
   if (!color) return null;
-  return <TurnStatus color={color}>{t(`room.turn.${color}`, { name: nameOf(game.turnSeat) })}</TurnStatus>;
+  return <TurnStatus color={color}>{t(`room.turn.${color}`, { name: nameOf(game.turnSeat!) })}</TurnStatus>;
 }
 
 /** Storage is read once per render; another tab's choice does not move this view. */

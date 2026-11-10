@@ -6,7 +6,7 @@ import { execFile } from "node:child_process";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 
-import { INITIAL_CLOCK_MS, READY_DEADLINE_MS, seatOutOfTime, type Seat } from "@gomoku/core";
+import { INITIAL_CLOCK_MS, READY_DEADLINE_MS, SHOW_WAITING_TTL_MS, seatOutOfTime, type Seat } from "@gomoku/core";
 import { createOrm, cleanupExpired, type CleanupResult, type Orm } from "@gomoku/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from "vitest";
 
@@ -841,6 +841,96 @@ describe("guest-only games rules (#102, spec 2026-10-30-guest-only-games-cleanup
 
       expect(await exists(id), JSON.stringify({ moveCount, blackSeat, clocks, offset })).toBe(!expected);
     }
+  });
+});
+
+describe("show games (show-mode, E14-S01 step 4): the existing rules, unchanged", () => {
+  const board = "0".repeat(225);
+  /** A show (`origin = 'show'`): bots in both seats, or a bot in seat 1 and an agent in seat 2. */
+  async function insertShow(now: Date, spec: { second: "bot" | "agent"; finishedAgo?: number; turnStartedAgo?: number }): Promise<string> {
+    const finished = spec.finishedAgo !== undefined;
+    const [game] = await orm.em.fork().execute<{ id: string }[]>(
+      `insert into games (origin, status, created_at, started_at, black_seat, stones_black, stones_white, turn_started_at, finished_at,
+                          winner_seat, end_reason, clock_ms_1, clock_ms_2)
+       values ('show', ?, ?, ?, 1, ?::bit(225), ?::bit(225), ?, ?, ?, ?, ?, ?) returning id`,
+      [
+        finished ? "finished" : "active",
+        ago(now, 3 * HOUR),
+        ago(now, 3 * HOUR),
+        board,
+        board,
+        finished ? null : ago(now, spec.turnStartedAgo!),
+        finished ? ago(now, spec.finishedAgo!) : null,
+        finished ? 2 : null,
+        finished ? "timeout" : null,
+        finished ? 0 : INITIAL_CLOCK_MS,
+        INITIAL_CLOCK_MS,
+      ],
+    );
+    const id = game!.id;
+    await sql(`insert into game_players (game_id, seat, kind, bot_level, is_active) values (?, 1, 'bot', 1, false)`, [id]);
+    if (spec.second === "bot") {
+      await sql(`insert into game_players (game_id, seat, kind, bot_level, is_active) values (?, 2, 'bot', 1, false)`, [id]);
+    } else {
+      await sql(
+        `insert into game_players (game_id, seat, kind, agent_token_hash, join_channel, is_active) values (?, 2, 'agent', ?, 'mcp', false)`,
+        [id, hash()],
+      );
+    }
+    return id;
+  }
+  const exists = async (id: string) => (await rows("games", `id = '${id}'`)) === "1";
+
+  it("removes a finished show about an hour after its end (guestOnlyFinishedGames), bot vs bot and bot vs agent", async () => {
+    const now = new Date();
+    const old = await insertShow(now, { second: "bot", finishedAgo: HOUR + SECOND });
+    const withAgent = await insertShow(now, { second: "agent", finishedAgo: HOUR + SECOND });
+    const fresh = await insertShow(now, { second: "bot", finishedAgo: HOUR - SECOND });
+
+    const result = await cleanupExpired({ em: orm.em.fork(), now });
+
+    expect(result.guestOnlyFinishedGames).toBeGreaterThanOrEqual(2);
+    expect(await exists(old)).toBe(false);
+    expect(await exists(withAgent)).toBe(false);
+    expect(await exists(fresh)).toBe(true);
+  });
+
+  it("removes an abandoned show an hour past its clock deadline (guestOnlyActiveGames)", async () => {
+    const now = new Date();
+    const abandoned = await insertShow(now, { second: "bot", turnStartedAgo: INITIAL_CLOCK_MS + HOUR + SECOND });
+    const running = await insertShow(now, { second: "bot", turnStartedAgo: SECOND });
+
+    const result = await cleanupExpired({ em: orm.em.fork(), now });
+
+    expect(result.guestOnlyActiveGames).toBeGreaterThanOrEqual(1);
+    expect(await exists(abandoned)).toBe(false);
+    expect(await exists(running)).toBe(true);
+  });
+
+  it("removes a show waiting for its agent an hour after its 30-minute invitation expired (waitingGames)", async () => {
+    const now = new Date();
+    const insertWaiting = async (createdAgo: number) => {
+      const [game] = await orm.em.fork().execute<{ id: string }[]>(
+        `insert into games (origin, status, created_at) values ('show', 'waiting', ?) returning id`,
+        [ago(now, createdAgo)],
+      );
+      await sql(`insert into game_players (game_id, seat, kind, bot_level, is_active) values (?, 1, 'bot', 1, true)`, [game!.id]);
+      await sql(`insert into invitations (game_id, code, created_at, expires_at) values (?, ?, ?, ?)`, [
+        game!.id,
+        new InvitationCodes().generate(),
+        ago(now, createdAgo),
+        new Date(ago(now, createdAgo).getTime() + SHOW_WAITING_TTL_MS),
+      ]);
+      return game!.id;
+    };
+    const expired = await insertWaiting(SHOW_WAITING_TTL_MS + HOUR + SECOND);
+    const waiting = await insertWaiting(SHOW_WAITING_TTL_MS + HOUR - SECOND);
+
+    const result = await cleanupExpired({ em: orm.em.fork(), now });
+
+    expect(result.waitingGames).toBeGreaterThanOrEqual(1);
+    expect(await exists(expired)).toBe(false);
+    expect(await exists(waiting)).toBe(true);
   });
 });
 
