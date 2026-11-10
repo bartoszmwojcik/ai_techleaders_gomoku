@@ -1,5 +1,6 @@
 // The docs name it unstable_doesProxyMatch; Next 16.4 still exports it under the middleware name.
 import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
+import { LANG_QUERY_PARAM } from "@gomoku/core/i18n/locales";
 import { NextRequest } from "next/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -56,6 +57,7 @@ describe("proxy: matcher", () => {
   const matches = (url: string) => unstable_doesMiddlewareMatch({ config, url });
 
   it("runs for player pages with lang", () => {
+    expect(config.matcher[0]!.has[0]!.key).toBe(LANG_QUERY_PARAM);
     expect(matches("/?lang=fr")).toBe(true);
     expect(matches("/show/abc?projektor=1&lang=fr")).toBe(true);
     expect(matches("/games/g1?lang=en")).toBe(true);

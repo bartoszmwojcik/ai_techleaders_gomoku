@@ -20,6 +20,13 @@ type CliResult<T> = { success: boolean; data: T; error: string | null };
  */
 export const COARSE_POINTER_ARG = "--blink-settings=primaryPointerType=2";
 
+/**
+ * Chrome flags that pin the browser's languages to Polish (spec E15 I6): the app follows `Accept-Language` when there is
+ * no language cookie, and the existing scenarios assert Polish texts. A test of another language sets the cookie
+ * (`?lang=` or `setCookie`) or its own `Accept-Language` through `setHeaders`.
+ */
+export const POLISH_LANGUAGE_ARGS = ["--lang=pl", "--accept-lang=pl"] as const;
+
 export class Browser {
   /** `touch`: the session launches with a coarse pointer; the flag applies when its browser starts (first command). */
   constructor(
@@ -33,7 +40,8 @@ export class Browser {
       ({ stdout } = await execFileAsync(AGENT_BROWSER_BIN, [
           "--session",
           this.session,
-          ...(this.options.touch ? ["--args", COARSE_POINTER_ARG] : []),
+          "--args",
+          [...POLISH_LANGUAGE_ARGS, ...(this.options.touch ? [COARSE_POINTER_ARG] : [])].join("\n"),
           "--json",
           ...args,
         ]));

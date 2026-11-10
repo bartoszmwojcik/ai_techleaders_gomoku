@@ -4,12 +4,13 @@ import { NextResponse, type NextRequest } from "next/server";
 /**
  * Runs only for player pages whose address has `lang` (spec I5): never for the API, Next's assets, the admin panel or
  * files with an extension, and never for a request without the parameter, so every other request costs nothing.
+ * Next reads `config` statically, so the key is a literal (`LANG_QUERY_PARAM`, checked in the test).
  */
 export const config = {
   matcher: [
     {
       source: "/((?!api|_next|backend|.*\\..*).*)",
-      has: [{ type: "query", key: LANG_QUERY_PARAM }],
+      has: [{ type: "query", key: "lang" }],
     },
   ],
 };
