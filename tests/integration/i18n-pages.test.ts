@@ -13,6 +13,8 @@ let addressCounter = 0;
 const nextAddress = () => `198.42.${Math.floor(addressCounter / 250)}.${(addressCounter++ % 250) + 1}`;
 
 const get = (path: string, headers: Record<string, string> = {}) => fetch(`${baseUrl}${path}`, { headers, redirect: "manual" });
+// Next sends a same-origin redirect of the proxy as a relative address; resolve it either way.
+const location = (response: Response) => new URL(response.headers.get("location") ?? "", baseUrl).href;
 const htmlLang = (html: string) => /<html lang="([^"]+)"/.exec(html)?.[1];
 const post = (path: string, body: unknown) =>
   fetch(`${baseUrl}${path}`, {
@@ -27,7 +29,7 @@ describe("?lang= on player pages", () => {
     const response = await get("/?lang=fr&projektor=1");
 
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe("/?projektor=1");
+    expect(location(response)).toBe(`${baseUrl}/?projektor=1`);
     const cookie = response.headers.get("set-cookie") ?? "";
     expect(cookie).toMatch(/^gomoku_lang=fr; Path=\/; /);
     expect(cookie).toContain("Max-Age=31536000");
@@ -45,7 +47,7 @@ describe("?lang= on player pages", () => {
     const response = await get("/lobby?lang=xx");
 
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe("/lobby");
+    expect(location(response)).toBe(`${baseUrl}/lobby`);
     expect(response.headers.get("set-cookie")).toBeNull();
   });
 
@@ -53,7 +55,8 @@ describe("?lang= on player pages", () => {
     const response = await get("/join?code=ABC&lang=en");
 
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe("/join?code=ABC");
+    expect(location(response)).toBe(`${baseUrl}/join?code=ABC`);
+    console.info(`[i18n] proxy Location header: ${response.headers.get("location")}`);
     expect(response.headers.get("set-cookie")).toMatch(/^gomoku_lang=en;/);
   });
 

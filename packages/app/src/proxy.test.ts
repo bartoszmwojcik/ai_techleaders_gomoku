@@ -15,7 +15,7 @@ describe("proxy: ?lang=", () => {
     const response = call("https://gomoku.example/show/abc?lang=fr&projektor=1");
 
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe("/show/abc?projektor=1");
+    expect(response.headers.get("location")).toBe("https://gomoku.example/show/abc?projektor=1");
     expect(response.headers.get("cache-control")).toBe("no-store");
     const cookie = response.headers.get("set-cookie")!;
     expect(cookie).toMatch(/^gomoku_lang=fr; Path=\/; Expires=[^;]+; Max-Age=31536000; /);
@@ -28,7 +28,7 @@ describe("proxy: ?lang=", () => {
     for (const value of ["xx", "FR", "fr-FR", "", "../../x"]) {
       const response = call(`https://gomoku.example/?lang=${encodeURIComponent(value)}`);
       expect(response.status).toBe(307);
-      expect(response.headers.get("location")).toBe("/");
+      expect(response.headers.get("location")).toBe("https://gomoku.example/");
       expect(response.headers.get("set-cookie")).toBeNull();
     }
   });
@@ -36,7 +36,7 @@ describe("proxy: ?lang=", () => {
   it("takes the first of several lang parameters and removes all of them", () => {
     const response = call("https://gomoku.example/lobby?lang=de&x=1&lang=pl");
 
-    expect(response.headers.get("location")).toBe("/lobby?x=1");
+    expect(response.headers.get("location")).toBe("https://gomoku.example/lobby?x=1");
     expect(response.headers.get("set-cookie")).toMatch(/^gomoku_lang=de;/);
   });
 
@@ -49,7 +49,7 @@ describe("proxy: ?lang=", () => {
   it("never redirects to another host", () => {
     const response = call("https://gomoku.example//evil.example/?lang=fr");
 
-    expect(response.headers.get("location")).toBe("/evil.example/");
+    expect(response.headers.get("location")).toBe("https://gomoku.example/evil.example/");
   });
 });
 

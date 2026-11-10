@@ -24,14 +24,13 @@ export function proxy(request: NextRequest): NextResponse {
   const params = new URLSearchParams(request.nextUrl.search);
   const lang = params.get(LANG_QUERY_PARAM);
   params.delete(LANG_QUERY_PARAM);
-  const query = params.toString();
-  // A relative Location: behind the TLS-terminating reverse proxy the request URL may carry the internal origin.
-  // One leading slash only: `//evil.example?lang=fr` must not turn into a protocol-relative redirect to another host.
-  const path = `/${request.nextUrl.pathname.replace(/^[/\\]+/, "")}`;
-  const response = new NextResponse(null, {
-    status: 307,
-    headers: { Location: `${path}${query ? `?${query}` : ""}`, "Cache-Control": "no-store" },
-  });
+  // One leading slash only: `//evil.example?lang=fr` must not become a protocol-relative address of another host.
+  const target = new URL(`/${request.nextUrl.pathname.replace(/^[/\\]+/, "")}`, request.nextUrl);
+  target.search = params.toString();
+  // Next requires an absolute Location in a proxy and relativises a same-origin one before it is sent, so an internal
+  // origin behind the reverse proxy never reaches the browser.
+  const response = NextResponse.redirect(target, 307);
+  response.headers.set("Cache-Control", "no-store");
   if (isLocale(lang)) {
     // The same rule as the session cookie: Secure unless the integration tests switch it off over plain HTTP.
     const secure = process.env.SESSION_COOKIE_SECURE !== "false";
