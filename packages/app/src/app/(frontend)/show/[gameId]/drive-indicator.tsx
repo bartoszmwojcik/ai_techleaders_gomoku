@@ -30,11 +30,6 @@ export function DriveIndicator({ status, clockMs, checking, onCheck, t }: Props)
       </p>
     );
   }
-  const check = (
-    <Button variant="secondary" loading={checking} onClick={onCheck} data-testid="show-drive-check">
-      {t("room.drive.check")}
-    </Button>
-  );
   if (status.state === "slowed") {
     return (
       <div data-testid="show-drive" data-state="slowed">
@@ -42,6 +37,11 @@ export function DriveIndicator({ status, clockMs, checking, onCheck, t }: Props)
       </div>
     );
   }
+  const check = (
+    <Button variant="secondary" loading={checking} onClick={onCheck} data-testid="show-drive-check">
+      {t("room.drive.check")}
+    </Button>
+  );
   const seconds = Math.floor(status.silentMs / 1000);
   const reason =
     status.reason === "silent"
@@ -49,7 +49,11 @@ export function DriveIndicator({ status, clockMs, checking, onCheck, t }: Props)
       : t(`room.drive.reason.${status.reason}`);
   return (
     <div data-testid="show-drive" data-state="stalled" data-reason={status.reason}>
-      <Alert status="danger" role="alert" title={t("room.drive.stalledBecause", { reason })}>
+      {/* Announced once per reason: the visible alert below counts seconds, which a live region would re-read every tick. */}
+      <p role="alert" className="sr-only" data-testid="show-drive-announcement">
+        {t("room.drive.stalledBecause", { reason: t(`room.drive.announce.${status.reason}`) })}
+      </p>
+      <Alert status="danger" role="none" title={t("room.drive.stalledBecause", { reason })}>
         <div className="flex flex-col items-start gap-group">
           <p className="m-0">{t(`room.drive.hint.${status.reason}`)}</p>
           {clockMs !== null && <p className="m-0">{t("room.drive.clock", { time: countdownOf(t, clockMs) })}</p>}

@@ -100,6 +100,11 @@ const show = {
           other: "Brak odpowiedzi serwera od {seconds} sekundy",
         },
       },
+      announce: {
+        hidden: "Karta w tle",
+        bot: "Bot nie odpowiada",
+        silent: "Brak odpowiedzi serwera",
+      },
       hint: {
         hidden: "Przeglądarka spowalnia odczyty w karcie w tle. Zostaw pokaz na wierzchu.",
         bot: "Serwer czeka na ruch bota dłużej niż jego pauza i limit ruchu razem.",

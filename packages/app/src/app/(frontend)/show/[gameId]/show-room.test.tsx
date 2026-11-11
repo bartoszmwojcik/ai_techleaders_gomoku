@@ -151,9 +151,14 @@ describe("ShowRoom, the drive (phase b)", () => {
     expect(screen.getByTestId("show-drive").dataset.state).toBe("slowed");
     expect(within(screen.getByTestId("show-drive")).getByRole("status").textContent).toContain("Napęd zwalnia");
     await advance(4_000);
-    const alert = screen.getByRole("alert");
+    const alert = screen.getByTestId("show-drive");
     expect(alert.textContent).toContain("Napęd zatrzymany: Brak odpowiedzi serwera od 6 sekund");
     expect(alert.textContent).toContain("jeszcze 9:54");
+    // The live region says the stop once, without the ticking seconds (review of #305).
+    expect(screen.getByRole("alert").textContent).toBe("Napęd zatrzymany: Brak odpowiedzi serwera");
+    await advance(1_000);
+    expect(alert.textContent).toContain("od 7 sekund");
+    expect(screen.getByRole("alert").textContent).toBe("Napęd zatrzymany: Brak odpowiedzi serwera");
 
     apiCall.mockResolvedValue({ ok: true, data: live({ moves: [] }) });
     await act(async () => screen.getByRole("button", { name: "Sprawdź teraz" }).click());
@@ -163,7 +168,8 @@ describe("ShowRoom, the drive (phase b)", () => {
 
   it("says the bot does not answer when the server says so", () => {
     room(live({ drive: { botOnTurn: true, stalled: true } }));
-    expect(screen.getByRole("alert").textContent).toContain("Napęd zatrzymany: Bot nie odpowiada");
+    expect(screen.getByRole("alert").textContent).toBe("Napęd zatrzymany: Bot nie odpowiada");
+    expect(screen.getByTestId("show-drive").textContent).toContain("Sprawdź teraz");
   });
 
   it("shows the indicator in French", async () => {
@@ -172,7 +178,8 @@ describe("ShowRoom, the drive (phase b)", () => {
     expect(screen.getByTestId("show-drive").textContent).toBe("Moteur actif");
 
     await advance(6_000);
-    const alert = screen.getByRole("alert");
+    expect(screen.getByRole("alert").textContent).toBe("Moteur arrêté : Aucune réponse du serveur");
+    const alert = screen.getByTestId("show-drive");
     expect(alert.textContent).toContain("Moteur arrêté : Aucune réponse du serveur depuis 6 secondes");
     expect(alert.textContent).toContain("encore 9:54");
     expect(screen.getByRole("button", { name: "Vérifier maintenant" })).toBeTruthy();

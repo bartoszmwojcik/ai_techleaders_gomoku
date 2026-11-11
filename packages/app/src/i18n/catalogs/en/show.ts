@@ -94,6 +94,11 @@ const show: Translation<"show"> = {
           other: "No answer from the server for {seconds} seconds",
         },
       },
+      announce: {
+        hidden: "Tab in the background",
+        bot: "The bot is not responding",
+        silent: "No answer from the server",
+      },
       hint: {
         hidden: "The browser slows down reads in a background tab. Keep the show in front.",
         bot: "The server has been waiting for the bot's move longer than its pause and move limit together.",

@@ -95,6 +95,11 @@ const show: Translation<"show"> = {
           other: "Aucune réponse du serveur depuis {seconds} secondes",
         },
       },
+      announce: {
+        hidden: "Onglet en arrière-plan",
+        bot: "Le bot ne répond pas",
+        silent: "Aucune réponse du serveur",
+      },
       hint: {
         hidden: "Le navigateur ralentit les lectures dans un onglet en arrière-plan. Gardez la démonstration au premier plan.",
         bot: "Le serveur attend le coup du bot plus longtemps que sa pause et sa limite de coup réunies.",
