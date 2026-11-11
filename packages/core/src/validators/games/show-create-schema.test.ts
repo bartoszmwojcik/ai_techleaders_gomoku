@@ -37,7 +37,7 @@ describe("showCreateSchema", () => {
 
   it("names a wrong layout and a body that is not an object", () => {
     expect(showCreateSchema.safeParse({ layout: "x" }).error?.issues[0]?.message).toBe("Nieprawidłowy układ pokazu.");
-    expect(showCreateSchema.safeParse(null).success).toBe(false);
+    expect(showCreateSchema.safeParse(null).error?.issues[0]?.message).toBe("Nieprawidłowe dane pokazu.");
     expect(showCreateSchema.safeParse([1, 1]).success).toBe(false);
   });
 });

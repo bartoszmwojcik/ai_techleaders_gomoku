@@ -22,6 +22,7 @@ import { cellLabelOf, readStoredProjector, seatName, showTranslator, storeProjec
 import type { ShowView } from "@/server/http/show-view";
 
 import { EndShowButton } from "../end-show-button";
+import { AgentCard } from "./agent-card";
 import { DriveIndicator } from "./drive-indicator";
 import { useShowDrive, type DriveRead } from "./use-show-drive";
 
@@ -37,10 +38,10 @@ type Props = {
 };
 
 /**
- * `/show/[gameId]` (show-mode, phases a-b): the board, both clocks with the bots' names and colours, whose turn it is
+ * `/show/[gameId]` (show-mode, phases a-c): the board, both clocks with the bots' names and colours, whose turn it is
  * and the result, read only. The view is the show's drive: it keeps reading the show (`useShowDrive`), and every read
  * with a bot on turn makes the server play that bot's move; the indicator above the board says when the drive
- * stopped. "Widok pod projektor" is a mode of this view: the address carries it, the browser's storage is only the
+ * stopped. A bot vs agent show waiting for its agent shows the card with the code (`AgentCard`). "Widok pod projektor" is a mode of this view: the address carries it, the browser's storage is only the
  * default when the address says nothing.
  */
 export function ShowRoom({ gameId, initial, projector: fromAddress, locale, dict, headerDict }: Props) {
@@ -132,6 +133,9 @@ export function ShowRoom({ gameId, initial, projector: fromAddress, locale, dict
         t={t}
       />
       <Status game={game} t={t} nameOf={nameOf} />
+      {game.status === "waiting" && game.invitation && (
+        <AgentCard invitation={game.invitation} serverNow={game.clock.now} t={t} onExpire={drive.check} />
+      )}
     </>
   );
   const board = (

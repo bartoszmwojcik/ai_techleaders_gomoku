@@ -314,3 +314,114 @@ describe("ShowRoom, Widok pod projektor (P20)", () => {
     expect(String(replaceState.mock.calls.at(-1)![2])).toContain("projektor=0");
   });
 });
+
+describe("ShowRoom, a bot vs agent show waiting for its agent (phase c)", () => {
+  const EXPIRES = "2026-11-10T12:30:00.000Z";
+  const SERVER_NOW = Date.parse(EXPIRES) - 30 * 60 * 1000;
+  const waiting = (over: Partial<ShowView> = {}): ShowView =>
+    live({
+      status: "waiting",
+      layout: "bot-agent",
+      blackSeat: null,
+      turnSeat: null,
+      moveCount: 0,
+      moves: [],
+      clock: { remainingMs: [600_000, 600_000], running: null, now: SERVER_NOW },
+      players: [{ seat: 1, kind: "bot", displayName: "Bot · poziom 2 · 16 MB", bot: { level: 2, memoryMb: 768, tableMb: 16 } }],
+      invitation: { code: "ABCD-EFGH", url: "http://localhost:3000/invite/ABCD-EFGH", mcpUrl: "http://localhost:3000/api/mcp", expiresAt: EXPIRES },
+      ...over,
+    });
+  const card = () => screen.getByTestId("show-agent-card");
+
+  it("shows the code masked, the MCP address and the time left; the code never reaches the markup hidden", () => {
+    room(waiting());
+
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Pokaz: Bot vs agent");
+    expect(within(card()).getByRole("heading", { name: "Wklej kod do swojego agenta" })).toBeTruthy();
+    expect(screen.getByTestId("show-agent-code").textContent).toBe("••••-••••");
+    expect(screen.getByTestId("show-agent-code").getAttribute("aria-label")).toBe("Kod ukryty");
+    expect(screen.getByTestId("show-agent-mcp").textContent).toBe("http://localhost:3000/api/mcp");
+    expect(screen.getByTestId("show-agent-waiting").textContent).toBe("Czeka na agenta (jeszcze 30:00)");
+    expect(card().textContent).not.toContain("ABCD-EFGH");
+    expect(renderToStaticMarkup(<ShowRoom gameId={GAME} initial={waiting()} projector={null} />)).toContain("••••-••••");
+  });
+
+  it("shows and hides the code with Pokaż, a toggle button", async () => {
+    room(waiting());
+    const reveal = screen.getByTestId("show-agent-reveal");
+
+    await userEvent.click(reveal);
+    expect(screen.getByTestId("show-agent-code").textContent).toBe("ABCD-EFGH");
+    expect(screen.getByTestId("show-agent-code").hasAttribute("aria-label")).toBe(false);
+    expect(reveal.getAttribute("aria-pressed")).toBe("true");
+    expect(reveal.textContent).toBe("Ukryj");
+
+    await userEvent.click(reveal);
+    expect(screen.getByTestId("show-agent-code").textContent).toBe("••••-••••");
+    expect(reveal.textContent).toBe("Pokaż");
+  });
+
+  it("copies the code without showing it, and says when copying failed", async () => {
+    const writeText = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("denied"));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    room(waiting());
+
+    await userEvent.click(screen.getByRole("button", { name: "Kopiuj" }));
+    expect(writeText).toHaveBeenCalledWith("ABCD-EFGH");
+    expect(screen.getByTestId("show-agent-copy-status").textContent).toBe("Skopiowano kod");
+    expect(screen.getByTestId("show-agent-code").textContent).toBe("••••-••••");
+
+    await userEvent.click(screen.getByRole("button", { name: "Kopiuj" }));
+    expect(screen.getByTestId("show-agent-copy-status").textContent).toBe("Nie udało się skopiować. Pokaż kod i przepisz go.");
+  });
+
+  it("speaks French", () => {
+    room(waiting(), null, { locale: "fr", dict: frShow });
+
+    expect(within(card()).getByRole("heading", { name: "Collez le code dans votre agent" })).toBeTruthy();
+    expect(screen.getByTestId("show-agent-waiting").textContent).toBe("En attente de l’agent (encore 30:00)");
+    expect(screen.getByRole("button", { name: "Afficher" })).toBeTruthy();
+  });
+
+  describe("with the clock", () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+    const advance = (ms: number) => act(async () => void (await vi.advanceTimersByTimeAsync(ms)));
+
+    it("counts down by the server's time and asks the server once the code expired, which tells it apart from an end", async () => {
+      apiCall.mockResolvedValue({
+        ok: true,
+        data: live({ status: "cancelled", layout: "bot-agent", turnSeat: null, blackSeat: null, moves: [], moveCount: 0, closedReason: "expired" }),
+      });
+      room(waiting({ invitation: { ...waiting().invitation!, expiresAt: new Date(SERVER_NOW + 1_500).toISOString() } }));
+
+      expect(screen.getByTestId("show-agent-waiting").textContent).toBe("Czeka na agenta (jeszcze 0:02)");
+      await advance(1_000);
+      expect(screen.getByTestId("show-agent-waiting").textContent).toBe("Czeka na agenta (jeszcze 0:01)");
+      expect(apiCall).not.toHaveBeenCalled();
+      await advance(1_000);
+      // Before the drive's own next read (2 s): the countdown asked.
+      expect(apiCall).toHaveBeenCalledWith(`/api/show/${GAME}?after=0`, GET);
+      expect(screen.getByText("Pokaz wygasł (agent nie dołączył)")).toBeTruthy();
+      expect(screen.queryByTestId("show-agent-card")).toBeNull();
+    });
+
+    it("drops the card once the agent joined: the server sends no code any more", async () => {
+      apiCall.mockResolvedValue({
+        ok: true,
+        data: live({
+          layout: "bot-agent",
+          moveCount: 0,
+          moves: [],
+          turnSeat: 2,
+          players: [waiting().players[0]!, { seat: 2, kind: "agent", displayName: null, agentName: "claude" }],
+        }),
+      });
+      room(waiting());
+
+      await advance(2_000);
+      expect(screen.queryByTestId("show-agent-card")).toBeNull();
+      expect(screen.getByText("Ruch czarnych: Agent · claude (deklarowane)")).toBeTruthy();
+    });
+  });
+});

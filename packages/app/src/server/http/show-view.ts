@@ -4,11 +4,18 @@ import { withRequestScope } from "../container";
 import type { ShowOverview, ShowState } from "../services/games/show-service";
 
 /** The state of a show as the page and `GET /api/show/[id]` carry it (dates as ISO strings). */
-export type ShowView = Omit<ShowState, "finishedAt"> & { finishedAt?: string };
+export type ShowView = Omit<ShowState, "finishedAt" | "invitation"> & {
+  finishedAt?: string;
+  invitation?: Omit<NonNullable<ShowState["invitation"]>, "expiresAt"> & { expiresAt: string };
+};
 
 export function toShowView(state: ShowState): ShowView {
-  const { finishedAt, ...rest } = state;
-  return { ...rest, ...(finishedAt && { finishedAt: finishedAt.toISOString() }) };
+  const { finishedAt, invitation, ...rest } = state;
+  return {
+    ...rest,
+    ...(finishedAt && { finishedAt: finishedAt.toISOString() }),
+    ...(invitation && { invitation: { ...invitation, expiresAt: invitation.expiresAt.toISOString() } }),
+  };
 }
 
 /** The show for the page, or `null` when there is no such show (the page answers `404`). The caller gated it. */

@@ -177,7 +177,7 @@ describe("creating a show (bot vs bot, phase a)", () => {
   });
 
   it("refuses an unknown layout, a level outside 1-2, an extra field and level 2 while its switch is off", async () => {
-    for (const body of [{ layout: "bot-agent", botLevel: 1 }, { layout: "bot-bot", levels: [1, 3] }, { ...BOT_BOT, extra: true }]) {
+    for (const body of [{ layout: "bot-agent", levels: [1, 1] }, { layout: "bot-bot", levels: [1, 3] }, { ...BOT_BOT, extra: true }]) {
       const response = await post("/api/show", body, admin);
       expect(response.status).toBe(400);
       expect((await response.json()).error.code).toBe("VALIDATION");
