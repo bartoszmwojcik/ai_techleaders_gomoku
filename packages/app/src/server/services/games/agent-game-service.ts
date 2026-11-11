@@ -31,6 +31,7 @@ import { sleep as realSleep, type Sleep } from "../../mcp/sleep";
 import type { ChatService } from "../chat/chat-service";
 import type { Clock } from "../email/email-sender";
 import type { RateLimiter } from "../rate-limit/rate-limiter";
+import type { BotTurnService } from "./bot-turn-service";
 import type { GameMoveService } from "./game-move-service";
 import type { GameParticipant, GameService, GameState } from "./game-service";
 import { PARTICIPANT_TOKEN_VALID_SQL } from "./participant-token";
@@ -43,6 +44,7 @@ type Deps = {
   gameService: GameService;
   gameMoveService: GameMoveService;
   chatService: ChatService;
+  botTurnService: Pick<BotTurnService, "playDueMove">;
 };
 
 export const OUT_OF_BOARD_MESSAGE = "Pole jest poza planszą (współrzędne 0–14).";
@@ -62,9 +64,10 @@ const TOKEN_POOL: Pool = { prefix: "mcp-token", limit: ({ mcp }) => mcp.tokenLim
 // BR-32: `send_message` has a pool of its own, so it neither uses up nor is stopped by the 60 a minute of D-29.
 const CHAT_POOL: Pool = { prefix: "mcp-chat", limit: ({ mcp }) => mcp.chatLimit };
 
-// The seat of an agent token while the token is valid (BR-31): same lifetime as a guest token.
+// The seat of an agent token while the token is valid (BR-31): same lifetime as a guest token. `origin` tells an
+// administrator's show (its bot is moved by the agent's reads too, show-mode P14).
 const FIND_BY_TOKEN_SQL = `
-  select p.id, p.game_id, g.variant from game_players p join games g on g.id = p.game_id
+  select p.id, p.game_id, g.variant, g.origin from game_players p join games g on g.id = p.game_id
   where p.agent_token_hash = ? and ${PARTICIPANT_TOKEN_VALID_SQL}`;
 
 // What a waiting `get_state` needs to know whether to stop waiting: one cheap read, no locks.
@@ -97,7 +100,7 @@ type PeekRow = {
   opponent_last_seq: number | null;
 };
 
-type Seated = { participant: GameParticipant; gameId: string; variant: string | undefined };
+type Seated = { participant: GameParticipant; gameId: string; variant: string | undefined; show: boolean };
 
 /** `INVALID_INPUT` naming the field only, never the value (decision 8: no echo of the input). */
 function invalidInput(field: string): ValidationError {
@@ -121,8 +124,9 @@ export class AgentGameService {
   readonly #gameService: GameService;
   readonly #gameMoveService: GameMoveService;
   readonly #chatService: ChatService;
+  readonly #botTurnService: Deps["botTurnService"];
 
-  constructor({ em, clock, rateLimiter, serverConfig, gameService, gameMoveService, chatService }: Deps) {
+  constructor({ em, clock, rateLimiter, serverConfig, gameService, gameMoveService, chatService, botTurnService }: Deps) {
     this.#em = em;
     this.#clock = clock;
     this.#rateLimiter = rateLimiter;
@@ -130,6 +134,7 @@ export class AgentGameService {
     this.#gameService = gameService;
     this.#gameMoveService = gameMoveService;
     this.#chatService = chatService;
+    this.#botTurnService = botTurnService;
   }
 
   /**
@@ -137,6 +142,8 @@ export class AgentGameService {
    * `waitSeconds` it waits, by cheap reads without a transaction, until it is the agent's turn,
    * the game ends, the time of the side on move is up, the wait is over or the request is
    * cancelled (with `afterMessage`: or the opponent has written something newer); then one `GameService.getState` does the lazy bookkeeping and reads the state.
+   * In an administrator's show the bot plays its due move at the start and in every round of the wait (P14), so
+   * the show goes on without the administrator's view; no other game moves a bot here.
    * @throws AppError 400 `INVALID_INPUT`; 404 for an unknown token; 429 `RATE_LIMITED`
    */
   async getState(
@@ -151,9 +158,13 @@ export class AgentGameService {
     const { signal, sleep = realSleep } = options;
     // One round per second, counted rather than timed: bounded whatever the clock does.
     for (let round = 0; round < (waitSeconds ?? 0); round++) {
-      if (signal?.aborted || (await this.#ready(seated, afterMessage ?? null))) break;
+      if (signal?.aborted) break;
+      await this.#driveBot(seated);
+      if (await this.#ready(seated, afterMessage ?? null)) break;
       await sleep(MCP_POLL_INTERVAL_MS, signal);
     }
+    // Without a wait (or after it) the bot of a show still gets its turn, so a plain `get_state` sees its move.
+    if (!waitSeconds) await this.#driveBot(seated);
 
     const state = await this.#gameService.getState(seated.participant, seated.gameId);
     if ((afterMove ?? 0) > state.moveCount) throw invalidInput("afterMove");
@@ -218,13 +229,21 @@ export class AgentGameService {
   async #admit(token: string, pool: Pool): Promise<Seated> {
     const cutoff = new Date(this.#clock.now().getTime() - GUEST_TOKEN_GRACE_MS);
     const hash = hashOpaqueToken(token);
-    const [row] = await this.#em.execute<{ id: string; game_id: string; variant?: string }[]>(FIND_BY_TOKEN_SQL, [
+    const [row] = await this.#em.execute<{ id: string; game_id: string; variant?: string; origin: string }[]>(FIND_BY_TOKEN_SQL, [
       hash,
       cutoff,
     ]);
     if (!row) throw new NotFoundError(INVALID_TOKEN_TEXT);
     await this.#rateLimiter.hit(`${pool.prefix}:${hash}`, pool.limit(this.#serverConfig), MCP_TOKEN_WINDOW_MS);
-    return { participant: { playerId: row.id }, gameId: row.game_id, variant: row.variant };
+    return { participant: { playerId: row.id }, gameId: row.game_id, variant: row.variant, show: row.origin === "show" };
+  }
+
+  /**
+   * The bot of a show plays its move if it is on turn and its pause is over (`playDueMove` decides, by one read
+   * without a lock, and never throws). Only for a show: an ordinary game with the agent has no bot to move.
+   */
+  async #driveBot({ gameId, show }: Seated): Promise<void> {
+    if (show) await this.#botTurnService.playDueMove(gameId);
   }
 
   /** Whether a waiting `get_state` has something to report. A vanished game is reported too. */

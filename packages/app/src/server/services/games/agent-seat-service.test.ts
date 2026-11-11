@@ -137,6 +137,39 @@ describe("AgentSeatService.join", () => {
     expect(JSON.stringify(result)).not.toContain("Kasia");
   });
 
+  it.each([1, 2] as const)(
+    "joins a show against its bot in seat 1 (bot black: %i), starting the clock at once (show-mode P4)",
+    async (blackSeat) => {
+      const { service, calls } = setup({
+        invitations: [invitationRow({ creator_id: null, creator_name: null, creator_kind: "bot", origin: "show" })],
+        blackSeat,
+      });
+
+      const result = await service.join(CODE, "claude", GUARD);
+
+      expect(result).toMatchObject({
+        you: { seat: 2, color: blackSeat === 2 ? "black" : "white" },
+        opponent: { kind: "bot" },
+        status: "active",
+      });
+      expect(sqlsOf(calls).some((sql) => sql.includes("from users where id in"))).toBe(false);
+      const sqls = sqlsOf(calls);
+      const start = sqls.findIndex((sql) => sql.includes("update games set status = 'active'"));
+      const clock = sqls.findIndex((sql) => sql.startsWith("update games set turn_started_at"));
+      expect(clock).toBeGreaterThan(start);
+      expect(sqls[clock]).toBe("update games set turn_started_at = ? where id = ? and origin = 'show' and turn_started_at is null");
+      expect(calls[clock]!.params).toEqual([NOW, "game-1"]);
+    },
+  );
+
+  it("leaves the clock of an ordinary game to the creator's first visit", async () => {
+    const { service, calls } = setup({ invitations: [invitationRow({ origin: "invite" })] });
+
+    await service.join(CODE, undefined, GUARD);
+
+    expect(sqlsOf(calls).some((sql) => sql.includes("turn_started_at"))).toBe(false);
+  });
+
   it("treats a name of spaces only as no name", async () => {
     const { service, calls } = setup();
     await service.join(` ${CODE} `, "   ", GUARD);

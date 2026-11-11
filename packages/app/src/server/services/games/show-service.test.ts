@@ -1,5 +1,5 @@
 import { INITIAL_CLOCK_MS, type ShowCreateInput } from "@gomoku/core";
-import { Game, GamePlayer, type EntityManager } from "@gomoku/db";
+import { Game, GamePlayer, Invitation, type EntityManager } from "@gomoku/db";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ServerConfig } from "../../config";
@@ -26,6 +26,9 @@ type Script = {
   capacity?: Row;
   /** What the drive's "stalled" query answers. */
   stalled?: boolean;
+  /** The show's invitation (bot vs agent). */
+  invitation?: Row;
+  appOrigin?: string;
 };
 
 const BOT_LIMITS = { 1: { softMs: 50, ceilingMs: 250 }, 2: { softMs: 1500, ceilingMs: 3000 } };
@@ -90,8 +93,12 @@ function setup(script: Script = {}) {
       return entity === Game ? Object.assign({ id: GAME }, data) : data;
     }),
     flush: vi.fn(async () => undefined),
-    findOneOrFail: vi.fn(async (_entity: unknown, _id: unknown, options: { failHandler: () => Error }) => {
-      if (!script.game) throw options.failHandler();
+    findOneOrFail: vi.fn(async (entity: unknown, _id: unknown, options?: { failHandler: () => Error }) => {
+      if (entity === Invitation) {
+        if (!script.invitation) throw new Error("no invitation");
+        return script.invitation;
+      }
+      if (!script.game) throw options!.failHandler();
       return script.game;
     }),
     find: vi.fn(async () => script.players ?? [botRow(1, 1, null), botRow(2, 2, 768)]),
@@ -110,9 +117,10 @@ function setup(script: Script = {}) {
     clock: { now: () => NOW },
     rateLimiter: rateLimiter as never,
     timeoutSettler: timeoutSettler as never,
-    serverConfig: { show: { ...SHOW_FLAGS, ...script.flags }, bot: { limits: BOT_LIMITS } } as unknown as ServerConfig,
+    serverConfig: { appOrigin: script.appOrigin, show: { ...SHOW_FLAGS, ...script.flags }, bot: { limits: BOT_LIMITS } } as unknown as ServerConfig,
     colorDraw: { drawBlackSeat: () => 2 },
     botAdmission: botAdmission as never,
+    invitationCodes: { generate: () => "ABCDEFGH" },
   });
   return { service, em, execute, calls, created, rateLimiter, timeoutSettler, botAdmission };
 }
@@ -236,6 +244,60 @@ describe("ShowService.create (bot vs bot)", () => {
   });
 });
 
+describe("ShowService.create (bot vs agent)", () => {
+  const BOT_AGENT: ShowCreateInput = { layout: "bot-agent", botLevel: 2 };
+
+  it("writes a waiting private show with the bot in seat 1 and an invitation of 30 minutes (P4, P11)", async () => {
+    const { service, created, botAdmission } = setup({ admitted: [{ level: 2, memoryMb: 768, depthCap: 8 }] });
+
+    const show = await service.create("admin-1", BOT_AGENT);
+
+    const expiresAt = new Date(NOW.getTime() + 30 * 60 * 1000);
+    expect(show).toEqual({
+      gameId: GAME,
+      layout: "bot-agent",
+      bots: [{ seat: 1, name: "Bot · poziom 2 · 16 MB", level: 2, tableMb: 16 }],
+      invitation: {
+        code: "ABCD-EFGH",
+        url: "http://localhost:3000/invite/ABCD-EFGH",
+        mcpUrl: "http://localhost:3000/api/mcp",
+        expiresAt,
+      },
+    });
+    expect(botAdmission.admitShow).toHaveBeenCalledWith([2]);
+    const [game, bot, invitation] = created;
+    expect(game).toMatchObject({ entity: Game, data: { origin: "show", isPublic: false, status: "waiting", createdAt: NOW } });
+    // No colours and no clock until the agent joins.
+    expect(game!.data).not.toHaveProperty("blackSeat");
+    expect(game!.data).not.toHaveProperty("startedAt");
+    expect(game!.data).not.toHaveProperty("turnStartedAt");
+    expect(bot).toMatchObject({ entity: GamePlayer, data: { seat: 1, kind: "bot", botLevel: 2, botMemoryMb: 768, botDepthCap: 8, seenAt: NOW } });
+    expect(invitation).toMatchObject({ entity: Invitation, data: { code: "ABCDEFGH", createdAt: NOW, expiresAt } });
+    expect(created).toHaveLength(3);
+  });
+
+  it("allows level 2 with the bot's flag alone and ignores the switches of bot vs bot (P16)", async () => {
+    const { service } = setup({ flags: { botVsBotEnabled: false, botLevel2Enabled: false }, admitted: [{ level: 2, memoryMb: 768, depthCap: 8 }] });
+
+    await expect(service.create("admin-1", BOT_AGENT)).resolves.toMatchObject({ layout: "bot-agent" });
+  });
+
+  it("is still switched off by SHOW_ENABLED", async () => {
+    const { service } = setup({ flags: { enabled: false } });
+
+    expect(await errorOf(service.create("admin-1", BOT_AGENT))).toMatchObject({ status: 503, code: "SHOW_UNAVAILABLE", data: { reason: "disabled" } });
+  });
+
+  it("links the code to the server's own origin when it has one", async () => {
+    const { service } = setup({ appOrigin: "https://gomoku.example", admitted: [{ level: 1, memoryMb: null, depthCap: null }] });
+
+    expect((await service.create("admin-1", BOT_AGENT)).invitation).toMatchObject({
+      url: "https://gomoku.example/invite/ABCD-EFGH",
+      mcpUrl: "https://gomoku.example/api/mcp",
+    });
+  });
+});
+
 describe("ShowService.read", () => {
   it("settles in order (expiry, clock, time) and returns the state without seen, with the bots' strength", async () => {
     const { service, calls, timeoutSettler } = setup({ show: { status: "active" }, game: gameRow() });
@@ -314,8 +376,53 @@ describe("ShowService.read", () => {
       show: { status: "cancelled" },
       game: gameRow({ status: "cancelled", startedAt: null, blackSeat: null }),
       players: [botRow(1, 1, null)],
+      invitation: { code: "ABCDEFGH", expiresAt: NOW, consumedAt: null },
     });
-    expect(await expired.service.read(GAME)).toMatchObject({ status: "cancelled", closedReason: "expired", layout: "bot-agent" });
+    const expiredState = await expired.service.read(GAME);
+    expect(expiredState).toMatchObject({ status: "cancelled", closedReason: "expired", layout: "bot-agent" });
+    expect(expiredState).not.toHaveProperty("invitation");
+
+    // Ended by the administrator before the agent came: the end voided the code (P7).
+    const endedWaiting = setup({
+      show: { status: "cancelled" },
+      game: gameRow({ status: "cancelled", startedAt: null, blackSeat: null }),
+      players: [botRow(1, 1, null)],
+      invitation: { code: "ABCDEFGH", expiresAt: NOW, consumedAt: NOW },
+    });
+    expect(await endedWaiting.service.read(GAME)).toMatchObject({ closedReason: "ended" });
+  });
+
+  it("gives the code, its links and its expiry only while the show waits for its agent (P12)", async () => {
+    const expiresAt = new Date(NOW.getTime() + 30 * 60 * 1000);
+    const { service } = setup({
+      show: { status: "waiting" },
+      game: gameRow({ status: "waiting", startedAt: null, turnStartedAt: null, blackSeat: null }),
+      players: [botRow(1, 2, 768)],
+      invitation: { code: "ABCDEFGH", expiresAt, consumedAt: null },
+    });
+
+    const state = await service.read(GAME);
+
+    expect(state).toMatchObject({ status: "waiting", layout: "bot-agent", drive: { botOnTurn: false, stalled: false } });
+    expect(state.invitation).toEqual({
+      code: "ABCD-EFGH",
+      url: "http://localhost:3000/invite/ABCD-EFGH",
+      mcpUrl: "http://localhost:3000/api/mcp",
+      expiresAt,
+    });
+    expect(state).not.toHaveProperty("closedReason");
+  });
+
+  it("never gives the code of a show the agent joined", async () => {
+    const { service, em } = setup({
+      show: { status: "active" },
+      game: gameRow(),
+      players: [botRow(1, 1, null), { seat: 2, kind: "agent", agentName: null, seenAt: NOW }],
+      invitation: { code: "ABCDEFGH", expiresAt: NOW, consumedAt: NOW },
+    });
+
+    expect(await service.read(GAME)).not.toHaveProperty("invitation");
+    expect(em.findOneOrFail).not.toHaveBeenCalledWith(Invitation, expect.anything());
   });
 
   it("names the layout with an agent and keeps the declared name of the agent", async () => {
@@ -365,11 +472,27 @@ describe("ShowService.end", () => {
     expect(state).toMatchObject({ status: "cancelled", closedReason: "ended" });
   });
 
+  it("voids the code of a waiting show it ends, so the view tells it from an expiry", async () => {
+    const { service, calls } = setup({
+      show: { status: "waiting" },
+      ended: [{ id: GAME }],
+      game: gameRow({ status: "cancelled", startedAt: null, turnStartedAt: null, blackSeat: null }),
+      players: [botRow(1, 1, null)],
+      invitation: { code: "ABCDEFGH", expiresAt: NOW, consumedAt: NOW },
+    });
+
+    expect(await service.end(GAME)).toMatchObject({ status: "cancelled", closedReason: "ended", layout: "bot-agent" });
+    const voided = calls.find((call) => call.sql.startsWith("update invitations"))!;
+    expect(voided.sql).toBe("update invitations set consumed_at = ? where game_id = ? and consumed_at is null");
+    expect(voided.params).toEqual([NOW, GAME]);
+  });
+
   it("is harmless when repeated: nothing to release, the same answer", async () => {
     const { service, calls } = setup({ show: { status: "cancelled" }, ended: [], game: gameRow({ status: "cancelled" }) });
 
     await expect(service.end(GAME)).resolves.toMatchObject({ status: "cancelled" });
     expect(sqls(calls).some((sql) => sql.startsWith("update game_players"))).toBe(false);
+    expect(sqls(calls).some((sql) => sql.startsWith("update invitations"))).toBe(false);
   });
 
   it("refuses a finished show with 409 GAME_NOT_ACTIVE after the commit (the settlement stays)", async () => {
@@ -430,6 +553,15 @@ describe("ShowService.current and overview", () => {
 });
 
 describe("ShowService.preflight", () => {
+  it("leaves the switches of bot vs bot out of the checks of bot vs agent (P16)", async () => {
+    const { service } = setup({ flags: { botVsBotEnabled: false } });
+
+    const result = await service.preflight({ layout: "bot-agent", botLevel: 2 });
+
+    expect(result.ok).toBe(true);
+    expect(result.checks.map(({ id }) => id)).toEqual(["show_enabled", "bot_enabled", "memory", "slot", "no_show_running", "engine"]);
+  });
+
   it("checks the switch of level 2 only when a bot of level 2 is asked for, and fails on any failed check", async () => {
     const { service } = setup({
       open: [[{ id: OTHER, status: "active", bots: 2 }]],

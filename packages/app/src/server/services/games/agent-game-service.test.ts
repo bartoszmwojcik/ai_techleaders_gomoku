@@ -60,7 +60,7 @@ const stateOf = (over: Partial<GameState> = {}): GameState =>
 
 function setup(
   options: {
-    seat?: { id: string; game_id: string; variant?: string } | null;
+    seat?: { id: string; game_id: string; variant?: string; origin?: string } | null;
     peeks?: (PeekRow | null)[];
     state?: GameState;
     chat?: ChatReadData;
@@ -87,6 +87,7 @@ function setup(
       created: true,
     })),
   };
+  const botTurnService = { playDueMove: vi.fn(async () => "idle" as const) };
   const service = new AgentGameService({
     em: { execute } as unknown as EntityManager,
     clock: { now: () => NOW },
@@ -95,9 +96,10 @@ function setup(
     gameService: gameService as never,
     gameMoveService: gameMoveService as never,
     chatService: chatService as never,
+    botTurnService,
   });
   const sleep = vi.fn<(ms: number, signal?: AbortSignal) => Promise<void>>(async () => undefined);
-  return { service, execute, rateLimiter, gameService, gameMoveService, chatService, sleep };
+  return { service, execute, rateLimiter, gameService, gameMoveService, chatService, botTurnService, sleep };
 }
 
 async function failure(promise: Promise<unknown>): Promise<AppError> {
@@ -274,6 +276,75 @@ describe("AgentGameService.getState", () => {
         vi.useRealTimers();
       }
     });
+  });
+});
+
+describe("AgentGameService, the bot of an administrator's show (show-mode P14)", () => {
+  const SHOW_SEAT = { id: "agent-1", game_id: "show-1", origin: "show" };
+
+  it("moves the bot at the start of a plain get_state, before the state is read", async () => {
+    const { service, botTurnService, gameService } = setup({ seat: SHOW_SEAT, peeks: [peekRow()] });
+
+    await service.getState({ token: TOKEN });
+
+    expect(botTurnService.playDueMove).toHaveBeenCalledExactlyOnceWith("show-1");
+    expect(botTurnService.playDueMove.mock.invocationCallOrder[0]!).toBeLessThan(gameService.getState.mock.invocationCallOrder[0]!);
+  });
+
+  it("moves the bot in every round of the wait until it is the agent's turn", async () => {
+    // The bot (black, seat 1) is on turn for two rounds, then it has played and it is the agent's turn.
+    const { service, botTurnService, sleep } = setup({
+      seat: SHOW_SEAT,
+      peeks: [peekRow({ move_count: 0 }), peekRow({ move_count: 0 }), peekRow({ move_count: 1 })],
+    });
+
+    await service.getState({ token: TOKEN, waitSeconds: 10 }, { sleep });
+
+    expect(botTurnService.playDueMove).toHaveBeenCalledTimes(3);
+    expect(botTurnService.playDueMove).toHaveBeenCalledWith("show-1");
+    expect(sleep).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not move the bot once the client closed the connection", async () => {
+    const { service, botTurnService } = setup({ seat: SHOW_SEAT, peeks: [peekRow()] });
+    const controller = new AbortController();
+    controller.abort();
+
+    await service.getState({ token: TOKEN, waitSeconds: 5 }, { signal: controller.signal });
+
+    expect(botTurnService.playDueMove).not.toHaveBeenCalled();
+  });
+
+  it("never moves a bot for an ordinary game of the agent, with or without a wait (negative)", async () => {
+    const { service, botTurnService, sleep } = setup({ peeks: [peekRow({ move_count: 0 })] });
+
+    await service.getState({ token: TOKEN });
+    await service.getState({ token: TOKEN, waitSeconds: 3 }, { sleep });
+
+    expect(botTurnService.playDueMove).not.toHaveBeenCalled();
+  });
+
+  it("does not move the bot on play_move: the pause is not over yet (P14)", async () => {
+    const { service, botTurnService, gameMoveService } = setup({ seat: SHOW_SEAT });
+
+    await service.playMove({ token: TOKEN, x: 7, y: 7, moveNumber: 2 });
+
+    expect(gameMoveService.play).toHaveBeenCalledOnce();
+    expect(botTurnService.playDueMove).not.toHaveBeenCalled();
+  });
+
+  it("shows the bot as the agent's opponent", async () => {
+    const { service } = setup({
+      seat: SHOW_SEAT,
+      state: stateOf({
+        players: [
+          { seat: 1, kind: "bot", displayName: "Bot · poziom 1", seen: true },
+          { seat: 2, kind: "agent", displayName: null, agentName: "claude", seen: true },
+        ] as GameState["players"],
+      }),
+    });
+
+    expect(await service.getState({ token: TOKEN })).toMatchObject({ opponent: { kind: "bot" } });
   });
 });
 
