@@ -29,6 +29,16 @@ Maszyna deweloperska (8 wątków CPU, Node v22.23.4), `npm run bot:bench -w @gom
 
 Werdykt `accepted: false` wyłącznie przez `durationAtLeast300s` (przebieg 60 s celowo krótki); kod wyjścia 1 zgodnie z werdyktem. Liczby z 8 rdzeni nie przenoszą się na Mikrus (1 rdzeń) — to sprawdzenie narzędzia, nie pomiar A-24.
 
+Drugi przebieg (60 s, ta sama maszyna) **z sondą** `--probe-url http://127.0.0.1:3100/api/health` na działającą aplikację środowiska QA: p95 ruchu 1506 ms, max 1507 ms, p99 pętli 11,5 ms, sonda p95 7,7 ms w czasie obliczeń (bazowo 62 ms, p50 7,6), RSS +18,5 MB, 0 awarii i przerwań; `p17` wszystko `true` poza `durationAtLeast300s`.
+
+## Bramka, przegląd, QA
+
+- Lokalnie: `lint` (0 błędów), `typecheck`, `npm test` (385 plików, 4164 testy, 100% per plik), `npm run build`, `TMPDIR=/tmp npm run test:integration` (93 pliki, 1040 testów), `check:tokens` — zielone. `test:stories`: 3 przekroczenia czasu w niezmienionych stories przy obciążeniu; ponownie (select, board, partia; oba motywy) 55/55.
+- CI na PR #307: pierwsze uruchomienie — job „Wartości spoza tokenów” czerwony: `#306`/`#284` w komentarzach `.tsx` złapane przez grep kolorów hex (lekcja 2026-10-31 już to opisuje); poprawione w `e4cced0`, potem wszystkie joby zielone.
+- Przegląd w świeżym kontekście (`om-auto-review-pr 307 --autofix`): zatwierdzony, bez blockerów i majorów; minor (komentarz progu `stalled` — `pending` liczy też własne obliczenie) poprawiony w `4c6f3b0`; nity (próbny ruch także przy innych niespełnionych kontrolach — zamierzone; CSV w `.ai/qa/` jest migawką) bez zmian.
+- QA (`om-auto-qa-pr 307`): PASS — konsola z zablokowanym poziomem 2, test przedlotowy z silnikiem (144 ms), pokaz poziomu 1, macierz 4 języki × 320 px / 1280×720 projektor × oba motywy (brak przewijania poziomego), przełącznik poziomu 2 włączony → pokaz poziom 1 vs 2, zakończenie i wylogowanie. Dowody w komentarzu PR.
+- Na prośbę roota dopisano stan E14/E15 w `.ai/specs/backlog.md`.
+
 ## Czego nie zrobiono (poza zakresem / decyzje właściciela)
 
 - Strojenie i pomiar na Mikrusie (#286, krok 5), próba generalna, włączenie `SHOW_BOT_LEVEL2_ENABLED` na produkcji, aktualizacja A-24 — decyzje i praca właściciela.
@@ -37,4 +47,4 @@ Werdykt `accepted: false` wyłącznie przez `durationAtLeast300s` (przebieg 60 s
 
 ## Status
 
-W toku — wynik bramki, PR, przegląd i QA dopisane niżej.
+PR #307 gotowy (przegląd zatwierdzony, QA PASS, CI zielone); nie scalony — scala rodzic/właściciel.
