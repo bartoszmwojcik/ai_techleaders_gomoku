@@ -12,7 +12,10 @@ export type SecurityEventCode =
   | "admin_denied"
   | "login_failed"
   | "invitation_lookup_failed"
-  | "mcp_token_invalid";
+  | "mcp_token_invalid"
+  // The administrator's only writes (show-mode, D-37): a show created, a show ended. No game id, no account.
+  | "show_created"
+  | "show_ended";
 
 export type SecurityEventDetails = { scope?: string; reason?: string };
 

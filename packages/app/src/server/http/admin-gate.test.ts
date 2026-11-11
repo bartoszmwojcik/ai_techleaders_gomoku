@@ -9,7 +9,7 @@ const { notFound, getCurrentUserWith } = vi.hoisted(() => ({
 vi.mock("next/navigation", () => ({ notFound }));
 vi.mock("./auth", () => ({ getCurrentUserWith }));
 
-import { requireAdmin } from "./admin-gate";
+import { isAdminSession, requireAdmin, requireAdminApi } from "./admin-gate";
 
 const user = (over: object = {}) => ({
   id: "u-1",
@@ -74,5 +74,39 @@ describe("requireAdmin security log", () => {
     await requireAdmin();
 
     expect(warn).not.toHaveBeenCalled();
+  });
+});
+
+describe("isAdminSession", () => {
+  it("is the administrator, or null for anybody else", async () => {
+    getCurrentUserWith.mockResolvedValueOnce({ user: user(), data: "admin@example.com" });
+    await expect(isAdminSession()).resolves.toMatchObject({ id: "u-1" });
+
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    getCurrentUserWith.mockResolvedValueOnce(null);
+    await expect(isAdminSession()).resolves.toBeNull();
+    expect(notFound).not.toHaveBeenCalled();
+  });
+});
+
+describe("requireAdminApi", () => {
+  it("returns the administrator", async () => {
+    getCurrentUserWith.mockResolvedValue({ user: user(), data: "admin@example.com" });
+
+    await expect(requireAdminApi()).resolves.toMatchObject({ id: "u-1" });
+  });
+
+  it.each([
+    ["no session", null],
+    ["another player", { user: user({ email: "ala@example.com" }), data: "admin@example.com" }],
+    ["an unconfirmed e-mail", { user: user({ emailVerifiedAt: null }), data: "admin@example.com" }],
+    ["no ADMIN_EMAIL configured", { user: user(), data: undefined }],
+  ])("throws the 404 of a missing game for %s, never notFound()", async (_label, current) => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    getCurrentUserWith.mockResolvedValue(current);
+
+    await expect(requireAdminApi()).rejects.toMatchObject({ status: 404, code: "NOT_FOUND", message: "Nie znaleziono partii." });
+    expect(notFound).not.toHaveBeenCalled();
+    expect(JSON.parse(warn.mock.calls[0]![0] as string)).toMatchObject({ event: "security.admin_denied" });
   });
 });

@@ -81,6 +81,7 @@ Nie ma jeszcze: radio, przełącznika, pola wielowierszowego, popovera, podpowie
 | `paper-allowed, paper-pencil` | `bg-paper-allowed, stroke-paper-pencil, outline-paper-pencil` | plansza wariantu: pola dozwolone, kreska przez piątkę i ramka ostatniego ruchu |
 | `paper-ink, paper-mark-fill, paper-auto` | `stroke-paper-ink, fill-paper-mark-fill, stroke-paper-auto` | znaki: × i kontur ○, wypełnienie ○, jaśniejsza kreska automatu i podglądu |
 | `piece-black, piece-white, piece-outline` | `bg-piece-black, bg-piece-white, border-piece-outline` | kamienie |
+| `layout-width-board`, `layout-width-board-show` | `max-w-(--layout-width-board)`, `max-w-(--layout-width-board-show)` | szerokość planszy (448 px); `-show` (`min(80vh, 960px)`) **tylko w „Widoku pod projektor”** pokazu `/show/[gameId]` (show-mode P20), nigdzie indziej |
 | `space-group / -stack / -panel / -section` | `gap-group (8), gap-stack (16), p-panel (24), py-section (48)` | odstępy według relacji |
 | `radius-base, radius-piece` | `rounded-base, rounded-piece` | 6 px; okrąg tylko dla kamieni |
 | `shadow-board, shadow-piece` | `shadow-board, shadow-piece` | cień tylko plansza i kamienie |

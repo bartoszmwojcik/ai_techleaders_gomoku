@@ -116,6 +116,14 @@ function errorResponse(error: AppError): Response {
   return Response.json(body, { status: error.status, headers });
 }
 
+export type ApiHandlerOptions = {
+  /**
+   * Runs first, before the CSRF check and the route: a throw is the answer (`requireAdminApi`, whose 404 must
+   * not depend on the request's headers: show-mode, "API Contracts").
+   */
+  gate?: () => Promise<unknown>;
+};
+
 /**
  * Wraps a route function: applies CSRF protection to state-changing methods, wraps the
  * result in the `{ ok, data | error }` envelope and maps `AppError` and `ZodError` to their
@@ -126,9 +134,12 @@ function errorResponse(error: AppError): Response {
  */
 export function apiHandler<T, Args extends unknown[] = []>(
   fn: (request: Request, ...args: Args) => Promise<ApiSuccess<T> | Response>,
+  options: ApiHandlerOptions = {},
 ): (request: Request, ...args: Args) => Promise<Response> {
   return async (request, ...args) => {
     try {
+      // Before CSRF, so whoever the gate turns away gets its answer (a 404) whatever the request carries.
+      if (options.gate) await options.gate();
       if (STATE_CHANGING_METHODS.has(request.method)) {
         const container = await getContainer();
         assertSameOrigin(request, container.cradle.serverConfig);

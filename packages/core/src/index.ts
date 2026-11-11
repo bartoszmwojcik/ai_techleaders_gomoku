@@ -38,6 +38,7 @@ export * from "./validators/games/spectate-invitation-schema";
 export * from "./validators/games/create-game-settings-schema";
 export * from "./validators/games/create-game-schema";
 export * from "./validators/games/opponent-schema";
+export * from "./validators/games/show-create-schema";
 export * from "./validators/games/game-id-schema";
 export * from "./validators/games/seeker-id-schema";
 export * from "./validators/games/move-create-schema";

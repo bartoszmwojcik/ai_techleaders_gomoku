@@ -33,6 +33,7 @@ const invitationRow = (over: Row = {}): Row => ({
   creator_kind: "account",
   creator_nickname: null,
   is_public: false,
+  origin: "invite",
   ...over,
 });
 
@@ -210,6 +211,18 @@ describe("InvitationService.accept", () => {
     expect(error.code).toBe("INVALID_INVITATION");
     expect(rateLimiter.hit).toHaveBeenCalledOnce();
     expect(rateLimiter.release).not.toHaveBeenCalled();
+  });
+
+  it("treats the code of a show as unknown, for the accept and the preview (show-mode P13)", async () => {
+    const show = () => setup({ invitation: [invitationRow({ origin: "show", creator_id: null, creator_name: null, creator_kind: "bot" })] });
+    const accepting = show();
+    const error = await errorOf(accepting.service.accept(CODE, { userId: USER }, AS_USER, GUARD));
+    expect(error.code).toBe("INVALID_INVITATION");
+    expect(accepting.em.transactional).toHaveBeenCalledOnce();
+    expect(sqlsOf(accepting.calls).some((sql) => sql.startsWith("insert"))).toBe(false);
+    const previewing = show();
+    const preview = await errorOf(previewing.service.preview(CODE, {}, GUARD));
+    expect(preview.code).toBe("INVALID_INVITATION");
   });
 
   it("answers 410 when the invitation vanishes between the peek and the lock", async () => {

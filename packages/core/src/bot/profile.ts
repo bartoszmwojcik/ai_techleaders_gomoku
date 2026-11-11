@@ -38,5 +38,17 @@ export function botDisplayName(level: BotLevel, memoryMb: number | null): string
   return tier ? `${name} · ${tier.ttMb} MB` : name;
 }
 
+/** The bot's strength as data (i18n I14): the UI names it in the reader's language; `tableMb` only for level 2. */
+export type BotStrengthView = { level: BotLevel; tableMb: number | null };
+
+/**
+ * The parts of `botDisplayName` without the words: the level and, for level 2 with a known tier, the size of
+ * its table. The UI builds `Bot · niveau 2 · 16 Mo` from it; `botDisplayName` stays the Polish fallback.
+ */
+export function botStrengthOf(level: BotLevel, memoryMb: number | null): BotStrengthView {
+  const tier = level === 2 && memoryMb !== null ? botTierOf(memoryMb) : null;
+  return { level, tableMb: tier ? tier.ttMb : null };
+}
+
 /** What a refused player reads (`503 BOT_UNAVAILABLE`): the server's error and the client's alert share it. */
 export const BOT_UNAVAILABLE_MESSAGE = "Bot jest teraz niedostępny. Spróbuj za chwilę albo zaproś osobę.";

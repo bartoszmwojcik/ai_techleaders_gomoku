@@ -36,13 +36,15 @@ export type InvitationRow = {
   is_public: boolean;
   variant: GameVariant;
   time_control_ms: number;
+  /** `show` (show-mode P13): only an agent joins a show, the browser path treats the code as unknown. */
+  origin: string;
 };
 
 export const READ_INVITATION_SQL = `
   select i.id, i.game_id, i.consumed_at, i.expires_at <= ? as expired, g.status,
     c.user_id as creator_id, coalesce(c.display_name, u.display_name) as creator_name,
     c.kind as creator_kind, c.nickname as creator_nickname, g.is_public,
-    g.variant, g.time_control_ms
+    g.variant, g.time_control_ms, g.origin
   from invitations i
   join games g on g.id = i.game_id
   join game_players c on c.game_id = g.id and c.seat = 1

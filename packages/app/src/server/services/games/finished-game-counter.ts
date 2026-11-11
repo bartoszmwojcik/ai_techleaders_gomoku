@@ -2,7 +2,8 @@ import type { EntityManager } from "@gomoku/db";
 
 // One statement: the pair of participant kinds (canonical alphabetical order) and the day in
 // Europe/Warsaw come from the rows themselves. `g.status = 'finished'` makes a wrong call a
-// no-op instead of a wrong count.
+// no-op instead of a wrong count. A show (bot vs bot, bot vs agent: show-mode B6, P15) is not a game of
+// the product's players and is never counted.
 const RECORD_SQL = `
   insert into game_pair_counters (day, kind_a, kind_b, finished_count)
   select (g.finished_at at time zone 'Europe/Warsaw')::date, k.kind_a, k.kind_b, 1
@@ -11,7 +12,7 @@ const RECORD_SQL = `
     select game_id, min(kind) as kind_a, max(kind) as kind_b
     from game_players where game_id = ? group by game_id
   ) k on k.game_id = g.id
-  where g.id = ? and g.status = 'finished'
+  where g.id = ? and g.status = 'finished' and g.origin <> 'show'
   on conflict (day, kind_a, kind_b)
   do update set finished_count = game_pair_counters.finished_count + 1`;
 

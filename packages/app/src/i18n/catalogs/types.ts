@@ -2,16 +2,18 @@ import type { Catalog, PartialCatalog } from "@gomoku/core/i18n/translator";
 
 import type common from "./pl/common";
 import type header from "./pl/header";
+import type show from "./pl/show";
 
 /** Every namespace, typed by its Polish source. A new namespace is added here, in `NAMESPACES` and in `index.ts`. */
 export type Namespaces = {
   common: typeof common;
   header: typeof header;
+  show: typeof show;
 };
 
 export type Namespace = keyof Namespaces;
 
-export const NAMESPACES = ["common", "header"] as const satisfies readonly Namespace[];
+export const NAMESPACES = ["common", "header", "show"] as const satisfies readonly Namespace[];
 
 /** A complete translation (English, French): exactly the Polish keys. */
 export type Translation<N extends Namespace> = Catalog<Namespaces[N]>;

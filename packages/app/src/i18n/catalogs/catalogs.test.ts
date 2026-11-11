@@ -3,21 +3,25 @@ import { describe, expect, it } from "vitest";
 
 import deCommon from "./de/common";
 import deHeader from "./de/header";
+import deShow from "./de/show";
 import enCommon from "./en/common";
 import enHeader from "./en/header";
+import enShow from "./en/show";
 import frCommon from "./fr/common";
 import frHeader from "./fr/header";
+import frShow from "./fr/show";
 import { coverage, flatten, parityProblems } from "./parity";
 import plCommon from "./pl/common";
 import plHeader from "./pl/header";
+import plShow from "./pl/show";
 import { CATALOG_STATUS, statusProblems } from "./status";
 import { NAMESPACES, type Namespace } from "./types";
 
 const CATALOGS: Record<"pl" | "en" | "fr" | "de", Record<Namespace, Dict>> = {
-  pl: { common: plCommon, header: plHeader },
-  en: { common: enCommon, header: enHeader },
-  fr: { common: frCommon, header: frHeader },
-  de: { common: deCommon, header: deHeader },
+  pl: { common: plCommon, header: plHeader, show: plShow },
+  en: { common: enCommon, header: enHeader, show: enShow },
+  fr: { common: frCommon, header: frHeader, show: frShow },
+  de: { common: deCommon, header: deHeader, show: deShow },
 };
 
 // Spec I10: English and French promise every Polish text; German may lack texts but must not invent keys.

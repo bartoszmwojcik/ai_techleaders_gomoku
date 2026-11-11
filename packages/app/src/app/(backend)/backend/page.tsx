@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { connection } from "next/server";
 
 import { BOARD_SIZE, WIN_LENGTH } from "@gomoku/core";
@@ -49,6 +50,12 @@ export default async function BackendHomePage({ searchParams }: Readonly<{ searc
   return (
     <main className="mx-auto max-w-5xl space-y-8 p-4 sm:p-8">
       <h1 className="text-2xl font-semibold tracking-tight">Panel administracyjny</h1>
+      {/* A static link (show-mode P3): the show lives in (frontend), another root layout, so it loads as a full page; the panel writes nothing. */}
+      <p className="text-sm">
+        <Link href="/show" className="underline underline-offset-4">
+          Pokaz partii botów (strona administratora)
+        </Link>
+      </p>
 
       {data ? (
         <>

@@ -28,7 +28,7 @@ flowchart LR
   end
   Player -->|"cookie sesji/gościa/widza, kody zaproszeń, ruchy, czat (T-03, T-05, T-06, T-07, T-13)"| Proxy
   Attacker -->|"zgadywanie kodów, podmiana ID, nagłówki IP, ramka iframe (T-01, T-03, T-05, T-08)"| Proxy
-  Admin -->|"cookie sesji, /backend (T-04)"| Proxy
+  Admin -->|"cookie sesji, /backend, /show i /api/show: tworzy i kończy pokaz (T-04, T-15)"| Proxy
   Agent -->|"kod zaproszenia, token jednorazowy, ruchy, wiadomości (T-02, T-06, T-09)"| Proxy
   Proxy -->|"żądania + X-Forwarded-For (T-01)"| App
   Proxy -->|"JSON-RPC MCP (T-02, T-09)"| Mcp

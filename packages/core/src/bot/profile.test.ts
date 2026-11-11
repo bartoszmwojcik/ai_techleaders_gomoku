@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { BOT_LEVELS, BOT_MIN_MEMORY_MB, botDisplayName, botTierOf, isBotLevel } from "./profile";
+import { BOT_LEVELS, BOT_MIN_MEMORY_MB, botDisplayName, botStrengthOf, botTierOf, isBotLevel } from "./profile";
 
 describe("bot profile", () => {
   it("offers two levels (BR-55)", () => {
@@ -30,5 +30,12 @@ describe("bot profile", () => {
     expect(botDisplayName(2, 300)).toBe("Bot · poziom 2 · 8 MB");
     expect(botDisplayName(2, null)).toBe("Bot · poziom 2");
     expect(botDisplayName(2, 100)).toBe("Bot · poziom 2");
+  });
+
+  it("gives the strength as data, with the table of level 2 only (i18n I14)", () => {
+    expect(botStrengthOf(1, 4096)).toEqual({ level: 1, tableMb: null });
+    expect(botStrengthOf(2, 768)).toEqual({ level: 2, tableMb: 16 });
+    expect(botStrengthOf(2, null)).toEqual({ level: 2, tableMb: null });
+    expect(botStrengthOf(2, 100)).toEqual({ level: 2, tableMb: null });
   });
 });

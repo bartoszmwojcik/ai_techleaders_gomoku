@@ -21,6 +21,11 @@ describe("GameClock", () => {
     expect(markup).not.toMatch(/[Mm]ało czasu/);
   });
 
+  it("adds the classes of the caller to its row", () => {
+    const markup = renderToStaticMarkup(<GameClock name="Ala_7" remainingMs={60_000} active={false} activeLabel="Ruch" className="text-lead" />);
+    expect(markup).toContain('class="low-clock text-lead"');
+  });
+
   it("is not low at exactly one minute", () => {
     expect(html(60_000)).not.toContain("data-low");
   });

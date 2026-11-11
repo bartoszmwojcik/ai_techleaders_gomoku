@@ -11,9 +11,9 @@ export type ReviewStatus = { state: "draft" } | { state: "reviewed"; reviewer: s
 const DRAFT: ReviewStatus = { state: "draft" };
 
 export const CATALOG_STATUS: Readonly<Record<Exclude<Locale, "pl">, Readonly<Record<Namespace, ReviewStatus>>>> = {
-  en: { common: DRAFT, header: DRAFT },
-  fr: { common: DRAFT, header: DRAFT },
-  de: { common: DRAFT, header: DRAFT },
+  en: { common: DRAFT, header: DRAFT, show: DRAFT },
+  fr: { common: DRAFT, header: DRAFT, show: DRAFT },
+  de: { common: DRAFT, header: DRAFT, show: DRAFT },
 };
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;

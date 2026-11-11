@@ -490,12 +490,13 @@ export class InvitationService {
   ): Promise<InvitationRow | undefined> {
     const normalized = normalizeInvitationCode(code);
     if (!normalized) return undefined;
-    return (
-      await em.execute<InvitationRow[]>(READ_INVITATION_SQL, [
-        this.#clock.now(),
-        normalized,
-      ])
-    )[0];
+    const [row] = await em.execute<InvitationRow[]>(READ_INVITATION_SQL, [
+      this.#clock.now(),
+      normalized,
+    ]);
+    // A show's code is for its agent only (show-mode P13): a person who tries it in the browser gets the
+    // answer of an unknown code, for the preview and the accept alike, and never takes the seat.
+    return row?.origin === "show" ? undefined : row;
   }
 
   async #withAttempt<T>(guard: LookupGuard, lookup: () => Promise<T>): Promise<T> {
