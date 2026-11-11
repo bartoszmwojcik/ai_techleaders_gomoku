@@ -1,0 +1,136 @@
+﻿key,PL,EN,FR,DE,status,params
+show.layout.bot-bot,Bot vs bot,Bot vs bot,Bot contre bot,,en: draft; fr: draft; de: draft,
+show.layout.bot-agent,Bot vs agent,Bot vs agent,Bot contre agent,,en: draft; fr: draft; de: draft,
+show.bot.name,Bot · poziom {level},Bot · level {level},Bot · niveau {level},Bot · Stufe {level},en: draft; fr: draft; de: draft,level
+show.bot.nameWithTable,Bot · poziom {level} · {table},Bot · level {level} · {table},Bot · niveau {level} · {table},Bot · Stufe {level} · {table},en: draft; fr: draft; de: draft,"level, table"
+show.agent.name,Agent,Agent,Agent,,en: draft; fr: draft; de: draft,
+show.agent.declared,Agent · {name} (deklarowane),Agent · {name} (declared),Agent · {name} (déclaré),,en: draft; fr: draft; de: draft,name
+show.console.title,Pokaz,Show,Démonstration,Vorführung,en: draft; fr: draft; de: draft,
+show.console.lead,"Partia botów na dużym ekranie. Ogląda ją tylko administrator, nie trafia do historii ani liczników.",A game of bots on a big screen. Only the administrator watches it; it is kept out of history and counters.,Une partie de bots sur grand écran. Seul l’administrateur la regarde ; elle n’entre ni dans l’historique ni dans les compteurs.,,en: draft; fr: draft; de: draft,
+show.console.disabledTitle,Pokaz jest wyłączony,The show is switched off,La démonstration est désactivée,,en: draft; fr: draft; de: draft,
+show.console.disabledBody,Włącz go zmienną SHOW_ENABLED=true w konfiguracji serwera i uruchom aplikację ponownie.,Turn it on with SHOW_ENABLED=true in the server configuration and restart the application.,"Activez-la avec SHOW_ENABLED=true dans la configuration du serveur, puis redémarrez l’application.",,en: draft; fr: draft; de: draft,
+show.console.runningTitle,Trwa pokaz,A show is in progress,Une démonstration est en cours,,en: draft; fr: draft; de: draft,
+show.console.runningLayout,Układ: {layout},Layout: {layout},Configuration : {layout},,en: draft; fr: draft; de: draft,layout
+show.console.runningStatus.active,Stan: w toku,State: in progress,État : en cours,,en: draft; fr: draft; de: draft,
+show.console.runningStatus.waiting,Stan: czeka na agenta,State: waiting for the agent,État : en attente de l’agent,,en: draft; fr: draft; de: draft,
+show.console.back,Wróć do pokazu,Back to the show,Revenir à la démonstration,,en: draft; fr: draft; de: draft,
+show.console.formBlocked,"Nowy pokaz rozpoczniesz, gdy ten się zakończy.",You can start a new show once this one has ended.,Vous pourrez lancer une nouvelle démonstration quand celle-ci sera terminée.,,en: draft; fr: draft; de: draft,
+show.console.formTitle,Nowy pokaz,New show,Nouvelle démonstration,,en: draft; fr: draft; de: draft,
+show.console.layoutLabel,Układ,Layout,Disposition,,en: draft; fr: draft; de: draft,
+show.console.agentLead,Bot zajmie miejsce 1. Twój agent dołączy na miejsce 2 kodem przez MCP; kod pokaże widok pokazu.,The bot takes seat 1. Your agent joins seat 2 with a code over MCP; the show's view shows the code.,Le bot prend la place 1. Votre agent rejoint la place 2 avec un code via MCP ; la vue de la démonstration affiche le code.,,en: draft; fr: draft; de: draft,
+show.console.botLevelLabel,Poziom bota,Bot level,Niveau du bot,,en: draft; fr: draft; de: draft,
+show.console.botVsBotDisabled,Układ bot vs bot jest wyłączony: ustaw SHOW_BOT_VS_BOT_ENABLED=true.,The bot vs bot layout is switched off: set SHOW_BOT_VS_BOT_ENABLED=true.,La configuration bot contre bot est désactivée : définissez SHOW_BOT_VS_BOT_ENABLED=true.,,en: draft; fr: draft; de: draft,
+show.console.levelLabel,Bot na miejscu {seat},Bot in seat {seat},Bot à la place {seat},,en: draft; fr: draft; de: draft,seat
+show.console.level,Poziom {level},Level {level},Niveau {level},,en: draft; fr: draft; de: draft,level
+show.console.levelDisabled,Poziom {level} (wyłączony),Level {level} (switched off),Niveau {level} (désactivé),,en: draft; fr: draft; de: draft,level
+show.console.level2Blocked,Poziom 2 w bot vs bot jest wyłączony (SHOW_BOT_LEVEL2_ENABLED): włącza się po strojeniu tempa i pomiarze na serwerze.,Level 2 in bot vs bot is switched off (SHOW_BOT_LEVEL2_ENABLED): it is switched on once the pace is tuned and measured on the server.,Le niveau 2 en bot contre bot est désactivé (SHOW_BOT_LEVEL2_ENABLED) : il s’active après le réglage du rythme et une mesure sur le serveur.,,en: draft; fr: draft; de: draft,
+show.console.check,"Sprawdź, czy pokaz wystartuje",Check whether the show will start,Vérifier que la démonstration démarrera,,en: draft; fr: draft; de: draft,
+show.console.start,Rozpocznij pokaz,Start the show,Lancer la démonstration,Vorführung starten,en: draft; fr: draft; de: draft,
+show.checks.title,Wynik sprawdzenia,Check result,Résultat de la vérification,,en: draft; fr: draft; de: draft,
+show.checks.ready,Pokaz wystartuje.,The show will start.,La démonstration démarrera.,,en: draft; fr: draft; de: draft,
+show.checks.notReady,Pokaz nie wystartuje: popraw pozycje oznaczone jako niespełnione.,The show will not start: fix the items marked as not met.,La démonstration ne démarrera pas : corrigez les points non remplis.,,en: draft; fr: draft; de: draft,
+show.checks.failed,Nie udało się sprawdzić. Spróbuj ponownie.,The check failed. Try again.,La vérification a échoué. Réessayez.,,en: draft; fr: draft; de: draft,
+show.checks.pass,spełnione,met,rempli,,en: draft; fr: draft; de: draft,
+show.checks.fail,niespełnione,not met,non rempli,,en: draft; fr: draft; de: draft,
+show.checks.unknown,niesprawdzone,not checked,non vérifié,,en: draft; fr: draft; de: draft,
+show.checks.item.show_enabled,Pokaz włączony (SHOW_ENABLED),Show switched on (SHOW_ENABLED),Démonstration activée (SHOW_ENABLED),,en: draft; fr: draft; de: draft,
+show.checks.item.bot_vs_bot_enabled,Układ bot vs bot włączony (SHOW_BOT_VS_BOT_ENABLED),Bot vs bot layout switched on (SHOW_BOT_VS_BOT_ENABLED),Configuration bot contre bot activée (SHOW_BOT_VS_BOT_ENABLED),,en: draft; fr: draft; de: draft,
+show.checks.item.level2_enabled,Poziom 2 w bot vs bot włączony (SHOW_BOT_LEVEL2_ENABLED),Level 2 in bot vs bot switched on (SHOW_BOT_LEVEL2_ENABLED),Niveau 2 en bot contre bot activé (SHOW_BOT_LEVEL2_ENABLED),,en: draft; fr: draft; de: draft,
+show.checks.item.bot_enabled,Bot włączony (BOT_ENABLED),Bot switched on (BOT_ENABLED),Bot activé (BOT_ENABLED),,en: draft; fr: draft; de: draft,
+show.checks.item.memory,"Pamięć: dostępne {available}, potrzeba co najmniej {min}","Memory: {available} available, at least {min} needed","Mémoire : {available} disponibles, au moins {min} nécessaires",,en: draft; fr: draft; de: draft,"available, min"
+show.checks.item.slot,Partie z botem w toku: {active} z {max},Games with the bot in progress: {active} of {max},Parties avec le bot en cours : {active} sur {max},,en: draft; fr: draft; de: draft,"active, max"
+show.checks.item.no_show_running,Brak trwającego pokazu,No show in progress,Aucune démonstration en cours,,en: draft; fr: draft; de: draft,
+show.checks.item.engine,Silnik bota (próbny ruch poziomu 1),Bot engine (a trial move of level 1),Moteur du bot (coup d’essai de niveau 1),,en: draft; fr: draft; de: draft,
+show.checks.item.engineTimed,Silnik bota: próbny ruch poziomu 1 w {ms} ms (limit {limit} ms),Bot engine: a trial move of level 1 in {ms} ms (limit {limit} ms),Moteur du bot : coup d’essai de niveau 1 en {ms} ms (limite {limit} ms),,en: draft; fr: draft; de: draft,"ms, limit"
+show.errors.createTitle,Nie udało się rozpocząć pokazu,The show could not be started,Impossible de lancer la démonstration,,en: draft; fr: draft; de: draft,
+show.errors.code,Kod błędu: {code},Error code: {code},Code d’erreur : {code},,en: draft; fr: draft; de: draft,code
+show.errors.SHOW_RUNNING,Trwa już pokaz. Wróć do niego albo go zakończ.,A show is already in progress. Go back to it or end it.,Une démonstration est déjà en cours. Revenez-y ou terminez-la.,,en: draft; fr: draft; de: draft,
+show.errors.SHOW_UNAVAILABLE.disabled,Pokaz jest wyłączony (SHOW_ENABLED).,The show is switched off (SHOW_ENABLED).,La démonstration est désactivée (SHOW_ENABLED).,,en: draft; fr: draft; de: draft,
+show.errors.SHOW_UNAVAILABLE.bot_vs_bot_disabled,Układ bot vs bot jest wyłączony (SHOW_BOT_VS_BOT_ENABLED).,The bot vs bot layout is switched off (SHOW_BOT_VS_BOT_ENABLED).,La configuration bot contre bot est désactivée (SHOW_BOT_VS_BOT_ENABLED).,,en: draft; fr: draft; de: draft,
+show.errors.BOT_UNAVAILABLE.disabled,Bot jest wyłączony (BOT_ENABLED).,The bot is switched off (BOT_ENABLED).,Le bot est désactivé (BOT_ENABLED).,,en: draft; fr: draft; de: draft,
+show.errors.BOT_UNAVAILABLE.memory,Serwer ma za mało wolnej pamięci dla bota (BOT_MIN_AVAILABLE_MB).,The server has too little free memory for the bot (BOT_MIN_AVAILABLE_MB).,Le serveur n’a pas assez de mémoire libre pour le bot (BOT_MIN_AVAILABLE_MB).,,en: draft; fr: draft; de: draft,
+show.errors.BOT_UNAVAILABLE.busy,Wszystkie miejsca na partie z botem są zajęte (BOT_MAX_ACTIVE_GAMES).,All places for games with the bot are taken (BOT_MAX_ACTIVE_GAMES).,Toutes les places pour des parties avec le bot sont prises (BOT_MAX_ACTIVE_GAMES).,,en: draft; fr: draft; de: draft,
+show.errors.BOT_UNAVAILABLE.level2_not_allowed,Poziom 2 w bot vs bot jest wyłączony (SHOW_BOT_LEVEL2_ENABLED).,Level 2 in bot vs bot is switched off (SHOW_BOT_LEVEL2_ENABLED).,Le niveau 2 en bot contre bot est désactivé (SHOW_BOT_LEVEL2_ENABLED).,,en: draft; fr: draft; de: draft,
+show.errors.BOT_UNAVAILABLE.other,Bot jest teraz niedostępny.,The bot is not available right now.,Le bot n’est pas disponible pour le moment.,,en: draft; fr: draft; de: draft,
+show.errors.RATE_LIMITED,Za dużo pokazów w ciągu godziny. Spróbuj później.,Too many shows within an hour. Try again later.,Trop de démonstrations en une heure. Réessayez plus tard.,,en: draft; fr: draft; de: draft,
+show.errors.other,Coś poszło nie tak. Spróbuj ponownie.,Something went wrong. Try again.,Une erreur s’est produite. Réessayez.,,en: draft; fr: draft; de: draft,
+show.end.action,Zakończ pokaz,End the show,Terminer la démonstration,,en: draft; fr: draft; de: draft,
+show.end.title,Zakończyć pokaz?,End the show?,Terminer la démonstration ?,,en: draft; fr: draft; de: draft,
+show.end.body,Partia zostanie przerwana bez wyniku. Tego nie można cofnąć.,The game will be stopped without a result. This cannot be undone.,La partie sera arrêtée sans résultat. C’est irréversible.,,en: draft; fr: draft; de: draft,
+show.end.confirm,Zakończ pokaz,End the show,Terminer la démonstration,,en: draft; fr: draft; de: draft,
+show.end.cancel,Wróć,Go back,Retour,,en: draft; fr: draft; de: draft,
+show.end.failed,Nie udało się zakończyć pokazu. Spróbuj ponownie.,The show could not be ended. Try again.,Impossible de terminer la démonstration. Réessayez.,,en: draft; fr: draft; de: draft,
+show.room.title,Pokaz: {layout},Show: {layout},Démonstration : {layout},,en: draft; fr: draft; de: draft,layout
+show.room.finishedTitle,Koniec pokazu,End of the show,Fin de la démonstration,,en: draft; fr: draft; de: draft,
+show.room.drive.running,Napęd działa,Drive running,Moteur actif,Antrieb läuft,en: draft; fr: draft; de: draft,
+show.room.drive.slowed,Napęd zwalnia: ponawiamy odczyt stanu,Drive slowing down: retrying the read,Le moteur ralentit : nouvelle tentative de lecture,,en: draft; fr: draft; de: draft,
+show.room.drive.stalledBecause,Napęd zatrzymany: {reason},Drive stopped: {reason},Moteur arrêté : {reason},Antrieb angehalten: {reason},en: draft; fr: draft; de: draft,reason
+show.room.drive.reason.hidden,Karta w tle,Tab in the background,Onglet en arrière-plan,,en: draft; fr: draft; de: draft,
+show.room.drive.reason.bot,Bot nie odpowiada,The bot is not responding,Le bot ne répond pas,,en: draft; fr: draft; de: draft,
+show.room.drive.reason.silent[one],Brak odpowiedzi serwera od {seconds} sekundy,No answer from the server for {seconds} second,Aucune réponse du serveur depuis {seconds} seconde,,en: draft; fr: draft; de: draft,seconds
+show.room.drive.reason.silent[few],Brak odpowiedzi serwera od {seconds} sekund,,,,en: draft; fr: draft; de: draft,seconds
+show.room.drive.reason.silent[many],Brak odpowiedzi serwera od {seconds} sekund,,Aucune réponse du serveur depuis {seconds} secondes,,en: draft; fr: draft; de: draft,seconds
+show.room.drive.reason.silent[other],Brak odpowiedzi serwera od {seconds} sekundy,No answer from the server for {seconds} seconds,Aucune réponse du serveur depuis {seconds} secondes,,en: draft; fr: draft; de: draft,seconds
+show.room.drive.announce.hidden,Karta w tle,Tab in the background,Onglet en arrière-plan,,en: draft; fr: draft; de: draft,
+show.room.drive.announce.bot,Bot nie odpowiada,The bot is not responding,Le bot ne répond pas,,en: draft; fr: draft; de: draft,
+show.room.drive.announce.silent,Brak odpowiedzi serwera,No answer from the server,Aucune réponse du serveur,,en: draft; fr: draft; de: draft,
+show.room.drive.hint.hidden,Przeglądarka spowalnia odczyty w karcie w tle. Zostaw pokaz na wierzchu.,The browser slows down reads in a background tab. Keep the show in front.,Le navigateur ralentit les lectures dans un onglet en arrière-plan. Gardez la démonstration au premier plan.,,en: draft; fr: draft; de: draft,
+show.room.drive.hint.bot,Serwer czeka na ruch bota dłużej niż jego pauza i limit ruchu razem.,The server has been waiting for the bot's move longer than its pause and move limit together.,Le serveur attend le coup du bot plus longtemps que sa pause et sa limite de coup réunies.,,en: draft; fr: draft; de: draft,
+show.room.drive.hint.silent,Sprawdź połączenie z serwerem.,Check the connection to the server.,Vérifiez la connexion au serveur.,,en: draft; fr: draft; de: draft,
+show.room.drive.clock,"Zegar biegnie dalej, partia skończy się czasem (jeszcze {time}).","The clock keeps running, the game will end on time ({time} left).","L’horloge continue, la partie se terminera au temps (encore {time}).",,en: draft; fr: draft; de: draft,time
+show.room.drive.check,Sprawdź teraz,Check now,Vérifier maintenant,Jetzt prüfen,en: draft; fr: draft; de: draft,
+show.room.projector,Widok pod projektor,Projector view,Vue pour projecteur,Projektoransicht,en: draft; fr: draft; de: draft,
+show.room.projectorOn,Włączono widok pod projektor,Projector view switched on,Vue pour projecteur activée,,en: draft; fr: draft; de: draft,
+show.room.projectorOff,Wyłączono widok pod projektor,Projector view switched off,Vue pour projecteur désactivée,,en: draft; fr: draft; de: draft,
+show.room.ended,Pokaz zakończony przez administratora,Show ended by the administrator,Démonstration terminée par l’administrateur,,en: draft; fr: draft; de: draft,
+show.room.expired,Pokaz wygasł (agent nie dołączył),Show expired (the agent did not join),Démonstration expirée (l’agent n’a pas rejoint),,en: draft; fr: draft; de: draft,
+show.room.agent.title,Wklej kod do swojego agenta,Paste the code into your agent,Collez le code dans votre agent,Code in deinen Agenten einfügen,en: draft; fr: draft; de: draft,
+show.room.agent.body,"Agent dołącza narzędziem join serwera MCP gomoku. Kod jest ukryty, bo ekran widzi widownia.",The agent joins with the join tool of the gomoku MCP server. The code is hidden because the audience sees the screen.,"L’agent rejoint avec l’outil join du serveur MCP gomoku. Le code est masqué, car le public voit l’écran.",,en: draft; fr: draft; de: draft,
+show.room.agent.codeLabel,Kod zaproszenia,Invitation code,Code d’invitation,,en: draft; fr: draft; de: draft,
+show.room.agent.codeHidden,Kod ukryty,Code hidden,Code masqué,,en: draft; fr: draft; de: draft,
+show.room.agent.show,Pokaż,Show,Afficher,Anzeigen,en: draft; fr: draft; de: draft,
+show.room.agent.hide,Ukryj,Hide,Masquer,,en: draft; fr: draft; de: draft,
+show.room.agent.copy,Kopiuj,Copy,Copier,Kopieren,en: draft; fr: draft; de: draft,
+show.room.agent.copied,Skopiowano kod,Code copied,Code copié,,en: draft; fr: draft; de: draft,
+show.room.agent.copyFailed,Nie udało się skopiować. Pokaż kod i przepisz go.,Could not copy. Show the code and type it in.,Impossible de copier. Affichez le code et recopiez-le.,,en: draft; fr: draft; de: draft,
+show.room.agent.mcpLabel,Adres serwera MCP,MCP server address,Adresse du serveur MCP,,en: draft; fr: draft; de: draft,
+show.room.agent.waiting,Czeka na agenta (jeszcze {time}),Waiting for the agent ({time} left),En attente de l’agent (encore {time}),Wartet auf den Agenten (noch {time}),en: draft; fr: draft; de: draft,time
+show.room.goneTitle,Pokazu już nie ma,The show is gone,La démonstration n’existe plus,,en: draft; fr: draft; de: draft,
+show.room.goneBody,Pokaz zniknął po zakończeniu albo sesja administratora wygasła.,"The show was removed after its end, or the administrator's session expired.","La démonstration a été supprimée après sa fin, ou la session de l’administrateur a expiré.",,en: draft; fr: draft; de: draft,
+show.room.goneAction,Wróć do konsoli pokazu,Back to the show console,Revenir à la console de démonstration,,en: draft; fr: draft; de: draft,
+show.room.newShow,Nowy pokaz,New show,Nouvelle démonstration,,en: draft; fr: draft; de: draft,
+show.room.logout,Wyloguj,Log out,Se déconnecter,Abmelden,en: draft; fr: draft; de: draft,
+show.room.logoutFailed,Nie udało się wylogować. Spróbuj ponownie.,Logging out failed. Try again.,La déconnexion a échoué. Réessayez.,,en: draft; fr: draft; de: draft,
+show.room.clockActive,Ruch,To move,Au trait,,en: draft; fr: draft; de: draft,
+show.room.side.black,Czarne: {name},Black: {name},Noirs : {name},,en: draft; fr: draft; de: draft,name
+show.room.side.white,Białe: {name},White: {name},Blancs : {name},,en: draft; fr: draft; de: draft,name
+show.room.turn.black,Ruch czarnych: {name},Black to move: {name},Trait aux noirs : {name},,en: draft; fr: draft; de: draft,name
+show.room.turn.white,Ruch białych: {name},White to move: {name},Trait aux blancs : {name},,en: draft; fr: draft; de: draft,name
+show.room.wins.black,Wygrały czarne: {name},Black wins: {name},Les noirs gagnent : {name},,en: draft; fr: draft; de: draft,name
+show.room.wins.white,Wygrały białe: {name},White wins: {name},Les blancs gagnent : {name},,en: draft; fr: draft; de: draft,name
+show.room.draw,Remis,Draw,Match nul,,en: draft; fr: draft; de: draft,
+show.room.reason.five_in_row,Pięć kamieni w jednej linii.,Five stones in one line.,Cinq pierres alignées.,,en: draft; fr: draft; de: draft,
+show.room.reason.timeout,Drugiej stronie skończył się czas.,The other side ran out of time.,L’autre camp a épuisé son temps.,,en: draft; fr: draft; de: draft,
+show.room.reason.resignation,Druga strona poddała partię.,The other side resigned.,L’autre camp a abandonné.,,en: draft; fr: draft; de: draft,
+show.room.reason.draw,"Plansza jest pełna, nikt nie ułożył pięciu kamieni.",The board is full and nobody made five in a row.,Le plateau est plein et personne n’a aligné cinq pierres.,,en: draft; fr: draft; de: draft,
+show.room.reason.points,Wygrał wyższy wynik punktowy.,The higher score won.,Le score le plus élevé l’emporte.,,en: draft; fr: draft; de: draft,
+show.board.label,Plansza 15 na 15,Board 15 by 15,Plateau de 15 sur 15,,en: draft; fr: draft; de: draft,
+show.board.cell,"Kolumna {column}, rząd {row}, {state}","Column {column}, row {row}, {state}","Colonne {column}, rangée {row}, {state}",,en: draft; fr: draft; de: draft,"column, row, state"
+show.board.empty,puste,empty,vide,,en: draft; fr: draft; de: draft,
+show.board.black,czarny kamień,black stone,pierre noire,,en: draft; fr: draft; de: draft,
+show.board.white,biały kamień,white stone,pierre blanche,,en: draft; fr: draft; de: draft,
+header.theme.light,Jasny motyw,Light theme,Thème clair,Helles Design,en: draft; fr: draft; de: draft,
+header.theme.dark,Ciemny motyw,Dark theme,Thème sombre,Dunkles Design,en: draft; fr: draft; de: draft,
+header.language.menuLabel,"Język: {language}, zmień język","Language: {language}, change language","Langue : {language}, changer de langue",,en: draft; fr: draft; de: draft,language
+header.session.menuLabel,"Zalogowano jako {name}, menu konta","Signed in as {name}, account menu","Connecté en tant que {name}, menu du compte",,en: draft; fr: draft; de: draft,name
+header.session.account,Konto,Account,Compte,Konto,en: draft; fr: draft; de: draft,
+header.session.history,Historia,History,Historique,,en: draft; fr: draft; de: draft,
+header.session.logout,Wyloguj,Log out,Se déconnecter,Abmelden,en: draft; fr: draft; de: draft,
+header.logout.title,Wylogować?,Log out?,Se déconnecter ?,,en: draft; fr: draft; de: draft,
+header.logout.gameRunning,Trwa partia — po wylogowaniu zegar biegnie dalej. Wylogować?,"A game is in progress — after you log out, your clock keeps running. Log out?","Une partie est en cours — après la déconnexion, votre pendule continue de tourner. Se déconnecter ?",,en: draft; fr: draft; de: draft,
+header.logout.gameUnknown,"Nie udało się sprawdzić, czy trwa partia. Jeśli trwa, po wylogowaniu zegar biegnie dalej. Wylogować?","We could not check whether a game is in progress. If it is, your clock keeps running after you log out. Log out?","Impossible de vérifier si une partie est en cours. Si c’est le cas, votre pendule continue de tourner après la déconnexion. Se déconnecter ?",,en: draft; fr: draft; de: draft,
+header.logout.confirm,Wyloguj,Log out,Se déconnecter,,en: draft; fr: draft; de: draft,
+header.logout.cancel,Zostań zalogowany,Stay signed in,Rester connecté,,en: draft; fr: draft; de: draft,
+header.logout.failed,Nie udało się wylogować. Spróbuj ponownie.,Could not log out. Try again.,La déconnexion a échoué. Réessayez.,,en: draft; fr: draft; de: draft,
+header.logout.failedTitle,Nie udało się wylogować,Could not log out,La déconnexion a échoué,,en: draft; fr: draft; de: draft,
+header.logout.failedRetry,Spróbuj ponownie.,Try again.,Réessayez.,,en: draft; fr: draft; de: draft,
