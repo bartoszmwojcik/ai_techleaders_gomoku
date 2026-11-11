@@ -11,7 +11,11 @@ const show: PartialTranslation<"show"> = {
     start: "Vorführung starten",
   },
   room: {
-    refresh: "Aktualisieren",
+    drive: {
+      running: "Antrieb läuft",
+      stalledBecause: "Antrieb angehalten: {reason}",
+      check: "Jetzt prüfen",
+    },
     projector: "Projektoransicht",
     logout: "Abmelden",
   },

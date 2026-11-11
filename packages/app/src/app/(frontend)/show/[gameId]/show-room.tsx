@@ -10,7 +10,7 @@ import { GameResultBanner } from "@gomoku/ui/game/game-result-banner";
 import { TextLink } from "@gomoku/ui/game/text-link";
 import { TurnStatus } from "@gomoku/ui/game/turn-status";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { GameClock } from "@/components/games/game-clock";
@@ -22,6 +22,8 @@ import { cellLabelOf, readStoredProjector, seatName, showTranslator, storeProjec
 import type { ShowView } from "@/server/http/show-view";
 
 import { EndShowButton } from "../end-show-button";
+import { DriveIndicator } from "./drive-indicator";
+import { useShowDrive, type DriveRead } from "./use-show-drive";
 
 type Props = {
   gameId: string;
@@ -35,24 +37,22 @@ type Props = {
 };
 
 /**
- * `/show/[gameId]` (show-mode, phase a): the board, both clocks with the bots' names and colours, whose turn it is and
- * the result, read only. Nothing moves the bots in this phase, so the view reads once and on "Odśwież" (and when a
- * clock reaches zero). "Widok pod projektor" is a mode of this view: the address carries it, the browser's storage
- * is only the default when the address says nothing.
+ * `/show/[gameId]` (show-mode, phases a-b): the board, both clocks with the bots' names and colours, whose turn it is
+ * and the result, read only. The view is the show's drive: it keeps reading the show (`useShowDrive`), and every read
+ * with a bot on turn makes the server play that bot's move; the indicator above the board says when the drive
+ * stopped. "Widok pod projektor" is a mode of this view: the address carries it, the browser's storage is only the
+ * default when the address says nothing.
  */
 export function ShowRoom({ gameId, initial, projector: fromAddress, locale, dict, headerDict }: Props) {
   const t = useMemo(() => showTranslator(locale, dict), [locale, dict]);
   const [game, setGame] = useState(initial);
   const [gone, setGone] = useState(false);
-  const [failed, setFailed] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   // The address decides; without `?projektor=` the browser's last choice is the default (`false` on the server).
   const [chosen, setChosen] = useState<boolean | null>(fromAddress);
   const stored = useSyncExternalStore(subscribeNever, readStoredProjector, () => false);
   const projector = chosen ?? stored;
   const [announcement, setAnnouncement] = useState("");
   const latest = useRef(initial);
-  const reading = useRef(false);
 
   // A default taken from storage is written back to the address, which stays the source of truth on a reload.
   useEffect(() => {
@@ -66,34 +66,32 @@ export function ShowRoom({ gameId, initial, projector: fromAddress, locale, dict
     setAnnouncement(on ? t("room.projectorOn") : t("room.projectorOff"));
   }
 
-  async function refresh() {
-    if (reading.current) return;
-    reading.current = true;
-    setRefreshing(true);
-    const after = knownMoves(latest.current);
-    const result = await apiCall<ShowView>(`/api/show/${gameId}?after=${after}`, { method: "GET" });
-    reading.current = false;
-    setRefreshing(false);
-    if (result.ok) {
-      setFailed(false);
-      latest.current = mergeState(latest.current, result.data, after);
-      setGame(latest.current);
-    } else if (result.error.code === "NOT_FOUND") {
-      setGone(true);
-    } else {
-      setFailed(true);
-    }
-  }
+  const read = useCallback(
+    async (signal: AbortSignal): Promise<DriveRead> => {
+      const after = knownMoves(latest.current);
+      const result = await apiCall<ShowView>(`/api/show/${gameId}?after=${after}`, { method: "GET", signal });
+      if (result.ok) {
+        latest.current = mergeState(latest.current, result.data, after);
+        setGame(latest.current);
+        return { ok: true, botOnTurn: latest.current.drive.botOnTurn, open: isOpen(latest.current) };
+      }
+      if (result.error.code === "NOT_FOUND") setGone(true);
+      return { ok: false, gone: result.error.code === "NOT_FOUND" };
+    },
+    [gameId],
+  );
+
+  const open = isOpen(game);
+  const drive = useShowDrive({ open: open && !gone, botOnTurn: initial.drive.botOnTurn, serverStalled: game.drive.stalled, read });
 
   function ended(state: ShowView | null) {
-    if (!state) return void refresh();
+    if (!state) return drive.check();
     latest.current = state;
     setGame(state);
   }
 
-  const open = game.status === "active" || game.status === "waiting";
   // Only the server decides that the time is up: when the running clock reaches zero, it is asked at once.
-  const clocks = useGameClock(game.clock, { finished: game.status !== "active", onExpire: () => void refresh() });
+  const clocks = useGameClock(game.clock, { finished: game.status !== "active", onExpire: drive.check });
 
   if (gone) {
     return (
@@ -126,7 +124,13 @@ export function ShowRoom({ gameId, initial, projector: fromAddress, locale, dict
       <p aria-live="polite" className="sr-only" data-testid="show-announcement">
         {announcement}
       </p>
-      {game.status === "active" && <Alert status="info" title={t("room.noDrive")} />}
+      <DriveIndicator
+        status={drive.status}
+        clockMs={game.status === "active" && game.turnSeat !== null ? clocks.remainingMs[game.turnSeat - 1]! : null}
+        checking={drive.checking}
+        onCheck={drive.check}
+        t={t}
+      />
       <Status game={game} t={t} nameOf={nameOf} />
     </>
   );
@@ -158,11 +162,7 @@ export function ShowRoom({ gameId, initial, projector: fromAddress, locale, dict
           />
         );
       })}
-      {failed && <Alert status="danger" role="alert" title={t("room.refreshFailed")} />}
       <div className="flex flex-wrap items-start gap-stack">
-        <Button variant="secondary" loading={refreshing} onClick={() => void refresh()} data-testid="show-refresh">
-          {t("room.refresh")}
-        </Button>
         {open ? (
           <EndShowButton gameId={gameId} t={t} onEnded={ended} />
         ) : (
@@ -213,6 +213,11 @@ function Status({ game, t, nameOf }: { game: ShowView; t: ShowTranslator; nameOf
   const color = game.turnSeat === null ? null : colorOfSeat(game.blackSeat, game.turnSeat);
   if (!color) return null;
   return <TurnStatus color={color}>{t(`room.turn.${color}`, { name: nameOf(game.turnSeat!) })}</TurnStatus>;
+}
+
+/** The show is still open: the drive reads it and the administrator may end it. */
+function isOpen(game: Pick<ShowView, "status">): boolean {
+  return game.status === "active" || game.status === "waiting";
 }
 
 /** Storage is read once per render; another tab's choice does not move this view. */

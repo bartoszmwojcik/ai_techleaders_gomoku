@@ -61,6 +61,7 @@ export * from "./chat/secret";
 export * from "./games/paper/view";
 export * from "./bot/choose-move";
 export * from "./bot/seed";
+export * from "./bot/show-pause";
 export * from "./bot/profile";
 export * from "./bot/budget";
 export * from "./bot/arena";

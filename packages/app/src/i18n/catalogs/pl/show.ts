@@ -86,9 +86,28 @@ const show = {
   room: {
     title: "Pokaz: {layout}",
     finishedTitle: "Koniec pokazu",
-    noDrive: "Boty jeszcze nie ruszają same: w tej wersji partia stoi i zakończy się czasem.",
-    refresh: "Odśwież",
-    refreshFailed: "Nie udało się odświeżyć stanu pokazu.",
+    drive: {
+      running: "Napęd działa",
+      slowed: "Napęd zwalnia: ponawiamy odczyt stanu",
+      stalledBecause: "Napęd zatrzymany: {reason}",
+      reason: {
+        hidden: "Karta w tle",
+        bot: "Bot nie odpowiada",
+        silent: {
+          one: "Brak odpowiedzi serwera od {seconds} sekundy",
+          few: "Brak odpowiedzi serwera od {seconds} sekund",
+          many: "Brak odpowiedzi serwera od {seconds} sekund",
+          other: "Brak odpowiedzi serwera od {seconds} sekundy",
+        },
+      },
+      hint: {
+        hidden: "Przeglądarka spowalnia odczyty w karcie w tle. Zostaw pokaz na wierzchu.",
+        bot: "Serwer czeka na ruch bota dłużej niż jego pauza i limit ruchu razem.",
+        silent: "Sprawdź połączenie z serwerem.",
+      },
+      clock: "Zegar biegnie dalej, partia skończy się czasem (jeszcze {time}).",
+      check: "Sprawdź teraz",
+    },
     projector: "Widok pod projektor",
     projectorOn: "Włączono widok pod projektor",
     projectorOff: "Wyłączono widok pod projektor",
