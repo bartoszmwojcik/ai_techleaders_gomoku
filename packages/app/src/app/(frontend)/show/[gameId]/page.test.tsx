@@ -33,6 +33,7 @@ const show = {
   result: null,
   clock: { remainingMs: [600_000, 600_000], running: 1, now: 1 },
   layout: "bot-bot",
+  drive: { botOnTurn: true, stalled: false },
   players: [
     { seat: 1, kind: "bot", displayName: "Bot · poziom 1", bot: { level: 1, memoryMb: null, tableMb: null } },
     { seat: 2, kind: "bot", displayName: "Bot · poziom 2 · 16 MB", bot: { level: 2, memoryMb: 768, tableMb: 16 } },

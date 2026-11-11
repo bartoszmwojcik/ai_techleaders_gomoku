@@ -82,9 +82,31 @@ const show: Translation<"show"> = {
   room: {
     title: "Show: {layout}",
     finishedTitle: "End of the show",
-    noDrive: "The bots do not move on their own yet: in this release the game stands still and ends on time.",
-    refresh: "Refresh",
-    refreshFailed: "The state of the show could not be refreshed.",
+    drive: {
+      running: "Drive running",
+      slowed: "Drive slowing down: retrying the read",
+      stalledBecause: "Drive stopped: {reason}",
+      reason: {
+        hidden: "Tab in the background",
+        bot: "The bot is not responding",
+        silent: {
+          one: "No answer from the server for {seconds} second",
+          other: "No answer from the server for {seconds} seconds",
+        },
+      },
+      announce: {
+        hidden: "Tab in the background",
+        bot: "The bot is not responding",
+        silent: "No answer from the server",
+      },
+      hint: {
+        hidden: "The browser slows down reads in a background tab. Keep the show in front.",
+        bot: "The server has been waiting for the bot's move longer than its pause and move limit together.",
+        silent: "Check the connection to the server.",
+      },
+      clock: "The clock keeps running, the game will end on time ({time} left).",
+      check: "Check now",
+    },
     projector: "Projector view",
     projectorOn: "Projector view switched on",
     projectorOff: "Projector view switched off",

@@ -24,7 +24,11 @@ type Script = {
   flags?: Partial<ServerConfig["show"]>;
   admitted?: Row[];
   capacity?: Row;
+  /** What the drive's "stalled" query answers. */
+  stalled?: boolean;
 };
+
+const BOT_LIMITS = { 1: { softMs: 50, ceilingMs: 250 }, 2: { softMs: 1500, ceilingMs: 3000 } };
 
 const SHOW_FLAGS: ServerConfig["show"] = {
   enabled: true,
@@ -74,6 +78,7 @@ function setup(script: Script = {}) {
     }
     if (sql.startsWith("select status from games where id = ?")) return script.show ? [script.show] : [];
     if (sql.includes("update games set status = 'cancelled'")) return script.ended ?? [];
+    if (sql.includes("as stalled")) return [{ stalled: script.stalled ?? false }];
     return [];
   });
   const created: { entity: unknown; data: Row }[] = [];
@@ -105,7 +110,7 @@ function setup(script: Script = {}) {
     clock: { now: () => NOW },
     rateLimiter: rateLimiter as never,
     timeoutSettler: timeoutSettler as never,
-    serverConfig: { show: { ...SHOW_FLAGS, ...script.flags } } as ServerConfig,
+    serverConfig: { show: { ...SHOW_FLAGS, ...script.flags }, bot: { limits: BOT_LIMITS } } as unknown as ServerConfig,
     colorDraw: { drawBlackSeat: () => 2 },
     botAdmission: botAdmission as never,
   });
@@ -253,6 +258,27 @@ describe("ShowService.read", () => {
     expect(JSON.stringify(state)).not.toContain("seen");
     expect(state).not.toHaveProperty("closedReason");
     expect(state).not.toHaveProperty("finishedAt");
+    expect(state.drive).toEqual({ botOnTurn: true, stalled: false });
+  });
+
+  it("tells the drive whether the bot on turn stalled, computed in SQL from its longest pause and ceiling", async () => {
+    const { service, calls } = setup({ show: { status: "active" }, game: gameRow(), stalled: true });
+
+    expect((await service.read(GAME, 0)).drive).toEqual({ botOnTurn: true, stalled: true });
+
+    const stalled = calls.find((call) => call.sql.includes("as stalled"))!;
+    expect(stalled.sql).toContain("p.kind = 'bot'");
+    // The game, now, the longest pause (2000) + 5 s, the ceiling of level 2 and of level 1.
+    expect(stalled.params).toEqual([GAME, NOW, 7000, 3000, 250]);
+  });
+
+  it.each([
+    ["an agent on turn", { players: [botRow(1, 1, null), { seat: 2, kind: "agent", agentName: "Claude", seenAt: NOW }] }],
+    ["a finished show", { game: gameRow({ status: "finished", winnerSeat: 1, endReason: "timeout", finishedAt: NOW }) }],
+  ])("has no bot on turn and never asks whether it stalled for %s", async (_name, over) => {
+    const { service, calls } = setup({ show: { status: "active" }, game: gameRow(), stalled: true, ...over });
+    expect((await service.read(GAME, 0)).drive).toEqual({ botOnTurn: false, stalled: false });
+    expect(calls.some((call) => call.sql.includes("as stalled"))).toBe(false);
   });
 
   it("is a 404 for a game that is not a show, before any write", async () => {

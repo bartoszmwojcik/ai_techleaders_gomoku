@@ -202,7 +202,9 @@ jobs:
         if: failure()
         with:
           name: integration-server-log
-          path: tests/integration/server.log
+          path: |
+            tests/integration/server.log
+            tests/integration/server-drive.log
           if-no-files-found: ignore
   tokens:
     name: Wartości spoza tokenów

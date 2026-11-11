@@ -83,3 +83,9 @@ export function storeProjector(on: boolean, storage: () => Storage = () => windo
     // Storage blocked (a private window, a policy): the address still carries the choice.
   }
 }
+
+/** "9:05" for the time left on a clock (minutes and seconds, rounded up), digits in the language's own format. */
+export function countdownOf(t: ShowTranslator, ms: number): string {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  return `${t.number(Math.floor(total / 60))}:${t.number(total % 60, { minimumIntegerDigits: 2 })}`;
+}

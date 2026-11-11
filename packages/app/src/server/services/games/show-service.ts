@@ -90,7 +90,18 @@ export type ShowState = Omit<WatchableState, "players"> & {
   closedReason?: "expired" | "ended";
   /** Only for `finished`. */
   finishedAt?: Date;
+  /** What moves the bots (phase b): the view's polling. */
+  drive: ShowDrive;
 };
+
+/**
+ * `botOnTurn`: a bot is to move, so the read schedules its move. `stalled`: it has been on turn longer than its
+ * longest pause, the ceiling of its level and 5 s together (the engine does not answer: a failed worker, a blocked loop).
+ */
+export type ShowDrive = { botOnTurn: boolean; stalled: boolean };
+
+/** What `stalled` allows on top of the longest pause and the ceiling of the bot's move (show-mode, "API Contracts"). */
+export const SHOW_STALL_GRACE_MS = 5000;
 
 // Serializes the creations of a show (P6): the check "no show in progress" and the insert under one lock.
 const LOCK_CREATE_SQL = `select pg_advisory_xact_lock(hashtext(?))`;
@@ -127,12 +138,23 @@ const chargeSql = (seat: 1 | 2) => `
 const END_SHOW_SQL = `
   update games set status = 'cancelled', ${chargeSql(1)}, ${chargeSql(2)}
   where id = ? and origin = 'show' and status in ('waiting', 'active') returning id`;
+// The bot on turn has been thinking too long (`drive.stalled`), computed in SQL (lesson 2026-10-29). `?` binds: now,
+// the longest pause plus the grace, the ceilings of level 1 and 2, the game id.
+const STALLED_SQL = `
+  select exists (
+    select 1 from games g join game_players p on p.game_id = g.id and p.kind = 'bot'
+    where g.id = ? and g.status = 'active' and g.turn_started_at is not null and g.black_seat is not null
+      and p.seat = (case when g.move_count % 2 = 0 then g.black_seat else 3 - g.black_seat end)
+      and extract(epoch from (?::timestamptz - g.turn_started_at)) * 1000
+        > ? + (case when p.bot_level = 2 then ? else ? end)
+  ) as stalled`;
 const RELEASE_SLOTS_SQL = `update game_players set is_active = false where game_id = ? and is_active`;
 
 /**
  * The show (spec 2026-11-09-show-mode, phase a): a private game without a human seat, created, read and
- * ended only by the administrator (the routes call `requireAdminApi` first). Bot vs bot only in this
- * phase; nothing moves the bots yet (phase b), so a show stands still and ends on time.
+ * ended only by the administrator (the routes call `requireAdminApi` first). Bot vs bot only so far; the bots
+ * are moved by the administrator's view (phase b): every read tells whether a bot is on turn (`drive`), and the
+ * route then schedules its move.
  */
 export class ShowService {
   readonly #em: EntityManager;
@@ -333,8 +355,11 @@ export class ShowService {
     const game = await tx.findOneOrFail(Game, gameId, { failHandler: () => new NotFoundError(GAME_NOT_FOUND_MESSAGE) });
     const players = await tx.find(GamePlayer, { game: gameId }, { orderBy: { seat: "asc" } });
     const { players: seats, ...view } = watchableState(game, players, after, now);
+    const botOnTurn = view.status === "active" && players.some((player) => player.kind === "bot" && player.seat === view.turnSeat);
+    const stalled = botOnTurn ? await this.#stalled(tx, gameId, now) : false;
     const state: ShowState = {
       ...view,
+      drive: { botOnTurn, stalled },
       layout: layoutOf(players.filter((player) => player.kind === "bot").length),
       players: seats.map(({ seat, kind, displayName, agentName, bot }) => ({
         seat,
@@ -347,6 +372,18 @@ export class ShowService {
     if (game.status === "cancelled") state.closedReason = game.startedAt ? "ended" : "expired";
     if (game.status === "finished" && game.finishedAt) state.finishedAt = game.finishedAt;
     return state;
+  }
+
+  async #stalled(tx: EntityManager, gameId: string, now: Date): Promise<boolean> {
+    const { show, bot } = this.#config;
+    const [row] = await tx.execute<{ stalled: boolean }[]>(STALLED_SQL, [
+      gameId,
+      now,
+      show.pauseMaxMs + SHOW_STALL_GRACE_MS,
+      bot.limits[2].ceilingMs,
+      bot.limits[1].ceilingMs,
+    ]);
+    return row!.stalled;
   }
 }
 

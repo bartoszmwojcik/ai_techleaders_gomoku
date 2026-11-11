@@ -28,6 +28,7 @@ const live = (over: Partial<ShowView> = {}): ShowView => ({
   result: null,
   clock: { remainingMs: [600_000, 590_000], running: 1, now: 5_000_000 },
   layout: "bot-bot",
+  drive: { botOnTurn: false, stalled: false },
   players: [
     { seat: 1, kind: "bot", displayName: "Bot · poziom 1", bot: { level: 1, memoryMb: null, tableMb: null } },
     { seat: 2, kind: "bot", displayName: "Bot · poziom 2 · 16 MB", bot: { level: 2, memoryMb: 768, tableMb: 16 } },
@@ -61,7 +62,7 @@ const room = (initial = live(), projector: boolean | null = null, extra: object 
   render(<ShowRoom gameId={GAME} initial={initial} projector={projector} {...extra} />);
 
 describe("ShowRoom, the read-only view", () => {
-  it("shows the board, both clocks by colour with the bots' names, whose turn it is and that nothing drives it yet", () => {
+  it("shows the board, both clocks by colour with the bots' names, whose turn it is and that the drive runs", () => {
     room();
 
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Pokaz: Bot vs bot");
@@ -72,7 +73,7 @@ describe("ShowRoom, the read-only view", () => {
     expect(clocks[0]).toContain("Czarne: Bot · poziom 2 · 16 MB");
     expect(clocks[1]).toContain("Białe: Bot · poziom 1");
     expect(screen.getByText("Ruch białych: Bot · poziom 1")).toBeTruthy();
-    expect(screen.getByText(/Boty jeszcze nie ruszają same/)).toBeTruthy();
+    expect(screen.getByTestId("show-drive").textContent).toBe("Napęd działa");
     expect(screen.getByRole("button", { name: "Zakończ pokaz" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Wyloguj" })).toBeNull();
   });
@@ -94,7 +95,7 @@ describe("ShowRoom, the read-only view", () => {
     expect(screen.getByRole("link", { name: "Nowy pokaz" }).getAttribute("href")).toBe("/show");
     expect(screen.getByRole("button", { name: "Wyloguj" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Zakończ pokaz" })).toBeNull();
-    expect(screen.queryByText(/Boty jeszcze nie ruszają/)).toBeNull();
+    expect(screen.queryByTestId("show-drive")).toBeNull();
   });
 
   it("says a draw, and how a cancelled show ended", () => {
@@ -117,57 +118,103 @@ describe("ShowRoom, the read-only view", () => {
   });
 });
 
-describe("ShowRoom, Odśwież", () => {
-  it("reads the moves after the known ones and merges them", async () => {
-    apiCall.mockResolvedValue({ ok: true, data: live({ moveCount: 2, turnSeat: 2, moves: [113] }) });
+const GET = { method: "GET", signal: expect.any(AbortSignal) };
+
+describe("ShowRoom, the drive (phase b)", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+  const advance = (ms: number) => act(async () => void (await vi.advanceTimersByTimeAsync(ms)));
+
+  it("keeps reading the moves after the known ones and merges them, faster while a bot is on turn", async () => {
+    apiCall
+      .mockResolvedValueOnce({ ok: true, data: live({ moveCount: 2, turnSeat: 2, moves: [113], drive: { botOnTurn: true, stalled: false } }) })
+      .mockResolvedValue({ ok: true, data: live({ moveCount: 2, turnSeat: 2, moves: [], drive: { botOnTurn: true, stalled: false } }) });
     room();
 
-    await userEvent.click(screen.getByRole("button", { name: "Odśwież" }));
-
-    expect(apiCall).toHaveBeenCalledWith(`/api/show/${GAME}?after=1`, { method: "GET" });
+    await advance(1_999);
+    expect(apiCall).not.toHaveBeenCalled();
+    await advance(1);
+    expect(apiCall).toHaveBeenCalledWith(`/api/show/${GAME}?after=1`, GET);
     expect(screen.getByLabelText("Kolumna I, rząd 8, biały kamień")).toBeTruthy();
     expect(screen.getByLabelText("Kolumna H, rząd 8, czarny kamień")).toBeTruthy();
+    // A bot is on turn now: the next read follows in 750 ms, after the known two moves.
+    await advance(750);
+    expect(apiCall).toHaveBeenCalledTimes(2);
+    expect(apiCall).toHaveBeenLastCalledWith(`/api/show/${GAME}?after=2`, GET);
   });
 
-  it("reads once at a time, says when a read failed and clears it on the next success", async () => {
-    let finish: (value: unknown) => void = () => undefined;
-    apiCall.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+  it("says the drive stopped after 3 failed reads, with the reason, the clock and Sprawdź teraz, and runs again on a success", async () => {
+    apiCall.mockResolvedValue({ ok: false, error: { code: "network", message: "x" } });
     room();
-    const button = screen.getByRole("button", { name: "Odśwież" });
 
-    await act(async () => {
-      button.click();
-      button.click();
-    });
-    expect(apiCall).toHaveBeenCalledTimes(1);
-    await act(async () => finish({ ok: false, error: { code: "network", message: "x" } }));
-    expect(screen.getByRole("alert").textContent).toContain("Nie udało się odświeżyć stanu pokazu.");
+    await advance(2_000);
+    expect(screen.getByTestId("show-drive").dataset.state).toBe("slowed");
+    expect(within(screen.getByTestId("show-drive")).getByRole("status").textContent).toContain("Napęd zwalnia");
+    await advance(4_000);
+    const alert = screen.getByTestId("show-drive");
+    expect(alert.textContent).toContain("Napęd zatrzymany: Brak odpowiedzi serwera od 6 sekund");
+    expect(alert.textContent).toContain("jeszcze 9:54");
+    // The live region says the stop once, without the ticking seconds, so a screen reader does not re-read it every tick.
+    expect(screen.getByRole("alert").textContent).toBe("Napęd zatrzymany: Brak odpowiedzi serwera");
+    await advance(1_000);
+    expect(alert.textContent).toContain("od 7 sekund");
+    expect(screen.getByRole("alert").textContent).toBe("Napęd zatrzymany: Brak odpowiedzi serwera");
 
-    apiCall.mockResolvedValueOnce({ ok: true, data: live({ moves: [] }) });
-    await userEvent.click(screen.getByRole("button", { name: "Odśwież" }));
+    apiCall.mockResolvedValue({ ok: true, data: live({ moves: [] }) });
+    await act(async () => screen.getByRole("button", { name: "Sprawdź teraz" }).click());
+    expect(screen.getByTestId("show-drive").textContent).toBe("Napęd działa");
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("says the show is gone on a 404, with the way back to the console", async () => {
+  it("says the bot does not answer when the server says so", () => {
+    room(live({ drive: { botOnTurn: true, stalled: true } }));
+    expect(screen.getByRole("alert").textContent).toBe("Napęd zatrzymany: Bot nie odpowiada");
+    expect(screen.getByTestId("show-drive").textContent).toContain("Sprawdź teraz");
+  });
+
+  it("shows the indicator in French", async () => {
+    apiCall.mockResolvedValue({ ok: false, error: { code: "network", message: "x" } });
+    room(live(), null, { locale: "fr", dict: frShow, headerDict: frHeader });
+    expect(screen.getByTestId("show-drive").textContent).toBe("Moteur actif");
+
+    await advance(6_000);
+    expect(screen.getByRole("alert").textContent).toBe("Moteur arrêté : Aucune réponse du serveur");
+    const alert = screen.getByTestId("show-drive");
+    expect(alert.textContent).toContain("Moteur arrêté : Aucune réponse du serveur depuis 6 secondes");
+    expect(alert.textContent).toContain("encore 9:54");
+    expect(screen.getByRole("button", { name: "Vérifier maintenant" })).toBeTruthy();
+  });
+
+  it("stops reading once the show is over, and says nothing about the drive", async () => {
+    apiCall.mockResolvedValue({ ok: true, data: finished() });
+    room();
+    await advance(2_000);
+    expect(screen.getByText("Koniec pokazu")).toBeTruthy();
+    await advance(10_000);
+    expect(apiCall).toHaveBeenCalledOnce();
+    expect(screen.queryByTestId("show-drive")).toBeNull();
+  });
+
+  it("says the show is gone on a 404, with the way back to the console, and stops reading", async () => {
     apiCall.mockResolvedValue({ ok: false, error: { code: "NOT_FOUND", message: "x" } });
     room();
 
-    await userEvent.click(screen.getByRole("button", { name: "Odśwież" }));
+    await advance(2_000);
 
     expect(screen.getByText("Pokazu już nie ma")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Wróć do konsoli pokazu" }).getAttribute("href")).toBe("/show");
+    await advance(10_000);
+    expect(apiCall).toHaveBeenCalledOnce();
   });
 
   it("asks the server when the running clock reaches zero", async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
     apiCall.mockResolvedValue({ ok: true, data: finished() });
     room(live({ clock: { remainingMs: [1_000, 590_000], running: 1, now: 5_000_000 } }));
 
-    await act(async () => void (await vi.advanceTimersByTimeAsync(1_500)));
+    await advance(1_500);
 
-    expect(apiCall).toHaveBeenCalledWith(`/api/show/${GAME}?after=1`, { method: "GET" });
+    expect(apiCall).toHaveBeenCalledWith(`/api/show/${GAME}?after=1`, GET);
     expect(screen.getByText("Koniec pokazu")).toBeTruthy();
-    vi.useRealTimers();
   });
 });
 
@@ -195,7 +242,7 @@ describe("ShowRoom, Zakończ pokaz", () => {
     await userEvent.click(screen.getByRole("button", { name: "Zakończ pokaz" }));
     await userEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Zakończ pokaz" }));
 
-    expect(apiCall).toHaveBeenLastCalledWith(`/api/show/${GAME}?after=1`, { method: "GET" });
+    expect(apiCall).toHaveBeenLastCalledWith(`/api/show/${GAME}?after=1`, GET);
     expect(screen.getByText("Koniec pokazu")).toBeTruthy();
   });
 });

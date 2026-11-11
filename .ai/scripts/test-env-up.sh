@@ -2,6 +2,7 @@
 # om-prepare-test-env: generated entrypoint (contract v2)
 # regenerate with: om-prepare-test-env --regenerate
 # history:
+#   2026-11-11 TEST_ENV_EXTRA_ENV: SHOW_*/BOT_* switches passed to `next start` (admin QA of the show, E14-S02); part of the reuse check
 #   2026-10-31 port_free uses node (dash has no /dev/tcp)
 #   2026-10-31 jget trims spaces; one credential per descriptor line (greedy sed picked the last user -> login probe 401 -> never reused)
 #   2026-10-31 fingerprint/freshness ignore .snapshot-*.json (migration:up rewrites it; caused needless rebuild)
@@ -36,6 +37,15 @@ BUILD_ENV_VARS="NODE_ENV"
 ARTIFACTS="node_modules packages/app/.next/BUILD_ID"
 
 DEMO_USERS="player1 player2"            # registered through the public API; disposable values only
+
+# Extra switches for `next start`, e.g. TEST_ENV_EXTRA_ENV="BOT_ENABLED=true SHOW_ENABLED=true SHOW_BOT_VS_BOT_ENABLED=true"
+# (QA of the show, E14). Only SHOW_* and BOT_* names, values without spaces; the env is reused only with the same list.
+EXTRA_ENV=${TEST_ENV_EXTRA_ENV:-}
+for kv in $EXTRA_ENV; do
+  printf '%s\n' "$kv" | grep -Eq '^(SHOW|BOT)_[A-Z0-9_]+=[A-Za-z0-9._:/-]*$' || {
+    echo "TEST_ENV_EXTRA_ENV: only SHOW_*/BOT_* NAME=value pairs are allowed, got: $kv" >&2; exit 2; }
+done
+EXTRA_ENV=$(printf '%s\n' $EXTRA_ENV | LC_ALL=C sort | tr '\n' ' ' | sed 's/ *$//')
 
 FORCE=0; FORCE_REBUILD=0
 for a in "$@"; do
@@ -96,6 +106,8 @@ reuse_ok() {
   [ -f "$DESCRIPTOR" ] || return 1
   [ "$(jget status "$DESCRIPTOR")" = running ] || return 1
   [ "$(jget startedByThisRepo "$DESCRIPTOR")" = true ] || return 1
+  recorded=$(sed -n 's/.*"extraEnv": *"\([^"]*\)".*/\1/p' "$DESCRIPTOR" | head -n 1)
+  [ "$recorded" = "$EXTRA_ENV" ] || { log "reuse: TEST_ENV_EXTRA_ENV differs ('$recorded' -> '$EXTRA_ENV')"; return 1; }
   pid=$(jget pid "$DESCRIPTOR"); [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null || return 1
   [ "$(docker inspect -f '{{.State.Running}}' "$PG_CONTAINER" 2>/dev/null || echo false)" = true ] || return 1
   base=$(jget baseUrl "$DESCRIPTOR")
@@ -199,7 +211,7 @@ log "starting next start on $BASE_URL"
   NODE_ENV=production DATABASE_URL="$DATABASE_URL" TRUST_PROXY_HOPS=1 APP_ORIGIN="$BASE_URL" \
   ADMIN_EMAIL="${ADMIN_EMAIL:-qa-admin@example.test}" \
   SESSION_COOKIE_SECURE=false PASSWORD_HASH_COST=4 EMAIL_TRANSPORT=file EMAIL_OUTBOX_PATH="$OUTBOX" \
-  exec setsid node "$ROOT/node_modules/next/dist/bin/next" start --hostname 127.0.0.1 --port "$APP_PORT" \
+  exec env $EXTRA_ENV setsid node "$ROOT/node_modules/next/dist/bin/next" start --hostname 127.0.0.1 --port "$APP_PORT" \
     >"$ROOT/$APP_LOG" 2>&1 < /dev/null
 ) &
 APP_PID=$!
@@ -242,6 +254,7 @@ cat > "$DESCRIPTOR" <<EOF
   "startedByThisRepo": true,
   "startScript": "$UP_REL",
   "stopScript": "$DOWN_REL",
+  "extraEnv": "$EXTRA_ENV",
   "app": { "startCommand": "next start (packages/app, NODE_ENV=production)", "port": $APP_PORT, "healthPath": "$HEALTH_PATH", "pid": $APP_PID },
   "services": [
     { "type": "postgres", "host": "127.0.0.1", "port": $PG_PORT, "container": "$PG_CONTAINER", "url": "$DATABASE_URL", "env": { "DATABASE_URL": "$DATABASE_URL" } }

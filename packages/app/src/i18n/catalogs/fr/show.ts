@@ -82,9 +82,32 @@ const show: Translation<"show"> = {
   room: {
     title: "Démonstration : {layout}",
     finishedTitle: "Fin de la démonstration",
-    noDrive: "Les bots ne jouent pas encore seuls : dans cette version, la partie reste figée et se termine au temps.",
-    refresh: "Actualiser",
-    refreshFailed: "Impossible d’actualiser l’état de la démonstration.",
+    drive: {
+      running: "Moteur actif",
+      slowed: "Le moteur ralentit : nouvelle tentative de lecture",
+      stalledBecause: "Moteur arrêté : {reason}",
+      reason: {
+        hidden: "Onglet en arrière-plan",
+        bot: "Le bot ne répond pas",
+        silent: {
+          one: "Aucune réponse du serveur depuis {seconds} seconde",
+          many: "Aucune réponse du serveur depuis {seconds} secondes",
+          other: "Aucune réponse du serveur depuis {seconds} secondes",
+        },
+      },
+      announce: {
+        hidden: "Onglet en arrière-plan",
+        bot: "Le bot ne répond pas",
+        silent: "Aucune réponse du serveur",
+      },
+      hint: {
+        hidden: "Le navigateur ralentit les lectures dans un onglet en arrière-plan. Gardez la démonstration au premier plan.",
+        bot: "Le serveur attend le coup du bot plus longtemps que sa pause et sa limite de coup réunies.",
+        silent: "Vérifiez la connexion au serveur.",
+      },
+      clock: "L’horloge continue, la partie se terminera au temps (encore {time}).",
+      check: "Vérifier maintenant",
+    },
     projector: "Vue pour projecteur",
     projectorOn: "Vue pour projecteur activée",
     projectorOff: "Vue pour projecteur désactivée",
