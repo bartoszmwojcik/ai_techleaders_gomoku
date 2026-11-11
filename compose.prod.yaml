@@ -51,6 +51,13 @@ x-app: &app
     BOT_L1_CEILING_MS: ${BOT_L1_CEILING_MS:-}
     BOT_L2_SOFT_MS: ${BOT_L2_SOFT_MS:-}
     BOT_L2_CEILING_MS: ${BOT_L2_CEILING_MS:-}
+    # Show mode (E14, show-mode spec P2/P9/P17): flags off unless "true"; empty pauses / soft budget mean the defaults.
+    SHOW_ENABLED: ${SHOW_ENABLED:-}
+    SHOW_BOT_VS_BOT_ENABLED: ${SHOW_BOT_VS_BOT_ENABLED:-}
+    SHOW_BOT_LEVEL2_ENABLED: ${SHOW_BOT_LEVEL2_ENABLED:-}
+    BOT_SHOW_PAUSE_MIN_MS: ${BOT_SHOW_PAUSE_MIN_MS:-}
+    BOT_SHOW_PAUSE_MAX_MS: ${BOT_SHOW_PAUSE_MAX_MS:-}
+    SHOW_BOT_L2_SOFT_MS: ${SHOW_BOT_L2_SOFT_MS:-}
 
 services:
   postgres:
