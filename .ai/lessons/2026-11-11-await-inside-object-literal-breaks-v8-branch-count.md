@@ -4,4 +4,4 @@
 
 **Reguła.** Gdy pokrycie gałęzi spada bez widocznej przyczyny, wygeneruj `--coverage.reporter=lcovonly` i poszukaj w `BRDA` liczników `0` **albo ujemnych**. `await` wyciągaj przed literał (`const stalled = botOnTurn ? await f() : false;`), zamiast osadzać go w `&&`/`?:` wewnątrz obiektu; nie dopisuj sztucznych testów ani `v8 ignore`.
 
-Powiązane: `.ai/specs/2026-11-09-show-mode.md` (E14-S02), `.ai/runs/2026-11-11-e14-s02-show-drive.md`.
+Powiązane: `.ai/specs/implemented/2026-11-09-show-mode.md` (E14-S02), `.ai/runs/2026-11-11-e14-s02-show-drive.md`.

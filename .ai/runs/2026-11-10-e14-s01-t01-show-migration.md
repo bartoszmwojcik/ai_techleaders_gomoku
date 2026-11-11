@@ -1,6 +1,6 @@
 # E14-S01-T01 — migracja `origin = 'show'`, typy, konfiguracja (#281)
 
-- **Cel:** kroki 1–2 planu E14-S01 ze specyfikacji `.ai/specs/2026-11-09-show-mode.md` — migracja, typy i konfiguracja pokazu; nic jeszcze nie tworzy pokazu.
+- **Cel:** kroki 1–2 planu E14-S01 ze specyfikacji `.ai/specs/implemented/2026-11-09-show-mode.md` — migracja, typy i konfiguracja pokazu; nic jeszcze nie tworzy pokazu.
 - **Tryb:** zadanie cezar wysłane przez epik E14 (run `3ee29010`), worktree `cez/d90dfe11` z `origin/main` (`ec53ea2`).
 
 ## Kroki
