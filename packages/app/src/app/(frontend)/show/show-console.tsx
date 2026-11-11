@@ -96,7 +96,7 @@ export function ShowConsole({ initial, locale, dict }: Props) {
     heading.current?.focus();
   }
 
-  // Level 2 in bot vs bot waits for its switch: shown, but not choosable, with the reason in the hint (#284);
+  // Level 2 in bot vs bot waits for its switch: shown, but not choosable, with the reason in the hint (E14-S04);
   // bot vs agent offers both levels with the bot's flag alone (P16).
   const levelOptions = ([1, 2] as const).map((level) => {
     const disabled = level === 2 && botVsBot && !initial.level2Enabled;

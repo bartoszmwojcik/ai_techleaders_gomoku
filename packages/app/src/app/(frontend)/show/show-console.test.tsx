@@ -169,7 +169,7 @@ describe("ShowConsole, state 3: the form", () => {
     expect(screen.getByRole("radio", { name: "Bot vs agent" }).hasAttribute("disabled")).toBe(true);
   });
 
-  it("names the layout of the running show the server reports, not the chosen one (review of #306)", async () => {
+  it("names the layout of the running show the server reports, not the chosen one (review of PR 306)", async () => {
     apiCall.mockResolvedValue({ ok: false, error: { code: "SHOW_RUNNING", message: "x", data: { gameId: RUNNING, layout: "bot-agent" } } });
     render(<ShowConsole initial={overview()} />);
 
