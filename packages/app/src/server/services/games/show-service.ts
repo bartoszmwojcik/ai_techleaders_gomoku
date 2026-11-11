@@ -125,8 +125,9 @@ export type ShowDrive = { botOnTurn: boolean; stalled: boolean };
 
 /**
  * What `stalled` allows on top of the longest pause and the ceiling of the bot's move (show-mode, "API Contracts"); each
- * computation queued at the gate adds the longest ceiling and the wait for its thread to end, so a show's bot waiting
- * behind other games with the bot is not reported as stalled (review of #305).
+ * computation at the gate (queued or running, the show's own included: `ComputeGate.pending`) adds the longest ceiling
+ * and the wait for its thread to end, so a show's bot waiting behind other games with the bot is not reported as
+ * stalled (review of #305). Counting its own move too only delays the warning by one ceiling, never raises a false one.
  */
 export const SHOW_STALL_GRACE_MS = 5000;
 
