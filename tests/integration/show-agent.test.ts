@@ -185,6 +185,25 @@ describe("the agent joins and plays against the bot over MCP (P14)", () => {
     expect(sent.structuredContent.error).toMatchObject({ code: "CHAT_UNAVAILABLE" });
   });
 
+  it("lets the agent read the end when the administrator ends the running show (P7, QA of #306)", async () => {
+    const show = await createShow();
+    const token = (await join(show.invitation.code)).structuredContent.token as string;
+
+    expect((await post(`/api/show/${show.gameId}/end`, undefined, admin)).status).toBe(200);
+
+    const seen = await tool("get_state", { token });
+    expect(seen.isError).toBeUndefined();
+    expect(seen.structuredContent).toMatchObject({ status: "cancelled" });
+    const [game] = await run(`select status, finished_at from games where id = ?`, [show.gameId]);
+    expect(game!.status).toBe("cancelled");
+    expect(game!.finished_at).not.toBeNull();
+    // A show that never started has no end time: the token rule there is the invitation's, as before.
+    const waiting = await createShow();
+    await post(`/api/show/${waiting.gameId}/end`, undefined, admin);
+    const [unplayed] = await run(`select finished_at from games where id = ?`, [waiting.gameId]);
+    expect(unplayed!.finished_at).toBeNull();
+  });
+
   it("ends a silent agent's show on time: the bot wins (B5)", async () => {
     const show = await createShow();
     const token = (await join(show.invitation.code)).structuredContent.token as string;

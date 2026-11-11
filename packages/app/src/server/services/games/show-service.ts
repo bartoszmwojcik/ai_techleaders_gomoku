@@ -145,15 +145,18 @@ const START_SHOW_CLOCK_SQL = `
 
 // P7: the administrator ends a show at any moment before its end; no result, no counter. The clock that was running
 // keeps the time it used (computed in SQL, lesson 2026-10-29), so the ended view shows the clocks as they stopped.
-// The seat on turn: black (`black_seat`) after an even number of moves. `?` binds: now, now, the game id.
+// The seat on turn: black (`black_seat`) after an even number of moves. `?` binds: now, now, now, the game id.
 const chargeSql = (seat: 1 | 2) => `
   clock_ms_${seat} = case
     when status = 'active' and turn_started_at is not null
       and (case when move_count % 2 = 0 then black_seat else 3 - black_seat end) = ${seat}
     then greatest(0, clock_ms_${seat} - floor(extract(epoch from (?::timestamptz - turn_started_at)) * 1000)::int)
     else clock_ms_${seat} end`;
+// A show that had started keeps its end time, so the agent's token stays valid for the hour after it like after any
+// end (`PARTICIPANT_TOKEN_VALID_SQL`) and the agent reads `cancelled` instead of an unknown token (QA of #306).
 const END_SHOW_SQL = `
-  update games set status = 'cancelled', ${chargeSql(1)}, ${chargeSql(2)}
+  update games set status = 'cancelled', ${chargeSql(1)}, ${chargeSql(2)},
+    finished_at = case when started_at is not null then ?::timestamptz end
   where id = ? and origin = 'show' and status in ('waiting', 'active') returning id`;
 // The bot on turn has been thinking too long (`drive.stalled`), computed in SQL (lesson 2026-10-29). `?` binds: now,
 // the longest pause plus the grace, the ceilings of level 1 and 2, the game id.
@@ -297,7 +300,7 @@ export class ShowService {
       const now = this.#clock.now();
       await tx.execute(EXPIRE_WAITING_OF_GAME, [now, gameId], "run");
       await this.#timeoutSettler.settleGame(gameId, tx, now);
-      const ended = await tx.execute<{ id: string }[]>(END_SHOW_SQL, [now, now, gameId]);
+      const ended = await tx.execute<{ id: string }[]>(END_SHOW_SQL, [now, now, now, gameId]);
       if (ended.length > 0) {
         await tx.execute(RELEASE_SLOTS_SQL, [gameId], "run");
         await tx.execute(VOID_INVITATION_SQL, [now, gameId], "run");
