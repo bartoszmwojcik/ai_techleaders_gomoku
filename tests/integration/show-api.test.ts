@@ -276,7 +276,7 @@ describe("the language of the show (E15 note on #280)", () => {
 
     const html = await (await get(`/show/${show}?projektor=1`, `${admin}; gomoku_lang=fr`)).text();
     expect(/<html lang="([^"]+)"/.exec(html)?.[1]).toBe("fr");
-    expect(html).toContain("Démonstration : Bot contre bot");
+    expect(html).toContain("Démonstration\u00a0: Bot contre bot");
     expect(html).toContain("Vue pour projecteur");
     expect(html).toContain("Trait aux");
     expect(html).toContain('data-projector="true"');

@@ -86,7 +86,7 @@ describe("/show/[gameId]", () => {
     request.lang = "fr";
     const html = renderToStaticMarkup(await page());
 
-    expect(html).toContain("Démonstration : Bot contre bot");
+    expect(html).toContain("Démonstration\u00a0: Bot contre bot");
     expect(html).toContain("Bot · niveau 2 · 16 Mo");
   });
 });

@@ -39,7 +39,7 @@ describe("?lang= on player pages", () => {
     const page = await (await get("/?projektor=1", { cookie: "gomoku_lang=fr" })).text();
     expect(htmlLang(page)).toBe("fr");
     expect(page).toContain('aria-label="Thème sombre"');
-    expect(page).toContain('aria-label="Langue : Français, changer de langue"');
+    expect(page).toContain('aria-label="Langue\u00a0: Français, changer de langue"');
     expect(page).toContain("plateau 15×15");
   });
 

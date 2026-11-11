@@ -46,7 +46,7 @@ describe("header components in French", () => {
     expect(screen.getByRole("menuitem", { name: "Historique" })).toBeTruthy();
     await userEvent.click(screen.getByRole("menuitem", { name: "Se déconnecter" }));
 
-    const dialog = await screen.findByRole("alertdialog", { name: "Se déconnecter ?" });
+    const dialog = await screen.findByRole("alertdialog", { name: "Se déconnecter\u202f?" });
     expect(dialog.textContent).toContain(fr.logout.gameRunning);
     expect(within(dialog).getByRole("button", { name: "Rester connecté" })).toBeTruthy();
     await userEvent.click(within(dialog).getByRole("button", { name: "Se déconnecter" }));
@@ -62,7 +62,7 @@ describe("header components in French", () => {
 
     render(<LogoutButton hasActiveGame dict={fr} />);
     await userEvent.click(screen.getByRole("button", { name: "Se déconnecter" }));
-    const dialog = await screen.findByRole("alertdialog", { name: "Se déconnecter ?" });
+    const dialog = await screen.findByRole("alertdialog", { name: "Se déconnecter\u202f?" });
     expect(within(dialog).getByRole("button", { name: "Rester connecté" })).toBeTruthy();
   });
 

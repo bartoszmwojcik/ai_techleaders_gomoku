@@ -3,7 +3,8 @@ import type { ComponentProps, ReactNode } from "react";
 
 import { cn } from "./cn";
 
-type SelectOption = { value: string; label: ReactNode };
+/** `disabled`: shown but not choosable (say why next to it, e.g. in the Field's hint). */
+type SelectOption = { value: string; label: ReactNode; disabled?: boolean };
 
 type SelectProps = Omit<ComponentProps<"select">, "children"> & {
   /** The choices; labels are passed in (the component has no texts of its own). */
@@ -23,7 +24,7 @@ function Select({ className, options, ...props }: SelectProps) {
         {...props}
       >
         {options.map((option) => (
-          <option key={option.value} value={option.value} className="bg-surface-page text-text-primary">
+          <option key={option.value} value={option.value} disabled={option.disabled} className="bg-surface-page text-text-primary">
             {option.label}
           </option>
         ))}

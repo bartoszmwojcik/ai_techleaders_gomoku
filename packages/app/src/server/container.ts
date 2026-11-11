@@ -25,6 +25,7 @@ import { AdminOverviewService } from "./services/admin/admin-overview-service";
 import { BotTurnService } from "./services/games/bot-turn-service";
 import { BotAdmission } from "./services/games/bot-admission";
 import { createWorkerBotEngine, type BotEngine } from "./services/games/bot-engine";
+import { createBotEngineStatus, type BotEngineStatus } from "./services/games/bot-engine-status";
 import { createResourceProbe, type ResourceProbe } from "./services/games/resource-probe";
 import { ColorDraw } from "./services/games/color-draw";
 import { GameMoveService } from "./services/games/game-move-service";
@@ -89,6 +90,7 @@ export type AppCradle = {
   gameMoveService: GameMoveService;
   /** The bot's engine (hosted-bot R5): a worker thread per move behind the process-wide gate. */
   botEngine: BotEngine;
+  botEngineStatus: BotEngineStatus;
   /** The memory available to the process (R10), or `BOT_FIXED_MEMORY_MB`. */
   resourceProbe: ResourceProbe;
   /** Admits a new game with the bot and freezes its strength (R7, R8, R19). */
@@ -202,6 +204,7 @@ async function buildContainer(): Promise<AwilixContainer<AppCradle>> {
     chatService: asClass(ChatService).scoped(),
     gameMoveService: asClass(GameMoveService).scoped(),
     botEngine: asFunction(({ serverConfig }: AppCradle) => createWorkerBotEngine({ limits: serverConfig.bot.limits })).singleton(),
+    botEngineStatus: asFunction(({ serverConfig }: AppCradle) => createBotEngineStatus({ limits: serverConfig.bot.limits })).singleton(),
     resourceProbe: asFunction(({ serverConfig }: AppCradle) =>
       createResourceProbe({ fixedMb: serverConfig.bot.fixedMemoryMb }),
     ).singleton(),

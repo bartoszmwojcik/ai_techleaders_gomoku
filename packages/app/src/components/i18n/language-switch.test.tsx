@@ -38,7 +38,7 @@ describe("LanguageSwitch", () => {
 
   it("lists the reviewed languages as endonym links to the same page, keeping the other parameters", async () => {
     render(<LanguageSwitch locale="fr" dict={fr} />);
-    await open("Langue : Français, changer de langue");
+    await open("Langue\u00a0: Français, changer de langue");
 
     const items = screen.getAllByRole("menuitem");
     expect(items.map((item) => item.textContent)).toEqual(["Polski", "English", "Français"]);

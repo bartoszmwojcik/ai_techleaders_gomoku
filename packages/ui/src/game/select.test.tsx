@@ -42,4 +42,10 @@ describe("Select", () => {
     expect(html).toContain('id="c"');
     expect(html).toContain('aria-describedby="c-hint"');
   });
+
+  it("shows a disabled option that cannot be chosen", () => {
+    const html = renderToStaticMarkup(<Select options={[...options, { value: "c", label: "Gamma", disabled: true }]} />);
+    expect(html).toContain('<option value="c" disabled=""');
+    expect(html).not.toContain('<option value="a" disabled');
+  });
 });
