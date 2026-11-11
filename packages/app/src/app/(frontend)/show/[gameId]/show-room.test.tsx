@@ -339,7 +339,8 @@ describe("ShowRoom, a bot vs agent show waiting for its agent (phase c)", () => 
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Pokaz: Bot vs agent");
     expect(within(card()).getByRole("heading", { name: "Wklej kod do swojego agenta" })).toBeTruthy();
     expect(screen.getByTestId("show-agent-code").textContent).toBe("••••-••••");
-    expect(screen.getByTestId("show-agent-code").getAttribute("aria-label")).toBe("Kod ukryty");
+    expect(screen.getByTestId("show-agent-code").getAttribute("aria-hidden")).toBe("true");
+    expect(screen.getByTestId("show-agent-code-hidden").textContent).toBe("Kod ukryty");
     expect(screen.getByTestId("show-agent-mcp").textContent).toBe("http://localhost:3000/api/mcp");
     expect(screen.getByTestId("show-agent-waiting").textContent).toBe("Czeka na agenta (jeszcze 30:00)");
     expect(card().textContent).not.toContain("ABCD-EFGH");
@@ -352,7 +353,8 @@ describe("ShowRoom, a bot vs agent show waiting for its agent (phase c)", () => 
 
     await userEvent.click(reveal);
     expect(screen.getByTestId("show-agent-code").textContent).toBe("ABCD-EFGH");
-    expect(screen.getByTestId("show-agent-code").hasAttribute("aria-label")).toBe(false);
+    expect(screen.getByTestId("show-agent-code").hasAttribute("aria-hidden")).toBe(false);
+    expect(screen.queryByTestId("show-agent-code-hidden")).toBeNull();
     expect(reveal.getAttribute("aria-pressed")).toBe("true");
     expect(reveal.textContent).toBe("Ukryj");
 

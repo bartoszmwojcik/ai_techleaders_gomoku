@@ -70,13 +70,15 @@ export function AgentCard({ invitation, serverNow, t, onExpire }: Props) {
       <p className="m-0 text-body text-text-secondary">{t("room.agent.body")}</p>
       <div className="flex flex-col gap-1">
         <span className="text-meta text-text-secondary">{t("room.agent.codeLabel")}</span>
-        <code
-          className="text-lead font-strong"
-          aria-label={revealed ? undefined : t("room.agent.codeHidden")}
-          data-testid="show-agent-code"
-        >
+        {/* `aria-label` is not announced on `code` (a generic role): hidden, the bullets are silent and a text says so. */}
+        <code className="text-lead font-strong" aria-hidden={revealed ? undefined : true} data-testid="show-agent-code">
           {revealed ? invitation.code : MASKED_CODE}
         </code>
+        {!revealed && (
+          <span className="sr-only" data-testid="show-agent-code-hidden">
+            {t("room.agent.codeHidden")}
+          </span>
+        )}
       </div>
       <div className="flex flex-wrap items-center gap-stack">
         <Button variant="secondary" aria-pressed={revealed} onClick={() => setRevealed(!revealed)} data-testid="show-agent-reveal">
