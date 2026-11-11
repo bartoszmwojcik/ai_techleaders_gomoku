@@ -39,7 +39,7 @@ it("writes the namespaces asked for to a file", async () => {
   await run("--ns", "show,header", "--out", "/tmp/review.csv");
   const [path, csv] = writeFileSync.mock.calls[0]!;
   expect(path).toBe("/tmp/review.csv");
-  const keys = (csv as string).split("\r\n").slice(1, -1).map((line) => line.split(",")[0]);
+  const keys = (csv as string).split("\r\n").slice(1, -1).map((line) => line.split(",")[0]!);
   expect(keys.every((key) => key.startsWith("show.") || key.startsWith("header."))).toBe(true);
   expect(keys[0]!.startsWith("show.")).toBe(true);
   expect(stderr.mock.calls[0]![0]).toMatch(/^\d+ texts written to \/tmp\/review\.csv$/);

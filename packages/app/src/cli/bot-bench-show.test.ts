@@ -15,23 +15,23 @@ import {
 const T1 = TUNING_STEPS[0]!;
 const QUICK: ShowStep = { name: "quick", pauseMinMs: 0, pauseMaxMs: 0, l2SoftMs: 1500 };
 
-type Pick = (turn: BotTurn) => number;
+type Picker = (turn: BotTurn) => number;
 const isFree = (turn: BotTurn, cell: number) => !hasStone(turn.position.black, cell) && !hasStone(turn.position.white, cell);
 const firstFree = (turn: BotTurn, wanted: (cell: number) => boolean) => {
   for (let cell = 0; cell < BOARD_CELLS; cell++) if (wanted(cell) && isFree(turn, cell)) return cell;
   throw new Error("no cell");
 };
 /** Black fills row 0 (five after 9 moves), white row 2. */
-const fiveInRow: Pick = (turn) => firstFree(turn, (cell) => Math.floor(cell / 15) === (turn.position.moveCount % 2 === 0 ? 0 : 2));
+const fiveInRow: Picker = (turn) => firstFree(turn, (cell) => Math.floor(cell / 15) === (turn.position.moveCount % 2 === 0 ? 0 : 2));
 /** A pattern without five in any direction for either colour ((x + 2y) mod 4 < 2 is black, 113 cells): a full board. */
-const noFive: Pick = (turn) =>
+const noFive: Picker = (turn) =>
   firstFree(turn, (cell) => ((cell % 15) + 2 * Math.floor(cell / 15)) % 4 < 2 === (turn.position.moveCount % 2 === 0));
 
 type EngineScript = {
   /** The move's own time (the fake timers move by it). */
   ms?: (turn: BotTurn) => number;
   level?: number;
-  pick?: Pick;
+  pick?: Picker;
   /** Log no `bot_move`: a ceiling (`warn`) or a failure (`error`) instead. */
   silent?: "warn" | "error";
 };
@@ -236,6 +236,15 @@ describe("runShowStep (show-mode P17)", () => {
     expect(timedOut.ends.timeout).toBeGreaterThan(0);
     const blackMoves = slow.turns.filter((turn) => turn.gameId === "show-bench-1" && turn.position.moveCount % 2 === 0);
     expect(blackMoves.map((turn) => turn.remainingClockMs)).toEqual([592_000, 294_000, 3000]);
+  });
+
+  it("takes RSS once at a moment when the minute's sample and the last one fall together", async () => {
+    const { deps } = depsOf({ durationMs: 60_000, engine: { ms: () => 60_000 } });
+    const result = await settle(runShowStep(QUICK, deps));
+    expect(result.rssMb).toEqual([
+      { atS: 0, mb: 100 },
+      { atS: 60, mb: 100 },
+    ]);
   });
 
   it("refuses to run with too little memory for the bot", async () => {

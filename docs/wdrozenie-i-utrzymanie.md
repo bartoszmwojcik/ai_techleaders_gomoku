@@ -73,6 +73,84 @@ Flaga zostaje wyłączona, dopóki nie są spełnione **wszystkie** warunki (R19
 6. Włączenie: `BOT_ENABLED=true` w `.env.production` i `docker compose --env-file .env.production -f compose.prod.yaml up -d --no-build`; potem jedna partia z botem na produkcji (konto, poziom 2), ruch bota w logu `bot_move`, partia w historii, para „konto – bot” w `/backend`.
 7. Wycofanie: `BOT_ENABLED=` (albo `false`) i ten sam `up -d --no-build` — nowe partie dostają `503 BOT_UNAVAILABLE`, trwające kończą się normalnie; migracji nie cofa się (`down` odmawia przy istniejących partiach z botem).
 
+## Pokaz (E14, tylko administrator)
+
+Pokaz (specyfikacja `.ai/specs/2026-11-09-show-mode.md`) to prywatna partia bez miejsca człowieka — bot vs bot albo bot vs agent — którą administrator tworzy na `/show` i ogląda na `/show/<id>`, także na projektorze. Boty grają, dopóki karta administratora czyta stan (bez pętli w serwerze). Wszystkie przełączniki są **domyślnie wyłączone**; o ich włączeniu na produkcji decyduje właściciel.
+
+| Zmienna | Domyślnie | Znaczenie |
+| --- | --- | --- |
+| `SHOW_ENABLED` | wył. | cała funkcja; wyłączenie nie przerywa trwającego pokazu |
+| `SHOW_BOT_VS_BOT_ENABLED` | wył. | układ bot vs bot |
+| `SHOW_BOT_LEVEL2_ENABLED` | wył. | poziom 2 w bot vs bot — włączany **dopiero po strojeniu** (niżej); bez niego formularz pokazuje „Poziom 2 (wyłączony)” z powodem, a `POST /api/show` odpowiada `503 BOT_UNAVAILABLE` (`reason: level2_not_allowed`). Bot vs agent ma poziomy 1 i 2 z samym `BOT_ENABLED` |
+| `BOT_SHOW_PAUSE_MIN_MS` / `BOT_SHOW_PAUSE_MAX_MS` | 1000 / 2000 | pauza bota przed ruchem w pokazie (deterministyczna z `hash(gameId, nr ruchu)`); walidacja przy starcie: 0 ≤ min ≤ max ≤ **8000 ms** (maksymalna obsługiwana pauza) |
+| `SHOW_BOT_L2_SOFT_MS` | 1500 | miękki budżet ruchu bota poziomu 2 **tylko w pokazie**; pułap = `min(BOT_L2_CEILING_MS, 2 × soft)`, więc nigdy ponad pułap zwykłej partii; zakres 1–60000 |
+
+`BOT_ENABLED=true` jest warunkiem koniecznym każdego pokazu, a pokaz zajmuje jeden slot `BOT_MAX_ACTIVE_GAMES`. Pauza liczy się z zegara bota i jest przycinana do `min(pauza, zegar bota na początku tury / 4)` — przy niskim zegarze bot przestaje czekać. Zwykłe partie z botem nie mają pauzy i grają z `BOT_L2_SOFT_MS` jak dotąd. Wskaźnik „Bot nie odpowiada” (`drive.stalled`) daje botowi najdłuższą pauzę + pułap jego poziomu + 5 s **plus** pułap poziomu 2 i 500 ms za każde obliczenie w kolejce `ComputeGate`, więc bot pokazu czekający za innymi partiami z botem nie jest zgłaszany jako zatrzymany. W bot vs agent wyszukiwanie bota odbywa się wewnątrz `get_state` agenta (runda `waitSeconds`); poziom 2 wydłuża taką rundę o najwyżej ok. 3 s (pułap) plus pauzę.
+
+### Strojenie poziomu 2 w bot vs bot (`bot:bench --show`, P17)
+
+Poziom 2 w bot vs bot jest chciany nawet za cenę wolniejszej gry (decyzja właściciela 2026-11-09): pomiar ustala **tempo**, nie „tak/nie”. Pokrętła to wyłącznie konfiguracja (pauza i `SHOW_BOT_L2_SOFT_MS`), kroki stosuje się po kolei:
+
+| Krok | Pauza (min–max) | Miękki / pułap | Próg p95 ruchu | Próg max ruchu |
+| --- | --- | --- | --- | --- |
+| T1 (domyślny) | 1000–2000 ms | 1500 / 3000 ms | 1800 ms | 3250 ms |
+| T2 | 2000–4000 ms | 1000 / 2000 ms | 1200 ms | 2250 ms |
+| T3 | 3000–6000 ms | 700 / 1400 ms | 840 ms | 1650 ms |
+
+Pomiar na hoście docelowym, w kontenerze aplikacji, przy działającym stosie i **bez równoległego builda** (build zabija aplikację, lekcja 2026-10-30):
+
+```bash
+# Wszystkie kroki po kolei, do pierwszego zaliczonego (każdy ≥ 300 s), z sondą 2 żądania/s na stan innej partii.
+docker exec <kontener aplikacji> npm run -s bot:bench -- --show --tuning --probe-url http://127.0.0.1:3000/api/health
+# Jeden krok (np. pauza spoza tabeli — tylko za zgodą właściciela, w granicy 8000 ms):
+docker exec <kontener aplikacji> npm run -s bot:bench -- --show --pause-min 3000 --pause-max 6000 --l2-soft 700 --duration 300
+```
+
+Bez opcji kroku `--show` bierze wartości z `BOT_SHOW_PAUSE_*` i `SHOW_BOT_L2_SOFT_MS`; `--memory-mb` zastępuje odczyt pamięci (jak w zwykłym `bot:bench`). Dla `--probe-url` najlepszy jest adres, który czyta stan innej partii (spec P17); w przykładzie wyżej `/api/health` jak w zwykłym `bot:bench`. Wynik to JSON z werdyktem `p17` dla każdego kroku: czas trwania ≥ 300 s, p99 pętli zdarzeń ≤ 50 ms, p95 ruchu poziomu 2 ≤ 1,2 × miękki budżet kroku, max ruchu ≤ pułap kroku + 250 ms, p95 odczytu sondy w czasie obliczeń ≤ 2 × bez obliczeń i ≤ 300 ms, przyrost RSS ≤ 100 MB bez stałego wzrostu w ostatnich 2 minutach (RSS co minutę), zero ruchów przerwanych pułapem (`bot_ceiling`) i awarii wątku. Kod wyjścia 0 = zaliczony krok (z `--tuning`: pole `passed`), 1 = nie. Bench uruchamia wątek przez `tsx`, więc rozruch i RSS są wyższe niż w zbudowanej aplikacji.
+
+- **Zaliczony krok:** jego wartości do `.env.production`, potem `SHOW_BOT_LEVEL2_ENABLED=true` (decyzja właściciela) i `docker compose --env-file .env.production -f compose.prod.yaml up -d --no-build`.
+- **Żaden krok nie przechodzi (nawet T3):** wynik ma `ownerDecision` — **zatrzymaj się i zapytaj właściciela**: udokumentowany wyjątek (jak dla pojedynczego bota, #264/A-22) z zapisem p99 i zaleceniem pokazu poza godzinami ruchu albo pokaz tylko na poziomie 1. Nigdy nie wyłączaj poziomu 2 po cichu.
+- Wynik każdego kroku i decyzja trafiają do `.ai/runs/` i do A-24 w briefie produktu. Pomiar na produkcji wymaga zgody właściciela. Przykładowy przebieg lokalny (nie Mikrus): `.ai/runs/2026-11-11-e14-s04-show-tuning-tools.md`.
+- **Skrajnie długa partia:** zegar (10 min na stronę) mieści 60 ruchów jednego bota (120 łącznie) aż do pauzy 8 s; partia do pełnej planszy (ok. 112 ruchów jednego bota) w najgorszym przypadku T3 się nie mieści — bot, któremu zabraknie zegara, przegrywa czasem zgodnie z regułami. Typowa partia ma 40–60 ruchów łącznie.
+
+### Checklista przed pokazem
+
+1. **Zakaz wdrożeń w dniu pokazu** i **brak builda w tle** na serwerze (build zabija aplikację); wdrożenie najpóźniej dzień wcześniej, po nim próba generalna.
+2. Flagi w `.env.production`: `BOT_ENABLED=true`, `SHOW_ENABLED=true`, `SHOW_BOT_VS_BOT_ENABLED=true` (dla bot vs bot); `SHOW_BOT_LEVEL2_ENABLED=true` tylko po zaliczonym kroku strojenia albo jawnej decyzji właściciela; wartości kroku (`BOT_SHOW_PAUSE_*`, `SHOW_BOT_L2_SOFT_MS`).
+3. Pamięć: w konsoli „Pamięć: dostępne …, potrzeba co najmniej …” spełnione; na mikr.us (LXC) `BOT_FIXED_MEMORY_MB` ustawione (odczyt w LXC zwraca pamięć hosta).
+4. `BOT_MAX_ACTIVE_GAMES`: pozycja „Partie z botem w toku: X z Y” ma wolny slot (pokaz zajmuje jeden); dla poziomu 2 zalecany pokaz poza godzinami ruchu.
+5. „Sprawdź, czy pokaz wystartuje” na `/show` — wszystkie pozycje „spełnione”, w tym **silnik bota**: próbny ruch poziomu 1 w wątku roboczym za bramką (`POST /api/show/preflight`, limit `BOT_L1_CEILING_MS` = 250 ms; czas oczekiwania w kolejce nie wlicza się do limitu). „Niespełnione” przy silniku = wątek się nie uruchamia albo jest za wolny — sprawdź `bot_engine_error` w logu.
+6. Język pokazu ustalony według reguły 5 dni (niżej) i link z `?lang=` przygotowany.
+
+### Próba generalna (z obcego komputera)
+
+Na komputerze, na którym odbędzie się pokaz (nie własnym), przez domenę produkcyjną:
+
+1. Zaloguj się kontem administratora (`ADMIN_EMAIL`, potwierdzony e-mail) i otwórz `/show?lang=<język>` — język ustawia link, niezależnie od języka przeglądarki; sprawdź nagłówek i teksty konsoli w wybranym języku.
+2. „Sprawdź, czy pokaz wystartuje” (pkt 5 checklisty), potem pokaz bot vs bot poziomu 1: widok `/show/<id>`, wskaźnik „Napęd działa”, ruchy co 1–2 s.
+3. Włącz **„Widok pod projektor”** (albo dopisz `?projektor=1` do adresu; przeżywa przekierowanie `?lang=`) i sprawdź na docelowym ekranie (1280×720 albo 1080p): plansza, zegary i nazwy czytelne z sali.
+4. Bot vs agent: kod z karty „Wklej kod do swojego agenta” (ukryty, „Pokaż”/„Kopiuj”), agent łączy się z serwerem MCP z tego komputera (`join`), partia rusza; agent ma 30 min na dołączenie.
+5. Zakończ pokaz („Zakończ pokaz”), „Nowy pokaz” działa, potem „Wyloguj”.
+
+### W trakcie pokazu
+
+- **Karta z pokazem na wierzchu** (karta w tle dławi odczyty → „Napęd zatrzymany: Karta w tle”), **komputer na zasilaczu**, wygaszacz i usypianie wyłączone (`wakeLock` jest best effort).
+- „Napęd zatrzymany” nie kończy pokazu: zegar biegnie dalej; „Sprawdź teraz” odczytuje stan od razu. „Bot nie odpowiada” po dłuższej chwili = awaria wątku (log `bot_engine_error`; po 3 awariach bot gra do końca poziomem 1).
+
+### Po pokazie
+
+- Zakończ trwający pokaz („Zakończ pokaz”) i **wyloguj się** („Wyloguj” w widoku po końcu albo w menu konta) — sesja na obcym komputerze trwa 30 dni; zamknij przeglądarkę.
+- Sprzątanie: pokaz nie trafia do historii ani liczników; `db:cleanup` usuwa go ok. 1 h po końcu (reguła partii bez konta), więc nic nie trzeba robić ręcznie.
+- **Wycofanie:** `SHOW_ENABLED=` (albo `SHOW_BOT_LEVEL2_ENABLED=` dla samego poziomu 2) i `docker compose --env-file .env.production -f compose.prod.yaml up -d --no-build`. Wyłączenie nie przerywa trwającego pokazu — najpierw zakończ go w widoku. Migracji nie cofa się.
+
+### Język pokazu i recenzja tłumaczeń (E15, I17)
+
+- **Język z linku:** `https://<domena>/show?lang=fr` (albo `en`) zapisuje ciasteczko języka i przekierowuje na ten sam adres bez `lang`; działa niezależnie od języka przeglądarki obcego komputera. `?lang=fr&projektor=1` zachowuje widok pod projektor. Niemiecki (`?lang=de`) jest szkieletem z angielskim zapasem — nie na pokaz.
+- **Reguła 5 dni (I17):** najpóźniej 5 dni przed pokazem właściciel decyduje i zapisuje decyzję w `.ai/runs/` i tutaj: (1) francuski niekompletny dla przestrzeni `show` i `header` → pokaz **po angielsku**; (2) francuski kompletny, ale `draft` (`packages/app/src/i18n/catalogs/status.ts`) → po francusku **tylko**, jeśli właściciel albo recenzent przejrzał ekran pokazu według listy niżej, w przeciwnym razie po angielsku. Zalecenie: francuski szkic bez żadnej recenzji nie idzie na ekran przed Francuzami.
+- **Eksport do recenzji:** `npm run i18n:export -w @gomoku/app -- --ns show,header --out recenzja-fr.csv` (kolumny: klucz, PL, EN, FR, DE, status, parametry; UTF-8 z BOM dla arkusza). Recenzent poprawia w arkuszu; poprawki wnosi agent do katalogów `.ts` (bez importu CSV), a status `reviewed` z imieniem recenzenta i datą ustawia się dopiero po recenzji. Parametry w nawiasach klamrowych (`{level}`, `{time}`) zostają bez zmian.
+- **Lista kontrolna recenzji ekranu przez osobę znającą język (I17):** teksty konsoli i widoku brzmią naturalnie; nic nie jest ucięte ani nie łamie układu; typografia francuska (spacja nierozdzielająca przed `:` `;` `!` `?`, cudzysłowy « »); jednostki i liczby (`Mo`, `ms`, `Bot · niveau 2 · 16 Mo`); liczba mnoga („depuis 6 secondes”); komunikaty błędów, w tym `BOT_UNAVAILABLE` tłumaczony po kodzie i powodzie (`disabled`, `memory`, `busy`, `level2_not_allowed`); stany napędu i końca partii. Teksty narzędzi MCP zostają po polsku (I20) — to nie jest brakujące tłumaczenie.
+- **Ekran w czterech językach** (PL, EN, FR, DE) przy 320 px i 1280×720 (widok pod projektor), w motywie jasnym i ciemnym: konsola `/show` (formularz, wynik sprawdzenia, trwający pokaz) i widok `/show/<id>` (plansza, zegary, nazwy, wskaźnik napędu, wynik) — bez poziomego przewijania, nagłówki i przyciski mieszczą się, cyfry zegarów czytelne, przełącznik języka w nagłówku działa.
+
 ## Motyw jasny/ciemny
 
 Strony gracza (`(frontend)`) mają przełącznik motywu w prawym górnym rogu (wiersz nad treścią strony, na każdej stronie). Wybór zapisuje ciasteczko `gomoku_theme` (`dark` lub `light`, `Path=/`, `SameSite=Lax`, rok); serwer czyta je przy renderowaniu i ustawia `data-theme` na `<html>`. Bez poprawnego ciasteczka obowiązuje ustawienie systemu (`prefers-color-scheme`), a gdy system nie ma preferencji — motyw ciemny; mały skrypt w `<head>` ustawia motyw przed pierwszym malowaniem, więc strona nie migocze. Niepoprawna wartość ciasteczka jest ignorowana. Panel `/backend` ma własny motyw shadcn.

@@ -133,9 +133,11 @@ export async function runShowStep(step: ShowStep, deps: ShowBenchDeps) {
   const histogram = deps.createHistogram();
   const started = deps.now();
   const rss = [{ atMs: 0, mb: deps.rssMb() }];
+  // `force`: the last sample, unless one was taken at this very moment.
   const sampleRss = (force = false) => {
     const atMs = deps.now() - started;
-    if (force || atMs - rss.at(-1)!.atMs >= SHOW_RSS_INTERVAL_MS) rss.push({ atMs, mb: deps.rssMb() });
+    const since = atMs - rss.at(-1)!.atMs;
+    if (force ? since > 0 : since >= SHOW_RSS_INTERVAL_MS) rss.push({ atMs, mb: deps.rssMb() });
   };
   const during = deps.probe ? sampleProbe(deps.probe, () => computing, deps) : null;
   const over = () => deps.now() - started >= deps.durationMs;
