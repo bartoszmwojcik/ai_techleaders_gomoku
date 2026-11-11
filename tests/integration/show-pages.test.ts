@@ -1,7 +1,8 @@
 // The show's pages in a real browser (E14-S01, #280; show-mode P20 and the E15 note): the administrator starts a bot
 // vs bot show from the console and lands on its view; "Widok pod projektor" by keyboard, kept in the address over a
 // reload, defaulted from storage, switched off by ?projektor=0; ending the show; 320 px without horizontal scrolling
-// in both themes and four languages; the agent card of a bot vs agent show (E14-S03).
+// in both themes and four languages; the agent card of a bot vs agent show (E14-S03); level 2 switched off and the
+// engine's trial move in the check (E14-S04).
 import { createOrm, type Orm } from "@gomoku/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from "vitest";
 
@@ -74,6 +75,32 @@ describe("the console", () => {
     expect(await browser.text("h1")).toBe("Pokaz: Bot vs bot");
     expect(await browser.count('[role="timer"]')).toBe(2);
     expect(await browser.text("main")).toContain("Bot · poziom 1");
+  });
+
+  it("shows level 2 of bot vs bot switched off, with the reason, and the engine's trial move in the check (E14-S04)", async () => {
+    // The integration server runs without SHOW_BOT_LEVEL2_ENABLED (global-setup.ts).
+    await browser.open(`${baseUrl}/show`);
+    await browser.waitFor('[data-testid="show-start"]');
+    for (const seat of [1, 2]) {
+      const options = await browser.evaluate<{ text: string; disabled: boolean }[]>(
+        `[...document.querySelectorAll('[data-testid="show-level-${seat}"] option')].map((o) => ({ text: o.textContent, disabled: o.disabled }))`,
+      );
+      expect(options).toEqual([
+        { text: "Poziom 1", disabled: false },
+        { text: "Poziom 2 (wyłączony)", disabled: true },
+      ]);
+    }
+    expect(await browser.text("main")).toContain(
+      "Poziom 2 w bot vs bot jest wyłączony (SHOW_BOT_LEVEL2_ENABLED): włącza się po strojeniu tempa i pomiarze na serwerze.",
+    );
+
+    await browser.click('[data-testid="show-check"]');
+    await browser.waitFor('[data-testid="show-checks"]');
+    const engine = await browser.evaluate<string>(
+      `[...document.querySelectorAll('[data-testid="show-checks"] li')].map((li) => li.textContent).find((text) => text.startsWith("Silnik bota")) ?? ""`,
+    );
+    // The built app's worker thread answered within the level-1 ceiling.
+    expect(engine).toMatch(/^Silnik bota: próbny ruch poziomu 1 w \d+ ms \(limit 250 ms\)spełnione$/);
   });
 
   it("shows the show in progress with the way back to it", async () => {
