@@ -1,7 +1,7 @@
 // The show's pages in a real browser (E14-S01, #280; show-mode P20 and the E15 note): the administrator starts a bot
 // vs bot show from the console and lands on its view; "Widok pod projektor" by keyboard, kept in the address over a
 // reload, defaulted from storage, switched off by ?projektor=0; ending the show; 320 px without horizontal scrolling
-// in both themes and four languages.
+// in both themes and four languages; the agent card of a bot vs agent show (E14-S03).
 import { createOrm, type Orm } from "@gomoku/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from "vitest";
 
@@ -173,6 +173,51 @@ describe("320 px, both themes, four languages (E15 note e)", () => {
           expect(await browser.evaluate<string>(`document.documentElement.dataset.theme`)).toBe(theme);
           expect(await browser.evaluate<number>(`document.documentElement.scrollWidth`), `${theme} ${lang} ${path}`).toBeLessThanOrEqual(320);
         }
+      }
+    }
+  });
+});
+
+describe("bot vs agent (E14-S03, P12)", () => {
+  it("starts from the console and shows the agent's card: the code masked until Pokaż, the MCP address, the time left", async () => {
+    await browser.open(`${baseUrl}/show`);
+    await browser.waitFor('[data-testid="show-layout-bot-agent"]');
+    await browser.click('[data-testid="show-layout-bot-agent"]');
+    await browser.waitFor('[data-testid="show-bot-level"]');
+    await browser.click('[data-testid="show-start"]');
+    await browser.waitForFn(`/\\/show\\/[0-9a-f-]{36}$/.test(location.pathname)`);
+    await browser.waitFor('[data-testid="show-agent-card"]');
+
+    expect(await browser.text("h1")).toBe("Pokaz: Bot vs agent");
+    expect(await browser.text('[data-testid="show-agent-code"]')).toBe("••••-••••");
+    expect(await browser.text('[data-testid="show-agent-mcp"]')).toBe(`${baseUrl}/api/mcp`);
+    expect(await browser.text('[data-testid="show-agent-waiting"]')).toMatch(/^Czeka na agenta \(jeszcze (30:00|29:5\d)\)$/);
+    const [{ code }] = (await run(
+      `select i.code from invitations i join games g on g.id = i.game_id where g.origin = 'show' and g.status = 'waiting'`,
+    )) as [{ code: string }];
+    expect(await browser.text("main")).not.toContain(code.slice(0, 4));
+
+    await browser.click('[data-testid="show-agent-reveal"]');
+    expect(await browser.text('[data-testid="show-agent-code"]')).toBe(`${code.slice(0, 4)}-${code.slice(4)}`);
+    expect(await browser.evaluate<string>(`document.querySelector('[data-testid="show-agent-reveal"]').getAttribute('aria-pressed')`)).toBe("true");
+  });
+
+  it("never scrolls sideways at 320 px with the card, in both themes and four languages", async () => {
+    const response = await fetch(`${baseUrl}/api/show`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: baseUrl, "x-gomoku-request": "1", cookie },
+      body: JSON.stringify({ layout: "bot-agent", botLevel: 2 }),
+    });
+    expect(response.status).toBe(201);
+    const show = ((await response.json()) as { data: { gameId: string } }).data.gameId;
+    await browser.setViewport(320, 720);
+    for (const theme of ["dark", "light"]) {
+      await browser.setCookie("gomoku_theme", theme, baseUrl);
+      for (const lang of ["pl", "en", "fr", "de"]) {
+        await browser.setCookie("gomoku_lang", lang, baseUrl);
+        await browser.open(`${baseUrl}/show/${show}`);
+        await browser.waitFor('[data-testid="show-agent-card"]');
+        expect(await browser.evaluate<number>(`document.documentElement.scrollWidth`), `${theme} ${lang}`).toBeLessThanOrEqual(320);
       }
     }
   });
