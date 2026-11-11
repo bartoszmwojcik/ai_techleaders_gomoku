@@ -75,6 +75,11 @@ export type ShowConfig = {
   /** Range of the bot's pause before a move in a show (`BOT_SHOW_PAUSE_MIN_MS` <= `_MAX_MS`). */
   pauseMinMs: number;
   pauseMaxMs: number;
+  /**
+   * The soft target of a level-2 bot's move in a show (`SHOW_BOT_L2_SOFT_MS`, the tuning knob of P17); its ceiling is
+   * `min(BOT_L2_CEILING_MS, 2 × soft)` (`showBotLimits`). Ordinary games keep `BOT_L2_SOFT_MS`.
+   */
+  botL2SoftMs: number;
 };
 
 export const DEFAULT_SHOW_PAUSE_MIN_MS = 1000;
@@ -227,7 +232,10 @@ export function parseBotEnabled(raw: string | undefined): boolean {
   return parseFlag("BOT_ENABLED", raw);
 }
 
-/** `SHOW_*` and `BOT_SHOW_PAUSE_*` (show-mode P2, P9): flags off, pause 1000-2000 ms, at most 8000 ms. */
+/**
+ * `SHOW_*` and `BOT_SHOW_PAUSE_*` (show-mode P2, P9): flags off, pause 1000-2000 ms, at most 8000 ms, the soft target
+ * of level 2 in a show 1500 ms (the default of `BOT_L2_SOFT_MS`, step T1 of the tuning table).
+ */
 export function readShowConfig(env: Record<string, string | undefined>): ShowConfig {
   const pauseMaxMs = parseIntInRange(
     "BOT_SHOW_PAUSE_MAX_MS",
@@ -252,6 +260,13 @@ export function readShowConfig(env: Record<string, string | undefined>): ShowCon
     botLevel2Enabled: parseFlag("SHOW_BOT_LEVEL2_ENABLED", env.SHOW_BOT_LEVEL2_ENABLED),
     pauseMinMs,
     pauseMaxMs,
+    botL2SoftMs: parseIntInRange(
+      "SHOW_BOT_L2_SOFT_MS",
+      env.SHOW_BOT_L2_SOFT_MS,
+      DEFAULT_BOT_TIME_LIMITS[2].softMs,
+      1,
+      BOT_MAX_CEILING_MS,
+    ),
   };
 }
 
