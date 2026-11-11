@@ -3,9 +3,12 @@ import {
   BOARD_CELLS,
   coordsOf,
   decodeBitboard,
+  clipShowPause,
   seatOnTurn,
+  showBotLimits,
   showPauseMs,
   type BotLevel,
+  type BotTimeLimits,
   type Seat,
 } from "@gomoku/core";
 import type { EntityManager } from "@gomoku/db";
@@ -20,7 +23,7 @@ type Deps = {
   gameMoveService: GameMoveService;
   botEngine: BotEngine;
   clock: Clock;
-  serverConfig: Pick<ServerConfig, "show">;
+  serverConfig: Pick<ServerConfig, "show" | "bot">;
 };
 
 /** One row per bot of the game (0-2: two in a bot vs bot show, show-mode "Driver"). */
@@ -40,6 +43,8 @@ type PeekRow = {
   bot_level: number;
   bot_memory_mb: number | null;
   bot_depth_cap: number | null;
+  /** The bot's clock when its turn began (the pause is clipped to a quarter of it, P9). */
+  clock_ms: number;
   /** What is left on the bot's clock now (R6); `null` before the clock starts. */
   remaining_ms: number | null;
   /** Milliseconds since the turn began (the pause counts from it); `null` before the clock starts. */
@@ -54,6 +59,7 @@ const PEEK_SQL = `
   select g.status, g.origin, g.variant, g.black_seat, g.move_count, g.stones_black::text as stones_black,
     g.stones_white::text as stones_white, g.turn_started_at is not null as started,
     p.id as bot_id, p.seat as bot_seat, p.bot_level, p.bot_memory_mb, p.bot_depth_cap,
+    (case when p.seat = 1 then g.clock_ms_1 else g.clock_ms_2 end) as clock_ms,
     greatest(0, (case when p.seat = 1 then g.clock_ms_1 else g.clock_ms_2 end)
       - floor(extract(epoch from (?::timestamptz - g.turn_started_at)) * 1000))::int as remaining_ms,
     floor(extract(epoch from (?::timestamptz - g.turn_started_at)) * 1000)::int as elapsed_ms
@@ -86,11 +92,15 @@ function botOnTurn(rows: readonly PeekRow[]): PeekRow | undefined {
 /**
  * The bot on turn may move: a classic game whose clock runs, on a board with a free cell; in a show only once
  * its pause since the start of the turn is over (P9: the move is "due" after the pause, the search starts then).
+ * The pause is clipped to a quarter of the bot's clock at the start of the turn, so on a low clock it plays at once.
  */
 function isDue(row: PeekRow, gameId: string, show: ServerConfig["show"]): boolean {
   if (row.status !== "active" || row.variant !== "classic" || !row.started || row.move_count >= BOARD_CELLS) return false;
   if (row.origin !== "show") return true;
-  const pauseMs = showPauseMs(gameId, row.move_count + 1, { minMs: show.pauseMinMs, maxMs: show.pauseMaxMs });
+  const pauseMs = clipShowPause(
+    showPauseMs(gameId, row.move_count + 1, { minMs: show.pauseMinMs, maxMs: show.pauseMaxMs }),
+    row.clock_ms,
+  );
   return row.elapsed_ms !== null && row.elapsed_ms >= pauseMs;
 }
 
@@ -106,10 +116,13 @@ export class BotTurnService {
   readonly #engine: BotEngine;
   readonly #clock: Clock;
   readonly #show: ServerConfig["show"];
+  /** The time limits of a show's bots (`SHOW_BOT_L2_SOFT_MS`); every other game keeps the engine's own. */
+  readonly #showLimits: Record<BotLevel, BotTimeLimits>;
 
   constructor({ em, gameMoveService, botEngine, clock, serverConfig }: Deps) {
     this.#clock = clock;
     this.#show = serverConfig.show;
+    this.#showLimits = showBotLimits(serverConfig.bot.limits, serverConfig.show.botL2SoftMs);
     this.#em = em;
     this.#gameMoveService = gameMoveService;
     this.#engine = botEngine;
@@ -137,6 +150,7 @@ export class BotTurnService {
         depthCap: row.bot_depth_cap,
         memoryMb: row.bot_memory_mb,
         remainingClockMs: row.remaining_ms ?? 0,
+        ...(row.origin === "show" && { limits: this.#showLimits }),
       });
       // Written as the bot's seat: the same checks, clock charge and end of game as a person's move (BR-58).
       await this.#gameMoveService.play({ playerId: row.bot_id }, gameId, { ...coordsOf(cell), moveNumber });

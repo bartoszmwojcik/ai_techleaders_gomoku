@@ -1,4 +1,4 @@
-import { INITIAL_CLOCK_MS, type ShowCreateInput } from "@gomoku/core";
+import { INITIAL_CLOCK_MS, type BotLevel, type ShowCreateInput } from "@gomoku/core";
 import { Game, GamePlayer, Invitation, type EntityManager } from "@gomoku/db";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -24,6 +24,9 @@ type Script = {
   flags?: Partial<ServerConfig["show"]>;
   admitted?: Row[];
   capacity?: Row;
+  /** The engine's trial move and the gate's queue. */
+  trial?: { ok: boolean; ms: number; limitMs: number; waitedMs: number };
+  pending?: number;
   /** What the drive's "stalled" query answers. */
   stalled?: boolean;
   /** The show's invitation (bot vs agent). */
@@ -39,6 +42,7 @@ const SHOW_FLAGS: ServerConfig["show"] = {
   botLevel2Enabled: false,
   pauseMinMs: 1000,
   pauseMaxMs: 2000,
+  botL2SoftMs: 1500,
 };
 
 const gameRow = (over: Row = {}): Row => ({
@@ -112,6 +116,10 @@ function setup(script: Script = {}) {
     ]),
     inspect: vi.fn(async () => script.capacity ?? { enabled: true, availableMb: 768, minAvailableMb: 256, activeGames: 0, maxActiveGames: 3 }),
   };
+  const botEngineStatus = {
+    trial: vi.fn(async () => script.trial ?? { ok: true, ms: 12, limitMs: 250, waitedMs: 0 }),
+    pending: vi.fn(() => script.pending ?? 0),
+  };
   const service = new ShowService({
     em: em as unknown as EntityManager,
     clock: { now: () => NOW },
@@ -121,8 +129,9 @@ function setup(script: Script = {}) {
     colorDraw: { drawBlackSeat: () => 2 },
     botAdmission: botAdmission as never,
     invitationCodes: { generate: () => "ABCDEFGH" },
+    botEngineStatus,
   });
-  return { service, em, execute, calls, created, rateLimiter, timeoutSettler, botAdmission };
+  return { service, em, execute, calls, created, rateLimiter, timeoutSettler, botAdmission, botEngineStatus };
 }
 
 const errorOf = async (promise: Promise<unknown>) => (await promise.catch((e: unknown) => e)) as Record<string, unknown>;
@@ -177,7 +186,7 @@ describe("ShowService.create (bot vs bot)", () => {
 
     const error = await errorOf(service.create("admin-1", BOT_BOT));
 
-    expect(error).toMatchObject({ status: 409, code: "SHOW_RUNNING", data: { gameId: OTHER } });
+    expect(error).toMatchObject({ status: 409, code: "SHOW_RUNNING", data: { gameId: OTHER, layout: "bot-bot" } });
     expect(timeoutSettler.settleExpired).toHaveBeenCalledWith(OTHER, expect.anything(), NOW);
     expect(sqls(calls).some((sql) => sql.startsWith("with expired as"))).toBe(true);
     // A running show is never answered as a busy bot, and refusing it costs no attempt of the pool.
@@ -193,7 +202,7 @@ describe("ShowService.create (bot vs bot)", () => {
 
     const error = await errorOf(service.create("admin-1", BOT_BOT));
 
-    expect(error).toMatchObject({ status: 409, code: "SHOW_RUNNING", data: { gameId: OTHER } });
+    expect(error).toMatchObject({ status: 409, code: "SHOW_RUNNING", data: { gameId: OTHER, layout: "bot-bot" } });
     expect(rateLimiter.hit).toHaveBeenCalledOnce();
     expect(created).toHaveLength(0);
   });
@@ -226,6 +235,23 @@ describe("ShowService.create (bot vs bot)", () => {
       data: { reason: "level2_not_allowed" },
     });
     expect(rateLimiter.hit).not.toHaveBeenCalled();
+  });
+
+  // Every pair of levels in bot vs bot against both positions of SHOW_BOT_LEVEL2_ENABLED (#284).
+  it.each(
+    [false, true].flatMap((level2) =>
+      ([[1, 1], [1, 2], [2, 1], [2, 2]] as [BotLevel, BotLevel][]).map((levels) => [levels.join("+"), level2, levels] as const),
+    ),
+  )("bot vs bot %s with SHOW_BOT_LEVEL2_ENABLED=%s: refused only when a level 2 meets the switch off", async (_name, level2, levels) => {
+    const { service, botAdmission } = setup({ flags: { botLevel2Enabled: level2 } });
+    const created = service.create("admin-1", { layout: "bot-bot", levels });
+    if (!level2 && levels.includes(2)) {
+      expect(await errorOf(created)).toMatchObject({ status: 503, code: "BOT_UNAVAILABLE", data: { reason: "level2_not_allowed" } });
+      expect(botAdmission.admitShow).not.toHaveBeenCalled();
+    } else {
+      await expect(created).resolves.toMatchObject({ layout: "bot-bot" });
+      expect(botAdmission.admitShow).toHaveBeenCalledWith(levels);
+    }
   });
 
   it("passes on a refusal of the rate limiter and of the bot, writing nothing", async () => {
@@ -274,6 +300,17 @@ describe("ShowService.create (bot vs agent)", () => {
     expect(bot).toMatchObject({ entity: GamePlayer, data: { seat: 1, kind: "bot", botLevel: 2, botMemoryMb: 768, botDepthCap: 8, seenAt: NOW } });
     expect(invitation).toMatchObject({ entity: Invitation, data: { code: "ABCDEFGH", createdAt: NOW, expiresAt } });
     expect(created).toHaveLength(3);
+  });
+
+  it.each([
+    [1, false],
+    [1, true],
+    [2, false],
+    [2, true],
+  ] as const)("allows level %s whatever SHOW_BOT_LEVEL2_ENABLED (=%s) says (P16)", async (botLevel, level2) => {
+    const { service, botAdmission } = setup({ flags: { botLevel2Enabled: level2 } });
+    await expect(service.create("admin-1", { layout: "bot-agent", botLevel })).resolves.toMatchObject({ layout: "bot-agent" });
+    expect(botAdmission.admitShow).toHaveBeenCalledWith([botLevel]);
   });
 
   it("allows level 2 with the bot's flag alone and ignores the switches of bot vs bot (P16)", async () => {
@@ -332,6 +369,13 @@ describe("ShowService.read", () => {
     expect(stalled.sql).toContain("p.kind = 'bot'");
     // The game, now, the longest pause (2000) + 5 s, the ceiling of level 2 and of level 1.
     expect(stalled.params).toEqual([GAME, NOW, 7000, 3000, 250]);
+  });
+
+  it("gives the bot on turn the time of every computation queued at the gate before it is stalled (review of #305)", async () => {
+    const { service, calls } = setup({ show: { status: "active" }, game: gameRow(), pending: 2 });
+    await service.read(GAME, 0);
+    // 2000 pause + 5000 grace + 2 x (3000 ceiling + 500 to end the thread).
+    expect(calls.find((call) => call.sql.includes("as stalled"))!.params).toEqual([GAME, NOW, 14_000, 3000, 250]);
   });
 
   it.each([
@@ -563,6 +607,27 @@ describe("ShowService.preflight", () => {
     expect(result.checks.map(({ id }) => id)).toEqual(["show_enabled", "bot_enabled", "memory", "slot", "no_show_running", "engine"]);
   });
 
+  it("makes the trial move of the engine (P18) and reports its time, its limit and its wait for the gate", async () => {
+    const { service, botEngineStatus } = setup({ trial: { ok: true, ms: 40, limitMs: 250, waitedMs: 900 } });
+    const result = await service.preflight({ layout: "bot-bot", levels: [1, 1] });
+    expect(botEngineStatus.trial).toHaveBeenCalledOnce();
+    expect(result.ok).toBe(true);
+    expect(result.checks.at(-1)).toEqual({ id: "engine", ok: true, detail: { ms: 40, limitMs: 250, waitedMs: 900 } });
+  });
+
+  it("fails on a failed trial move alone", async () => {
+    const { service } = setup({ trial: { ok: false, ms: 260, limitMs: 250, waitedMs: 0 } });
+    const result = await service.preflight({ layout: "bot-agent", botLevel: 1 });
+    expect(result.ok).toBe(false);
+    expect(result.checks.filter((check) => check.ok === false).map(({ id }) => id)).toEqual(["engine"]);
+  });
+
+  it("never makes a trial move for the console's first read (GET stays cheap)", async () => {
+    const { service, botEngineStatus } = setup();
+    await service.overview();
+    expect(botEngineStatus.trial).not.toHaveBeenCalled();
+  });
+
   it("checks the switch of level 2 only when a bot of level 2 is asked for, and fails on any failed check", async () => {
     const { service } = setup({
       open: [[{ id: OTHER, status: "active", bots: 2 }]],
@@ -580,7 +645,7 @@ describe("ShowService.preflight", () => {
       ["memory", false],
       ["slot", false],
       ["no_show_running", false],
-      ["engine", null],
+      ["engine", true],
     ]);
   });
 });

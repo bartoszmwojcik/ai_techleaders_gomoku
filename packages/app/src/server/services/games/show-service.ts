@@ -24,6 +24,8 @@ import type { ServerConfig } from "../../config";
 import type { Clock } from "../email/email-sender";
 import type { RateLimiter } from "../rate-limit/rate-limiter";
 import { refuse, type BotAdmission } from "./bot-admission";
+import { BOT_TERMINATE_WAIT_MS } from "./bot-engine";
+import type { BotEngineStatus } from "./bot-engine-status";
 import type { ColorDraw } from "./color-draw";
 import { DEV_ORIGIN, GAME_NOT_FOUND_MESSAGE, watchableState, type WatchableState } from "./game-service";
 import type { InvitationCodes } from "./invitation-codes";
@@ -39,6 +41,7 @@ type Deps = {
   colorDraw: ColorDraw;
   botAdmission: BotAdmission;
   invitationCodes: InvitationCodes;
+  botEngineStatus: BotEngineStatus;
 };
 
 /** Pool `show-create:{userId}` (show-mode P10): a client in a loop cannot pile up shows. */
@@ -55,7 +58,10 @@ export type ShowUnavailableReason = "disabled" | "bot_vs_bot_disabled";
 /** A show in progress, as the console lists it. */
 export type ShowSummary = { gameId: string; status: Extract<GameStatus, "waiting" | "active">; layout: ShowLayout };
 
-/** One check of "will the show start" (P18); `ok: null` = not checked in this release (the engine, phase d). */
+/**
+ * One check of "will the show start" (P18); `ok: null` = not checked by this read (the engine: only `POST
+ * /api/show/preflight` makes its trial move, `GET /api/show` stays cheap).
+ */
 export type ShowCheck = {
   id: "show_enabled" | "bot_vs_bot_enabled" | "level2_enabled" | "bot_enabled" | "memory" | "slot" | "no_show_running" | "engine";
   ok: boolean | null;
@@ -117,7 +123,12 @@ export type ShowState = Omit<WatchableState, "players"> & {
  */
 export type ShowDrive = { botOnTurn: boolean; stalled: boolean };
 
-/** What `stalled` allows on top of the longest pause and the ceiling of the bot's move (show-mode, "API Contracts"). */
+/**
+ * What `stalled` allows on top of the longest pause and the ceiling of the bot's move (show-mode, "API Contracts"); each
+ * computation at the gate (queued or running, the show's own included: `ComputeGate.pending`) adds the longest ceiling
+ * and the wait for its thread to end, so a show's bot waiting behind other games with the bot is not reported as
+ * stalled (review of #305). Counting its own move too only delays the warning by one ceiling, never raises a false one.
+ */
 export const SHOW_STALL_GRACE_MS = 5000;
 
 // Serializes the creations of a show (P6): the check "no show in progress" and the insert under one lock.
@@ -158,8 +169,8 @@ const END_SHOW_SQL = `
   update games set status = 'cancelled', ${chargeSql(1)}, ${chargeSql(2)},
     finished_at = case when started_at is not null then ?::timestamptz end
   where id = ? and origin = 'show' and status in ('waiting', 'active') returning id`;
-// The bot on turn has been thinking too long (`drive.stalled`), computed in SQL (lesson 2026-10-29). `?` binds: now,
-// the longest pause plus the grace, the ceilings of level 1 and 2, the game id.
+// The bot on turn has been thinking too long (`drive.stalled`), computed in SQL (lesson 2026-10-29). `?` binds: the game
+// id, now, the longest pause plus the grace and the gate's queue, the ceilings of level 2 and 1.
 const STALLED_SQL = `
   select exists (
     select 1 from games g join game_players p on p.game_id = g.id and p.kind = 'bot'
@@ -187,8 +198,10 @@ export class ShowService {
   readonly #colorDraw: ColorDraw;
   readonly #botAdmission: BotAdmission;
   readonly #invitationCodes: InvitationCodes;
+  readonly #engine: BotEngineStatus;
 
-  constructor({ em, clock, rateLimiter, timeoutSettler, serverConfig, colorDraw, botAdmission, invitationCodes }: Deps) {
+  constructor({ em, clock, rateLimiter, timeoutSettler, serverConfig, colorDraw, botAdmission, invitationCodes, botEngineStatus }: Deps) {
+    this.#engine = botEngineStatus;
     this.#em = em;
     this.#clock = clock;
     this.#rateLimiter = rateLimiter;
@@ -219,10 +232,14 @@ export class ShowService {
 
   /**
    * "Will the show start" (P18) for these levels: the switches, the bot's flag, memory and free slot, no
-   * show in progress. Cheap: no computation; the trial move of the engine comes with phase (d).
+   * show in progress, and the engine: a trial move of level 1 in a worker thread behind the gate within the
+   * level-1 ceiling (250 ms by default), with its time and its wait for the gate in `detail`.
    */
   async preflight(input: ShowCreateInput): Promise<ShowPreflight> {
-    return this.#checks(input, await this.current());
+    const { checks } = await this.#checks(input, await this.current());
+    const { ok, ms, limitMs, waitedMs } = await this.#engine.trial();
+    const all = checks.map((check): ShowCheck => (check.id === "engine" ? { id: "engine", ok, detail: { ms, limitMs, waitedMs } } : check));
+    return { ok: all.every((check) => check.ok !== false), checks: all };
   }
 
   /**
@@ -245,16 +262,16 @@ export class ShowService {
     // admission would otherwise refuse with `busy`, and every such refusal would spend the pool. The locked check
     // in the transaction below still decides a race.
     const open = await this.current();
-    if (open) throw running(open.gameId);
+    if (open) throw running(open);
     await this.#rateLimiter.hit(`show-create:${userId}`, SHOW_CREATE_LIMIT, SHOW_CREATE_WINDOW_MS);
     const bots = await this.#botAdmission.admitShow(showLevels(input));
 
     type Inserted = { gameId: string; code?: string; expiresAt?: Date };
-    const outcome = await this.#em.transactional(async (tx): Promise<Inserted | { running: string }> => {
+    const outcome = await this.#em.transactional(async (tx): Promise<Inserted | { running: ShowSummary }> => {
       await tx.execute(LOCK_CREATE_SQL, [LOCK_KEY], "run");
       const now = this.#clock.now();
       const running = await this.#settleOpen(tx, now);
-      if (running) return { running: running.gameId };
+      if (running) return { running };
       return input.layout === "bot-bot" ? { gameId: await this.#insert(tx, bots, now) } : this.#insertWaiting(tx, bots[0]!, now);
     });
     if ("running" in outcome) throw running(outcome.running);
@@ -465,7 +482,7 @@ export class ShowService {
     const [row] = await tx.execute<{ stalled: boolean }[]>(STALLED_SQL, [
       gameId,
       now,
-      show.pauseMaxMs + SHOW_STALL_GRACE_MS,
+      show.pauseMaxMs + SHOW_STALL_GRACE_MS + this.#engine.pending() * (bot.limits[2].ceilingMs + BOT_TERMINATE_WAIT_MS),
       bot.limits[2].ceilingMs,
       bot.limits[1].ceilingMs,
     ]);
@@ -473,8 +490,9 @@ export class ShowService {
   }
 }
 
-function running(gameId: string): ConflictError {
-  return new ConflictError(SHOW_RUNNING_MESSAGE, { code: "SHOW_RUNNING", data: { gameId } });
+/** `409 SHOW_RUNNING` names the running show and its layout, so the console's card tells the right one. */
+function running({ gameId, layout }: ShowSummary): ConflictError {
+  return new ConflictError(SHOW_RUNNING_MESSAGE, { code: "SHOW_RUNNING", data: { gameId, layout } });
 }
 
 /** Two bots make bot vs bot; one bot (waiting for its agent, or with it) is bot vs agent. */

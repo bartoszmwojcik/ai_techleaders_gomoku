@@ -16,7 +16,7 @@ const BOT_DEFAULTS = {
   limits: { 1: { softMs: 50, ceilingMs: 250 }, 2: { softMs: 1500, ceilingMs: 3000 } },
 };
 
-const SHOW_DEFAULTS = { enabled: false, botVsBotEnabled: false, botLevel2Enabled: false, pauseMinMs: 1000, pauseMaxMs: 2000 };
+const SHOW_DEFAULTS = { enabled: false, botVsBotEnabled: false, botLevel2Enabled: false, pauseMinMs: 1000, pauseMaxMs: 2000, botL2SoftMs: 1500 };
 
 const production = {
   NODE_ENV: "production",
@@ -49,6 +49,7 @@ describe("SHOW_* and BOT_SHOW_PAUSE_* (show-mode P2, P9)", () => {
         SHOW_BOT_LEVEL2_ENABLED: "",
         BOT_SHOW_PAUSE_MIN_MS: "",
         BOT_SHOW_PAUSE_MAX_MS: "",
+        SHOW_BOT_L2_SOFT_MS: "",
       }),
     ).toEqual(SHOW_DEFAULTS);
   });
@@ -61,8 +62,11 @@ describe("SHOW_* and BOT_SHOW_PAUSE_* (show-mode P2, P9)", () => {
         SHOW_BOT_LEVEL2_ENABLED: "true",
         BOT_SHOW_PAUSE_MIN_MS: "4000",
         BOT_SHOW_PAUSE_MAX_MS: "8000",
+        SHOW_BOT_L2_SOFT_MS: "700",
       }).show,
-    ).toEqual({ enabled: true, botVsBotEnabled: true, botLevel2Enabled: true, pauseMinMs: 4000, pauseMaxMs: 8000 });
+    ).toEqual({ enabled: true, botVsBotEnabled: true, botLevel2Enabled: true, pauseMinMs: 4000, pauseMaxMs: 8000, botL2SoftMs: 700 });
+    expect(readShowConfig({ SHOW_BOT_L2_SOFT_MS: "1" }).botL2SoftMs).toBe(1);
+    expect(readShowConfig({ SHOW_BOT_L2_SOFT_MS: "60000" }).botL2SoftMs).toBe(60_000);
     expect(readShowConfig({ BOT_SHOW_PAUSE_MIN_MS: "0", BOT_SHOW_PAUSE_MAX_MS: "0" })).toMatchObject({ pauseMinMs: 0, pauseMaxMs: 0 });
     expect(readShowConfig({ BOT_SHOW_PAUSE_MIN_MS: "2000" })).toMatchObject({ pauseMinMs: 2000, pauseMaxMs: 2000 });
   });
@@ -79,6 +83,9 @@ describe("SHOW_* and BOT_SHOW_PAUSE_* (show-mode P2, P9)", () => {
     [{ BOT_SHOW_PAUSE_MIN_MS: "9000" }, "BOT_SHOW_PAUSE_MIN_MS must be an integer from 0 to 8000."],
     [{ BOT_SHOW_PAUSE_MIN_MS: "-1" }, "BOT_SHOW_PAUSE_MIN_MS must be an integer from 0 to 8000."],
     [{ BOT_SHOW_PAUSE_MAX_MS: "1.5" }, "BOT_SHOW_PAUSE_MAX_MS must be an integer from 0 to 8000."],
+    [{ SHOW_BOT_L2_SOFT_MS: "0" }, "SHOW_BOT_L2_SOFT_MS must be an integer from 1 to 60000."],
+    [{ SHOW_BOT_L2_SOFT_MS: "60001" }, "SHOW_BOT_L2_SOFT_MS must be an integer from 1 to 60000."],
+    [{ SHOW_BOT_L2_SOFT_MS: "fast" }, "SHOW_BOT_L2_SOFT_MS must be an integer from 1 to 60000."],
     [{ BOT_SHOW_PAUSE_MIN_MS: "3000" }, "BOT_SHOW_PAUSE_MIN_MS must not be greater than BOT_SHOW_PAUSE_MAX_MS."],
     [
       { BOT_SHOW_PAUSE_MIN_MS: "1500", BOT_SHOW_PAUSE_MAX_MS: "1000" },

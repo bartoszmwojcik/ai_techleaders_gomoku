@@ -43,12 +43,15 @@ describe("ShowConsole, state 1: switched off", () => {
 });
 
 describe("ShowConsole, state 3: the form", () => {
-  it("offers level 1 only, with the reason, while level 2 in bot vs bot is off", () => {
+  it("shows level 2 disabled, with the reason, while level 2 in bot vs bot is off", () => {
     render(<ShowConsole initial={overview()} />);
 
     const seat1 = screen.getByLabelText("Bot na miejscu 1") as HTMLSelectElement;
-    expect([...seat1.options].map((option) => option.textContent)).toEqual(["Poziom 1"]);
-    expect(screen.getAllByText("Poziom 2 w bot vs bot czeka na strojenie tempa i pomiar na serwerze.")).toHaveLength(2);
+    expect([...seat1.options].map((option) => [option.textContent, option.disabled])).toEqual([
+      ["Poziom 1", false],
+      ["Poziom 2 (wyłączony)", true],
+    ]);
+    expect(screen.getAllByText("Poziom 2 w bot vs bot jest wyłączony (SHOW_BOT_LEVEL2_ENABLED): włącza się po strojeniu tempa i pomiarze na serwerze.")).toHaveLength(2);
     expect((start() as HTMLButtonElement).disabled).toBe(false);
   });
 
@@ -57,11 +60,12 @@ describe("ShowConsole, state 3: the form", () => {
     render(<ShowConsole initial={overview({ level2Enabled: true })} />);
 
     await userEvent.selectOptions(screen.getByLabelText("Bot na miejscu 2"), "2");
+    expect([...(screen.getByLabelText("Bot na miejscu 1") as HTMLSelectElement).options].some((option) => option.disabled)).toBe(false);
     await userEvent.click(start());
 
     expect(apiCall).toHaveBeenCalledWith("/api/show", { body: { layout: "bot-bot", levels: [1, 2] } });
     expect(push).toHaveBeenCalledWith("/show/g-new");
-    expect(screen.queryByText("Poziom 2 w bot vs bot czeka na strojenie tempa i pomiar na serwerze.")).toBeNull();
+    expect(screen.queryByText("Poziom 2 w bot vs bot jest wyłączony (SHOW_BOT_LEVEL2_ENABLED): włącza się po strojeniu tempa i pomiarze na serwerze.")).toBeNull();
   });
 
   it("sends one creation for a double click", async () => {
@@ -165,6 +169,16 @@ describe("ShowConsole, state 3: the form", () => {
     expect(screen.getByRole("radio", { name: "Bot vs agent" }).hasAttribute("disabled")).toBe(true);
   });
 
+  it("names the layout of the running show the server reports, not the chosen one (review of PR 306)", async () => {
+    apiCall.mockResolvedValue({ ok: false, error: { code: "SHOW_RUNNING", message: "x", data: { gameId: RUNNING, layout: "bot-agent" } } });
+    render(<ShowConsole initial={overview()} />);
+
+    await userEvent.click(start());
+
+    expect(screen.getByTestId("show-running").textContent).toContain("Układ: Bot vs agent");
+    expect(screen.getByRole("radio", { name: "Bot vs agent" }).hasAttribute("disabled")).toBe(true);
+  });
+
   it("speaks the language the server passed", () => {
     render(<ShowConsole initial={overview()} locale="en" dict={enShow} />);
 
@@ -198,8 +212,20 @@ describe("ShowConsole, will the show start", () => {
       "Pokaz włączony (SHOW_ENABLED)spełnione",
       "Pamięć: dostępne 200 MB, potrzeba co najmniej 256 MBniespełnione",
       "Partie z botem w toku: 1 z 3spełnione",
-      "Silnik bota (próbny ruch sprawdzi kolejna wersja)niesprawdzone",
+      "Silnik bota (próbny ruch poziomu 1)niesprawdzone",
     ]);
+  });
+
+  it.each([
+    [{ ms: 42, limitMs: 250 }, true, "Silnik bota: próbny ruch poziomu 1 w 42 ms (limit 250 ms)spełnione"],
+    [{ ms: 300 }, false, "Silnik bota: próbny ruch poziomu 1 w 300 ms (limit 0 ms)niespełnione"],
+  ])("tells the time of the engine's trial move %o (P18)", async (detail, ok, text) => {
+    apiCall.mockResolvedValue({ ok: true, data: { ok, checks: [{ id: "engine", ok, detail }] } });
+    render(<ShowConsole initial={overview()} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Sprawdź, czy pokaz wystartuje" }));
+
+    expect(within(screen.getByRole("list", { name: "Wynik sprawdzenia" })).getByRole("listitem").textContent).toBe(text);
   });
 
   it("says the show will start, and copes with checks without numbers", async () => {

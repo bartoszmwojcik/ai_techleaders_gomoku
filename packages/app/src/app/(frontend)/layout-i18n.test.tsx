@@ -32,7 +32,7 @@ describe("FrontendLayout: language", () => {
 
     expect(html).toMatch(/^<html lang="fr">/);
     expect(html).toContain('aria-label="Thème sombre"');
-    expect(html).toContain('aria-label="Langue : Français, changer de langue"');
+    expect(html).toContain('aria-label="Langue\u00a0: Français, changer de langue"');
     expect(html).toContain('data-testid="session-menu">fr:Compte<');
     expect(await generateMetadata()).toEqual({ title: "Gomoku", description: expect.stringContaining("plateau 15×15") });
   });

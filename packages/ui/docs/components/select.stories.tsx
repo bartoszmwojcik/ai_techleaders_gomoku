@@ -48,6 +48,20 @@ export const Stany: Story = {
   ),
 };
 
+export const OpcjaZablokowana: Story = {
+  render: (args) => (
+    <div className="max-w-sm">
+      <Field label="Klient" hint="Cursor jest chwilowo niedostępny.">
+        {(control) => <Select options={[...args.options.slice(0, 2), { value: "cursor", label: "Cursor (niedostępny)", disabled: true }]} {...control} />}
+      </Field>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const option = within(canvasElement).getByRole("option", { name: "Cursor (niedostępny)" });
+    await expect(option).toBeDisabled();
+  },
+};
+
 export const DlugaEtykietaNaWaskimEkranie: Story = {
   render: (args) => (
     <Narrow>

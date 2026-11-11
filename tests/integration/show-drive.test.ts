@@ -174,7 +174,10 @@ describe("PEEK_SQL with two bots, on PostgreSQL (show-mode \"Driver\", step 1)",
       clock: { now: () => new Date() },
       botEngine: { choose: async (turn) => (turns.push(turn), 0) },
       gameMoveService: { play: async ({ playerId }: { playerId: string }) => void played.push(playerId) } as never,
-      serverConfig: { show: { enabled: true, botVsBotEnabled: true, botLevel2Enabled: false, pauseMinMs: 1000, pauseMaxMs: 2000 } },
+      serverConfig: {
+        show: { enabled: true, botVsBotEnabled: true, botLevel2Enabled: false, pauseMinMs: 1000, pauseMaxMs: 2000, botL2SoftMs: 700 },
+        bot: { maxActiveGames: 3, minAvailableMb: 64, limits: { 1: { softMs: 50, ceilingMs: 250 }, 2: { softMs: 1500, ceilingMs: 3000 } } },
+      },
     });
     return { bots, played, turns };
   }
@@ -214,6 +217,15 @@ describe("PEEK_SQL with two bots, on PostgreSQL (show-mode \"Driver\", step 1)",
 
     await run(`update games set turn_started_at = null where id = ?`, [gameId]);
     expect(await service().bots.playDueMove(gameId)).toBe("idle");
+
+    // P9: on a low clock the pause is clipped to a quarter of it (both clocks at 2000 ms: at most 500 ms of pause).
+    await run(`update games set clock_ms_1 = 2000, clock_ms_2 = 2000, turn_started_at = now() - interval '600 milliseconds' where id = ?`, [
+      gameId,
+    ]);
+    const clipped = service();
+    expect(await clipped.bots.playDueMove(gameId)).toBe("played");
+    // A show's bot gets the show's limits (SHOW_BOT_L2_SOFT_MS), read with the row's origin.
+    expect(clipped.turns[0]).toMatchObject({ limits: { 2: { softMs: 700, ceilingMs: 1400 } } });
 
     const player = await post(baseUrl, "/api/auth/register", {
       email: `naped-${Date.now().toString(36)}@example.com`,

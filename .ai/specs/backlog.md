@@ -166,9 +166,21 @@ Last filed: 2026-11-10
 
 Uwagi 2026-11-10 (E14): pokaz to osąd właściciela (D-37), bez dowodu popytu graczy; epik zaadoptowano z #275 (zgoda właściciela, zmiana źródła z briefu na specyfikację); historie i zadania mają priority-medium (decyzja właściciela), epik zostaje priority-low. Zadania są podzgłoszeniami GitHub (epik → historie → zadania). Kolejność: S01 → S02 → (S03, S04). Flagi `SHOW_*` zostają wyłączone do końca epiku; wdrożenie po epiku zgodnie z decyzją właściciela; brak dotykania produkcji bez zgody właściciela.
 
-## Stan E14 (2026-11-10)
+## Stan E14 (2026-11-11)
 
-Specyfikacja `.ai/specs/2026-11-09-show-mode.md` zatwierdzona 2026-11-09. Epik E14 to #275 (zaadoptowany, otwarty); historie S01–S04 i zadania zgłoszono 2026-11-10 (#280–#286, sekcja „.ai/specs/2026-11-09-show-mode.md” wyżej). Implementacja jeszcze nie rozpoczęta.
+Specyfikacja `.ai/specs/2026-11-09-show-mode.md` zatwierdzona 2026-11-09. Epik E14 to #275 (zaadoptowany, otwarty).
+
+Scalone:
+- #281 (PR #301): migracja i konfiguracja;
+- #280 (PR #304): bot vs bot i widok tylko do odczytu, PL/EN/FR;
+- #282 (PR #305): napęd pollingiem widoku;
+- #283 (PR #306): bot vs agent;
+- #285 oraz kod i dokumentacja #284 (PR #307): pokrętła tempa, przycinanie pauzy, `bot:bench --show`, test przedlotowy z próbnym ruchem silnika, przełącznik poziomu 2, runbook.
+
+Otwarte:
+- #286: strojenie i pomiar na Mikrusie (T1→T3) oraz próba generalna z obcego komputera — wymaga zgody właściciela.
+
+Dlatego #284 i epik #275 zostają otwarte. Flagi `SHOW_*` są wyłączone; wdrożenie po epiku (decyzja właściciela).
 
 ## .ai/specs/2026-11-10-i18n.md
 Backlog source: .ai/specs/2026-11-10-i18n.md
@@ -189,6 +201,10 @@ Last filed: 2026-11-10
 
 Uwagi 2026-11-10 (E15): epik zaadoptowano z #289 (zgoda właściciela „tak, zgłoś to drzewo”; tytuł `E15 — …`, `Backlog id: E15`, ryzyko risk-medium → risk-high). Historie mają priority-medium (S01 faza A, S02 faza B, S03–S08 paczki C1–C6 po pokazie, S09 decyzje bez kodu); ryzyko: S06, S07, S09 risk-high, pozostałe risk-medium. S01 nie ma zadań (kroki A1–A10 jako lista kontrolna w treści). Zgłoszenia GitHub: historie są podzgłoszeniami epiku. Noty o wpływie na E14 dodano jako komentarze w #275, #280–#286 (`Depends on: E15-S01` dla #280). Kolejność: E15-S01 → (#281 równolegle) → #280 → #282/#283 z E15-S02 (termin: dzień pokazu minus 5) → S03…S08.
 
-## Stan E15 (2026-11-10)
+## Stan E15 (2026-11-11)
 
-Specyfikacja `.ai/specs/2026-11-10-i18n.md` zatwierdzona 2026-11-10 (PR #290). Epik E15 to #289 (zaadoptowany, otwarty); historie S01–S09 zgłoszono 2026-11-10 (#291–#299, sekcja „.ai/specs/2026-11-10-i18n.md” wyżej). Implementacja jeszcze nie rozpoczęta.
+Specyfikacja `.ai/specs/2026-11-10-i18n.md` zatwierdzona 2026-11-10 (PR #290). Epik E15 to #289 (zaadoptowany, otwarty).
+
+- E15-S01 (#291): scalone (PR #302).
+- E15-S02 (#292): przestrzeń `show` w PL/EN/FR w PR-ach #304–#307; eksport CSV (`npm run i18n:export`) i typografia FR w #307. Otwarte: natywna recenzja FR (`status.ts` → `reviewed`) i decyzja dnia pokazu − 5 (I17) — należą do właściciela.
+- S03…S09: nierozpoczęte.

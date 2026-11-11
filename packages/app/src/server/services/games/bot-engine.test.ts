@@ -239,6 +239,15 @@ describe("createWorkerBotEngine (hosted-bot R5, R6)", () => {
     await expect(second).resolves.toBe(2);
   });
 
+  it("takes the limits of the turn instead of its own when given (a show's SHOW_BOT_L2_SOFT_MS)", async () => {
+    const { engine, jobs, workers } = setup();
+    const move = engine.choose(turn({ limits: { 1: { softMs: 50, ceilingMs: 250 }, 2: { softMs: 700, ceilingMs: 1400 } } }));
+    await vi.waitFor(() => expect(workers).toHaveLength(1));
+    expect(jobs[0]!.budget).toMatchObject({ softMs: 700, ceilingMs: 1400 });
+    workers[0]!.send({ type: "done", choice: choice(3) });
+    await expect(move).resolves.toBe(3);
+  });
+
   it("asks a level-1 search of the thread when the clock is under a second", async () => {
     const { engine, jobs, workers } = setup();
     const move = engine.choose(turn({ remainingClockMs: 900 }));

@@ -26,12 +26,14 @@ const due = (extra: Record<string, unknown> = {}) => ({
   bot_level: 2,
   bot_memory_mb: 768,
   bot_depth_cap: 8,
+  clock_ms: 600_000,
   remaining_ms: 590_000,
   elapsed_ms: 10_000,
   ...extra,
 });
 
-const SHOW = { pauseMinMs: 1000, pauseMaxMs: 2000 };
+const SHOW = { pauseMinMs: 1000, pauseMaxMs: 2000, botL2SoftMs: 700 };
+const BOT = { maxActiveGames: 3, minAvailableMb: 64, limits: { 1: { softMs: 50, ceilingMs: 250 }, 2: { softMs: 1500, ceilingMs: 3000 } } };
 
 function setup(options: { rows?: unknown[]; play?: () => Promise<unknown>; engine?: BotEngine } = {}) {
   const em = { execute: vi.fn(async () => options.rows ?? [due()]) };
@@ -43,7 +45,7 @@ function setup(options: { rows?: unknown[]; play?: () => Promise<unknown>; engin
     gameMoveService: { play } as unknown as GameMoveService,
     botEngine: engine,
     clock: { now: () => NOW },
-    serverConfig: { show: { enabled: true, botVsBotEnabled: true, botLevel2Enabled: false, ...SHOW } },
+    serverConfig: { show: { enabled: true, botVsBotEnabled: true, botLevel2Enabled: false, ...SHOW }, bot: BOT },
   });
   return { service, em, play, choose };
 }
@@ -234,8 +236,36 @@ describe("BotTurnService.playDueMove in a show (show-mode \"Driver\", P9)", () =
     expect(unstarted.choose).not.toHaveBeenCalled();
   });
 
-  it("does not wait in a game that is not a show, even right at the start of the turn", async () => {
+  it("does not wait in a game that is not a show, even right at the start of the turn, nor on a low clock", async () => {
     const { service } = setup({ rows: [due({ elapsed_ms: 0 })] });
     await expect(service.playDueMove(GAME)).resolves.toBe("played");
+    const low = setup({ rows: [due({ elapsed_ms: 0, clock_ms: 2000, remaining_ms: 2000 })] });
+    await expect(low.service.playDueMove(GAME)).resolves.toBe("played");
+  });
+
+  it("clips the pause to a quarter of the bot's clock at the start of the turn (P9: min(pause, clock / 4))", async () => {
+    const pause = pauseOf(2);
+    // 4000 ms on the clock: at most 1000 ms of pause, below the drawn one (1000-2000 ms).
+    const clipped = { move_count: 1, clock_ms: 4000, remaining_ms: 3000 };
+    const early = setup({ rows: [seat1({ move_count: 1 }), seat2({ ...clipped, elapsed_ms: 999 })] });
+    await expect(early.service.playDueMove(GAME)).resolves.toBe("idle");
+    const due1000 = setup({ rows: [seat1({ move_count: 1 }), seat2({ ...clipped, elapsed_ms: 1000 })] });
+    await expect(due1000.service.playDueMove(GAME)).resolves.toBe("played");
+    // An ample clock keeps the drawn pause.
+    const ample = setup({ rows: [seat1({ move_count: 1 }), seat2({ move_count: 1, elapsed_ms: Math.min(pause, 1000) - 1 })] });
+    await expect(ample.service.playDueMove(GAME)).resolves.toBe("idle");
+    // A clock run out waits for nothing.
+    const out = setup({ rows: [seat1({ move_count: 1 }), seat2({ move_count: 1, clock_ms: 0, remaining_ms: 0, elapsed_ms: 0 })] });
+    await expect(out.service.playDueMove(GAME)).resolves.toBe("played");
+  });
+
+  it("gives a show's bot the show's limits (SHOW_BOT_L2_SOFT_MS) and leaves every other game with the engine's", async () => {
+    const show = setup({ rows: [seat2({ move_count: 1, bot_level: 2, bot_memory_mb: 768, bot_depth_cap: 8, ...after(2) })] });
+    await expect(show.service.playDueMove(GAME)).resolves.toBe("played");
+    expect(show.choose.mock.calls[0]![0].limits).toEqual({ 1: { softMs: 50, ceilingMs: 250 }, 2: { softMs: 700, ceilingMs: 1400 } });
+
+    const normal = setup();
+    await expect(normal.service.playDueMove(GAME)).resolves.toBe("played");
+    expect(normal.choose.mock.calls[0]![0]).not.toHaveProperty("limits");
   });
 });

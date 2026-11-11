@@ -81,9 +81,9 @@ describe("ShowRoom, the read-only view", () => {
   it("speaks the language the server passed (bot names from their strength)", () => {
     room(live(), null, { locale: "fr", dict: frShow, headerDict: frHeader });
 
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Démonstration : Bot contre bot");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Démonstration\u00a0: Bot contre bot");
     expect(screen.getByText("Trait aux blancs : Bot · niveau 1")).toBeTruthy();
-    expect(screen.getAllByRole("timer")[0]!.closest("[data-slot=clock]")!.textContent).toContain("Noirs : Bot · niveau 2 · 16 Mo");
+    expect(screen.getAllByRole("timer")[0]!.closest("[data-slot=clock]")!.textContent).toContain("Noirs\u00a0: Bot · niveau 2 · 16 Mo");
   });
 
   it("gives the result in neutral words, the way to a new show and logging out after the end", () => {
@@ -178,9 +178,9 @@ describe("ShowRoom, the drive (phase b)", () => {
     expect(screen.getByTestId("show-drive").textContent).toBe("Moteur actif");
 
     await advance(6_000);
-    expect(screen.getByRole("alert").textContent).toBe("Moteur arrêté : Aucune réponse du serveur");
+    expect(screen.getByRole("alert").textContent).toBe("Moteur arrêté\u00a0: Aucune réponse du serveur");
     const alert = screen.getByTestId("show-drive");
-    expect(alert.textContent).toContain("Moteur arrêté : Aucune réponse du serveur depuis 6 secondes");
+    expect(alert.textContent).toContain("Moteur arrêté\u00a0: Aucune réponse du serveur depuis 6 secondes");
     expect(alert.textContent).toContain("encore 9:54");
     expect(screen.getByRole("button", { name: "Vérifier maintenant" })).toBeTruthy();
   });

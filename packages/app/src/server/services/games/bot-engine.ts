@@ -27,6 +27,8 @@ export type BotTurn = {
   memoryMb: number | null;
   /** What was left on the bot's clock when the position was read (R6). */
   remainingClockMs: number;
+  /** Replaces the engine's limits for this move: only a show's bots (`SHOW_BOT_L2_SOFT_MS`, `showBotLimits`). */
+  limits?: Readonly<Record<BotLevel, BotTimeLimits>>;
 };
 
 /** Computes the bot's move: always a free cell of the board. Injected into `BotTurnService`. */
@@ -187,7 +189,7 @@ export function createWorkerBotEngine({
         // The bot's clock ran while the move waited for the gate.
         const remainingClockMs = turn.remainingClockMs - (now() - queuedAt);
         if ((botFailures().get(turn.gameId) ?? 0) >= BOT_MAX_FAILURES) return inlineLevel1(turn);
-        const { level, budget } = budgetFor({ ...turn, remainingClockMs, limits });
+        const { level, budget } = budgetFor({ ...turn, remainingClockMs, limits: turn.limits ?? limits });
         // No time for a thread at all (the clock is about to run out): no point in starting one.
         if (budget.ceilingMs <= 0) return inlineLevel1(turn);
         return compute(turn, level, budget);

@@ -162,7 +162,7 @@ describe("creating a show (bot vs bot, phase a)", () => {
     const response = await post("/api/show", BOT_BOT, admin);
 
     expect(response.status).toBe(409);
-    expect((await response.json()).error).toMatchObject({ code: "SHOW_RUNNING", data: { gameId: first } });
+    expect((await response.json()).error).toMatchObject({ code: "SHOW_RUNNING", data: { gameId: first, layout: "bot-bot" } });
   });
 
   it("creates exactly one show from two concurrent requests (advisory lock on PostgreSQL)", async () => {
@@ -188,14 +188,22 @@ describe("creating a show (bot vs bot, phase a)", () => {
     expect((await run(`select count(*)::int as n from games where origin = 'show' and status = 'active'`))[0]!.n).toBe(0);
   });
 
-  it("answers the preflight with the cheap checks", async () => {
+  it("answers the preflight with the checks and a trial move of the engine in its worker thread (P18)", async () => {
     const response = await post("/api/show/preflight", { layout: "bot-bot", levels: [2, 1] }, admin);
     const { data } = await response.json();
 
     expect(response.status).toBe(200);
     expect(data.ok).toBe(false);
     expect(data.checks.find((check: { id: string }) => check.id === "level2_enabled")).toEqual({ id: "level2_enabled", ok: false });
-    expect(data.checks.find((check: { id: string }) => check.id === "engine")).toEqual({ id: "engine", ok: null });
+    // The built app's real worker thread, behind the gate: a level-1 move within its 250 ms ceiling.
+    const engine = data.checks.find((check: { id: string }) => check.id === "engine");
+    expect(engine).toMatchObject({ id: "engine", ok: true, detail: { limitMs: 250 } });
+    expect(engine.detail.ms).toBeLessThanOrEqual(250);
+    expect(engine.detail.waitedMs).toBeGreaterThanOrEqual(0);
+
+    // The console's first read stays cheap: no trial move there.
+    const overview = await (await fetch(`${baseUrl}/api/show`, { headers: { cookie: admin } })).json();
+    expect(overview.data.preflight.checks.find((check: { id: string }) => check.id === "engine")).toEqual({ id: "engine", ok: null });
   });
 });
 
@@ -276,7 +284,7 @@ describe("the language of the show (E15 note on #280)", () => {
 
     const html = await (await get(`/show/${show}?projektor=1`, `${admin}; gomoku_lang=fr`)).text();
     expect(/<html lang="([^"]+)"/.exec(html)?.[1]).toBe("fr");
-    expect(html).toContain("Démonstration : Bot contre bot");
+    expect(html).toContain("Démonstration\u00a0: Bot contre bot");
     expect(html).toContain("Vue pour projecteur");
     expect(html).toContain("Trait aux");
     expect(html).toContain('data-projector="true"');

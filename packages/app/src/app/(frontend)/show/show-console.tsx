@@ -86,17 +86,22 @@ export function ShowConsole({ initial, locale, dict }: Props) {
     }
     inFlight.current = false;
     setStarting(false);
-    const running = result.error.code === "SHOW_RUNNING" && typeof result.error.data?.gameId === "string";
-    if (running) setCurrent({ gameId: result.error.data!.gameId as string, status: "active", layout });
+    const data = result.error.data;
+    if (result.error.code === "SHOW_RUNNING" && typeof data?.gameId === "string") {
+      // The server names the running show's layout; the chosen one is only the fallback.
+      const runningLayout = data.layout === "bot-bot" || data.layout === "bot-agent" ? data.layout : layout;
+      setCurrent({ gameId: data.gameId, status: "active", layout: runningLayout });
+    }
     setFailure({ title: t("errors.createTitle"), text: errorText(t, result.error), code: result.error.code });
     heading.current?.focus();
   }
 
-  // Level 2 in bot vs bot waits for its switch; bot vs agent offers both levels with the bot's flag alone (P16).
-  const levelOptions = (initial.level2Enabled || !botVsBot ? [1, 2] : [1]).map((level) => ({
-    value: String(level),
-    label: t("console.level", { level }),
-  }));
+  // Level 2 in bot vs bot waits for its switch: shown, but not choosable, with the reason in the hint (E14-S04);
+  // bot vs agent offers both levels with the bot's flag alone (P16).
+  const levelOptions = ([1, 2] as const).map((level) => {
+    const disabled = level === 2 && botVsBot && !initial.level2Enabled;
+    return { value: String(level), label: t(disabled ? "console.levelDisabled" : "console.level", { level }), disabled };
+  });
 
   return (
     <Shell>
@@ -212,6 +217,7 @@ function checkLabel(t: ShowTranslator, check: ShowCheck): string {
     return t("checks.item.memory", { available: t.megabytes(detail.availableMb ?? 0), min: t.megabytes(detail.minAvailableMb ?? 0) });
   }
   if (check.id === "slot") return t("checks.item.slot", { active: detail.activeGames ?? 0, max: detail.maxActiveGames ?? 0 });
+  if (check.id === "engine" && detail.ms !== undefined) return t("checks.item.engineTimed", { ms: detail.ms, limit: detail.limitMs ?? 0 });
   return t(`checks.item.${check.id}`);
 }
 
