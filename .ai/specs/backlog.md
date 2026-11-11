@@ -149,8 +149,8 @@ Uwagi 2026-11-06 (E13): epik E13 (#255) i E13-S01 (#256) należą do źródła `
 
 Źródło: `.ai/specs/2026-11-05-hosted-bot.md`. E13-S01 (#256) zatwierdzona przez właściciela 2026-11-05 (specyfikacja scalona w PR #258, Q-23 zamknięte). Historie S02–S05 zgłoszono 2026-11-06 (#259–#265, sekcja „.ai/specs/2026-11-05-hosted-bot.md” wyżej). Funkcja zostaje za flagą `BOT_ENABLED` do zaakceptowanego pomiaru na Mikrusie.
 
-## .ai/specs/2026-11-09-show-mode.md
-Backlog source: .ai/specs/2026-11-09-show-mode.md
+## .ai/specs/implemented/2026-11-09-show-mode.md
+Backlog source: .ai/specs/implemented/2026-11-09-show-mode.md
 Last filed: 2026-11-10
 
 | Id | Issue | Title | Epic | Depends on | Adopted |
@@ -168,19 +168,7 @@ Uwagi 2026-11-10 (E14): pokaz to osąd właściciela (D-37), bez dowodu popytu g
 
 ## Stan E14 (2026-11-11)
 
-Specyfikacja `.ai/specs/2026-11-09-show-mode.md` zatwierdzona 2026-11-09. Epik E14 to #275 (zaadoptowany, otwarty).
-
-Scalone:
-- #281 (PR #301): migracja i konfiguracja;
-- #280 (PR #304): bot vs bot i widok tylko do odczytu, PL/EN/FR;
-- #282 (PR #305): napęd pollingiem widoku;
-- #283 (PR #306): bot vs agent;
-- #285 oraz kod i dokumentacja #284 (PR #307): pokrętła tempa, przycinanie pauzy, `bot:bench --show`, test przedlotowy z próbnym ruchem silnika, przełącznik poziomu 2, runbook.
-
-Otwarte:
-- #286: strojenie i pomiar na Mikrusie (T1→T3) oraz próba generalna z obcego komputera — wymaga zgody właściciela.
-
-Dlatego #284 i epik #275 zostają otwarte. Flagi `SHOW_*` są wyłączone; wdrożenie po epiku (decyzja właściciela).
+**Epik zamknięty.** Scalone: #281 (PR #301), #280 (PR #304), #282 (PR #305), #283 (PR #306), #285 i kod/runbook #284 (PR #307), przekazanie zmiennych pokazu do kontenera (PR #309). #286: wdrożenie na Mikrusa i flagi `SHOW_*` włączone przez właściciela, próba generalna z obcego komputera zaliczona (bot vs bot, bot vs agent, języki); pomiar `bot:bench --show` na hoście zastąpiony **wyjątkiem właściciela** dla poziomu 2 (A-24, 2026-11-11). Specyfikacja przeniesiona do `.ai/specs/implemented/2026-11-09-show-mode.md`. Log: `.ai/runs/2026-11-11-e14-epic-orchestration.md`.
 
 ## .ai/specs/2026-11-10-i18n.md
 Backlog source: .ai/specs/2026-11-10-i18n.md

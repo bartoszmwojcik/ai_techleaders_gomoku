@@ -1,6 +1,6 @@
 # 2026-11-11 — E14-S04: pokrętła tempa, `bot:bench --show`, test przedlotowy, runbook + narzędzia E15-S02
 
-- **Cel:** jeden PR z kodem fazy (d) pokazu (#285 w całości, kod i dokumentacja #284) i częścią narzędziową E15-S02 (#292) wg `.ai/specs/2026-11-09-show-mode.md` („E14-S04”, kroki 0–4) i `.ai/specs/2026-11-10-i18n.md` („E15-S02”). Bez Mikrusa i produkcji; flagi `SHOW_*` zostają wyłączone.
+- **Cel:** jeden PR z kodem fazy (d) pokazu (#285 w całości, kod i dokumentacja #284) i częścią narzędziową E15-S02 (#292) wg `.ai/specs/implemented/2026-11-09-show-mode.md` („E14-S04”, kroki 0–4) i `.ai/specs/2026-11-10-i18n.md` („E15-S02”). Bez Mikrusa i produkcji; flagi `SHOW_*` zostają wyłączone.
 - **Tryb:** autonomiczny (zadanie cezara 27c6ed62, zlecone przez 3ee29010), worktree `cez/27c6ed62` od `origin/main` `200f5a0`.
 
 ## Kroki i wyniki

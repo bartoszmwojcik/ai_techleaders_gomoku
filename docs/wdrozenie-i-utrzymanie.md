@@ -75,7 +75,7 @@ Flaga zostaje wyłączona, dopóki nie są spełnione **wszystkie** warunki (R19
 
 ## Pokaz (E14, tylko administrator)
 
-Pokaz (specyfikacja `.ai/specs/2026-11-09-show-mode.md`) to prywatna partia bez miejsca człowieka — bot vs bot albo bot vs agent — którą administrator tworzy na `/show` i ogląda na `/show/<id>`, także na projektorze. Boty grają, dopóki karta administratora czyta stan (bez pętli w serwerze). Wszystkie przełączniki są **domyślnie wyłączone**; o ich włączeniu na produkcji decyduje właściciel.
+Pokaz (specyfikacja `.ai/specs/implemented/2026-11-09-show-mode.md`) to prywatna partia bez miejsca człowieka — bot vs bot albo bot vs agent — którą administrator tworzy na `/show` i ogląda na `/show/<id>`, także na projektorze. Boty grają, dopóki karta administratora czyta stan (bez pętli w serwerze). Wszystkie przełączniki są **domyślnie wyłączone**; o ich włączeniu na produkcji decyduje właściciel.
 
 | Zmienna | Domyślnie | Znaczenie |
 | --- | --- | --- |

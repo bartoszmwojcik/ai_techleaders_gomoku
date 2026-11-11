@@ -1,6 +1,6 @@
 # 2026-11-10 — E14-S01: pokaz bot vs bot i widok tylko do odczytu (#280)
 
-**Cel.** Zgłoszenie #280 (E14-S01, faza (a) `.ai/specs/2026-11-09-show-mode.md`, kroki 3–11) z kryteriami i18n z noty E15 (a)–(f). Przebieg autonomiczny w worktree cezara (`cez/30cae07c`), zlecony przez zadanie nadrzędne epiku E14; PR bez scalania.
+**Cel.** Zgłoszenie #280 (E14-S01, faza (a) `.ai/specs/implemented/2026-11-09-show-mode.md`, kroki 3–11) z kryteriami i18n z noty E15 (a)–(f). Przebieg autonomiczny w worktree cezara (`cez/30cae07c`), zlecony przez zadanie nadrzędne epiku E14; PR bez scalania.
 
 ## Kroki i rezultaty
 
