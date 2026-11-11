@@ -1,19 +1,27 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { BenchDeps } from "./bot-bench";
 
-const { loadEnvConfig, runBench } = vi.hoisted(() => ({ loadEnvConfig: vi.fn(), runBench: vi.fn() }));
+const { loadEnvConfig, runBench, runShowStep, runTuning } = vi.hoisted(() => ({
+  loadEnvConfig: vi.fn(),
+  runBench: vi.fn(),
+  runShowStep: vi.fn(),
+  runTuning: vi.fn(),
+}));
 vi.mock("@next/env", () => ({ default: { loadEnvConfig } }));
 vi.mock("./bot-bench", async (original) => ({ ...(await original<object>()), runBench }));
+vi.mock("./bot-bench-show", async (original) => ({ ...(await original<object>()), runShowStep, runTuning }));
 
 const argv = process.argv;
 let log: ReturnType<typeof vi.spyOn>;
 beforeEach(() => {
   vi.resetModules();
   runBench.mockReset();
+  runShowStep.mockReset();
+  runTuning.mockReset();
   loadEnvConfig.mockReset();
   log = vi.spyOn(console, "log").mockImplementation(() => undefined);
 });
@@ -63,4 +71,50 @@ it("takes the positions, a fixed memory and a probe of another game from the opt
   await deps.probe!();
   expect(fetch).toHaveBeenCalledWith("http://127.0.0.1:3000/api/games/x");
   expect(process.exitCode).toBe(0);
+});
+
+describe("--show (show-mode P17)", () => {
+  it("measures one step with the pause and the soft target of the configuration for 300 s", async () => {
+    vi.stubEnv("BOT_SHOW_PAUSE_MIN_MS", "1500");
+    vi.stubEnv("BOT_SHOW_PAUSE_MAX_MS", "");
+    vi.stubEnv("SHOW_BOT_L2_SOFT_MS", "");
+    runShowStep.mockResolvedValue({ accepted: true });
+    process.argv = [...argv.slice(0, 2), "--show"];
+    await import("./bot-bench-cli");
+
+    const [step, deps] = runShowStep.mock.calls[0]!;
+    expect(step).toEqual({ name: "custom", pauseMinMs: 1500, pauseMaxMs: 2000, l2SoftMs: 1500 });
+    expect(deps.durationMs).toBe(300_000);
+    expect(typeof deps.createEngine(console).choose).toBe("function");
+    expect(runBench).not.toHaveBeenCalled();
+    expect(JSON.parse(log.mock.calls[0]![0] as string)).toMatchObject({ mode: "show", accepted: true });
+    expect(process.exitCode).toBe(0);
+  });
+
+  it("takes the step and the duration from the options, checked by the rules of the configuration", async () => {
+    runShowStep.mockResolvedValue({ accepted: false });
+    process.argv = [...argv.slice(0, 2), "--show", "--pause-min", "3000", "--pause-max", "6000", "--l2-soft", "700", "--duration", "60"];
+    await import("./bot-bench-cli");
+
+    const [step, deps] = runShowStep.mock.calls[0]!;
+    expect(step).toEqual({ name: "custom", pauseMinMs: 3000, pauseMaxMs: 6000, l2SoftMs: 700 });
+    expect(deps.durationMs).toBe(60_000);
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("refuses a pause beyond 8000 ms", async () => {
+    process.argv = [...argv.slice(0, 2), "--show", "--pause-max", "9000"];
+    await expect(import("./bot-bench-cli")).rejects.toThrow("BOT_SHOW_PAUSE_MAX_MS must be an integer from 0 to 8000.");
+  });
+
+  it("walks the tuning table with --tuning, its exit code the verdict", async () => {
+    runTuning.mockResolvedValue({ steps: [], passed: null, accepted: false, ownerDecision: "ask" });
+    process.argv = [...argv.slice(0, 2), "--show", "--tuning"];
+    await import("./bot-bench-cli");
+
+    expect(runTuning.mock.calls[0]![0].durationMs).toBe(300_000);
+    expect(runShowStep).not.toHaveBeenCalled();
+    expect(JSON.parse(log.mock.calls[0]![0] as string)).toMatchObject({ mode: "show-tuning", passed: null, ownerDecision: "ask" });
+    expect(process.exitCode).toBe(1);
+  });
 });
