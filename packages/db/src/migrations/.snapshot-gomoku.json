@@ -210,18 +210,21 @@
       "checks": [
         {
           "name": "chat_messages_author_check",
-          "expression": "(sender_id is not null and spectator_id is null and author_name is null) or (sender_id is null and spectator_id is not null and author_name is not null)",
-          "definition": "check ((sender_id is not null and spectator_id is null and author_name is null) or (sender_id is null and spectator_id is not null and author_name is not null))"
+          "expression": "((sender_id IS NOT NULL) AND (spectator_id IS NULL) AND (author_name IS NULL)) OR ((sender_id IS NULL) AND (spectator_id IS NOT NULL) AND (author_name IS NOT NULL))",
+          "definition": "CHECK ((((sender_id IS NOT NULL) AND (spectator_id IS NULL) AND (author_name IS NULL)) OR ((sender_id IS NULL) AND (spectator_id IS NOT NULL) AND (author_name IS NOT NULL))))",
+          "columnName": "author_name"
         },
         {
           "name": "chat_messages_body_length_check",
-          "expression": "char_length(body) between 1 and 1000",
-          "definition": "check (char_length(body) between 1 and 1000)"
+          "expression": "(char_length(body) >= 1) AND (char_length(body) <= 1000)",
+          "definition": "CHECK (((char_length((body)::text) >= 1) AND (char_length((body)::text) <= 1000)))",
+          "columnName": "body"
         },
         {
           "name": "chat_messages_seq_check",
           "expression": "seq >= 1",
-          "definition": "check (seq >= 1)"
+          "definition": "CHECK ((seq >= 1))",
+          "columnName": "seq"
         }
       ],
       "triggers": [],
@@ -687,12 +690,14 @@
         {
           "name": "game_pair_counters_count_check",
           "expression": "finished_count >= 0",
-          "definition": "check (finished_count >= 0)"
+          "definition": "CHECK ((finished_count >= 0))",
+          "columnName": "finished_count"
         },
         {
           "name": "game_pair_counters_kind_order_check",
           "expression": "kind_a <= kind_b",
-          "definition": "check (kind_a <= kind_b)"
+          "definition": "CHECK (((kind_a)::text <= (kind_b)::text))",
+          "columnName": "kind_a"
         }
       ],
       "triggers": [],
@@ -898,14 +903,17 @@
           "primary": false,
           "nullable": false,
           "unique": false,
-          "length": 16,
+          "length": null,
           "precision": null,
           "scale": null,
           "default": "'web'",
           "comment": null,
           "collation": null,
-          "enumItems": [],
-          "mappedType": "string"
+          "enumItems": [
+            "web",
+            "mcp"
+          ],
+          "mappedType": "enum"
         },
         "joined_at": {
           "name": "joined_at",
@@ -932,14 +940,19 @@
           "primary": false,
           "nullable": false,
           "unique": false,
-          "length": 16,
+          "length": null,
           "precision": null,
           "scale": null,
           "default": null,
           "comment": null,
           "collation": null,
-          "enumItems": [],
-          "mappedType": "string"
+          "enumItems": [
+            "account",
+            "guest",
+            "agent",
+            "bot"
+          ],
+          "mappedType": "enum"
         },
         "nickname": {
           "name": "nickname",
@@ -1030,7 +1043,7 @@
           "keyName": "game_players_bot_active_index",
           "primary": false,
           "unique": false,
-          "where": "kind = 'bot' and is_active"
+          "where": "((kind)::text = 'bot'::text) AND is_active"
         },
         {
           "columnNames": [
@@ -1099,93 +1112,111 @@
       "checks": [
         {
           "name": "game_players_agent_channel_check",
-          "expression": "(kind = 'agent') = (join_channel <> 'web')",
-          "definition": "check ((kind = 'agent') = (join_channel <> 'web'))"
+          "expression": "(kind = 'agent'::text) = (join_channel <> 'web'::text)",
+          "definition": "CHECK ((((kind)::text = 'agent'::text) = ((join_channel)::text <> 'web'::text)))",
+          "columnName": "join_channel"
         },
         {
           "name": "game_players_agent_name_length_check",
-          "expression": "agent_name is null or char_length(agent_name) between 1 and 40",
-          "definition": "check (agent_name is null or char_length(agent_name) between 1 and 40)"
+          "expression": "(agent_name IS NULL) OR ((char_length(agent_name) >= 1) AND (char_length(agent_name) <= 40))",
+          "definition": "CHECK (((agent_name IS NULL) OR ((char_length((agent_name)::text) >= 1) AND (char_length((agent_name)::text) <= 40))))",
+          "columnName": "agent_name"
         },
         {
           "name": "game_players_agent_name_only_agent_check",
-          "expression": "agent_name is null or kind = 'agent'",
-          "definition": "check (agent_name is null or kind = 'agent')"
+          "expression": "(agent_name IS NULL) OR (kind = 'agent'::text)",
+          "definition": "CHECK (((agent_name IS NULL) OR ((kind)::text = 'agent'::text)))",
+          "columnName": "agent_name"
         },
         {
           "name": "game_players_agent_no_user_check",
-          "expression": "kind <> 'agent' or user_id is null",
-          "definition": "check (kind <> 'agent' or user_id is null)"
+          "expression": "(kind <> 'agent'::text) OR (user_id IS NULL)",
+          "definition": "CHECK ((((kind)::text <> 'agent'::text) OR (user_id IS NULL)))",
+          "columnName": "kind"
         },
         {
           "name": "game_players_agent_seat_check",
-          "expression": "kind <> 'agent' or seat = 2",
-          "definition": "check (kind <> 'agent' or seat = 2)"
+          "expression": "(kind <> 'agent'::text) OR (seat = 2)",
+          "definition": "CHECK ((((kind)::text <> 'agent'::text) OR (seat = 2)))",
+          "columnName": "kind"
         },
         {
           "name": "game_players_bot_kind_check",
-          "expression": "(kind = 'bot') = (bot_level is not null)",
-          "definition": "check ((kind = 'bot') = (bot_level is not null))"
+          "expression": "(kind = 'bot'::text) = (bot_level IS NOT NULL)",
+          "definition": "CHECK ((((kind)::text = 'bot'::text) = (bot_level IS NOT NULL)))",
+          "columnName": "bot_level"
         },
         {
           "name": "game_players_bot_level_check",
-          "expression": "bot_level is null or bot_level in (1, 2)",
-          "definition": "check (bot_level is null or bot_level in (1, 2))"
+          "expression": "(bot_level IS NULL) OR (bot_level = ANY (ARRAY[1, 2]))",
+          "definition": "CHECK (((bot_level IS NULL) OR (bot_level = ANY (ARRAY[1, 2]))))",
+          "columnName": "bot_level"
         },
         {
           "name": "game_players_bot_no_user_check",
-          "expression": "kind <> 'bot' or user_id is null",
-          "definition": "check (kind <> 'bot' or user_id is null)"
+          "expression": "(kind <> 'bot'::text) OR (user_id IS NULL)",
+          "definition": "CHECK ((((kind)::text <> 'bot'::text) OR (user_id IS NULL)))",
+          "columnName": "kind"
         },
         {
           "name": "game_players_bot_params_check",
-          "expression": "(bot_level is distinct from 2 or (bot_memory_mb is not null and bot_depth_cap is not null)) and (bot_level = 2 or (bot_memory_mb is null and bot_depth_cap is null))",
-          "definition": "check ((bot_level is distinct from 2 or (bot_memory_mb is not null and bot_depth_cap is not null)) and (bot_level = 2 or (bot_memory_mb is null and bot_depth_cap is null)))"
+          "expression": "((bot_level IS DISTINCT FROM 2) OR ((bot_memory_mb IS NOT NULL) AND (bot_depth_cap IS NOT NULL))) AND ((bot_level = 2) OR ((bot_memory_mb IS NULL) AND (bot_depth_cap IS NULL)))",
+          "definition": "CHECK ((((bot_level IS DISTINCT FROM 2) OR ((bot_memory_mb IS NOT NULL) AND (bot_depth_cap IS NOT NULL))) AND ((bot_level = 2) OR ((bot_memory_mb IS NULL) AND (bot_depth_cap IS NULL)))))",
+          "columnName": "bot_depth_cap"
         },
         {
           "name": "game_players_display_name_only_account_check",
-          "expression": "kind = 'account' or display_name is null",
-          "definition": "check (kind = 'account' or display_name is null)"
+          "expression": "(kind = 'account'::text) OR (display_name IS NULL)",
+          "definition": "CHECK ((((kind)::text = 'account'::text) OR (display_name IS NULL)))",
+          "columnName": "display_name"
         },
         {
           "name": "game_players_guest_no_user_check",
-          "expression": "kind <> 'guest' or user_id is null",
-          "definition": "check (kind <> 'guest' or user_id is null)"
+          "expression": "(kind <> 'guest'::text) OR (user_id IS NULL)",
+          "definition": "CHECK ((((kind)::text <> 'guest'::text) OR (user_id IS NULL)))",
+          "columnName": "kind"
         },
         {
           "name": "game_players_join_channel_check",
-          "expression": "join_channel in ('web', 'mcp')",
-          "definition": "check (join_channel in ('web', 'mcp'))"
+          "expression": "\"join_channel\" in ('web', 'mcp')",
+          "definition": "check (\"join_channel\" in ('web', 'mcp'))",
+          "columnName": "join_channel"
         },
         {
           "name": "game_players_kind_check",
-          "expression": "kind in ('account', 'guest', 'agent', 'bot')",
-          "definition": "check (kind in ('account', 'guest', 'agent', 'bot'))"
+          "expression": "\"kind\" in ('account', 'guest', 'agent', 'bot')",
+          "definition": "check (\"kind\" in ('account', 'guest', 'agent', 'bot'))",
+          "columnName": "kind"
         },
         {
           "name": "game_players_nickname_not_empty_check",
-          "expression": "nickname is null or char_length(nickname) >= 1",
-          "definition": "check (nickname is null or char_length(nickname) >= 1)"
+          "expression": "(nickname IS NULL) OR (char_length(nickname) >= 1)",
+          "definition": "CHECK (((nickname IS NULL) OR (char_length((nickname)::text) >= 1)))",
+          "columnName": "nickname"
         },
         {
           "name": "game_players_nickname_only_guest_check",
-          "expression": "kind = 'guest' or nickname is null",
-          "definition": "check (kind = 'guest' or nickname is null)"
+          "expression": "(kind = 'guest'::text) OR (nickname IS NULL)",
+          "definition": "CHECK ((((kind)::text = 'guest'::text) OR (nickname IS NULL)))",
+          "columnName": "kind"
         },
         {
           "name": "game_players_seat_check",
-          "expression": "seat in (1, 2)",
-          "definition": "check (seat in (1, 2))"
+          "expression": "seat = ANY (ARRAY[1, 2])",
+          "definition": "CHECK ((seat = ANY (ARRAY[1, 2])))",
+          "columnName": "seat"
         },
         {
           "name": "game_players_token_only_agent_check",
-          "expression": "kind = 'agent' or agent_token_hash is null",
-          "definition": "check (kind = 'agent' or agent_token_hash is null)"
+          "expression": "(kind = 'agent'::text) OR (agent_token_hash IS NULL)",
+          "definition": "CHECK ((((kind)::text = 'agent'::text) OR (agent_token_hash IS NULL)))",
+          "columnName": "agent_token_hash"
         },
         {
           "name": "game_players_token_only_guest_check",
-          "expression": "kind = 'guest' or guest_token_hash is null",
-          "definition": "check (kind = 'guest' or guest_token_hash is null)"
+          "expression": "(kind = 'guest'::text) OR (guest_token_hash IS NULL)",
+          "definition": "CHECK ((((kind)::text = 'guest'::text) OR (guest_token_hash IS NULL)))",
+          "columnName": "guest_token_hash"
         }
       ],
       "triggers": [],
@@ -1426,17 +1457,20 @@
         {
           "name": "game_spectators_expiry_check",
           "expression": "expires_at > created_at",
-          "definition": "check (expires_at > created_at)"
+          "definition": "CHECK ((expires_at > created_at))",
+          "columnName": "created_at"
         },
         {
           "name": "game_spectators_identity_check",
-          "expression": "(user_id is not null) <> (token_hash is not null)",
-          "definition": "check ((user_id is not null) <> (token_hash is not null))"
+          "expression": "(user_id IS NOT NULL) <> (token_hash IS NOT NULL)",
+          "definition": "CHECK (((user_id IS NOT NULL) <> (token_hash IS NOT NULL)))",
+          "columnName": "token_hash"
         },
         {
           "name": "game_spectators_nickname_check",
-          "expression": "nickname is null or (token_hash is not null and char_length(nickname) between 1 and 24)",
-          "definition": "check (nickname is null or (token_hash is not null and char_length(nickname) between 1 and 24))"
+          "expression": "(nickname IS NULL) OR ((token_hash IS NOT NULL) AND ((char_length(nickname) >= 1) AND (char_length(nickname) <= 24)))",
+          "definition": "CHECK (((nickname IS NULL) OR ((token_hash IS NOT NULL) AND ((char_length((nickname)::text) >= 1) AND (char_length((nickname)::text) <= 24)))))",
+          "columnName": "nickname"
         }
       ],
       "triggers": [],
@@ -1565,14 +1599,20 @@
           "primary": false,
           "nullable": true,
           "unique": false,
-          "length": 16,
+          "length": null,
           "precision": null,
           "scale": null,
           "default": null,
           "comment": null,
           "collation": null,
-          "enumItems": [],
-          "mappedType": "string"
+          "enumItems": [
+            "five_in_row",
+            "draw",
+            "timeout",
+            "resignation",
+            "points"
+          ],
+          "mappedType": "enum"
         },
         "finished_at": {
           "name": "finished_at",
@@ -1653,7 +1693,7 @@
           "length": null,
           "precision": null,
           "scale": null,
-          "default": "''",
+          "default": "'\\x'",
           "comment": null,
           "collation": null,
           "enumItems": [],
@@ -1667,14 +1707,20 @@
           "primary": false,
           "nullable": false,
           "unique": false,
-          "length": 16,
+          "length": null,
           "precision": null,
           "scale": null,
           "default": null,
           "comment": null,
           "collation": null,
-          "enumItems": [],
-          "mappedType": "string"
+          "enumItems": [
+            "invite",
+            "lobby",
+            "rematch",
+            "bot",
+            "show"
+          ],
+          "mappedType": "enum"
         },
         "rematch_expires_at": {
           "name": "rematch_expires_at",
@@ -1735,14 +1781,18 @@
           "primary": false,
           "nullable": true,
           "unique": false,
-          "length": 16,
+          "length": null,
           "precision": null,
           "scale": null,
           "default": null,
           "comment": null,
           "collation": null,
-          "enumItems": [],
-          "mappedType": "string"
+          "enumItems": [
+            "pending",
+            "accepted",
+            "declined"
+          ],
+          "mappedType": "enum"
         },
         "started_at": {
           "name": "started_at",
@@ -1769,14 +1819,19 @@
           "primary": false,
           "nullable": false,
           "unique": false,
-          "length": 16,
+          "length": null,
           "precision": null,
           "scale": null,
           "default": null,
           "comment": null,
           "collation": null,
-          "enumItems": [],
-          "mappedType": "string"
+          "enumItems": [
+            "waiting",
+            "active",
+            "finished",
+            "cancelled"
+          ],
+          "mappedType": "enum"
         },
         "stones_black": {
           "name": "stones_black",
@@ -1789,7 +1844,7 @@
           "length": null,
           "precision": null,
           "scale": null,
-          "default": "(repeat('0', 225))::bit(225)",
+          "default": "(repeat('0'::text, 225))::bit(225)",
           "comment": null,
           "collation": null,
           "enumItems": [],
@@ -1806,7 +1861,7 @@
           "length": null,
           "precision": null,
           "scale": null,
-          "default": "(repeat('0', 225))::bit(225)",
+          "default": "(repeat('0'::text, 225))::bit(225)",
           "comment": null,
           "collation": null,
           "enumItems": [],
@@ -1854,14 +1909,17 @@
           "primary": false,
           "nullable": false,
           "unique": false,
-          "length": 16,
+          "length": null,
           "precision": null,
           "scale": null,
           "default": "'classic'",
           "comment": null,
           "collation": null,
-          "enumItems": [],
-          "mappedType": "string"
+          "enumItems": [
+            "classic",
+            "paper"
+          ],
+          "mappedType": "enum"
         },
         "winner_seat": {
           "name": "winner_seat",
@@ -1907,133 +1965,159 @@
       "checks": [
         {
           "name": "games_active_black_seat_check",
-          "expression": "status not in ('active', 'finished') or black_seat is not null",
-          "definition": "check (status not in ('active', 'finished') or black_seat is not null)"
+          "expression": "(status <> ALL (ARRAY['active'::character varying, 'finished'::character varying])) OR (black_seat IS NOT NULL)",
+          "definition": "CHECK ((((status)::text <> ALL ((ARRAY['active'::character varying, 'finished'::character varying])::text[])) OR (black_seat IS NOT NULL)))",
+          "columnName": "black_seat"
         },
         {
           "name": "games_alternation_check",
-          "expression": "bit_count(stones_black) - bit_count(stones_white) in (0, 1)",
-          "definition": "check (bit_count(stones_black) - bit_count(stones_white) in (0, 1))"
+          "expression": "(bit_count(stones_black) - bit_count(stones_white)) = ANY (ARRAY[0, 1])",
+          "definition": "CHECK (((bit_count(stones_black) - bit_count(stones_white)) = ANY (ARRAY[(0)::bigint, (1)::bigint])))",
+          "columnName": "stones_black"
         },
         {
           "name": "games_black_seat_check",
-          "expression": "black_seat in (1, 2)",
-          "definition": "check (black_seat in (1, 2))"
+          "expression": "black_seat = ANY (ARRAY[1, 2])",
+          "definition": "CHECK ((black_seat = ANY (ARRAY[1, 2])))",
+          "columnName": "black_seat"
         },
         {
           "name": "games_board_disjoint_check",
-          "expression": "(stones_black & stones_white) = (repeat('0', 225))::bit(225)",
-          "definition": "check ((stones_black & stones_white) = (repeat('0', 225))::bit(225))"
+          "expression": "(stones_black & stones_white) = (repeat('0'::text, 225))::bit(225)",
+          "definition": "CHECK (((stones_black & stones_white) = (repeat('0'::text, 225))::bit(225)))",
+          "columnName": "stones_black"
         },
         {
           "name": "games_classic_end_reason_check",
-          "expression": "end_reason is null or end_reason not in ('five_in_row', 'draw', 'timeout') or variant = 'classic'",
-          "definition": "check (end_reason is null or end_reason not in ('five_in_row', 'draw', 'timeout') or variant = 'classic')"
+          "expression": "(end_reason IS NULL) OR (end_reason <> ALL (ARRAY['five_in_row'::character varying, 'draw'::character varying, 'timeout'::character varying])) OR (variant = 'classic'::text)",
+          "definition": "CHECK (((end_reason IS NULL) OR ((end_reason)::text <> ALL ((ARRAY['five_in_row'::character varying, 'draw'::character varying, 'timeout'::character varying])::text[])) OR ((variant)::text = 'classic'::text)))",
+          "columnName": "end_reason"
         },
         {
           "name": "games_clock_ms_check",
-          "expression": "clock_ms_1 between 0 and time_control_ms and clock_ms_2 between 0 and time_control_ms",
-          "definition": "check (clock_ms_1 between 0 and time_control_ms and clock_ms_2 between 0 and time_control_ms)"
+          "expression": "((clock_ms_1 >= 0) AND (clock_ms_1 <= time_control_ms)) AND ((clock_ms_2 >= 0) AND (clock_ms_2 <= time_control_ms))",
+          "definition": "CHECK ((((clock_ms_1 >= 0) AND (clock_ms_1 <= time_control_ms)) AND ((clock_ms_2 >= 0) AND (clock_ms_2 <= time_control_ms))))",
+          "columnName": "clock_ms_1"
         },
         {
           "name": "games_draw_no_winner_check",
-          "expression": "end_reason is distinct from 'draw' or winner_seat is null",
-          "definition": "check (end_reason is distinct from 'draw' or winner_seat is null)"
+          "expression": "(end_reason IS DISTINCT FROM 'draw'::text) OR (winner_seat IS NULL)",
+          "definition": "CHECK ((((end_reason)::text IS DISTINCT FROM 'draw'::text) OR (winner_seat IS NULL)))",
+          "columnName": "end_reason"
         },
         {
           "name": "games_end_reason_check",
-          "expression": "end_reason in ('five_in_row', 'draw', 'timeout', 'resignation', 'points')",
-          "definition": "check (end_reason in ('five_in_row', 'draw', 'timeout', 'resignation', 'points'))"
+          "expression": "\"end_reason\" in ('five_in_row', 'draw', 'timeout', 'resignation', 'points')",
+          "definition": "check (\"end_reason\" in ('five_in_row', 'draw', 'timeout', 'resignation', 'points'))",
+          "columnName": "end_reason"
         },
         {
           "name": "games_finished_at_check",
-          "expression": "status <> 'finished' or finished_at is not null",
-          "definition": "check (status <> 'finished' or finished_at is not null)"
+          "expression": "(status <> 'finished'::text) OR (finished_at IS NOT NULL)",
+          "definition": "CHECK ((((status)::text <> 'finished'::text) OR (finished_at IS NOT NULL)))",
+          "columnName": "finished_at"
         },
         {
           "name": "games_finished_end_reason_check",
-          "expression": "(status = 'finished') = (end_reason is not null)",
-          "definition": "check ((status = 'finished') = (end_reason is not null))"
+          "expression": "(status = 'finished'::text) = (end_reason IS NOT NULL)",
+          "definition": "CHECK ((((status)::text = 'finished'::text) = (end_reason IS NOT NULL)))",
+          "columnName": "end_reason"
         },
         {
           "name": "games_move_count_check",
-          "expression": "move_count between 0 and 225",
-          "definition": "check (move_count between 0 and 225)"
+          "expression": "(move_count >= 0) AND (move_count <= 225)",
+          "definition": "CHECK (((move_count >= 0) AND (move_count <= 225)))",
+          "columnName": "move_count"
         },
         {
           "name": "games_moves_length_check",
           "expression": "octet_length(moves) = move_count",
-          "definition": "check (octet_length(moves) = move_count)"
+          "definition": "CHECK ((octet_length(moves) = move_count))",
+          "columnName": "move_count"
         },
         {
           "name": "games_origin_check",
-          "expression": "origin in ('invite', 'lobby', 'rematch', 'bot', 'show')",
-          "definition": "check (origin in ('invite', 'lobby', 'rematch', 'bot', 'show'))"
+          "expression": "\"origin\" in ('invite', 'lobby', 'rematch', 'bot', 'show')",
+          "definition": "check (\"origin\" in ('invite', 'lobby', 'rematch', 'bot', 'show'))",
+          "columnName": "origin"
         },
         {
           "name": "games_paper_board_empty_check",
-          "expression": "variant = 'classic' or move_count = 0",
-          "definition": "check (variant = 'classic' or move_count = 0)"
+          "expression": "(variant = 'classic'::text) OR (move_count = 0)",
+          "definition": "CHECK ((((variant)::text = 'classic'::text) OR (move_count = 0)))",
+          "columnName": "move_count"
         },
         {
           "name": "games_points_end_reason_check",
-          "expression": "end_reason is distinct from 'points' or variant = 'paper'",
-          "definition": "check (end_reason is distinct from 'points' or variant = 'paper')"
+          "expression": "(end_reason IS DISTINCT FROM 'points'::text) OR (variant = 'paper'::text)",
+          "definition": "CHECK ((((end_reason)::text IS DISTINCT FROM 'points'::text) OR ((variant)::text = 'paper'::text)))",
+          "columnName": "end_reason"
         },
         {
           "name": "games_rematch_offered_by_seat_check",
-          "expression": "rematch_offered_by_seat in (1, 2)",
-          "definition": "check (rematch_offered_by_seat in (1, 2))"
+          "expression": "rematch_offered_by_seat = ANY (ARRAY[1, 2])",
+          "definition": "CHECK ((rematch_offered_by_seat = ANY (ARRAY[1, 2])))",
+          "columnName": "rematch_offered_by_seat"
         },
         {
           "name": "games_rematch_only_finished_check",
-          "expression": "rematch_state is null or status = 'finished'",
-          "definition": "check (rematch_state is null or status = 'finished')"
+          "expression": "(rematch_state IS NULL) OR (status = 'finished'::text)",
+          "definition": "CHECK (((rematch_state IS NULL) OR ((status)::text = 'finished'::text)))",
+          "columnName": "rematch_state"
         },
         {
           "name": "games_rematch_pending_check",
-          "expression": "rematch_state is distinct from 'pending' or (rematch_offered_by_seat is not null and rematch_expires_at is not null)",
-          "definition": "check (rematch_state is distinct from 'pending' or (rematch_offered_by_seat is not null and rematch_expires_at is not null))"
+          "expression": "(rematch_state IS DISTINCT FROM 'pending'::text) OR ((rematch_offered_by_seat IS NOT NULL) AND (rematch_expires_at IS NOT NULL))",
+          "definition": "CHECK ((((rematch_state)::text IS DISTINCT FROM 'pending'::text) OR ((rematch_offered_by_seat IS NOT NULL) AND (rematch_expires_at IS NOT NULL))))",
+          "columnName": "rematch_expires_at"
         },
         {
           "name": "games_rematch_state_check",
-          "expression": "rematch_state in ('pending', 'accepted', 'declined')",
-          "definition": "check (rematch_state in ('pending', 'accepted', 'declined'))"
+          "expression": "\"rematch_state\" in ('pending', 'accepted', 'declined')",
+          "definition": "check (\"rematch_state\" in ('pending', 'accepted', 'declined'))",
+          "columnName": "rematch_state"
         },
         {
           "name": "games_started_at_check",
-          "expression": "status not in ('active', 'finished') or started_at is not null",
-          "definition": "check (status not in ('active', 'finished') or started_at is not null)"
+          "expression": "(status <> ALL (ARRAY['active'::character varying, 'finished'::character varying])) OR (started_at IS NOT NULL)",
+          "definition": "CHECK ((((status)::text <> ALL ((ARRAY['active'::character varying, 'finished'::character varying])::text[])) OR (started_at IS NOT NULL)))",
+          "columnName": "started_at"
         },
         {
           "name": "games_status_check",
-          "expression": "status in ('waiting', 'active', 'finished', 'cancelled')",
-          "definition": "check (status in ('waiting', 'active', 'finished', 'cancelled'))"
+          "expression": "\"status\" in ('waiting', 'active', 'finished', 'cancelled')",
+          "definition": "check (\"status\" in ('waiting', 'active', 'finished', 'cancelled'))",
+          "columnName": "status"
         },
         {
           "name": "games_stone_count_check",
-          "expression": "bit_count(stones_black) + bit_count(stones_white) = move_count",
-          "definition": "check (bit_count(stones_black) + bit_count(stones_white) = move_count)"
+          "expression": "(bit_count(stones_black) + bit_count(stones_white)) = move_count",
+          "definition": "CHECK (((bit_count(stones_black) + bit_count(stones_white)) = move_count))",
+          "columnName": "move_count"
         },
         {
           "name": "games_time_control_check",
-          "expression": "(variant = 'classic' and time_control_ms = 600000) or (variant = 'paper' and time_control_ms in (60000, 120000, 180000, 300000))",
-          "definition": "check ((variant = 'classic' and time_control_ms = 600000) or (variant = 'paper' and time_control_ms in (60000, 120000, 180000, 300000)))"
+          "expression": "((variant = 'classic'::text) AND (time_control_ms = 600000)) OR ((variant = 'paper'::text) AND (time_control_ms = ANY (ARRAY[60000, 120000, 180000, 300000])))",
+          "definition": "CHECK (((((variant)::text = 'classic'::text) AND (time_control_ms = 600000)) OR (((variant)::text = 'paper'::text) AND (time_control_ms = ANY (ARRAY[60000, 120000, 180000, 300000])))))",
+          "columnName": "time_control_ms"
         },
         {
           "name": "games_variant_check",
-          "expression": "variant in ('classic', 'paper')",
-          "definition": "check (variant in ('classic', 'paper'))"
+          "expression": "\"variant\" in ('classic', 'paper')",
+          "definition": "check (\"variant\" in ('classic', 'paper'))",
+          "columnName": "variant"
         },
         {
           "name": "games_winner_required_check",
-          "expression": "end_reason is null or end_reason in ('draw', 'points') or winner_seat is not null",
-          "definition": "check (end_reason is null or end_reason in ('draw', 'points') or winner_seat is not null)"
+          "expression": "(end_reason IS NULL) OR (end_reason = ANY (ARRAY['draw'::character varying, 'points'::character varying])) OR (winner_seat IS NOT NULL)",
+          "definition": "CHECK (((end_reason IS NULL) OR ((end_reason)::text = ANY ((ARRAY['draw'::character varying, 'points'::character varying])::text[])) OR (winner_seat IS NOT NULL)))",
+          "columnName": "end_reason"
         },
         {
           "name": "games_winner_seat_check",
-          "expression": "winner_seat in (1, 2)",
-          "definition": "check (winner_seat in (1, 2))"
+          "expression": "winner_seat = ANY (ARRAY[1, 2])",
+          "definition": "CHECK ((winner_seat = ANY (ARRAY[1, 2])))",
+          "columnName": "winner_seat"
         }
       ],
       "triggers": [],
@@ -2222,8 +2306,9 @@
       "checks": [
         {
           "name": "invitations_code_check",
-          "expression": "code ~ '^[2-9A-HJKMNP-Z]{8}$'",
-          "definition": "check (code ~ '^[2-9A-HJKMNP-Z]{8}$')"
+          "expression": "code ~ '^[2-9A-HJKMNP-Z]{8}$'::text",
+          "definition": "CHECK (((code)::text ~ '^[2-9A-HJKMNP-Z]{8}$'::text))",
+          "columnName": "code"
         }
       ],
       "triggers": [],
@@ -2352,14 +2437,17 @@
           "primary": false,
           "nullable": false,
           "unique": false,
-          "length": 16,
+          "length": null,
           "precision": null,
           "scale": null,
           "default": "'classic'",
           "comment": null,
           "collation": null,
-          "enumItems": [],
-          "mappedType": "string"
+          "enumItems": [
+            "classic",
+            "paper"
+          ],
+          "mappedType": "enum"
         }
       },
       "indexes": [
@@ -2398,17 +2486,20 @@
         {
           "name": "lobby_seekers_expiry_check",
           "expression": "expires_at > created_at",
-          "definition": "check (expires_at > created_at)"
+          "definition": "CHECK ((expires_at > created_at))",
+          "columnName": "created_at"
         },
         {
           "name": "lobby_seekers_time_control_check",
-          "expression": "(variant = 'classic' and time_control_ms = 600000) or (variant = 'paper' and time_control_ms in (60000, 120000, 180000, 300000))",
-          "definition": "check ((variant = 'classic' and time_control_ms = 600000) or (variant = 'paper' and time_control_ms in (60000, 120000, 180000, 300000)))"
+          "expression": "((variant = 'classic'::text) AND (time_control_ms = 600000)) OR ((variant = 'paper'::text) AND (time_control_ms = ANY (ARRAY[60000, 120000, 180000, 300000])))",
+          "definition": "CHECK (((((variant)::text = 'classic'::text) AND (time_control_ms = 600000)) OR (((variant)::text = 'paper'::text) AND (time_control_ms = ANY (ARRAY[60000, 120000, 180000, 300000])))))",
+          "columnName": "time_control_ms"
         },
         {
           "name": "lobby_seekers_variant_check",
-          "expression": "variant in ('classic', 'paper')",
-          "definition": "check (variant in ('classic', 'paper'))"
+          "expression": "\"variant\" in ('classic', 'paper')",
+          "definition": "check (\"variant\" in ('classic', 'paper'))",
+          "columnName": "variant"
         }
       ],
       "triggers": [],
@@ -2567,23 +2658,27 @@
       "checks": [
         {
           "name": "paper_game_states_auto_seat_check",
-          "expression": "auto_seat in (1, 2)",
-          "definition": "check (auto_seat in (1, 2))"
+          "expression": "auto_seat = ANY (ARRAY[1, 2])",
+          "definition": "CHECK ((auto_seat = ANY (ARRAY[1, 2])))",
+          "columnName": "auto_seat"
         },
         {
           "name": "paper_game_states_move_count_check",
           "expression": "move_count >= 0",
-          "definition": "check (move_count >= 0)"
+          "definition": "CHECK ((move_count >= 0))",
+          "columnName": "move_count"
         },
         {
           "name": "paper_game_states_pending_auto_check",
-          "expression": "pending_auto_at is null or auto_seat is not null",
-          "definition": "check (pending_auto_at is null or auto_seat is not null)"
+          "expression": "(pending_auto_at IS NULL) OR (auto_seat IS NOT NULL)",
+          "definition": "CHECK (((pending_auto_at IS NULL) OR (auto_seat IS NOT NULL)))",
+          "columnName": "auto_seat"
         },
         {
           "name": "paper_game_states_score_check",
-          "expression": "score_1 >= 0 and score_2 >= 0",
-          "definition": "check (score_1 >= 0 and score_2 >= 0)"
+          "expression": "(score_1 >= 0) AND (score_2 >= 0)",
+          "definition": "CHECK (((score_1 >= 0) AND (score_2 >= 0)))",
+          "columnName": "score_1"
         }
       ],
       "triggers": [],
@@ -2756,18 +2851,21 @@
       "checks": [
         {
           "name": "paper_moves_coordinates_check",
-          "expression": "x between 0 and 100 and y between 0 and 100",
-          "definition": "check (x between 0 and 100 and y between 0 and 100)"
+          "expression": "((x >= 0) AND (x <= 100)) AND ((y >= 0) AND (y <= 100))",
+          "definition": "CHECK ((((x >= 0) AND (x <= 100)) AND ((y >= 0) AND (y <= 100))))",
+          "columnName": "x"
         },
         {
           "name": "paper_moves_move_number_check",
           "expression": "move_number >= 1",
-          "definition": "check (move_number >= 1)"
+          "definition": "CHECK ((move_number >= 1))",
+          "columnName": "move_number"
         },
         {
           "name": "paper_moves_seat_check",
-          "expression": "seat in (1, 2)",
-          "definition": "check (seat in (1, 2))"
+          "expression": "seat = ANY (ARRAY[1, 2])",
+          "definition": "CHECK ((seat = ANY (ARRAY[1, 2])))",
+          "columnName": "seat"
         }
       ],
       "triggers": [],

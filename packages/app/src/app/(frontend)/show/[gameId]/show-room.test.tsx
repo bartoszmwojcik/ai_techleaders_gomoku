@@ -154,7 +154,7 @@ describe("ShowRoom, the drive (phase b)", () => {
     const alert = screen.getByTestId("show-drive");
     expect(alert.textContent).toContain("Napęd zatrzymany: Brak odpowiedzi serwera od 6 sekund");
     expect(alert.textContent).toContain("jeszcze 9:54");
-    // The live region says the stop once, without the ticking seconds (review of #305).
+    // The live region says the stop once, without the ticking seconds, so a screen reader does not re-read it every tick.
     expect(screen.getByRole("alert").textContent).toBe("Napęd zatrzymany: Brak odpowiedzi serwera");
     await advance(1_000);
     expect(alert.textContent).toContain("od 7 sekund");
