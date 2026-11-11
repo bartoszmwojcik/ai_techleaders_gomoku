@@ -1,10 +1,15 @@
 import {
   ConflictError,
   NotFoundError,
+  SHOW_WAITING_TTL_MS,
   ServiceUnavailableError,
+  agentMcpUrl,
   botDisplayName,
   botStrengthOf,
+  formatInvitationCode,
+  invitationUrl,
   resolveGameSettings,
+  showLevels,
   type BotLevel,
   type BotStrength,
   type BotStrengthView,
@@ -13,14 +18,15 @@ import {
   type ShowCreateInput,
   type ShowLayout,
 } from "@gomoku/core";
-import { Game, GamePlayer, type EntityManager } from "@gomoku/db";
+import { Game, GamePlayer, Invitation, type EntityManager } from "@gomoku/db";
 
 import type { ServerConfig } from "../../config";
 import type { Clock } from "../email/email-sender";
 import type { RateLimiter } from "../rate-limit/rate-limiter";
 import { refuse, type BotAdmission } from "./bot-admission";
 import type { ColorDraw } from "./color-draw";
-import { GAME_NOT_FOUND_MESSAGE, watchableState, type WatchableState } from "./game-service";
+import { DEV_ORIGIN, GAME_NOT_FOUND_MESSAGE, watchableState, type WatchableState } from "./game-service";
+import type { InvitationCodes } from "./invitation-codes";
 import { EXPIRE_WAITING_OF_GAME } from "./lazy-closing";
 import type { TimeoutSettler } from "./timeout-settler";
 
@@ -32,6 +38,7 @@ type Deps = {
   serverConfig: ServerConfig;
   colorDraw: ColorDraw;
   botAdmission: BotAdmission;
+  invitationCodes: InvitationCodes;
 };
 
 /** Pool `show-create:{userId}` (show-mode P10): a client in a loop cannot pile up shows. */
@@ -67,11 +74,19 @@ export type ShowOverview = {
   current: ShowSummary | null;
 };
 
+/**
+ * The code an agent joins a bot vs agent show with (P11, P12): valid for `SHOW_WAITING_TTL_MS`, shown to the
+ * administrator only while the show waits; `mcpUrl` is the address of the MCP server the agent connects to.
+ */
+export type ShowInvitation = { code: string; url: string; mcpUrl: string; expiresAt: Date };
+
 export type CreatedShow = {
   gameId: string;
   layout: ShowLayout;
   /** `name` is the Polish fallback (`botDisplayName`); the UI names the bot from `level`/`tableMb` (i18n I14). */
   bots: ({ seat: Seat; name: string } & BotStrengthView)[];
+  /** Only bot vs agent. */
+  invitation?: ShowInvitation;
 };
 
 type ShowPlayer = Omit<WatchableState["players"][number], "seen" | "bot"> & {
@@ -86,6 +101,8 @@ type ShowPlayer = Omit<WatchableState["players"][number], "seen" | "bot"> & {
 export type ShowState = Omit<WatchableState, "players"> & {
   players: ShowPlayer[];
   layout: ShowLayout;
+  /** Only while a bot vs agent show waits for its agent: the code is a secret until the agent joins (P12). */
+  invitation?: ShowInvitation;
   /** Only for `cancelled`: ended by the administrator (it had started) or expired before it did (P7). */
   closedReason?: "expired" | "ended";
   /** Only for `finished`. */
@@ -128,15 +145,18 @@ const START_SHOW_CLOCK_SQL = `
 
 // P7: the administrator ends a show at any moment before its end; no result, no counter. The clock that was running
 // keeps the time it used (computed in SQL, lesson 2026-10-29), so the ended view shows the clocks as they stopped.
-// The seat on turn: black (`black_seat`) after an even number of moves. `?` binds: now, now, the game id.
+// The seat on turn: black (`black_seat`) after an even number of moves. `?` binds: now, now, now, the game id.
 const chargeSql = (seat: 1 | 2) => `
   clock_ms_${seat} = case
     when status = 'active' and turn_started_at is not null
       and (case when move_count % 2 = 0 then black_seat else 3 - black_seat end) = ${seat}
     then greatest(0, clock_ms_${seat} - floor(extract(epoch from (?::timestamptz - turn_started_at)) * 1000)::int)
     else clock_ms_${seat} end`;
+// A show that had started keeps its end time, so the agent's token stays valid for the hour after it like after any
+// end (`PARTICIPANT_TOKEN_VALID_SQL`) and the agent reads `cancelled` instead of an unknown token (QA of #306).
 const END_SHOW_SQL = `
-  update games set status = 'cancelled', ${chargeSql(1)}, ${chargeSql(2)}
+  update games set status = 'cancelled', ${chargeSql(1)}, ${chargeSql(2)},
+    finished_at = case when started_at is not null then ?::timestamptz end
   where id = ? and origin = 'show' and status in ('waiting', 'active') returning id`;
 // The bot on turn has been thinking too long (`drive.stalled`), computed in SQL (lesson 2026-10-29). `?` binds: now,
 // the longest pause plus the grace, the ceilings of level 1 and 2, the game id.
@@ -149,6 +169,8 @@ const STALLED_SQL = `
         > ? + (case when p.bot_level = 2 then ? else ? end)
   ) as stalled`;
 const RELEASE_SLOTS_SQL = `update game_players set is_active = false where game_id = ? and is_active`;
+// Ending a waiting show voids its code (as a creator's cancel does), which also tells "ended" from "expired" (P7).
+const VOID_INVITATION_SQL = `update invitations set consumed_at = ? where game_id = ? and consumed_at is null`;
 
 /**
  * The show (spec 2026-11-09-show-mode, phase a): a private game without a human seat, created, read and
@@ -164,8 +186,9 @@ export class ShowService {
   readonly #config: ServerConfig;
   readonly #colorDraw: ColorDraw;
   readonly #botAdmission: BotAdmission;
+  readonly #invitationCodes: InvitationCodes;
 
-  constructor({ em, clock, rateLimiter, timeoutSettler, serverConfig, colorDraw, botAdmission }: Deps) {
+  constructor({ em, clock, rateLimiter, timeoutSettler, serverConfig, colorDraw, botAdmission, invitationCodes }: Deps) {
     this.#em = em;
     this.#clock = clock;
     this.#rateLimiter = rateLimiter;
@@ -173,6 +196,7 @@ export class ShowService {
     this.#config = serverConfig;
     this.#colorDraw = colorDraw;
     this.#botAdmission = botAdmission;
+    this.#invitationCodes = invitationCodes;
   }
 
   /** The console's first read: switches, the cheap checks for two bots of level 1, the running show. */
@@ -183,7 +207,7 @@ export class ShowService {
       enabled,
       botVsBotEnabled,
       level2Enabled: botLevel2Enabled,
-      preflight: await this.#checks([1, 1], current),
+      preflight: await this.#checks({ layout: "bot-bot", levels: [1, 1] }, current),
       current,
     };
   }
@@ -198,13 +222,14 @@ export class ShowService {
    * show in progress. Cheap: no computation; the trial move of the engine comes with phase (d).
    */
   async preflight(input: ShowCreateInput): Promise<ShowPreflight> {
-    return this.#checks(input.levels, await this.current());
+    return this.#checks(input, await this.current());
   }
 
   /**
-   * Creates a bot vs bot show (show-mode, "Tworzenie"): `active` at once with its clock running (nobody
+   * Creates a show (show-mode, "Tworzenie"). Bot vs bot: `active` at once with its clock running (nobody
    * "opens" it), both bots in their seats with the strength of one memory reading, colours drawn, private.
-   * The check "no show in progress" and the insert run under one advisory lock, so of two concurrent
+   * Bot vs agent: `waiting`, the bot in seat 1 and an invitation valid for 30 minutes (P11); the agent takes seat 2
+   * over MCP and the colours are drawn then. Level 2 needs only `BOT_ENABLED` there (P16). The check "no show in progress" and the insert run under one advisory lock, so of two concurrent
    * creations exactly one wins; a refusal is thrown after the commit, so the lazy closing is kept.
    * @throws AppError 503 `SHOW_UNAVAILABLE` (`data.reason`), 503 `BOT_UNAVAILABLE` (`data.reason`), 429
    * `RATE_LIMITED`, 409 `SHOW_RUNNING` (`data.gameId`)
@@ -212,32 +237,37 @@ export class ShowService {
   async create(userId: string, input: ShowCreateInput): Promise<CreatedShow> {
     const { show } = this.#config;
     if (!show.enabled) throw unavailable("disabled");
-    if (!show.botVsBotEnabled) throw unavailable("bot_vs_bot_disabled");
-    if (!show.botLevel2Enabled && input.levels.includes(2)) throw refuse("level2_not_allowed", {}, true);
+    if (input.layout === "bot-bot") {
+      if (!show.botVsBotEnabled) throw unavailable("bot_vs_bot_disabled");
+      if (!show.botLevel2Enabled && input.levels.includes(2)) throw refuse("level2_not_allowed", {}, true);
+    }
     // A show in progress is the answer before the pool and the admission: it holds a slot of the bot itself, so the
     // admission would otherwise refuse with `busy`, and every such refusal would spend the pool. The locked check
     // in the transaction below still decides a race.
     const open = await this.current();
     if (open) throw running(open.gameId);
     await this.#rateLimiter.hit(`show-create:${userId}`, SHOW_CREATE_LIMIT, SHOW_CREATE_WINDOW_MS);
-    const bots = await this.#botAdmission.admitShow(input.levels);
+    const bots = await this.#botAdmission.admitShow(showLevels(input));
 
-    const outcome = await this.#em.transactional(async (tx): Promise<{ gameId: string } | { running: string }> => {
+    type Inserted = { gameId: string; code?: string; expiresAt?: Date };
+    const outcome = await this.#em.transactional(async (tx): Promise<Inserted | { running: string }> => {
       await tx.execute(LOCK_CREATE_SQL, [LOCK_KEY], "run");
       const now = this.#clock.now();
       const running = await this.#settleOpen(tx, now);
       if (running) return { running: running.gameId };
-      return { gameId: await this.#insert(tx, bots, now) };
+      return input.layout === "bot-bot" ? { gameId: await this.#insert(tx, bots, now) } : this.#insertWaiting(tx, bots[0]!, now);
     });
     if ("running" in outcome) throw running(outcome.running);
+    const { gameId, code, expiresAt } = outcome;
     return {
-      gameId: outcome.gameId,
-      layout: "bot-bot",
+      gameId,
+      layout: input.layout,
       bots: bots.map((bot, index) => ({
         seat: (index + 1) as Seat,
         name: botDisplayName(bot.level, bot.memoryMb),
         ...botStrengthOf(bot.level, bot.memoryMb),
       })),
+      ...(code && expiresAt && { invitation: this.#invitation(code, expiresAt) }),
     };
   }
 
@@ -270,8 +300,11 @@ export class ShowService {
       const now = this.#clock.now();
       await tx.execute(EXPIRE_WAITING_OF_GAME, [now, gameId], "run");
       await this.#timeoutSettler.settleGame(gameId, tx, now);
-      const ended = await tx.execute<{ id: string }[]>(END_SHOW_SQL, [now, now, gameId]);
-      if (ended.length > 0) await tx.execute(RELEASE_SLOTS_SQL, [gameId], "run");
+      const ended = await tx.execute<{ id: string }[]>(END_SHOW_SQL, [now, now, now, gameId]);
+      if (ended.length > 0) {
+        await tx.execute(RELEASE_SLOTS_SQL, [gameId], "run");
+        await tx.execute(VOID_INVITATION_SQL, [now, gameId], "run");
+      }
       const state = await this.#stateOf(tx, gameId, 0, now);
       return state.status === "finished" ? { finished: true } : { state };
     });
@@ -292,13 +325,20 @@ export class ShowService {
     return { gameId: row.id, status: row.status, layout: layoutOf(row.bots) };
   }
 
-  async #checks(levels: readonly BotLevel[], current: ShowSummary | null): Promise<ShowPreflight> {
+  /** The switches of bot vs bot (its layout, its level 2) are checked only for that layout (P16). */
+  async #checks(input: ShowCreateInput, current: ShowSummary | null): Promise<ShowPreflight> {
     const { show } = this.#config;
     const capacity = await this.#botAdmission.inspect();
+    const botVsBot: ShowCheck[] =
+      input.layout === "bot-bot"
+        ? [
+            { id: "bot_vs_bot_enabled", ok: show.botVsBotEnabled },
+            ...(input.levels.includes(2) ? [{ id: "level2_enabled" as const, ok: show.botLevel2Enabled }] : []),
+          ]
+        : [];
     const checks: ShowCheck[] = [
       { id: "show_enabled", ok: show.enabled },
-      { id: "bot_vs_bot_enabled", ok: show.botVsBotEnabled },
-      ...(levels.includes(2) ? [{ id: "level2_enabled" as const, ok: show.botLevel2Enabled }] : []),
+      ...botVsBot,
       { id: "bot_enabled", ok: capacity.enabled },
       {
         id: "memory",
@@ -350,6 +390,45 @@ export class ShowService {
     return game.id;
   }
 
+  /**
+   * Writes a bot vs agent show through `tx`: `waiting`, the bot in seat 1 (it counts as having opened the game, so
+   * the clock starts once the agent joins) and the invitation of `SHOW_WAITING_TTL_MS` (P11). No colours yet.
+   */
+  async #insertWaiting(tx: EntityManager, bot: BotStrength, now: Date): Promise<{ gameId: string; code: string; expiresAt: Date }> {
+    const settings = resolveGameSettings();
+    const game = tx.create(Game, {
+      origin: "show",
+      isPublic: false,
+      status: "waiting",
+      variant: settings.variant,
+      timeControlMs: settings.timeControlMs,
+      clockMs1: settings.timeControlMs,
+      clockMs2: settings.timeControlMs,
+      createdAt: now,
+    });
+    tx.create(GamePlayer, {
+      game,
+      seat: 1,
+      kind: "bot",
+      botLevel: bot.level,
+      botMemoryMb: bot.memoryMb,
+      botDepthCap: bot.depthCap,
+      isActive: true,
+      joinedAt: now,
+      seenAt: now,
+    });
+    const code = this.#invitationCodes.generate();
+    const expiresAt = new Date(now.getTime() + SHOW_WAITING_TTL_MS);
+    tx.create(Invitation, { game, code, createdAt: now, expiresAt });
+    await tx.flush();
+    return { gameId: game.id, code, expiresAt };
+  }
+
+  #invitation(code: string, expiresAt: Date): ShowInvitation {
+    const origin = this.#config.appOrigin ?? DEV_ORIGIN;
+    return { code: formatInvitationCode(code), url: invitationUrl(origin, code), mcpUrl: agentMcpUrl(origin), expiresAt };
+  }
+
   async #stateOf(tx: EntityManager, gameId: string, after: number, now: Date): Promise<ShowState> {
     // The cleanup may remove the game under the reader (lesson 2026-10-31): a 404, not an ORM error.
     const game = await tx.findOneOrFail(Game, gameId, { failHandler: () => new NotFoundError(GAME_NOT_FOUND_MESSAGE) });
@@ -369,7 +448,14 @@ export class ShowService {
         ...(bot && { bot: { ...bot, tableMb: botStrengthOf(bot.level, bot.memoryMb).tableMb } }),
       })),
     };
-    if (game.status === "cancelled") state.closedReason = game.startedAt ? "ended" : "expired";
+    if (game.status === "waiting" || (game.status === "cancelled" && !game.startedAt)) {
+      // Only a bot vs agent show waits, and it always has its invitation.
+      const invitation = await tx.findOneOrFail(Invitation, { game: gameId });
+      if (game.status === "waiting") state.invitation = this.#invitation(invitation.code, invitation.expiresAt);
+      // Never started: the administrator's end voided the code; otherwise the agent did not come in time (P7, P11).
+      else state.closedReason = invitation.consumedAt ? "ended" : "expired";
+    }
+    if (game.status === "cancelled" && game.startedAt) state.closedReason = "ended";
     if (game.status === "finished" && game.finishedAt) state.finishedAt = game.finishedAt;
     return state;
   }

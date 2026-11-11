@@ -66,6 +66,12 @@ describe("POST /api/show", () => {
     expect(line).not.toContain("g-1");
   });
 
+  it("creates a bot vs agent show with the bot's level (phase c)", async () => {
+    const response = await POST(post({ layout: "bot-agent", botLevel: 2 }));
+    expect(response.status).toBe(201);
+    expect(showService.create).toHaveBeenCalledWith("admin-1", { layout: "bot-agent", botLevel: 2 });
+  });
+
   it("checks the gate before CSRF: a stranger's cross-site request is a 404 too", async () => {
     requireAdminApi.mockRejectedValue(notFound());
     const response = await POST(post({ layout: "bot-bot", levels: [1, 1] }, { origin: "https://evil.example" }));

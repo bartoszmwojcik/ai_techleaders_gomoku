@@ -17,6 +17,12 @@ const show: PartialTranslation<"show"> = {
       check: "Jetzt prüfen",
     },
     projector: "Projektoransicht",
+    agent: {
+      title: "Code in deinen Agenten einfügen",
+      show: "Anzeigen",
+      copy: "Kopieren",
+      waiting: "Wartet auf den Agenten (noch {time})",
+    },
     logout: "Abmelden",
   },
 };

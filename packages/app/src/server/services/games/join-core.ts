@@ -1,4 +1,4 @@
-import { GoneError, INVITATION_LOOKUP_WINDOW_MS, type GameVariant, type Seat } from "@gomoku/core";
+import { GoneError, INVITATION_LOOKUP_WINDOW_MS, type GameVariant, type OpponentOfAgentKind, type Seat } from "@gomoku/core";
 import type { EntityManager } from "@gomoku/db";
 
 import { limiterScope, logSecurityEvent } from "../../http/security-log";
@@ -31,7 +31,8 @@ export type InvitationRow = {
   status: string;
   creator_id: string | null;
   creator_name: string | null;
-  creator_kind: string;
+  /** Seat 1: the creator, or the bot of a show (show-mode P4). */
+  creator_kind: OpponentOfAgentKind;
   creator_nickname: string | null;
   is_public: boolean;
   variant: GameVariant;

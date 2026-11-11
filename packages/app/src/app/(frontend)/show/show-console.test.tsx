@@ -111,12 +111,58 @@ describe("ShowConsole, state 3: the form", () => {
     expect(screen.getByTestId("show-error").textContent).toContain("Trwa już pokaz.");
   });
 
-  it("blocks the form with the reason while bot vs bot is switched off", () => {
+  it("starts on bot vs agent while bot vs bot is switched off, and blocks bot vs bot with the reason", async () => {
     render(<ShowConsole initial={overview({ botVsBotEnabled: false })} />);
+
+    expect(screen.getByRole("radio", { name: "Bot vs agent" }).getAttribute("aria-checked")).toBe("true");
+    expect((start() as HTMLButtonElement).disabled).toBe(false);
+
+    await userEvent.click(screen.getByRole("radio", { name: "Bot vs bot" }));
 
     expect(screen.getByText("Układ bot vs bot jest wyłączony: ustaw SHOW_BOT_VS_BOT_ENABLED=true.")).toBeTruthy();
     expect((start() as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByLabelText("Bot na miejscu 1") as HTMLSelectElement).disabled).toBe(true);
+  });
+
+  it("creates a bot vs agent show with one bot of either level, without the switch of level 2 (P16)", async () => {
+    apiCall.mockResolvedValue({ ok: true, data: { gameId: "g-agent", layout: "bot-agent", bots: [] } });
+    render(<ShowConsole initial={overview()} />);
+
+    await userEvent.click(screen.getByRole("radio", { name: "Bot vs agent" }));
+
+    expect(screen.queryByLabelText("Bot na miejscu 1")).toBeNull();
+    expect(screen.getByText(/Twój agent dołączy na miejsce 2 kodem przez MCP/)).toBeTruthy();
+    const level = screen.getByLabelText("Poziom bota") as HTMLSelectElement;
+    expect([...level.options].map((option) => option.textContent)).toEqual(["Poziom 1", "Poziom 2"]);
+    await userEvent.selectOptions(level, "2");
+    await userEvent.click(start());
+
+    expect(apiCall).toHaveBeenCalledWith("/api/show", { body: { layout: "bot-agent", botLevel: 2 } });
+    expect(push).toHaveBeenCalledWith("/show/g-agent");
+  });
+
+  it("checks the chosen layout and forgets an earlier result when the layout changes", async () => {
+    apiCall.mockResolvedValue({ ok: true, data: { ok: true, checks: [] } });
+    render(<ShowConsole initial={overview()} />);
+
+    await userEvent.click(screen.getByRole("radio", { name: "Bot vs agent" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sprawdź, czy pokaz wystartuje" }));
+    expect(apiCall).toHaveBeenCalledWith("/api/show/preflight", { body: { layout: "bot-agent", botLevel: 1 } });
+    expect(screen.getByTestId("show-checks")).toBeTruthy();
+
+    await userEvent.click(screen.getByRole("radio", { name: "Bot vs bot" }));
+    expect(screen.queryByTestId("show-checks")).toBeNull();
+  });
+
+  it("keeps the layout of a refused bot vs agent show in the card of the show in progress", async () => {
+    apiCall.mockResolvedValue({ ok: false, error: { code: "SHOW_RUNNING", message: "x", data: { gameId: RUNNING } } });
+    render(<ShowConsole initial={overview()} />);
+
+    await userEvent.click(screen.getByRole("radio", { name: "Bot vs agent" }));
+    await userEvent.click(start());
+
+    expect(screen.getByTestId("show-running").textContent).toContain("Układ: Bot vs agent");
+    expect(screen.getByRole("radio", { name: "Bot vs agent" }).hasAttribute("disabled")).toBe(true);
   });
 
   it("speaks the language the server passed", () => {

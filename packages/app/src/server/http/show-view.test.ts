@@ -27,6 +27,13 @@ describe("loadShowView", () => {
     });
   });
 
+  it("carries the expiry of the waiting show's code as an ISO string", () => {
+    const invitation = { code: "ABCD-EFGH", url: "u", mcpUrl: "m", expiresAt: new Date("2026-11-10T10:30:00Z") };
+    expect(toShowView({ ...state, invitation } as never)).toMatchObject({
+      invitation: { code: "ABCD-EFGH", url: "u", mcpUrl: "m", expiresAt: "2026-11-10T10:30:00.000Z" },
+    });
+  });
+
   it("is null for a missing show and passes on any other error", async () => {
     read.mockRejectedValueOnce(new NotFoundError("x"));
     expect(await loadShowView("g1")).toBeNull();

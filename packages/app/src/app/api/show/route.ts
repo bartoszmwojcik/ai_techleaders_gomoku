@@ -16,7 +16,7 @@ const getShows = apiHandler(
 );
 
 /**
- * Creates a bot vs bot show (`201`): `400` for an unknown layout or level, `409 SHOW_RUNNING`, `503
+ * Creates a show, bot vs bot or bot vs agent (`201`): `400` for an unknown layout or level, `409 SHOW_RUNNING`, `503
  * SHOW_UNAVAILABLE` or `BOT_UNAVAILABLE` with `data.reason`, `429`. The gate runs before CSRF and the body; the
  * administrator is read again here for the key of the rate limit.
  */

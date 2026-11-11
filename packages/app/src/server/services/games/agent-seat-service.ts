@@ -5,7 +5,7 @@ import {
   ValidationError,
   extractInvitationCode,
   normalizeAgentName,
-  type CreatorKind,
+  type OpponentOfAgentKind,
   type GameColor,
   type Seat,
 } from "@gomoku/core";
@@ -49,14 +49,21 @@ export type AgentJoinResult = {
   gameId: string;
   you: { seat: 2; color: GameColor };
   status: "active";
-  /** What the opponent is; never a name, an e-mail or an id (the text is human's, R6). */
-  opponent: { kind: CreatorKind };
+  /**
+   * What the opponent is; never a name, an e-mail or an id (the text is human's, R6). `bot` in an
+   * administrator's show (show-mode, additive to the MCP contract).
+   */
+  opponent: { kind: OpponentOfAgentKind };
 };
 
 const INSERT_AGENT_SQL = `
   insert into game_players (game_id, seat, kind, agent_token_hash, agent_name, join_channel, is_active, joined_at, seen_at)
   values (?, 2, 'agent', ?, ?, 'mcp', true, ?, ?)
   returning id`;
+
+// A show has nobody else to open it (the bot is there from the start): its clock starts as the agent joins, so the
+// bot moves at the agent's first `get_state` and a silent agent loses on time (show-mode, "Data Model").
+const START_SHOW_CLOCK_SQL = `update games set turn_started_at = ? where id = ? and origin = 'show' and turn_started_at is null`;
 
 /**
  * An agent takes the second seat of a private game over MCP (E06-S01, BR-31). It shares the
@@ -154,12 +161,13 @@ export class AgentSeatService {
       },
       drawBlackSeat: () => blackSeat,
     });
+    if (invitation.origin === "show") await tx.execute(START_SHOW_CLOCK_SQL, [now, gameId], "run");
     return {
       token,
       gameId,
       you: { seat: 2, color: blackSeat === 2 ? "black" : "white" },
       status: "active",
-      opponent: { kind: invitation.creator_kind as CreatorKind },
+      opponent: { kind: invitation.creator_kind },
     };
   }
 

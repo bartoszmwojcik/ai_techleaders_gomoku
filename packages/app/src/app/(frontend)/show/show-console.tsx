@@ -1,9 +1,10 @@
 "use client";
 
-import type { BotLevel } from "@gomoku/core";
+import type { BotLevel, ShowCreateInput, ShowLayout } from "@gomoku/core";
 import type { Locale } from "@gomoku/core/i18n/locales";
 import { Alert } from "@gomoku/ui/game/alert";
 import { Button } from "@gomoku/ui/game/button";
+import { ChoiceGroup } from "@gomoku/ui/game/choice-group";
 import { EmptyState } from "@gomoku/ui/game/empty-state";
 import { Field } from "@gomoku/ui/game/field";
 import { Panel } from "@gomoku/ui/game/panel";
@@ -30,14 +31,17 @@ type Failure = { title: string; text: string; code: string };
 
 /**
  * `/show`, the administrator's console (show-mode, "UI/UX"): switched off (state 1), a show in progress with "back"
- * and "end" (state 2), or the form of a new bot vs bot show with "will it start" (state 3). Errors are alerts with
+ * and "end" (state 2), or the form of a new show, bot vs bot or bot vs agent, with "will it start" (state 3). Errors are alerts with
  * their code, the focus goes to the heading.
  */
 export function ShowConsole({ initial, locale, dict }: Props) {
   const t = useMemo(() => showTranslator(locale, dict), [locale, dict]);
   const router = useRouter();
   const [current, setCurrent] = useState<ShowSummary | null>(initial.current);
+  // Bot vs agent is the default only when bot vs bot is switched off: the main show stays the main choice.
+  const [layout, setLayout] = useState<ShowLayout>(initial.botVsBotEnabled ? "bot-bot" : "bot-agent");
   const [levels, setLevels] = useState<[BotLevel, BotLevel]>([1, 1]);
+  const [botLevel, setBotLevel] = useState<BotLevel>(1);
   const [checks, setChecks] = useState<ShowPreflight | "failed" | null>(null);
   const [failure, setFailure] = useState<Failure | null>(null);
   const [checking, setChecking] = useState(false);
@@ -54,8 +58,14 @@ export function ShowConsole({ initial, locale, dict }: Props) {
     );
   }
 
-  const blocked = current !== null || !initial.botVsBotEnabled;
-  const body = { layout: "bot-bot", levels };
+  const botVsBot = layout === "bot-bot";
+  const blocked = current !== null || (botVsBot && !initial.botVsBotEnabled);
+  const body: ShowCreateInput = botVsBot ? { layout, levels } : { layout, botLevel };
+
+  function chooseLayout(next: string) {
+    setLayout(next as ShowLayout);
+    setChecks(null);
+  }
 
   async function check() {
     setChecking(true);
@@ -77,12 +87,13 @@ export function ShowConsole({ initial, locale, dict }: Props) {
     inFlight.current = false;
     setStarting(false);
     const running = result.error.code === "SHOW_RUNNING" && typeof result.error.data?.gameId === "string";
-    if (running) setCurrent({ gameId: result.error.data!.gameId as string, status: "active", layout: "bot-bot" });
+    if (running) setCurrent({ gameId: result.error.data!.gameId as string, status: "active", layout });
     setFailure({ title: t("errors.createTitle"), text: errorText(t, result.error), code: result.error.code });
     heading.current?.focus();
   }
 
-  const levelOptions = (initial.level2Enabled ? [1, 2] : [1]).map((level) => ({
+  // Level 2 in bot vs bot waits for its switch; bot vs agent offers both levels with the bot's flag alone (P16).
+  const levelOptions = (initial.level2Enabled || !botVsBot ? [1, 2] : [1]).map((level) => ({
     value: String(level),
     label: t("console.level", { level }),
   }));
@@ -114,9 +125,33 @@ export function ShowConsole({ initial, locale, dict }: Props) {
         </Panel>
       )}
       <Panel title={t("console.formTitle")}>
-        <p className="m-0">{t("console.runningLayout", { layout: t("layout.bot-bot") })}</p>
-        {!initial.botVsBotEnabled && <Alert status="warning" title={t("console.botVsBotDisabled")} />}
-        {([0, 1] as const).map((index) => (
+        <ChoiceGroup
+          label={t("console.layoutLabel")}
+          options={(["bot-bot", "bot-agent"] as const).map((value) => ({ value, label: t(`layout.${value}`) }))}
+          value={layout}
+          onValueChange={chooseLayout}
+          disabled={current !== null}
+          data-testid="show-layout"
+        />
+        {botVsBot && !initial.botVsBotEnabled && <Alert status="warning" title={t("console.botVsBotDisabled")} />}
+        {!botVsBot && (
+          <>
+            <p className="m-0 text-body text-text-secondary">{t("console.agentLead")}</p>
+            <Field label={t("console.botLevelLabel")}>
+              {(control) => (
+                <Select
+                  {...control}
+                  data-testid="show-bot-level"
+                  options={levelOptions}
+                  value={String(botLevel)}
+                  disabled={blocked}
+                  onChange={(event) => setBotLevel(Number(event.target.value) as BotLevel)}
+                />
+              )}
+            </Field>
+          </>
+        )}
+        {botVsBot && ([0, 1] as const).map((index) => (
           <Field
             key={index}
             label={t("console.levelLabel", { seat: index + 1 })}
