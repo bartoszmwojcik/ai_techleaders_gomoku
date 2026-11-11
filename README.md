@@ -56,6 +56,15 @@ Działająca instancja: <https://gomoku.byst.re>. Zagraj jako gość, wchodząc 
 
 - Zalogowany gracz widzi na stronie „Historia” swoje zakończone partie: przeciwnika (także bota z jego poziomem), wynik i sposób zakończenia, i może przejrzeć je ruch po ruchu.
 
+**Administrator** (konto, którego e-mail równa się `ADMIN_EMAIL` i jest potwierdzony; zakłada je operator poleceniem `npm run admin:create` — [opis](docs/wdrozenie-i-utrzymanie.md#konto-administratora))
+
+- Panel `/backend` tylko do odczytu: liczniki kont i partii (w bazie teraz, zakończone dziś, w 7 dni i razem, także wg pary typów uczestników) oraz lista kont po 25 na stronę z wyszukiwaniem po nazwie gracza i sortowaniem. Każdy inny odwiedzający dostaje zwykłe `404`. [Szczegóły](docs/wdrozenie-i-utrzymanie.md#panel-administratora)
+- **Pokaz** (domyślnie wyłączony, włączają go flagi `SHOW_*` — [wdrożenie](docs/wdrozenie-i-utrzymanie.md#pokaz-e14-tylko-administrator)): na `/show` administrator tworzy prywatną partię bez miejsca dla człowieka, bot kontra bot albo bot kontra agent AI przez MCP, i ogląda ją na `/show/<id>`, także na projektorze. Boty grają, dopóki karta administratora czyta stan partii. Przed pokazem przycisk „Sprawdź, czy pokaz wystartuje” kontroluje konfigurację, pamięć i silnik bota.
+
+## Plany
+
+- **Wersja wielojęzyczna** (polski, angielski, francuski): fundament jest już w kodzie (wybór języka przez `?lang=`, ciasteczko i nagłówek), a tłumaczenie kolejnych ekranów jest w toku. Specyfikacja: [`.ai/specs/2026-11-10-i18n.md`](.ai/specs/2026-11-10-i18n.md).
+
 ## Struktura repozytorium
 
 Monorepo (npm workspaces), kod w `packages/`:
