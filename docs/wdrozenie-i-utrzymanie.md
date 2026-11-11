@@ -85,6 +85,8 @@ Pokaz (specyfikacja `.ai/specs/2026-11-09-show-mode.md`) to prywatna partia bez 
 | `BOT_SHOW_PAUSE_MIN_MS` / `BOT_SHOW_PAUSE_MAX_MS` | 1000 / 2000 | pauza bota przed ruchem w pokazie (deterministyczna z `hash(gameId, nr ruchu)`); walidacja przy starcie: 0 ≤ min ≤ max ≤ **8000 ms** (maksymalna obsługiwana pauza) |
 | `SHOW_BOT_L2_SOFT_MS` | 1500 | miękki budżet ruchu bota poziomu 2 **tylko w pokazie**; pułap = `min(BOT_L2_CEILING_MS, 2 × soft)`, więc nigdy ponad pułap zwykłej partii; zakres 1–60000 |
 
+Na produkcji zmienne z tabeli (ustawione w `.env.production`) docierają do aplikacji tylko przez blok `environment` w `compose.prod.yaml`; każda nowa zmienna musi tam trafić, inaczej kontener dostaje pustą wartość. Sprawdź po wdrożeniu: `docker exec <kontener aplikacji> printenv SHOW_ENABLED`.
+
 `BOT_ENABLED=true` jest warunkiem koniecznym każdego pokazu, a pokaz zajmuje jeden slot `BOT_MAX_ACTIVE_GAMES`. Pauza liczy się z zegara bota i jest przycinana do `min(pauza, zegar bota na początku tury / 4)` — przy niskim zegarze bot przestaje czekać. Zwykłe partie z botem nie mają pauzy i grają z `BOT_L2_SOFT_MS` jak dotąd. Wskaźnik „Bot nie odpowiada” (`drive.stalled`) daje botowi najdłuższą pauzę + pułap jego poziomu + 5 s **plus** pułap poziomu 2 i 500 ms za każde obliczenie w kolejce `ComputeGate`, więc bot pokazu czekający za innymi partiami z botem nie jest zgłaszany jako zatrzymany. W bot vs agent wyszukiwanie bota odbywa się wewnątrz `get_state` agenta (runda `waitSeconds`); poziom 2 wydłuża taką rundę o najwyżej ok. 3 s (pułap) plus pauzę.
 
 ### Strojenie poziomu 2 w bot vs bot (`bot:bench --show`, P17)
