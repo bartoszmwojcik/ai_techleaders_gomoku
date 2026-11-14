@@ -37,8 +37,14 @@ jobs:
     name: Wydanie
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    if: github.ref == 'refs/heads/main'
     steps:
+      # Nie `if:` na zadaniu: pominięte zadanie wygląda jak sukces, a wydanie z innej gałęzi ma zawieść widocznie.
+      - name: Tylko z main
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          [ "$REF" = "refs/heads/main" ] || { echo "::error::Wydanie tylko z gałęzi main (uruchomiono z $REF)"; exit 1; }
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
