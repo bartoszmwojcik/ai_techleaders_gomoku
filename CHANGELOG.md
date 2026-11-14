@@ -72,6 +72,7 @@
 - ✨ Pokaz bot vs agent — agent MCP gra z botem (E14-S03) (fixes #283). (#306) *(@bartoszmwojcik)*
 - ✨ Strojenie tempa pokazu, bot:bench --show, test przedlotowy z silnikiem, runbook + eksport i18n (E14-S04, E15-S02) (fixes #285). (#307) *(@bartoszmwojcik)*
 - ✨ Domknięcie epiku E15 — przestrzenie C1–C6, błędy API, niemiecki szkic. (#313) *(@bartoszmwojcik)*
+- ✨ Ręczny workflow wydawania (tag, GitHub Release, podbicie wersji). (#317) *(@bartoszmwojcik)*
 
 ## 🔒 Security
 - 🔒 Podbicie Next.js do 16.4.2 (poprawki bezpieczeństwa). (#2) *(@bartoszmwojcik)*
@@ -193,6 +194,8 @@
 - 📝 Domknięcie epiku E14 (pokaz) (fixes #275, #284, #286). (#311) *(@bartoszmwojcik)*
 - 📝 Funkcje administratora i plan wersji wielojęzycznej. (#312) *(@bartoszmwojcik)*
 - 📝 Log wdrożenia E15, lekcje i aktualizacja README. (#314) *(@bartoszmwojcik)*
+- 📝 CHANGELOG.md (0.1.0) i UPGRADE_NOTES.md. (#316) *(@bartoszmwojcik)*
+- 📝 Nowa strona wejściowa projektu. (#318) *(@bartoszmwojcik)*
 
 ## 🚀 CI/CD & Infrastructure
 - 🚀 CI (GitHub Actions), testy jednostkowe ze 100% pokryciem i testy integracyjne. (#3) *(@bartoszmwojcik)*

@@ -94,7 +94,8 @@ Przed zgłoszeniem zmian: `npm run check` (lint, typecheck, testy ze 100% pokryc
 | 📖 [Funkcje — opis szczegółowy](docs/funkcje.md) | Zasady wariantów, bot, administrator, języki, plany, struktura repozytorium. |
 | 🛠️ [Praca nad projektem](docs/rozwoj.md) | Instalacja ręczna, zmienne środowiskowe, komendy, testy i CI. |
 | 🏗️ [Architektura](docs/architektura.md) | Stack, pakiety monorepo, szczegóły działania aplikacji. |
-| 🚢 [Wdrożenie i utrzymanie](docs/wdrozenie-i-utrzymanie.md) | mikr.us, kopie zapasowe, sprzątanie rekordów. |
+| 🚢 [Wdrożenie i utrzymanie](docs/wdrozenie-i-utrzymanie.md) | mikr.us, kopie zapasowe, sprzątanie rekordów, [wydawanie wersji](docs/wdrozenie-i-utrzymanie.md#wydawanie-wersji) (ręczny workflow: tag i GitHub Release). |
+| 🗒️ [Historia zmian](CHANGELOG.md) i [uwagi do aktualizacji](UPGRADE_NOTES.md) | Co wchodzi w każdą wersję i co zrobić przy wdrożeniu. |
 | 🔒 [Model zagrożeń](docs/security/threat-model.md) | Granice zaufania, zagrożenia, testy bezpieczeństwa. |
 | 🤝 [`AGENTS.md`](AGENTS.md) | Zasady pracy dla ludzi i agentów AI. |
 
