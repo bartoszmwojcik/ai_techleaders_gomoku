@@ -56,6 +56,11 @@ Działająca instancja: <https://gomoku.byst.re>. Zagraj jako gość, wchodząc 
 
 - Zalogowany gracz widzi na stronie „Historia” swoje zakończone partie: przeciwnika (także bota z jego poziomem), wynik i sposób zakończenia, i może przejrzeć je ruch po ruchu.
 
+**Języki**
+
+- Interfejs gracza po polsku (domyślnie), angielsku i francusku: strona główna, tworzenie i dołączanie do partii, pokój gry z czatem, lobby, historia, konto i logowanie, komunikaty błędów. Język wybierasz w nagłówku albo linkiem z `?lang=pl|en|fr` (zapamiętuje go ciasteczko z samym kodem języka; bez wyboru działa `Accept-Language`, a w ostateczności polski). Tłumaczenia EN i FR to szkice maszynowe, czekają na recenzję natywną.
+- Niemiecki jest pełnym szkicem dostępnym przez `?lang=de`, ukrytym w przełączniku do czasu recenzji. Panel `/backend`, e-maile i teksty serwera MCP zostają po polsku. [Architektura](docs/architektura.md#wielojęzyczność-e15-fundament-e15-s01-291)
+
 **Administrator** (konto, którego e-mail równa się `ADMIN_EMAIL` i jest potwierdzony; zakłada je operator poleceniem `npm run admin:create` — [opis](docs/wdrozenie-i-utrzymanie.md#konto-administratora))
 
 - Panel `/backend` tylko do odczytu: liczniki kont i partii (w bazie teraz, zakończone dziś, w 7 dni i razem, także wg pary typów uczestników) oraz lista kont po 25 na stronę z wyszukiwaniem po nazwie gracza i sortowaniem. Każdy inny odwiedzający dostaje zwykłe `404`. [Szczegóły](docs/wdrozenie-i-utrzymanie.md#panel-administratora)
@@ -63,7 +68,7 @@ Działająca instancja: <https://gomoku.byst.re>. Zagraj jako gość, wchodząc 
 
 ## Plany
 
-- **Wersja wielojęzyczna** (polski, angielski, francuski): fundament jest już w kodzie (wybór języka przez `?lang=`, ciasteczko i nagłówek), a tłumaczenie kolejnych ekranów jest w toku. Specyfikacja: [`.ai/specs/2026-11-10-i18n.md`](.ai/specs/2026-11-10-i18n.md).
+- **Dokończenie wersji wielojęzycznej** (ekrany są już przetłumaczone, zob. „Języki”): recenzja natywna francuskiego i niemieckiego oraz włączenie niemieckiego w przełączniku, decyzje o e-mailach (język zapisany przy koncie), tekstach MCP i stronie o przetwarzaniu danych oraz kilka luk (komunikaty limitu żądań, akcje w zaproszeniu i etykiety czatu widza nadal po polsku). Specyfikacje: [`.ai/specs/2026-11-10-i18n.md`](.ai/specs/2026-11-10-i18n.md), [`.ai/specs/2026-11-13-e15-completion.md`](.ai/specs/2026-11-13-e15-completion.md).
 
 ## Struktura repozytorium
 
