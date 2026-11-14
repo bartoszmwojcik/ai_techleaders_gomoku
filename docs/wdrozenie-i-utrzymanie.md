@@ -48,6 +48,21 @@ Przykładowy wpis `cron` (`/etc/cron.d/gomoku-backup`, raz na dobę):
 **Weryfikacja kopii** (po każdej zmianie polecenia): `pg_restore -l <plik> | grep chat_messages` pokazuje tabelę (struktura jest), a `pg_restore -a -t chat_messages -f - <plik> | grep -c '^COPY'` zwraca `0` (brak bloku z danymi; bez flagi byłby tu blok `COPY public.chat_messages` z treścią). Kopie sprzed dodania flagi, jeśli powstały po pierwszym wdrożeniu tabeli czatu, usuń. Kopie zapasowe hostingu i logi infrastruktury leżą poza obietnicą BR-34. Usunięte konto zostaje w starszych kopiach (poza czatem) do czasu rotacji.
 
 
+## Wydawanie wersji
+
+Wydanie to ręcznie uruchamiany workflow `.github/workflows/release.yml` (GitHub → Actions → Release → Run workflow, gałąź `main`). Podaje się **podbicie** (`patch`, `minor`, `major`) albo `custom` z własnym numerem w polu `custom_version` (format `X.Y.Z`, nie niższy niż bieżąca wersja; równy bieżącej jest dozwolony przy pierwszym wydaniu). Logika leży w `scripts/release/` (testy jednostkowe).
+
+**Przed uruchomieniem:**
+1. Wpis `# X.Y.Z (RRRR-MM-DD)` istnieje w `CHANGELOG.md` na `main` (przygotuj go skillem `om-auto-update-changelog`). Brak wpisu przerywa workflow, zanim cokolwiek zmieni; z wpisu powstaje treść GitHub Release (komentarz HTML, np. znacznik Highlights, jest pomijany).
+2. CI na HEAD `main` jest zielone (workflow sprawdza to i odmawia przy czerwonym lub trwającym).
+3. Jednorazowo: Settings → Actions → General → „Allow GitHub Actions to create and approve pull requests” (bez tego PR z podbiciem trzeba otworzyć ręcznie; workflow poda link).
+
+**Co robi:** sprawdza, że tag `vX.Y.Z` jeszcze nie istnieje; podbija `version` w `package.json` (root i `packages/*`) oraz w `package-lock.json`; commituje to na gałęzi `release/vX.Y.Z`; tworzy tag adnotowany `vX.Y.Z` na tym commicie; publikuje GitHub Release `Gomoku vX.Y.Z`; uruchamia CI na gałęzi i otwiera PR z podbiciem do `main` (workflow nie pushuje na chroniony `main`). Gdy wersja jest już w plikach (pierwsze wydanie `0.1.0`), nie ma gałęzi ani PR, a tag wskazuje HEAD `main`. Po squash-merge PR `main` ma inny commit niż tag; tag dalej prowadzi do tej wersji.
+
+**Powrót do wersji:** `git fetch --tags && git checkout vX.Y.Z`, potem zwykły build i wdrożenie z tego checkoutu (sekcja „Wdrożenie na mikr.us”). Wersji w aplikacji nie wdraża workflow; to osobny krok operatora (deploy per epik).
+
+**Cofnięcie nieudanego wydania:** usuń Release (`gh release delete vX.Y.Z`), tag (`git push origin --delete vX.Y.Z`) i gałąź (`git push origin --delete release/vX.Y.Z`), zamknij PR; dopiero wtedy workflow przyjmie ten sam numer ponownie.
+
 ## Bot (gra z botem)
 
 Gra z botem (specyfikacja `.ai/specs/2026-11-05-hosted-bot.md`) liczy ruchy bota na serwerze: w osobnym wątku roboczym (`worker_threads`) tworzonym na jeden ruch, jedno obliczenie naraz w procesie. Funkcja jest **domyślnie wyłączona** i włącza się ją dopiero po zakończeniu epiku E13 i zaakceptowanym pomiarze na serwerze (R19).

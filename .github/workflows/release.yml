@@ -1,0 +1,148 @@
+name: Release
+
+# Ręcznie uruchamiane wydanie (Actions → Release → Run workflow), tylko z `main`. Wybierasz podbicie
+# patch/minor/major albo własny numer; workflow podbija `version` w package.json i package-lock.json, taguje
+# wydanie `vX.Y.Z` i publikuje GitHub Release z wpisu `# X.Y.Z (data)` z CHANGELOG.md. Wpis musi już istnieć.
+# Instrukcja i wycofanie: docs/wdrozenie-i-utrzymanie.md („Wydawanie wersji”); logika: scripts/release/.
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Nowa wersja: podbicie patch, minor lub major albo custom (wtedy wpisz numer poniżej)"
+        type: choice
+        required: true
+        default: patch
+        options: [patch, minor, major, custom]
+      custom_version:
+        description: "Własny numer X.Y.Z, tylko dla bump=custom (np. 0.1.0 dla pierwszego wydania)"
+        type: string
+        required: false
+        default: ""
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write # gałąź wydania, tag i GitHub Release
+  pull-requests: write # PR z podbiciem wersji do main
+  actions: write # uruchomienie CI na gałęzi wydania (workflow_dispatch)
+  checks: read # sprawdzenie, że CI na HEAD main jest zielone
+
+env:
+  NODE_VERSION: 22
+
+jobs:
+  release:
+    name: Wydanie
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # Wydanie z czerwonego albo jeszcze trwającego CI nie wychodzi. Własne zadanie („Wydanie”) jest pomijane.
+      - name: CI na HEAD main jest zielone
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          runs=$(gh api --paginate "repos/$REPO/commits/$SHA/check-runs?per_page=100" \
+            --jq '.check_runs[] | select(.name != "Wydanie") | "\(.name)\t\(.conclusion)"')
+          [ -n "$runs" ] || { echo "::error::Brak sprawdzeń CI dla $SHA"; exit 1; }
+          bad=$(printf '%s\n' "$runs" | awk -F'\t' '$2 != "success" && $2 != "skipped"')
+          if [ -n "$bad" ]; then
+            echo "::error::CI na $SHA nie jest zielone (nazwa, wynik):"
+            echo "$bad"
+            exit 1
+          fi
+
+      # Wejścia trafiają do skryptu przez env, nigdy przez interpolację w `run:`; numer waliduje Node.
+      - name: Wersja i notatki wydania
+        id: version
+        env:
+          BUMP: ${{ inputs.bump }}
+          CUSTOM: ${{ inputs.custom_version }}
+        run: |
+          set -euo pipefail
+          current=$(node scripts/release/cli.mjs current)
+          version=$(node scripts/release/cli.mjs next "$BUMP" "$CUSTOM")
+          tag="v$version"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "::error::Tag $tag już istnieje"; exit 1
+          fi
+          if [ "$version" != "$current" ] && git ls-remote --exit-code --heads origin "release/$tag" >/dev/null 2>&1; then
+            echo "::error::Gałąź release/$tag już istnieje"; exit 1
+          fi
+          node scripts/release/cli.mjs notes "$version" > "$RUNNER_TEMP/release-notes.md"
+          {
+            echo "current=$current"
+            echo "version=$version"
+            echo "tag=$tag"
+            echo "bumped=$([ "$version" != "$current" ] && echo true || echo false)"
+          } >> "$GITHUB_OUTPUT"
+          echo "Wydanie $tag (poprzednio $current)"
+
+      # `main` jest chroniony (PR + wymagane sprawdzenia), więc podbicie idzie na gałąź wydania, którą tag
+      # wskazuje; do `main` wraca przez PR. Gdy wersja już jest w plikach (pierwsze wydanie), tag wskazuje HEAD main.
+      - name: Podbicie wersji i tag
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
+          BUMPED: ${{ steps.version.outputs.bumped }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ "$BUMPED" = "true" ]; then
+            git switch -c "release/$TAG"
+            node scripts/release/cli.mjs bump "$VERSION"
+            git add package.json package-lock.json packages/*/package.json
+            git commit -m "chore(release): $TAG"
+          fi
+          git tag -a "$TAG" -m "Gomoku $TAG"
+          if [ "$BUMPED" = "true" ]; then git push origin "release/$TAG"; fi
+          git push origin "$TAG"
+
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" --verify-tag --title "Gomoku $TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
+
+      # Push z GITHUB_TOKEN nie uruchamia CI, a `workflow_dispatch` tak; wynik trafia na commit gałęzi i spełnia
+      # wymagane sprawdzenia PR. Bez ustawienia „Allow GitHub Actions to create and approve pull requests”
+      # PR się nie otworzy — krok tylko ostrzega i podaje link.
+      - name: PR z podbiciem wersji do main
+        if: steps.version.outputs.bumped == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          gh workflow run ci.yml --ref "release/$TAG" || echo "::warning::Nie udało się uruchomić CI na release/$TAG — uruchom je ręcznie (Actions → CI → Run workflow)."
+          gh pr create --base main --head "release/$TAG" --title "chore(release): $TAG" \
+            --body "Podbicie wersji do $TAG (package.json, package-lock.json). Tag \`$TAG\` i GitHub Release już istnieją i wskazują commit z tej gałęzi. Scal ten PR, żeby \`main\` miał nową wersję; CI na gałęzi uruchomiło się automatycznie." \
+            || echo "::warning::Nie udało się otworzyć PR — otwórz go ręcznie: https://github.com/$REPO/compare/main...release/$TAG"
+
+      - name: Podsumowanie
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          REPO: ${{ github.repository }}
+          BUMPED: ${{ steps.version.outputs.bumped }}
+        run: |
+          {
+            echo "### Wydano $TAG"
+            echo "- [GitHub Release](https://github.com/$REPO/releases/tag/$TAG)"
+            echo "- Powrót do wersji: \`git fetch --tags && git checkout $TAG\`"
+            if [ "$BUMPED" = "true" ]; then echo "- Podbicie wersji wraca do \`main\` przez PR z gałęzi \`release/$TAG\`"; fi
+          } >> "$GITHUB_STEP_SUMMARY"
