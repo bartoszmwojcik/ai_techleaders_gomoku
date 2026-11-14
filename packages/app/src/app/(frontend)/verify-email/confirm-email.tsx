@@ -5,6 +5,9 @@ import { Button } from "@gomoku/ui/game/button";
 import { TextLink } from "@gomoku/ui/game/text-link";
 import { useEffect, useRef, useState } from "react";
 
+import plAuth from "@/i18n/catalogs/pl/auth";
+import { textsOf, type TextsProps } from "@/i18n/client";
+import { withNodes } from "@/i18n/rich";
 import { apiCall } from "@/lib/api-client";
 import {
   LOGIN_TO_RESEND_HREF,
@@ -15,7 +18,7 @@ import {
 
 type Phase = "before" | "confirming" | "done" | "invalid" | "server" | "network";
 
-type ConfirmEmailProps = {
+type ConfirmEmailProps = TextsProps<"auth"> & {
   /** From the address; missing means a broken link (s03.7). */
   token: string | undefined;
   /** Already passed through `safeNextPath` by the page. */
@@ -24,13 +27,12 @@ type ConfirmEmailProps = {
   alreadyVerified: boolean;
 };
 
-const INVALID_TITLE = "Link wygasł lub został już użyty.";
-
 // Programmatic focus on a result region is announced; the region is not interactive, so its
 // own outline is hidden. Fields and buttons keep the focus ring.
 const FOCUS_TARGET = "outline-none";
 
-export function ConfirmEmail({ token, nextPath, signedIn, alreadyVerified }: ConfirmEmailProps) {
+export function ConfirmEmail({ token, nextPath, signedIn, alreadyVerified, ...texts }: ConfirmEmailProps) {
+  const t = textsOf<"auth">(plAuth, texts);
   const [phase, setPhase] = useState<Phase>(token ? "before" : "invalid");
   const [next, setNext] = useState(nextPath);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -76,27 +78,28 @@ export function ConfirmEmail({ token, nextPath, signedIn, alreadyVerified }: Con
     else setPhase(code === "network" ? "network" : "server");
   }
 
-  const feedback = resendFeedback(resend);
+  const feedback = resendFeedback(resend, t);
   const loginHref = next === "/" ? "/login" : `/login?next=${encodeURIComponent(next)}`;
 
   return (
     <>
       <h1 ref={headingRef} tabIndex={-1} className={`m-0 text-section font-strong ${FOCUS_TARGET}`}>
-        Potwierdź adres e-mail
+        {t("verify.heading")}
       </h1>
       {phase === "done" ? (
         <div ref={resultRef} tabIndex={-1} className={`flex flex-col gap-stack ${FOCUS_TARGET}`} data-testid="verify-done">
-          <Alert status="success" title="Adres potwierdzony" />
+          <Alert status="success" title={t("verify.doneTitle")} />
           {signedIn ? (
             <div>
               <Button asChild>
-                <a href={next}>Przejdź dalej</a>
+                <a href={next}>{t("verify.goOn")}</a>
               </Button>
             </div>
           ) : (
             <p className="m-0 text-body text-text-secondary">
-              Nie jesteś zalogowany na tym urządzeniu.{" "}
-              <TextLink href={loginHref}>Zaloguj się</TextLink>, aby zagrać.
+              {withNodes(t("verify.notSignedIn", { link: "{link}" }), {
+                link: <TextLink href={loginHref}>{t("verify.login")}</TextLink>,
+              })}
             </p>
           )}
         </div>
@@ -104,25 +107,25 @@ export function ConfirmEmail({ token, nextPath, signedIn, alreadyVerified }: Con
         <div ref={resultRef} tabIndex={-1} className={`flex flex-col gap-stack ${FOCUS_TARGET}`} data-testid="verify-error">
           <Alert
             status="danger"
-            title={phase === "server" ? "Nie udało się potwierdzić adresu" : "Brak połączenia"}
+            title={t(phase === "server" ? "verify.failed" : "shared.networkTitle")}
           >
-            {phase === "server" ? "Spróbuj ponownie." : "Nie udało się połączyć z serwerem. Spróbuj ponownie."}
+            {t(phase === "server" ? "shared.retry" : "verify.network")}
           </Alert>
           <div>
             <Button variant="secondary" onClick={onConfirm}>
-              Spróbuj ponownie
+              {t("verify.retryButton")}
             </Button>
           </div>
         </div>
       ) : phase === "invalid" ? (
         <div ref={resultRef} tabIndex={-1} className={`flex flex-col gap-stack ${FOCUS_TARGET}`} data-testid="verify-invalid">
-          <Alert status="danger" title={INVALID_TITLE} />
+          <Alert status="danger" title={t("verify.invalid")} />
           {alreadyVerified && (
             <>
-              <p className="m-0 text-body text-text-secondary">Adres jest już potwierdzony.</p>
+              <p className="m-0 text-body text-text-secondary">{t("verify.already")}</p>
               <div>
                 <Button asChild>
-                  <a href={nextPath}>Przejdź dalej</a>
+                  <a href={nextPath}>{t("verify.goOn")}</a>
                 </Button>
               </div>
             </>
@@ -137,7 +140,7 @@ export function ConfirmEmail({ token, nextPath, signedIn, alreadyVerified }: Con
                     disabled={resend.kind === "limited"}
                     onClick={onResend}
                   >
-                    Wyślij nowy link
+                    {t("verify.newLink")}
                   </Button>
                 </div>
                 {feedback && (
@@ -154,18 +157,18 @@ export function ConfirmEmail({ token, nextPath, signedIn, alreadyVerified }: Con
               </>
             ) : (
               <TextLink href={LOGIN_TO_RESEND_HREF} placement="standalone">
-                Zaloguj się, aby wysłać nowy link
+                {t("verify.loginToResend")}
               </TextLink>
             ))}
         </div>
       ) : (
         <>
           <p className="m-0 text-body text-text-secondary">
-            Kliknij przycisk, aby potwierdzić adres e-mail konta, dla którego wysłaliśmy ten link.
+            {t("verify.intro")}
           </p>
           <div>
             <Button loading={phase === "confirming"} onClick={onConfirm}>
-              Potwierdź e-mail
+              {t("verify.confirm")}
             </Button>
           </div>
         </>

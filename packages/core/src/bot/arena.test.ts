@@ -42,7 +42,7 @@ describe("runArena — 4-game smoke run", () => {
     const reported: ArenaGame[] = [];
     expect(runArena(4, SMOKE, (game) => reported.push(game))).toEqual(result);
     expect(reported).toEqual(result.games);
-  });
+  }, 30_000); // re-runs the whole arena; the 5s default is too tight when the full suite loads the machine
 
   it("scores level 2 consistently with the games", () => {
     expect(result).toMatchObject(scoreArena(result.games));

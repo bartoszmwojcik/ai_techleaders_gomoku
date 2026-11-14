@@ -1,6 +1,5 @@
 "use client";
 
-import { toValidationError } from "@gomoku/core/http/zod-error";
 import { passwordResetRequestSchema } from "@gomoku/core/validators/auth/password-reset-schema";
 import { Alert } from "@gomoku/ui/game/alert";
 import { TextLink } from "@gomoku/ui/game/text-link";
@@ -8,9 +7,13 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { ErrorMessage } from "@/components/feedback/error-message";
 import { rateLimitedError } from "@/components/feedback/rate-limited-error";
+import plAuth from "@/i18n/catalogs/pl/auth";
+import plCommon from "@/i18n/catalogs/pl/common";
+import { textsOf, type TextsProps } from "@/i18n/client";
 import { FormField } from "@/components/forms/form-field";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { apiCall } from "@/lib/api-client";
+import { fieldMessages, localFieldMessages, type ErrorTexts } from "@/lib/api-error-text";
 
 const EMAIL_ID = "forgot-email";
 
@@ -20,7 +23,16 @@ type GeneralError = { title: string; details: string };
 // own outline is hidden. Fields and buttons keep the focus ring.
 const FOCUS_TARGET = "outline-none";
 
-export function ForgotPasswordForm() {
+type Props = TextsProps<"auth"> & {
+  /** The `common` namespace (the limit message); nothing in Polish. */
+  commonTexts?: TextsProps<"common">;
+  /** The `errors` namespace (field errors by code); nothing in Polish. */
+  errorTexts?: ErrorTexts;
+};
+
+export function ForgotPasswordForm({ commonTexts = {}, errorTexts = {}, ...texts }: Props = {}) {
+  const t = textsOf<"auth">(plAuth, texts);
+  const common = textsOf<"common">(plCommon, commonTexts);
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | undefined>();
   const [general, setGeneral] = useState<GeneralError | null>(null);
@@ -47,7 +59,7 @@ export function ForgotPasswordForm() {
     // Same schema as the route: a malformed form costs no attempt of the limit.
     const parsed = passwordResetRequestSchema.safeParse({ email });
     if (!parsed.success) {
-      setError(toValidationError(parsed.error)?.fieldErrors?.email?.[0]);
+      setError(localFieldMessages(errorTexts, ["email"], parsed.error, "forgot").email);
       setFocusTarget({ id: EMAIL_ID });
       return;
     }
@@ -63,19 +75,19 @@ export function ForgotPasswordForm() {
       return;
     }
 
-    const { code, retryAfterSeconds, fieldErrors } = result.error;
-    const fieldError = fieldErrors?.email?.[0];
+    const { code, retryAfterSeconds } = result.error;
+    const fieldError = fieldMessages(errorTexts, ["email"], result.error, "forgot").email;
     if (fieldError) {
       setError(fieldError);
     } else if (code === "RATE_LIMITED") {
-      setGeneral(rateLimitedError(retryAfterSeconds));
+      setGeneral(rateLimitedError(retryAfterSeconds, common));
     } else if (code === "network") {
       setGeneral({
-        title: "Brak połączenia",
-        details: "Nie udało się połączyć z serwerem. Wpisany adres został zachowany. Spróbuj ponownie.",
+        title: t("shared.networkTitle"),
+        details: t("forgot.network"),
       });
     } else {
-      setGeneral({ title: "Nie udało się wysłać prośby", details: "Spróbuj ponownie." });
+      setGeneral({ title: t("forgot.failed"), details: t("shared.retry") });
     }
     setFocusTarget({ id: EMAIL_ID });
   }
@@ -83,13 +95,12 @@ export function ForgotPasswordForm() {
   return (
     <>
       <p className="m-0 text-body text-text-secondary">
-        Podaj adres e-mail konta. Jeśli jest potwierdzony, wyślemy na niego link do ustawienia nowego hasła.
+        {t("forgot.intro")}
       </p>
       {sent && (
         <div ref={sentRef} tabIndex={-1} className={FOCUS_TARGET} data-testid="forgot-sent">
-          <Alert status="success" role="status" title="Sprawdź skrzynkę">
-            Jeśli konto z tym adresem istnieje i adres jest potwierdzony, wysłaliśmy link (ważny 1 godzinę).
-            Sprawdź też folder spam.
+          <Alert status="success" role="status" title={t("forgot.sentTitle")}>
+            {t("forgot.sentBody")}
           </Alert>
         </div>
       )}
@@ -104,18 +115,18 @@ export function ForgotPasswordForm() {
           name="email"
           type="email"
           autoComplete="email"
-          label="E-mail"
+          label={t("fields.email")}
           error={error}
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
         />
-        <SubmitButton pending={pending} pendingLabel="Wysyłanie…">
-          {sent ? "Wyślij link ponownie" : "Wyślij link"}
+        <SubmitButton pending={pending} pendingLabel={t("forgot.pending")}>
+          {t(sent ? "forgot.sendAgain" : "forgot.send")}
         </SubmitButton>
       </form>
       <TextLink href="/login" placement="standalone">
-        Wróć do logowania
+        {t("forgot.backToLogin")}
       </TextLink>
     </>
   );

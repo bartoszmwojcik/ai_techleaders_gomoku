@@ -12,6 +12,8 @@ vi.mock("@gomoku/core", async (importOriginal) => ({
   CREATE_GAME_LIMIT: 7,
 }));
 
+import frHome from "@/i18n/catalogs/fr/home";
+
 import { GuestCreateForm } from "./guest-create-form";
 
 const ok = { ok: true, data: { gameId: "g1" } };
@@ -265,5 +267,38 @@ describe("GuestCreateForm with the bot (hosted-bot UI/UX)", () => {
     await u.click(screen.getByRole("radio", { name: "Bot" }));
     await u.click(screen.getByRole("button", { name: "Rozumiem, zagraj z botem" }));
     expect(screen.getAllByRole("alert").some((alert) => alert.textContent?.includes("Bot jest teraz niedostępny."))).toBe(true);
+  });
+});
+
+describe("GuestCreateForm in French (E15-S03)", () => {
+  it("labels the form, the settings, the bot and the warning, and words the refusals", async () => {
+    apiCall.mockResolvedValue(failure({ code: "RATE_LIMITED" }));
+    const u = userEvent.setup();
+    render(<GuestCreateForm botEnabled locale="fr" dict={frHome} />);
+    expect(screen.getByText(/^Laissez vide et vous serez « Joueur 1 »$/)).toBeTruthy();
+    expect(screen.getByRole("radiogroup", { name: "Variante" })).toBeTruthy();
+    expect(screen.getByRole("checkbox", { name: /Partie publique/ })).toBeTruthy();
+    expect(screen.getByText("L’invitation est valable 24 heures.")).toBeTruthy();
+    await u.click(screen.getByRole("button", { name: "J’ai compris, créer l’invitation" }));
+    expect(await screen.findByText("Trop d’invitations")).toBeTruthy();
+    expect(screen.getByText(/La limite est de 7 parties par heure\./)).toBeTruthy();
+
+    await u.click(screen.getByRole("radio", { name: "Bot" }));
+    expect(screen.getByRole("radiogroup", { name: "Niveau du bot" })).toBeTruthy();
+    expect(screen.getByText(/Une partie contre le bot ne sera pas enregistrée/)).toBeTruthy();
+    apiCall.mockResolvedValue(failure({ code: "BOT_UNAVAILABLE" }));
+    await u.click(screen.getByRole("button", { name: "J’ai compris, jouer contre le bot" }));
+    expect(await screen.findByText(/Le bot est indisponible/)).toBeTruthy();
+  });
+
+  it("asks in French before giving up the own waiting game", async () => {
+    apiCall.mockResolvedValue(failure({ code: "OWN_WAITING_GAME", data: { gameId: "g0" } }));
+    const u = userEvent.setup();
+    render(<GuestCreateForm locale="fr" dict={frHome} />);
+    await u.click(screen.getByRole("button", { name: "J’ai compris, créer l’invitation" }));
+    expect(await screen.findByText("Vous avez une partie en attente")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Revenir à la partie" }).getAttribute("href")).toBe("/games/g0");
+    await u.click(screen.getByRole("button", { name: "Annuler et en créer une nouvelle" }));
+    expect(await screen.findByRole("alertdialog", { name: "Annuler l’invitation précédente\u202f?" })).toBeTruthy();
   });
 });

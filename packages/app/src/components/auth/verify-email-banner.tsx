@@ -3,6 +3,9 @@
 import { VerifyEmailBanner, type VerifyEmailState } from "@gomoku/ui/game/verify-email-banner";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
+import plAuth from "@/i18n/catalogs/pl/auth";
+import { textsOf, type TextsProps } from "@/i18n/client";
+
 import {
   isBannerVisible,
   readClosedAt,
@@ -11,7 +14,7 @@ import {
 } from "./verify-email-banner-memory";
 import { requestNewLink, resendFeedback, type ResendState } from "./resend-verification";
 
-type VerifyEmailNoticeProps = {
+type VerifyEmailNoticeProps = TextsProps<"auth"> & {
   userId: string;
   /** Shown only to the owner of the account, so it may appear in the text. */
   email: string;
@@ -50,7 +53,8 @@ function focusQuietly(element: HTMLElement | null | undefined) {
  * briefly before it disappears, instead of everybody getting a layout shift when it appears after
  * hydration (CLS on `/` and `/account`). Unreadable storage means visible (fail open).
  */
-export function VerifyEmailNotice({ userId, email }: VerifyEmailNoticeProps) {
+export function VerifyEmailNotice({ userId, email, ...texts }: VerifyEmailNoticeProps) {
+  const t = textsOf<"auth">(plAuth, texts);
   const open = useSyncExternalStore(
     subscribeToBannerMemory,
     () => isBannerVisible(readClosedAt(userId), Date.now()),
@@ -80,20 +84,19 @@ export function VerifyEmailNotice({ userId, email }: VerifyEmailNoticeProps) {
     focusQuietly(document.querySelector<HTMLElement>("main h1"));
   }
 
-  const feedback = resendFeedback(resend);
+  const feedback = resendFeedback(resend, t);
   return (
     <div ref={wrapperRef} data-testid="verify-email-banner" className="w-full">
       <VerifyEmailBanner
-        title="Potwierdź adres e-mail"
-        resendLabel="Wyślij ponownie"
-        dismissLabel="Zamknij"
+        title={t("verifyBanner.title")}
+        resendLabel={t("verifyBanner.resend")}
+        dismissLabel={t("verifyBanner.dismiss")}
         onDismiss={onDismiss}
         state={bannerState(resend)}
         feedback={feedback?.content}
         onResend={() => void onResend()}
       >
-        Bez potwierdzonego adresu nie odzyskasz konta, jeśli zapomnisz hasła. Link wysyłamy na {email} — sprawdź też
-        folder spam.
+        {t("verifyBanner.body", { email })}
       </VerifyEmailBanner>
     </div>
   );

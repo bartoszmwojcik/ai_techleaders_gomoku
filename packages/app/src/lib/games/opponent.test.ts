@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
+import frHome from "@/i18n/catalogs/fr/home";
+import { textsOf } from "@/i18n/client";
+
 import {
+  BOT_CLASSIC_ONLY_TEXT,
   BOT_LEVEL_OPTIONS,
+  botLevelOptions,
+  opponentOptions,
   DEFAULT_OPPONENT,
   OPPONENT_OPTIONS,
   BOT_UNAVAILABLE_TEXT,
@@ -51,5 +57,15 @@ describe("opponent setting (hosted-bot UI/UX)", () => {
     expect(guestNickname("guest", undefined, 1)).toBeUndefined();
     expect(guestNickname("guest", null, 1)).toBeUndefined();
     expect(guestNickname("account", "Ala", 1)).toBeUndefined();
+  });
+
+  it("words the options in the reader's language (E15-S03)", () => {
+    const fr = textsOf<"home">(frHome, { locale: "fr", dict: frHome });
+    expect(opponentOptions(fr).map(({ label }) => label)).toEqual(["Une personne (invitation)", "Bot"]);
+    expect(botLevelOptions(fr)).toEqual([
+      { value: "1", label: "Niveau 1" },
+      { value: "2", label: "Niveau 2" },
+    ]);
+    expect(BOT_CLASSIC_ONLY_TEXT).toBe("Bot gra tylko w klasyka.");
   });
 });

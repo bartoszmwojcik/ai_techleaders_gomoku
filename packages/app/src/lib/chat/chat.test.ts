@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { isReadable, mergeMessages, messageTime, newClientId, pluralChars, pluralNew } from "./chat";
+import plChat from "@/i18n/catalogs/pl/chat";
+import { textsOf } from "@/i18n/client";
+
+import { isReadable, mergeMessages, messageTime, newClientId } from "./chat";
+
+// The Polish plurals moved to the catalog (E15-S04, I15): the same words for the same counts.
+const pl = textsOf<"chat">(plChat);
 
 const message = (id: number, text = `m${id}`) => ({ id, seat: 1 as const, text, createdAt: "2026-11-01T10:00:00.000Z" });
 
@@ -32,17 +38,17 @@ describe("messageTime", () => {
   });
 });
 
-describe("pluralChars", () => {
+describe("characters left, Polish plural", () => {
   it.each([
     [0, "znaków"], [1, "znak"], [2, "znaki"], [4, "znaki"], [5, "znaków"], [12, "znaków"], [14, "znaków"],
     [22, "znaki"], [100, "znaków"], [112, "znaków"],
-  ])("%i %s", (count, word) => expect(pluralChars(count)).toBe(word));
+  ])("%i %s", (count, word) => expect(pl("left", { count })).toBe(`Pozostało ${count} ${word}`));
 });
 
-describe("pluralNew", () => {
+describe("new messages, Polish plural", () => {
   it.each([
     [1, "nowa"], [2, "nowe"], [3, "nowe"], [5, "nowych"], [12, "nowych"], [22, "nowe"], [0, "nowych"],
-  ])("%i %s", (count, word) => expect(pluralNew(count)).toBe(word));
+  ])("%i %s", (count, word) => expect(pl("unread", { count })).toBe(`Czat (${count} ${word})`));
 });
 
 describe("newClientId", () => {

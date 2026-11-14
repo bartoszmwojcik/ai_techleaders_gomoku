@@ -17,10 +17,12 @@ export const acceptInvitationSchema = z
   .refine((input) => input.as !== "user" || input.nickname === undefined, {
     path: ["nickname"],
     error: "Nick podaje tylko gość.",
+    params: { code: "NICKNAME_GUEST_ONLY" },
   })
   .refine((input) => input.as !== "guest" || input.acknowledgedGuestWarning === true, {
     path: ["acknowledgedGuestWarning"],
     error: "Potwierdź, że rozumiesz ograniczenia gry bez konta.",
+    params: { code: "GUEST_WARNING_REQUIRED" },
   });
 
 export type AcceptInvitationInput = z.infer<typeof acceptInvitationSchema>;

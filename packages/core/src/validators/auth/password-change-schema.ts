@@ -20,6 +20,7 @@ export const passwordChangeSchema = z
   .refine((input) => input.newPassword !== input.currentPassword, {
     path: ["newPassword"],
     error: "Nowe hasło musi się różnić od obecnego.",
+    params: { code: "PASSWORD_UNCHANGED" },
   });
 
 export type PasswordChangeInput = z.infer<typeof passwordChangeSchema>;

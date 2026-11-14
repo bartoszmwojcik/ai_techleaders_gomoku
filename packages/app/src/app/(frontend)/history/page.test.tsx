@@ -14,7 +14,13 @@ vi.mock("./history-view", () => ({
   HistoryView: ({ initial }: { initial: unknown }) => <section data-testid="view">{JSON.stringify(initial)}</section>,
 }));
 
-import HistoryPage, { metadata } from "./page";
+const request = vi.hoisted(() => ({ lang: undefined as string | undefined }));
+vi.mock("next/headers", () => ({
+  cookies: async () => ({ get: (name: string) => (name === "gomoku_lang" && request.lang ? { name, value: request.lang } : undefined) }),
+  headers: async () => new Headers(),
+}));
+
+import HistoryPage, { generateMetadata } from "./page";
 
 const first = { entries: [], nextCursor: "abc" };
 
@@ -49,7 +55,17 @@ describe("HistoryPage", () => {
     expect(redirect).toHaveBeenCalledExactlyOnceWith("/login?next=%2Fhistory");
   });
 
-  it("is not indexed", () => {
+  it("is not indexed", async () => {
+    const metadata = await generateMetadata();
     expect(metadata.robots).toEqual({ index: false, follow: false });
+  });
+});
+
+describe("HistoryPage in French (E15-S05)", () => {
+  it("names the page in the request's language", async () => {
+    request.lang = "fr";
+    expect((await generateMetadata()).title).toBe("Historique des parties — Gomoku");
+    request.lang = undefined;
+    expect((await generateMetadata()).title).toBe("Historia partii — Gomoku");
   });
 });

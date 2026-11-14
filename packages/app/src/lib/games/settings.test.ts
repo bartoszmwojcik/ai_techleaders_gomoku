@@ -1,6 +1,25 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_SETTINGS, homeRulesLabel, rulesLabel, settingsBody, settingsLabel, TIME_OPTIONS, VARIANT_OPTIONS, variantOf } from "./settings";
+import enHome from "@/i18n/catalogs/en/home";
+import frHome from "@/i18n/catalogs/fr/home";
+import { textsOf } from "@/i18n/client";
+
+import {
+  DEFAULT_SETTINGS,
+  homeRulesLabel,
+  rulesLabel,
+  settingsBody,
+  settingsLabel,
+  TIME_OPTIONS,
+  timeOptions,
+  VARIANT_NAME,
+  VARIANT_OPTIONS,
+  variantOf,
+  variantOptions,
+} from "./settings";
+
+const fr = textsOf<"home">(frHome, { locale: "fr", dict: frHome });
+const en = textsOf<"home">(enHome, { locale: "en", dict: enHome });
 
 describe("game settings", () => {
   it("defaults to the classic game and a three minute paper clock", () => {
@@ -40,5 +59,17 @@ describe("game settings", () => {
   it("words the home page rules line per variant", () => {
     expect(homeRulesLabel("classic")).toBe("Swobodne zasady · plansza 15×15 · 10 minut na gracza");
     expect(homeRulesLabel("paper")).toBe("Kółko i krzyżyk na kartce papieru, 5 w linii, gra na czas.");
+  });
+
+  it("speaks the reader's language (E15-S03)", () => {
+    expect(VARIANT_NAME).toEqual({ classic: "Klasyczny", paper: "Papier i ołówek" });
+    expect(variantOptions(fr).map(({ label }) => label)).toEqual(["Classique", "Papier et crayon"]);
+    expect(timeOptions(fr)[0]).toEqual({ value: "60000", label: "1\u00a0min" });
+    expect(settingsLabel("paper", 180_000, fr)).toBe("Papier et crayon · 3\u00a0min");
+    expect(rulesLabel("paper", 120_000, en)).toBe("Pen and paper · 2 min per player");
+    expect(rulesLabel("classic", 600_000, fr)).toBe("Règles libres · plateau 15×15 · 10\u00a0minutes par joueur");
+    expect(rulesLabel("classic", 60_000, en)).toBe("Freestyle rules · 15×15 board · 1 minute per player");
+    expect(homeRulesLabel("paper", en)).toBe("Noughts and crosses on a sheet of paper, 5 in a row, against the clock.");
+    expect(homeRulesLabel("classic", en)).toBe("Freestyle rules · 15×15 board · 10 minutes per player");
   });
 });

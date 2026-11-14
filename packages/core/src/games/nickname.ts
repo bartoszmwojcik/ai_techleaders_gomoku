@@ -52,11 +52,23 @@ export const nicknameSchema = z
     z.string().superRefine((nickname, ctx) => {
       if (nickname === "") return;
       if (Array.from(nickname).length > NICKNAME_MAX_LENGTH) {
-        ctx.addIssue({ code: "custom", message: NICKNAME_TOO_LONG_MESSAGE });
+        ctx.addIssue({
+          code: "custom",
+          message: NICKNAME_TOO_LONG_MESSAGE,
+          params: { code: "NICKNAME_TOO_LONG", max: NICKNAME_MAX_LENGTH },
+        });
       } else if (!NICKNAME_PATTERN.test(nickname)) {
-        ctx.addIssue({ code: "custom", message: NICKNAME_INVALID_MESSAGE });
+        ctx.addIssue({
+          code: "custom",
+          message: NICKNAME_INVALID_MESSAGE,
+          params: { code: "NICKNAME_INVALID" },
+        });
       } else if (isReservedNickname(nickname)) {
-        ctx.addIssue({ code: "custom", message: NICKNAME_RESERVED_MESSAGE });
+        ctx.addIssue({
+          code: "custom",
+          message: NICKNAME_RESERVED_MESSAGE,
+          params: { code: "NICKNAME_RESERVED" },
+        });
       }
     }),
   )
@@ -65,4 +77,15 @@ export const nicknameSchema = z
 /** Name shown for a guest without a nickname: derived from the seat on every read. */
 export function defaultNickname(seat: Seat): string {
   return `Gracz ${seat}`;
+}
+
+/**
+ * The seat a name stands for when it is exactly a default guest nickname (`defaultNickname(1)` or
+ * `defaultNickname(2)`), otherwise `null`. Lets the UI translate the server-composed Polish text
+ * for a guest seat without a new field in the API envelope.
+ */
+export function defaultNicknameSeat(name: string): Seat | null {
+  if (name === defaultNickname(1)) return 1;
+  if (name === defaultNickname(2)) return 2;
+  return null;
 }

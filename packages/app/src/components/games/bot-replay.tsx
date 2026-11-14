@@ -10,8 +10,10 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
 import { rateLimitedError } from "@/components/feedback/rate-limited-error";
+import plGame from "@/i18n/catalogs/pl/game";
+import plCommon from "@/i18n/catalogs/pl/common";
+import { useT } from "@/i18n/context";
 import { apiCall } from "@/lib/api-client";
-import { BOT_UNAVAILABLE_TEXT } from "@/lib/games/opponent";
 
 type Props = {
   /** The level of the bot just played: the new game keeps it (R13). */
@@ -34,6 +36,8 @@ type Problem =
  * the limit). The new game reads the resources afresh (BR-57), so its strength may differ.
  */
 export function BotReplay({ level, guest, nickname }: Props) {
+  const t = useT("game", plGame);
+  const common = useT("common", plCommon);
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
@@ -69,32 +73,32 @@ export function BotReplay({ level, guest, nickname }: Props) {
   return (
     <section aria-labelledby="bot-replay-h" className="flex flex-col gap-stack" data-testid="bot-replay">
       <h2 id="bot-replay-h" className="m-0 text-subsection font-strong">
-        Następna partia
+        {t("botReplay.heading")}
       </h2>
-      <p className="m-0 text-body text-text-secondary">Z botem nie ma rewanżu: nowa partia zaczyna się od losowania kolorów.</p>
-      {problem?.kind === "bot-unavailable" && <Alert status="warning" title={BOT_UNAVAILABLE_TEXT} role="alert" />}
+      <p className="m-0 text-body text-text-secondary">{t("botReplay.intro")}</p>
+      {problem?.kind === "bot-unavailable" && <Alert status="warning" title={t("botReplay.botUnavailable")} role="alert" />}
       {problem?.kind === "active" && (
-        <Alert status="warning" title="Masz już partię" role="alert">
-          Najpierw dokończ bieżącą partię.{" "}
-          {problem.gameId && <TextLink href={`/games/${problem.gameId}`}>Przejdź do partii</TextLink>}
+        <Alert status="warning" title={t("botReplay.activeTitle")} role="alert">
+          {t("botReplay.activeBody")}{" "}
+          {problem.gameId && <TextLink href={`/games/${problem.gameId}`}>{t("botReplay.goToGame")}</TextLink>}
         </Alert>
       )}
       {problem?.kind === "limit" && (
-        <Alert status="danger" title="Zbyt wiele nowych partii" role="alert">
-          Limit to {CREATE_GAME_LIMIT} utworzeń na godzinę. {rateLimitedError(problem.retryAfterSeconds).details}
+        <Alert status="danger" title={t("botReplay.limitTitle")} role="alert">
+          {t("botReplay.limit", { count: CREATE_GAME_LIMIT })} {rateLimitedError(problem.retryAfterSeconds, common).details}
         </Alert>
       )}
       {problem?.kind === "failed" && (
-        <Alert status="danger" title="Nie udało się utworzyć partii" role="alert">
-          {problem.network ? "Nie udało się połączyć z serwerem. " : "Błąd po stronie serwera. "}Spróbuj ponownie.
+        <Alert status="danger" title={t("botReplay.failedTitle")} role="alert">
+          {t(problem.network ? "botReplay.failedNetwork" : "botReplay.failedServer")}
         </Alert>
       )}
       <div className="flex flex-wrap items-center gap-group">
         <Button loading={busy} onClick={() => void playAgain()} data-testid="bot-replay-button">
-          {busy ? "Tworzenie partii…" : "Zagraj ponownie z botem"}
+          {t(busy ? "botReplay.creating" : "botReplay.playAgain")}
         </Button>
         <Button asChild variant="secondary">
-          <Link href="/">Wróć do panelu głównego</Link>
+          <Link href="/">{t("shared.backToPanel")}</Link>
         </Button>
       </div>
     </section>

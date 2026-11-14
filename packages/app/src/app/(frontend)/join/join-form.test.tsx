@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { push } = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 
+import frHome from "@/i18n/catalogs/fr/home";
+
 import { JoinForm } from "./join-form";
 
 beforeEach(() => push.mockReset());
@@ -97,5 +99,17 @@ describe("JoinForm", () => {
       window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: false }));
     });
     expect((screen.getByRole("button", { name: "Sprawdzanie kodu…" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe("JoinForm in French (E15-S03)", () => {
+  it("labels the field and words the refusal", async () => {
+    const user = userEvent.setup();
+    render(<JoinForm locale="fr" dict={frHome} />);
+    expect(screen.getByText(/La casse et le tiret n’ont pas d’importance/)).toBeTruthy();
+    await user.type(screen.getByLabelText(/Code d’invitation/), "ABC");
+    await user.click(screen.getByRole("button", { name: "Continuer" }));
+    expect(screen.getByText(/Vérifiez le code.: il compte 8 caractères\./)).toBeTruthy();
+    expect(push).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,5 @@
 "use client";
 
-import { toValidationError } from "@gomoku/core/http/zod-error";
 import { loginSchema } from "@gomoku/core/validators/auth/login-schema";
 import { PasswordField } from "@gomoku/ui/game/password-field";
 import { TextLink } from "@gomoku/ui/game/text-link";
@@ -9,7 +8,13 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { ErrorMessage } from "@/components/feedback/error-message";
 import { FormField } from "@/components/forms/form-field";
 import { SubmitButton } from "@/components/forms/submit-button";
+import { rateLimitedError } from "@/components/feedback/rate-limited-error";
+import plAuth from "@/i18n/catalogs/pl/auth";
+import plCommon from "@/i18n/catalogs/pl/common";
+import { textsOf, type TextsProps } from "@/i18n/client";
+import { withNodes } from "@/i18n/rich";
 import { apiCall } from "@/lib/api-client";
+import { localFieldMessages, type ErrorTexts } from "@/lib/api-error-text";
 import { fullPageLoad } from "@/lib/full-page-load";
 
 type FieldName = "email" | "password";
@@ -19,26 +24,18 @@ type GeneralError = { title: string; details: ReactNode };
 const FIELD_ORDER: FieldName[] = ["email", "password"];
 const FIELD_IDS: Record<FieldName, string> = { email: "login-email", password: "login-password" };
 
-const GENERIC_ERROR: GeneralError = { title: "Nie udało się zalogować", details: "Spróbuj ponownie." };
 
-function firstMessages(fieldErrors: Record<string, string[]> | undefined): FieldMessages {
-  const messages: FieldMessages = {};
-  for (const field of FIELD_ORDER) {
-    const message = fieldErrors?.[field]?.[0];
-    if (message) messages[field] = message;
-  }
-  return messages;
-}
+type Props = TextsProps<"auth"> & {
+  nextPath: string;
+  /** The `common` namespace (the limit message); nothing in Polish. */
+  commonTexts?: TextsProps<"common">;
+  /** The `errors` namespace (field errors by code); nothing in Polish. */
+  errorTexts?: ErrorTexts;
+};
 
-function rateLimitedError(retryAfterSeconds: number | undefined): GeneralError {
-  const minutes = retryAfterSeconds === undefined ? undefined : Math.max(1, Math.ceil(retryAfterSeconds / 60));
-  return {
-    title: "Zbyt wiele prób",
-    details: minutes === undefined ? "Spróbuj ponownie za jakiś czas." : `Spróbuj ponownie za ${minutes} min.`,
-  };
-}
-
-export function LoginForm({ nextPath }: { nextPath: string }) {
+export function LoginForm({ nextPath, commonTexts = {}, errorTexts = {}, ...texts }: Props) {
+  const t = textsOf<"auth">(plAuth, texts);
+  const common = textsOf<"common">(plCommon, commonTexts);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   // Remounting the password field hides the password again after a wrong one.
@@ -62,7 +59,7 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
     const input = { email, password };
     const parsed = loginSchema.safeParse(input);
     if (!parsed.success) {
-      const messages = firstMessages(toValidationError(parsed.error)?.fieldErrors);
+      const messages: FieldMessages = localFieldMessages(errorTexts, FIELD_ORDER, parsed.error, "login");
       setErrors(messages);
       // The schema reports at least one field, so there is always a first invalid one.
       setFocusTarget({ id: FIELD_IDS[FIELD_ORDER.find((field) => messages[field]) as FieldName] });
@@ -86,25 +83,21 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
       setPassword("");
       setPasswordKey((key) => key + 1);
       // One message for an unknown e-mail and a wrong password: no field is blamed.
-      setGeneral({ title: "Nieprawidłowy e-mail lub hasło", details: "Sprawdź dane i spróbuj ponownie." });
+      setGeneral({ title: t("login.invalidTitle"), details: t("login.invalidBody") });
     } else if (code === "RATE_LIMITED") {
-      setGeneral(rateLimitedError(retryAfterSeconds));
+      setGeneral(rateLimitedError(retryAfterSeconds, common));
     } else if (code === "ALREADY_AUTHENTICATED") {
       setGeneral({
-        title: "Jesteś już zalogowany",
-        details: (
-          <>
-            Sesja jest aktywna w innej karcie. <TextLink href={nextPath}>Przejdź dalej</TextLink>.
-          </>
-        ),
+        title: t("shared.alreadySignedIn"),
+        details: withNodes(t("login.otherTab", { link: "{link}" }), { link: <TextLink href={nextPath}>{t("login.goOn")}</TextLink> }),
       });
     } else if (code === "network") {
       setGeneral({
-        title: "Brak połączenia",
-        details: "Nie udało się połączyć z serwerem. Wpisane dane zostały zachowane. Spróbuj ponownie.",
+        title: t("shared.networkTitle"),
+        details: t("login.network"),
       });
     } else {
-      setGeneral(GENERIC_ERROR);
+      setGeneral({ title: t("login.failed"), details: t("shared.retry") });
     }
     // The error has no field of its own: focus the password (empty after a wrong one).
     setFocusTarget({ id: FIELD_IDS.password });
@@ -125,7 +118,7 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
           name="email"
           type="email"
           autoComplete="email"
-          label="E-mail"
+          label={t("fields.email")}
           error={errors.email}
           required
           value={email}
@@ -136,27 +129,27 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
           id={FIELD_IDS.password}
           name="password"
           autoComplete="current-password"
-          label="Hasło"
-          showLabel="Pokaż hasło"
-          hideLabel="Ukryj hasło"
+          label={t("fields.password")}
+          showLabel={t("fields.showPassword")}
+          hideLabel={t("fields.hidePassword")}
           error={errors.password}
           required
           value={password}
           onChange={setPassword}
         />
-        <SubmitButton pending={pending} pendingLabel="Logowanie…">
-          Zaloguj się
+        <SubmitButton pending={pending} pendingLabel={t("login.pending")}>
+          {t("login.submit")}
         </SubmitButton>
       </form>
       <p className="m-0 text-body text-text-secondary">
         <TextLink href="/forgot-password" placement="standalone">
-          Nie pamiętasz hasła?
+          {t("login.forgot")}
         </TextLink>
       </p>
       <p className="m-0 text-body text-text-secondary">
-        Nie masz konta?{" "}
+        {t("login.noAccount")}{" "}
         <TextLink href={registerHref} placement="standalone">
-          Załóż konto
+          {t("login.register")}
         </TextLink>
       </p>
     </>

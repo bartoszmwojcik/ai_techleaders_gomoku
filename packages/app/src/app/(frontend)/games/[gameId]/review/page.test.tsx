@@ -20,7 +20,13 @@ vi.mock("./review-view", () => ({
   ),
 }));
 
-import ReviewPage, { metadata } from "./page";
+const request = vi.hoisted(() => ({ lang: undefined as string | undefined }));
+vi.mock("next/headers", () => ({
+  cookies: async () => ({ get: (name: string) => (name === "gomoku_lang" && request.lang ? { name, value: request.lang } : undefined) }),
+  headers: async () => new Headers(),
+}));
+
+import ReviewPage, { generateMetadata } from "./page";
 
 const ID = "0b9a6c52-7e3b-4a61-9f0e-2d3c4b5a6978";
 const render = async (gameId = ID, code?: string | string[]) =>
@@ -48,6 +54,7 @@ describe("ReviewPage", () => {
     const html = await render();
 
     expect(connection).toHaveBeenCalledOnce();
+    const metadata = await generateMetadata();
     expect(metadata.referrer).toBe("no-referrer");
     expect(metadata.robots).toEqual({ index: false, follow: false });
     expect(open).toHaveBeenCalledExactlyOnceWith({ kind: "account", userId: "u1" }, ID);
@@ -93,5 +100,13 @@ describe("ReviewPage", () => {
     open.mockClear();
     await expect(render(ID, ["a", "b"])).rejects.toThrow("NEXT_NOT_FOUND");
     expect(open).not.toHaveBeenCalled();
+  });
+});
+
+describe("ReviewPage in French (E15-S05)", () => {
+  it("names the page in the request's language", async () => {
+    request.lang = "fr";
+    expect((await generateMetadata()).title).toBe("Revue de la partie — Gomoku");
+    request.lang = undefined;
   });
 });

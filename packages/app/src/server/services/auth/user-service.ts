@@ -111,7 +111,7 @@ export class UserService {
     // as for a taken e-mail, after hashing and before any write, so neither the answer nor its time
     // tells the two cases apart.
     if (isInstallationAdmin(input.email, this.#adminEmail)) {
-      throw new ConflictError(EMAIL_TAKEN_MESSAGE);
+      throw new ConflictError(EMAIL_TAKEN_MESSAGE, { data: { reason: "email_taken" } });
     }
     let registered: RegisteredUser;
     try {
@@ -214,7 +214,7 @@ export class UserService {
   ): Promise<void> {
     const user = await this.#em.findOne(User, { id: userId });
     if (!user) {
-      throw new UnauthorizedError("Zaloguj się, aby kontynuować.");
+      throw new UnauthorizedError("Zaloguj się, aby kontynuować.", { data: { reason: "session_required" } });
     }
     const previousHash = user.passwordHash;
     if (!(await this.#passwordHasher.verify(currentPassword, previousHash))) {
@@ -246,10 +246,11 @@ export class UserService {
    */
   async changeDisplayName(userId: string, displayName: string): Promise<string> {
     const user = await this.#em.findOne(User, { id: userId });
-    if (!user) throw new UnauthorizedError("Zaloguj się, aby kontynuować.");
+    if (!user) throw new UnauthorizedError("Zaloguj się, aby kontynuować.", { data: { reason: "session_required" } });
     if (user.displayName === displayName) {
       throw new ValidationError(SAME_DISPLAY_NAME_MESSAGE, {
         fieldErrors: { displayName: [SAME_DISPLAY_NAME_MESSAGE] },
+        fieldIssues: { displayName: [{ code: "DISPLAY_NAME_UNCHANGED" }] },
       });
     }
     const now = this.#clock.now();
@@ -275,6 +276,8 @@ export class UserService {
       if (error instanceof UniqueConstraintViolationException) {
         throw new ConflictError(DISPLAY_NAME_TAKEN_MESSAGE, {
           fieldErrors: { displayName: [DISPLAY_NAME_TAKEN_MESSAGE] },
+          fieldIssues: { displayName: [{ code: "DISPLAY_NAME_TAKEN" }] },
+          data: { reason: "display_name_taken" },
         });
       }
       throw error;
@@ -327,9 +330,11 @@ export class UserService {
     if (onlyNameKnown && (await this.#em.count(User, { email })) === 0) {
       return new ConflictError(DISPLAY_NAME_TAKEN_MESSAGE, {
         fieldErrors: { displayName: [DISPLAY_NAME_TAKEN_MESSAGE] },
+        fieldIssues: { displayName: [{ code: "DISPLAY_NAME_TAKEN" }] },
+        data: { reason: "display_name_taken" },
       });
     }
-    return new ConflictError(EMAIL_TAKEN_MESSAGE);
+    return new ConflictError(EMAIL_TAKEN_MESSAGE, { data: { reason: "email_taken" } });
   }
 }
 
@@ -337,5 +342,6 @@ function invalidCurrentPassword(): ValidationError {
   return new ValidationError(INVALID_CURRENT_PASSWORD_MESSAGE, {
     code: "INVALID_CURRENT_PASSWORD",
     fieldErrors: { currentPassword: [INVALID_CURRENT_PASSWORD_MESSAGE] },
+    fieldIssues: { currentPassword: [{ code: "INVALID_CURRENT_PASSWORD" }] },
   });
 }

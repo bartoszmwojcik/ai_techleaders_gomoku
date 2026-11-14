@@ -10,6 +10,42 @@ import enShow from "./en/show";
 import frCommon from "./fr/common";
 import frHeader from "./fr/header";
 import frShow from "./fr/show";
+import deAuth from "./de/auth";
+import deHome from "./de/home";
+import enAuth from "./en/auth";
+import enHome from "./en/home";
+import frAuth from "./fr/auth";
+import frHome from "./fr/home";
+import plAuth from "./pl/auth";
+import plHome from "./pl/home";
+import deChat from "./de/chat";
+import deGame from "./de/game";
+import enChat from "./en/chat";
+import enGame from "./en/game";
+import frChat from "./fr/chat";
+import frGame from "./fr/game";
+import plChat from "./pl/chat";
+import plGame from "./pl/game";
+import deHistory from "./de/history";
+import deLobby from "./de/lobby";
+import deReview from "./de/review";
+import enHistory from "./en/history";
+import enLobby from "./en/lobby";
+import enReview from "./en/review";
+import frHistory from "./fr/history";
+import frLobby from "./fr/lobby";
+import frReview from "./fr/review";
+import plHistory from "./pl/history";
+import plLobby from "./pl/lobby";
+import plReview from "./pl/review";
+import deAccount from "./de/account";
+import enAccount from "./en/account";
+import frAccount from "./fr/account";
+import plAccount from "./pl/account";
+import deErrors from "./de/errors";
+import enErrors from "./en/errors";
+import frErrors from "./fr/errors";
+import plErrors from "./pl/errors";
 import { coverage, flatten, parityProblems } from "./parity";
 import plCommon from "./pl/common";
 import plHeader from "./pl/header";
@@ -18,21 +54,17 @@ import { CATALOG_STATUS, statusProblems } from "./status";
 import { NAMESPACES, type Namespace } from "./types";
 
 const CATALOGS: Record<"pl" | "en" | "fr" | "de", Record<Namespace, Dict>> = {
-  pl: { common: plCommon, header: plHeader, show: plShow },
-  en: { common: enCommon, header: enHeader, show: enShow },
-  fr: { common: frCommon, header: frHeader, show: frShow },
-  de: { common: deCommon, header: deHeader, show: deShow },
+  pl: { common: plCommon, header: plHeader, show: plShow, home: plHome, auth: plAuth, game: plGame, chat: plChat, lobby: plLobby, history: plHistory, review: plReview, account: plAccount, errors: plErrors },
+  en: { common: enCommon, header: enHeader, show: enShow, home: enHome, auth: enAuth, game: enGame, chat: enChat, lobby: enLobby, history: enHistory, review: enReview, account: enAccount, errors: enErrors },
+  fr: { common: frCommon, header: frHeader, show: frShow, home: frHome, auth: frAuth, game: frGame, chat: frChat, lobby: frLobby, history: frHistory, review: frReview, account: frAccount, errors: frErrors },
+  de: { common: deCommon, header: deHeader, show: deShow, home: deHome, auth: deAuth, game: deGame, chat: deChat, lobby: deLobby, history: deHistory, review: deReview, account: deAccount, errors: deErrors },
 };
 
-// Spec I10: English and French promise every Polish text; German may lack texts but must not invent keys.
+// Spec I10: English, French and German (a complete machine draft since E15-S08) promise every Polish text.
 describe.each(NAMESPACES)("catalog parity: %s", (namespace) => {
-  it.each(["en", "fr"] as const)("%s has exactly the Polish keys, parameters and plural forms", (locale) => {
+  it.each(["en", "fr", "de"] as const)("%s has exactly the Polish keys, parameters and plural forms", (locale) => {
     expect(parityProblems(locale, CATALOGS.pl[namespace], CATALOGS[locale][namespace], { complete: true })).toEqual([]);
-  });
-
-  it("German has no foreign keys", () => {
-    expect(parityProblems("de", CATALOGS.pl[namespace], CATALOGS.de[namespace], { complete: false })).toEqual([]);
-    console.info(`[i18n] de/${namespace}: ${coverage(CATALOGS.pl[namespace], CATALOGS.de[namespace])}% of the Polish keys`);
+    expect(coverage(CATALOGS.pl[namespace], CATALOGS[locale][namespace])).toBe(100);
   });
 
   it("Polish plural forms are complete", () => {

@@ -8,7 +8,12 @@ import { useEffect, useState, type FormEvent } from "react";
 import { ErrorMessage } from "@/components/feedback/error-message";
 import { FormField } from "@/components/forms/form-field";
 import { SubmitButton } from "@/components/forms/submit-button";
+import { rateLimitedError } from "@/components/feedback/rate-limited-error";
+import plAccount from "@/i18n/catalogs/pl/account";
+import plCommon from "@/i18n/catalogs/pl/common";
+import { textsOf, type TextsProps } from "@/i18n/client";
 import { apiCall } from "@/lib/api-client";
+import { fieldMessages, localFieldMessages, type ErrorTexts } from "@/lib/api-error-text";
 import { fullPageLoad } from "@/lib/full-page-load";
 
 type Field = "newEmail" | "currentPassword";
@@ -17,18 +22,18 @@ type General = { title: string; details: string };
 
 const IDS: Record<Field, string> = { newEmail: "change-new-email", currentPassword: "change-email-password" };
 const ORDER: Field[] = ["newEmail", "currentPassword"];
-const HINT = "Wyślemy link na nowy adres. Adres konta zmieni się po jego kliknięciu; inne urządzenia zostaną wylogowane.";
 
-function firstMessages(fieldErrors: Record<string, string[]> | undefined): Messages {
-  const messages: Messages = {};
-  for (const field of ORDER) {
-    const message = fieldErrors?.[field]?.[0];
-    if (message) messages[field] = message;
-  }
-  return messages;
-}
+type Props = {
+  /** The `account` and `common` namespaces; nothing in Polish. */
+  texts?: TextsProps<"account">;
+  commonTexts?: TextsProps<"common">;
+  /** The `errors` namespace (field errors by code); nothing in Polish. */
+  errorTexts?: ErrorTexts;
+};
 
-export function ChangeEmailForm() {
+export function ChangeEmailForm({ texts = {}, commonTexts = {}, errorTexts = {} }: Props = {}) {
+  const t = textsOf<"account">(plAccount, texts);
+  const common = textsOf<"common">(plCommon, commonTexts);
   const [newEmail, setNewEmail] = useState("");
   const [password, setPassword] = useState("");
   // Remounting a password field hides the password again.
@@ -59,12 +64,7 @@ export function ChangeEmailForm() {
 
     const parsed = emailChangeSchema.safeParse({ newEmail, currentPassword: password });
     if (!parsed.success) {
-      const messages: Messages = {};
-      for (const issue of parsed.error.issues) {
-        const field = issue.path[0] as Field;
-        messages[field] ??= issue.message;
-      }
-      showErrors(messages);
+      showErrors(localFieldMessages(errorTexts, ORDER, parsed.error, "changeEmail"));
       return;
     }
 
@@ -80,12 +80,12 @@ export function ChangeEmailForm() {
       setSent(true);
       return;
     }
-    const { code, retryAfterSeconds, fieldErrors } = result.error;
+    const { code, retryAfterSeconds } = result.error;
     if (code === "UNAUTHORIZED") {
       fullPageLoad(`/login?next=${encodeURIComponent("/account")}`);
       return;
     }
-    const messages = firstMessages(fieldErrors);
+    const messages: Messages = fieldMessages(errorTexts, ORDER, result.error, "changeEmail");
     if (code === "INVALID_CURRENT_PASSWORD") {
       setPassword("");
       setPasswordKey((key) => key + 1);
@@ -96,19 +96,15 @@ export function ChangeEmailForm() {
     }
     if (code === "ADMIN_EMAIL_LOCKED") {
       setGeneral({
-        title: "Nie można zmienić adresu",
-        details: "Adres administratora instalacji jest ustawiony w konfiguracji serwera i nie zmienia się w aplikacji.",
+        title: t("changeEmail.adminTitle"),
+        details: t("changeEmail.adminBody"),
       });
     } else if (code === "RATE_LIMITED") {
-      const minutes = retryAfterSeconds === undefined ? undefined : Math.max(1, Math.ceil(retryAfterSeconds / 60));
-      setGeneral({
-        title: "Zbyt wiele prób",
-        details: minutes === undefined ? "Spróbuj ponownie za jakiś czas." : `Spróbuj ponownie za ${minutes} min.`,
-      });
+      setGeneral(rateLimitedError(retryAfterSeconds, common));
     } else if (code === "network") {
-      setGeneral({ title: "Brak połączenia", details: "Nie udało się połączyć z serwerem. Wpisane dane zostały zachowane. Spróbuj ponownie." });
+      setGeneral({ title: t("networkTitle"), details: t("networkKept") });
     } else {
-      setGeneral({ title: "Nie udało się zmienić adresu", details: "Spróbuj ponownie." });
+      setGeneral({ title: t("changeEmail.failed"), details: t("retry") });
     }
   }
 
@@ -117,8 +113,8 @@ export function ChangeEmailForm() {
       <div aria-live="polite" data-testid="change-email-live">
         {sent && (
           <div data-testid="change-email-success">
-            <Alert status="success" role="status" title="Sprawdź skrzynkę">
-              Jeśli ten adres może zostać użyty, wysłaliśmy na niego link (ważny 24 godziny).
+            <Alert status="success" role="status" title={t("changeEmail.sentTitle")}>
+              {t("changeEmail.sentBody")}
             </Alert>
           </div>
         )}
@@ -133,8 +129,8 @@ export function ChangeEmailForm() {
           id={IDS.newEmail}
           name="newEmail"
           type="email"
-          label="Nowy adres e-mail"
-          hint={HINT}
+          label={t("changeEmail.label")}
+          hint={t("changeEmail.hint")}
           error={errors.newEmail}
           required
           autoComplete="email"
@@ -146,16 +142,16 @@ export function ChangeEmailForm() {
           id={IDS.currentPassword}
           name="currentPassword"
           autoComplete="current-password"
-          label="Obecne hasło"
-          showLabel="Pokaż hasło"
-          hideLabel="Ukryj hasło"
+          label={t("currentPassword")}
+          showLabel={t("showPassword")}
+          hideLabel={t("hidePassword")}
           error={errors.currentPassword}
           required
           value={password}
           onChange={setPassword}
         />
-        <SubmitButton pending={pending} pendingLabel="Wysyłanie linku…">
-          Zmień adres e-mail
+        <SubmitButton pending={pending} pendingLabel={t("changeEmail.pending")}>
+          {t("changeEmail.submit")}
         </SubmitButton>
       </form>
     </>

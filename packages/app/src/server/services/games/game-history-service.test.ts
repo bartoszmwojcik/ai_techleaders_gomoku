@@ -172,7 +172,7 @@ describe("GameHistoryService.list", () => {
       { kind: "guest", name: "Gracz 2" },
       { kind: "agent", name: null },
       { kind: "agent", name: "claude opus 5.5" },
-      { kind: "bot", name: "Bot · poziom 2 · 16 MB" },
+      { kind: "bot", name: "Bot · poziom 2 · 16 MB", bot: { level: 2, memoryMb: 768, tableMb: 16 } },
     ]);
   });
 

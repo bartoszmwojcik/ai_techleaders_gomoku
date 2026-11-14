@@ -178,7 +178,7 @@ export class RematchService {
     // Nobody to play against: no offer for a game with a deleted account (#37) or with an agent
     // (BR-31: a rematch has no code to hand over, so the agent could not follow), and no attempt spent.
     // The bot has no rematch either (R13): a new game with it reads the resources afresh (BR-57).
-    if (players.some(isBot)) throw rematchUnavailable(REMATCH_WITH_BOT_MESSAGE);
+    if (players.some(isBot)) throw rematchWithBot();
     if (players.some((player) => isDeletedAccount(player) || isAgent(player))) throw rematchUnavailable();
 
     // The attempt is reserved BEFORE the write (so the limit cannot be raced) and given back when
@@ -426,8 +426,11 @@ export class RematchService {
 const isDeletedAccount = (player: PlayerRow) => player.kind === "account" && player.user_id === null;
 const isAgent = (player: PlayerRow) => player.kind === "agent";
 const isBot = (player: PlayerRow) => player.kind === "bot";
-const rematchUnavailable = (message = REMATCH_UNAVAILABLE_MESSAGE) =>
-  new ConflictError(message, { code: "REMATCH_UNAVAILABLE" });
+// One `code`, two messages: `data.reason` tells them apart (E15 C5, BACKWARD_COMPATIBILITY.md §2).
+const rematchUnavailable = () =>
+  new ConflictError(REMATCH_UNAVAILABLE_MESSAGE, { code: "REMATCH_UNAVAILABLE", data: { reason: "opponent_gone" } });
+const rematchWithBot = () =>
+  new ConflictError(REMATCH_WITH_BOT_MESSAGE, { code: "REMATCH_UNAVAILABLE", data: { reason: "bot" } });
 const gameNotFinished = () =>
   new ConflictError(GAME_NOT_FINISHED_MESSAGE, { code: "GAME_NOT_FINISHED" });
 const notOffered = () =>

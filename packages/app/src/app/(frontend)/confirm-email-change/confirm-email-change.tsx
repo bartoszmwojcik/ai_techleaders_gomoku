@@ -5,6 +5,8 @@ import { Button } from "@gomoku/ui/game/button";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import plAuth from "@/i18n/catalogs/pl/auth";
+import { textsOf, type TextsProps } from "@/i18n/client";
 import { apiCall } from "@/lib/api-client";
 
 type Phase = "before" | "confirming" | "done" | "invalid" | "server" | "network";
@@ -12,7 +14,8 @@ type Phase = "before" | "confirming" | "done" | "invalid" | "server" | "network"
 // Programmatic focus on a result region is announced; the region is not interactive.
 const FOCUS_TARGET = "outline-none";
 
-export function ConfirmEmailChange({ token }: { token: string | undefined }) {
+export function ConfirmEmailChange({ token, ...texts }: { token: string | undefined } & TextsProps<"auth">) {
+  const t = textsOf<"auth">(plAuth, texts);
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>(token ? "before" : "invalid");
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -46,47 +49,47 @@ export function ConfirmEmailChange({ token }: { token: string | undefined }) {
   return (
     <>
       <h1 ref={headingRef} tabIndex={-1} className={`m-0 text-section font-strong ${FOCUS_TARGET}`}>
-        Potwierdź nowy adres e-mail
+        {t("emailChange.heading")}
       </h1>
       {phase === "done" ? (
         <div ref={resultRef} tabIndex={-1} className={`flex flex-col gap-stack ${FOCUS_TARGET}`} data-testid="change-confirm-done">
-          <Alert status="success" title="Adres e-mail został zmieniony" />
-          <p className="m-0 text-body text-text-secondary">Ze względów bezpieczeństwa wylogowaliśmy Cię ze wszystkich urządzeń.</p>
+          <Alert status="success" title={t("emailChange.doneTitle")} />
+          <p className="m-0 text-body text-text-secondary">{t("emailChange.doneBody")}</p>
           <div>
             <Button asChild>
-              <a href="/login">Zaloguj się</a>
+              <a href="/login">{t("emailChange.login")}</a>
             </Button>
           </div>
         </div>
       ) : phase === "server" || phase === "network" ? (
         <div ref={resultRef} tabIndex={-1} className={`flex flex-col gap-stack ${FOCUS_TARGET}`} data-testid="change-confirm-error">
-          <Alert status="danger" title={phase === "server" ? "Nie udało się zmienić adresu" : "Brak połączenia"}>
-            {phase === "server" ? "Spróbuj ponownie." : "Nie udało się połączyć z serwerem. Spróbuj ponownie."}
+          <Alert status="danger" title={t(phase === "server" ? "emailChange.failed" : "shared.networkTitle")}>
+            {t(phase === "server" ? "shared.retry" : "verify.network")}
           </Alert>
           <div>
             <Button variant="secondary" onClick={onConfirm}>
-              Spróbuj ponownie
+              {t("verify.retryButton")}
             </Button>
           </div>
         </div>
       ) : phase === "invalid" ? (
         <div ref={resultRef} tabIndex={-1} className={`flex flex-col gap-stack ${FOCUS_TARGET}`} data-testid="change-confirm-invalid">
-          <Alert status="danger" title="Link wygasł lub został już użyty." />
-          <p className="m-0 text-body text-text-secondary">Adres konta pozostał bez zmian. Zaloguj się i poproś o zmianę adresu jeszcze raz.</p>
+          <Alert status="danger" title={t("emailChange.invalid")} />
+          <p className="m-0 text-body text-text-secondary">{t("emailChange.unchanged")}</p>
           <div>
             <Button asChild variant="secondary">
-              <a href="/login?next=%2Faccount">Zaloguj się</a>
+              <a href="/login?next=%2Faccount">{t("emailChange.login")}</a>
             </Button>
           </div>
         </div>
       ) : (
         <>
           <p className="m-0 text-body text-text-secondary">
-            Kliknij przycisk, aby ustawić ten adres jako adres e-mail konta. Pozostałe urządzenia zostaną wylogowane.
+            {t("emailChange.intro")}
           </p>
           <div>
             <Button loading={phase === "confirming"} onClick={onConfirm} data-testid="change-confirm-button">
-              Potwierdź nowy adres
+              {t("emailChange.confirm")}
             </Button>
           </div>
         </>

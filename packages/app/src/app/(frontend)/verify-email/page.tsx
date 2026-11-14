@@ -3,6 +3,8 @@ import { connection } from "next/server";
 
 import { getCurrentUser } from "@/server/http/auth";
 
+import { clientI18n, getI18n } from "@/i18n/server";
+
 import { ConfirmEmail } from "./confirm-email";
 
 type VerifyEmailPageProps = {
@@ -32,6 +34,7 @@ export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageP
         nextPath={nextPath}
         signedIn={user !== null}
         alreadyVerified={user?.emailVerifiedAt != null}
+        {...clientI18n(await getI18n("auth"))}
       />
     </main>
   );

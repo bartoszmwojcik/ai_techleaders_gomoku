@@ -1,17 +1,17 @@
 "use client";
 
-import {
-  CHAT_REJECTION_MESSAGES,
-  chatMessageLength,
-  normalizeChatMessage,
-} from "@gomoku/core/chat/message";
+import { chatMessageLength, normalizeChatMessage } from "@gomoku/core/chat/message";
+import type { ChatRejection } from "@gomoku/core/chat/types";
 import { Alert } from "@gomoku/ui/game/alert";
 import { Button } from "@gomoku/ui/game/button";
 import { Field } from "@gomoku/ui/game/field";
 import { TextInput } from "@gomoku/ui/game/text-input";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
-import { newClientId, pluralChars } from "@/lib/chat/chat";
+import plChat from "@/i18n/catalogs/pl/chat";
+import type { TranslatorOf } from "@/i18n/client";
+import { useT } from "@/i18n/context";
+import { newClientId } from "@/lib/chat/chat";
 
 import type { SendOutcome } from "./use-chat";
 
@@ -22,12 +22,17 @@ type Props = {
   send: (text: string, clientId: string) => Promise<SendOutcome>;
 };
 
-const WAIT_MESSAGE = "Poczekaj chwilę przed następną wiadomością.";
-const NETWORK_MESSAGE = "Nie wysłano: brak połączenia.";
+type ChatTranslator = TranslatorOf<"chat">;
 
-function counterOf(text: string, maxLength: number): string {
+const REJECTIONS: readonly ChatRejection[] = ["not_text", "empty", "too_long", "control_char", "invisible_char", "combining_run", "url"];
+const REFUSED = ["CHAT_UNAVAILABLE", "CHAT_DISABLED", "CHAT_FULL"] as const;
+
+const isOneOf = <T extends string>(list: readonly T[], value: string | undefined): value is T =>
+  value !== undefined && (list as readonly string[]).includes(value);
+
+function counterOf(text: string, maxLength: number, t: ChatTranslator): string {
   const left = maxLength - chatMessageLength(text);
-  return left >= 0 ? `Pozostało ${left} ${pluralChars(left)}` : `Za dużo o ${-left} ${pluralChars(-left)}`;
+  return left >= 0 ? t("left", { count: left }) : t("over", { count: -left });
 }
 
 /**
@@ -37,6 +42,7 @@ function counterOf(text: string, maxLength: number): string {
  * to take the focus from the board or from a screen reader.
  */
 export function ChatComposer({ maxLength, blockedReason, send }: Props) {
+  const t = useT("chat", plChat);
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
@@ -55,7 +61,7 @@ export function ChatComposer({ maxLength, blockedReason, send }: Props) {
     if (blockedReason !== null || cooling) return;
     const checked = normalizeChatMessage(text, { maxLength });
     if (!checked.ok) {
-      setError(CHAT_REJECTION_MESSAGES[checked.reason]);
+      setError(t(`rejection.${checked.reason}`));
       return;
     }
     attempt.current ??= newClientId();
@@ -76,7 +82,7 @@ export function ChatComposer({ maxLength, blockedReason, send }: Props) {
         setOffline(true);
         break;
       case "wait":
-        setError(WAIT_MESSAGE);
+        setError(t("wait"));
         setCooling(true);
         clearTimeout(cooldown.current);
         cooldown.current = setTimeout(() => {
@@ -85,8 +91,11 @@ export function ChatComposer({ maxLength, blockedReason, send }: Props) {
         }, outcome.retryAfterMs);
         break;
       case "field":
+        // By `data.reason` (a `ChatRejection`); the server's sentence when it named none.
+        setError(isOneOf(REJECTIONS, outcome.reason) ? t(`rejection.${outcome.reason}`) : outcome.message);
+        break;
       case "refused":
-        setError(outcome.message);
+        setError(isOneOf(REFUSED, outcome.code) ? t(`refused.${outcome.code}`) : outcome.message);
         break;
       case "busy":
         break;
@@ -102,7 +111,7 @@ export function ChatComposer({ maxLength, blockedReason, send }: Props) {
 
   return (
     <form ref={form} onSubmit={(event) => void submit(event)} className="flex flex-col gap-group" noValidate>
-      <Field label="Wiadomość" hint={blockedReason ?? counterOf(text, maxLength)} error={error}>
+      <Field label={t("message")} hint={blockedReason ?? counterOf(text, maxLength, t)} error={error}>
         {(control) => (
           <div className="flex items-start gap-group">
             <TextInput
@@ -117,15 +126,15 @@ export function ChatComposer({ maxLength, blockedReason, send }: Props) {
               dir="auto"
             />
             <Button type="submit" className="shrink-0 whitespace-nowrap" disabled={blockedReason !== null || cooling}>
-              {sending ? "Wysyłanie…" : "Wyślij"}
+              {t(sending ? "sending" : "send")}
             </Button>
           </div>
         )}
       </Field>
       {offline && (
-        <Alert status="danger" title={NETWORK_MESSAGE}>
+        <Alert status="danger" title={t("offline")}>
           <Button variant="secondary" disabled={sending} onClick={() => void submit()}>
-            Ponów wysyłanie
+            {t("resend")}
           </Button>
         </Alert>
       )}

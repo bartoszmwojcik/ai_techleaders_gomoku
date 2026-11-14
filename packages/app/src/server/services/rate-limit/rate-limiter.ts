@@ -67,6 +67,7 @@ export class RateLimiter {
         "Zbyt wiele prób. Spróbuj ponownie później.",
         {
           retryAfterSeconds: row.retry_after_seconds,
+          data: { reason: "attempts" },
         },
       );
     }

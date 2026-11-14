@@ -29,7 +29,7 @@ const LOCALHOST_ORIGIN = /^http:\/\/localhost:\d+$/;
 export type ApiSuccess<T> = { data: T; status?: number };
 
 function forbidden(): ForbiddenError {
-  return new ForbiddenError("Żądanie odrzucone.");
+  return new ForbiddenError("Żądanie odrzucone.", { data: { reason: "request_rejected" } });
 }
 
 /**

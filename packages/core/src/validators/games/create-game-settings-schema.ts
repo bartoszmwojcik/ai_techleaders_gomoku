@@ -36,7 +36,12 @@ type SettingsInput = { variant?: GameVariant | undefined; timeControlMs?: number
 /** A time only makes sense for the paper game; for the classic one it is a validation error. */
 export function checkGameSettings(input: SettingsInput, ctx: z.RefinementCtx): void {
   if ((input.variant ?? DEFAULT_VARIANT) === "classic" && input.timeControlMs !== undefined) {
-    ctx.addIssue({ code: "custom", path: ["timeControlMs"], message: TIME_CONTROL_WITH_CLASSIC_MESSAGE });
+    ctx.addIssue({
+      code: "custom",
+      path: ["timeControlMs"],
+      message: TIME_CONTROL_WITH_CLASSIC_MESSAGE,
+      params: { code: "TIME_CONTROL_CLASSIC" },
+    });
   }
 }
 

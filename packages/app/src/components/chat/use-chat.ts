@@ -25,12 +25,12 @@ import {
 /** What came of one `send`; the composer turns it into words. */
 export type SendOutcome =
   | { ok: true }
-  /** The server refused the text: `message` is the sentence for the field. */
-  | { ok: false; kind: "field"; message: string }
+  /** The server refused the text: `message` is the sentence for the field, `reason` the `ChatRejection` (`data.reason`). */
+  | { ok: false; kind: "field"; message: string; reason?: string }
   /** Too soon after the last message; the button waits `retryAfterMs`. */
   | { ok: false; kind: "wait"; message: string; retryAfterMs: number }
-  /** The chat is off, full or closed: the sentence is the server's, the state is read again. */
-  | { ok: false; kind: "refused"; message: string }
+  /** The chat is off, full or closed (`code`): the sentence is the server's fallback, the state is read again. */
+  | { ok: false; kind: "refused"; message: string; code?: string }
   /** The request did not get through; the same attempt can be repeated. */
   | { ok: false; kind: "network" }
   /** Another send is in flight (a double click): nothing was sent and nothing is to be shown. */
@@ -223,9 +223,15 @@ export function useChat({ gameId, onGone, path }: Options): Chat {
         }
         if (code.startsWith("CHAT_")) {
           void refresh();
-          return { ok: false, kind: "refused", message };
+          return { ok: false, kind: "refused", message, code };
         }
-        return { ok: false, kind: "field", message: fieldErrors?.text?.[0] ?? message };
+        const reason = (details as { reason?: unknown } | undefined)?.reason;
+        return {
+          ok: false,
+          kind: "field",
+          message: fieldErrors?.text?.[0] ?? message,
+          ...(typeof reason === "string" ? { reason } : {}),
+        };
       } finally {
         sending.current = false;
         setPending(null);

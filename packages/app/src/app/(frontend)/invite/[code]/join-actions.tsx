@@ -9,7 +9,11 @@ import { TextLink } from "@gomoku/ui/game/text-link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 
+import plHome from "@/i18n/catalogs/pl/home";
+import { textsOf, type TextsProps } from "@/i18n/client";
+import { withNodes } from "@/i18n/rich";
 import { apiCall } from "@/lib/api-client";
+import { fieldMessages, localValueMessage, type ErrorTexts } from "@/lib/api-error-text";
 
 type Mode =
   /** No session: log in, register or play as a guest. */
@@ -21,10 +25,12 @@ type Mode =
   /** A guest creator with an own waiting game (L35): give it up and join, still as a guest. */
   | "swap-guest";
 
-type Props = {
+type Props = TextsProps<"home"> & {
   /** The invitation code in its display form, `ABCD-EFGH`. */
   code: string;
   mode: Mode;
+  /** The `errors` namespace (field errors by code); nothing in Polish. */
+  errorTexts?: ErrorTexts;
 };
 
 type Joining = "user" | "guest";
@@ -39,18 +45,14 @@ const STATE_CHANGED = new Set([
   "GUEST_NOT_ALLOWED",
 ]);
 
-const GENERIC_FAILURE: Failure = {
-  title: "Nie udało się dołączyć do partii",
-  details: "Spróbuj ponownie.",
-};
-
 /**
  * The buttons of the invitation page. The page itself only opens the link: nothing is used up
  * until a button is pressed (#21 Q12). One request at a time: a second click while one is in
  * flight is ignored, because the second `accept` of a consumed invitation costs a lookup
  * attempt of the pool (Q13) and answers `410`.
  */
-export function JoinActions({ code, mode }: Props) {
+export function JoinActions({ code, mode, errorTexts = {}, ...texts }: Props) {
+  const t = textsOf<"home">(plHome, texts);
   const router = useRouter();
   const [refreshing, startRefresh] = useTransition();
   const [guestWarning, setGuestWarning] = useState(false);
@@ -87,7 +89,7 @@ export function JoinActions({ code, mode }: Props) {
     // LUKA D08: the text field has no counter and `maxLength` counts UTF-16 units, not code points, so the schema validates.
     const checked = nicknameSchema.safeParse(nickname);
     if (!checked.success) {
-      showNicknameError(checked.error.issues[0]!.message);
+      showNicknameError(localValueMessage(errorTexts, "nickname", checked.error));
       return;
     }
     void join("guest", {
@@ -114,28 +116,27 @@ export function JoinActions({ code, mode }: Props) {
     inFlight.current = false;
     setJoining(null);
     const errorCode = result.error.code;
+    const nicknameRefusal = fieldMessages(errorTexts, ["nickname"], result.error).nickname;
     if (STATE_CHANGED.has(errorCode)) {
       // The invitation or the viewer changed under the page: the server decides what it shows now.
       setOutdated(true);
       startRefresh(() => router.refresh());
-    } else if (result.error.fieldErrors?.nickname?.[0] !== undefined) {
+    } else if (nicknameRefusal !== undefined) {
       // The server refused the nickname (it validates too): same line under the field as a local refusal.
-      showNicknameError(result.error.fieldErrors.nickname[0]);
+      showNicknameError(nicknameRefusal);
     } else if (errorCode === "RATE_LIMITED") {
-      setFailure({ title: "Zbyt wiele prób — spróbuj za chwilę", details: "Sprawdź kod albo wróć później." });
+      setFailure({ title: t("shared.tooManyAttempts.title"), details: t("shared.tooManyAttempts.body") });
     } else if (errorCode === "UNAUTHORIZED") {
       setFailure({
-        title: "Sesja wygasła",
-        details: (
-          <>
-            <TextLink href={`/login?next=${next}`}>Zaloguj się ponownie</TextLink>, żeby dołączyć do partii.
-          </>
-        ),
+        title: t("shared.sessionExpired"),
+        details: withNodes(t("joinActions.signedOut", { link: "{link}" }), {
+          link: <TextLink href={`/login?next=${next}`}>{t("shared.loginAgain")}</TextLink>,
+        }),
       });
     } else if (errorCode === "network") {
-      setFailure({ title: "Brak połączenia", details: "Nie udało się połączyć z serwerem. Spróbuj ponownie." });
+      setFailure({ title: t("shared.network.title"), details: t("shared.network.body") });
     } else {
-      setFailure(GENERIC_FAILURE);
+      setFailure({ title: t("joinActions.failedTitle"), details: t("joinActions.failedBody") });
     }
   }
 
@@ -151,32 +152,31 @@ export function JoinActions({ code, mode }: Props) {
         <>
           <div className="flex flex-wrap gap-group">
             <Button asChild>
-              <a href={`/login?next=${next}`}>Zaloguj się</a>
+              <a href={`/login?next=${next}`}>{t("shared.login")}</a>
             </Button>
             <Button asChild variant="secondary">
-              <a href={`/register?next=${next}`}>Załóż konto</a>
+              <a href={`/register?next=${next}`}>{t("shared.register")}</a>
             </Button>
             <Button variant="secondary" onClick={() => setGuestWarning(true)}>
-              Graj jako gość
+              {t("joinActions.playAsGuest")}
             </Button>
           </div>
           <p className="m-0 text-meta text-text-muted">
-            Konto zakładasz w minutę: e-mail, nazwa gracza i hasło co najmniej 8 znaków. Potwierdzenie e-maila możesz zrobić
-            później.
+            {t("joinActions.accountHint")}
           </p>
         </>
       )}
 
       {mode === "visitor" && guestWarning && (
         <>
-          <Alert status="warning" title="Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii">
-            Stracisz do niej dostęp, a Twój zegar będzie biegł dalej. Gość nie ma historii partii.
+          <Alert status="warning" title={t("shared.guestWarningTitle")}>
+            {t("joinActions.guestWarningBody")}
           </Alert>
           <Field
-            label="Twój nick"
-            requirement="(opcjonalnie)"
+            label={t("shared.nickname")}
+            requirement={t("shared.optional")}
             id="invite-nickname"
-            hint={"Zostaw puste, a będziesz „Gracz 2”"}
+            hint={t("shared.nicknameHint", { seat: 2 })}
             error={nicknameError}
           >
             {(control) => (
@@ -192,10 +192,10 @@ export function JoinActions({ code, mode }: Props) {
           </Field>
           <div className="flex flex-wrap gap-group">
             <Button loading={joining === "guest"} disabled={busy} onClick={joinAsGuest}>
-              {joining === "guest" ? "Dołączanie…" : "Rozumiem, graj jako gość"}
+              {t(joining === "guest" ? "joinActions.joining" : "joinActions.confirmGuest")}
             </Button>
             <Button variant="secondary" disabled={busy} onClick={() => setGuestWarning(false)}>
-              Wróć
+              {t("shared.back")}
             </Button>
           </div>
         </>
@@ -204,7 +204,7 @@ export function JoinActions({ code, mode }: Props) {
       {mode === "member" && (
         <div>
           <Button loading={joining === "user"} disabled={busy} onClick={() => void join("user", {})}>
-            {joining === "user" ? "Dołączanie…" : "Dołącz do partii"}
+            {t(joining === "user" ? "joinActions.joining" : "joinActions.join")}
           </Button>
         </div>
       )}
@@ -212,7 +212,7 @@ export function JoinActions({ code, mode }: Props) {
       {mode === "swap" && (
         <div>
           <Button loading={joining === "user"} disabled={busy} onClick={() => void join("user", { cancelOwnWaitingGame: true })}>
-            {joining === "user" ? "Dołączanie…" : "Anuluj moją partię i dołącz"}
+            {t(joining === "user" ? "joinActions.joining" : "joinActions.swap")}
           </Button>
         </div>
       )}
@@ -224,7 +224,7 @@ export function JoinActions({ code, mode }: Props) {
             disabled={busy}
             onClick={() => void join("guest", { acknowledgedGuestWarning: true, cancelOwnWaitingGame: true })}
           >
-            {joining === "guest" ? "Dołączanie…" : "Anuluj moją partię i dołącz"}
+            {t(joining === "guest" ? "joinActions.joining" : "joinActions.swap")}
           </Button>
         </div>
       )}
@@ -232,7 +232,7 @@ export function JoinActions({ code, mode }: Props) {
       {/* Very quiet on purpose: small muted text, no alert or icon. It is the last element and
           hidden while empty (`empty:hidden`), so it neither adds a gap nor moves anything above it. */}
       <p role="status" className="m-0 text-meta text-text-muted empty:hidden" data-testid="state-changed-note">
-        {outdated && !refreshing ? "Coś się zmieniło, odświeżyliśmy stronę" : ""}
+        {outdated && !refreshing ? t("joinActions.stateChanged") : ""}
       </p>
     </>
   );

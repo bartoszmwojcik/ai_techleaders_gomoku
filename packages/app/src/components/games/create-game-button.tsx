@@ -12,8 +12,11 @@ import { rateLimitedError } from "@/components/feedback/rate-limited-error";
 import { GameSettingsPicker } from "@/components/games/game-settings-picker";
 import { useHomeRules } from "@/components/games/home-rules";
 import { OpponentPicker } from "@/components/games/opponent-picker";
+import plHome from "@/i18n/catalogs/pl/home";
+import { textsOf, type TextsProps } from "@/i18n/client";
+import { withNodes } from "@/i18n/rich";
 import { apiCall } from "@/lib/api-client";
-import { BOT_UNAVAILABLE_TEXT, DEFAULT_OPPONENT, opponentBody, playsBot, type OpponentSetting } from "@/lib/games/opponent";
+import { DEFAULT_OPPONENT, opponentBody, playsBot, type OpponentSetting } from "@/lib/games/opponent";
 import { DEFAULT_SETTINGS, settingsBody, type GameSettingsChoice } from "@/lib/games/settings";
 
 /** The game the player already holds a slot in (from the server, `GameParticipation.currentGame`). */
@@ -28,7 +31,7 @@ type Failure =
   | { kind: "server" }
   | { kind: "network" };
 
-type Props = {
+type Props = TextsProps<"home"> & {
   heldGame: HeldGame | null;
   /** `BOT_ENABLED` (hosted-bot R19): the "Przeciwnik" group shows only while the bot is on. */
   botEnabled?: boolean;
@@ -38,7 +41,8 @@ type Props = {
  * "Utwórz zaproszenie" (p01): creates a waiting game and opens its page. While the bot is on, the
  * creator may pick it instead of a person: "Zagraj z botem" opens a game already in progress.
  */
-export function CreateGameButton({ heldGame, botEnabled = false }: Props) {
+export function CreateGameButton({ heldGame, botEnabled = false, ...texts }: Props) {
+  const t = textsOf<"home">(plHome, texts);
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
@@ -84,7 +88,7 @@ export function CreateGameButton({ heldGame, botEnabled = false }: Props) {
   const retry = (
     <div className="mt-group">
       <Button variant="secondary" onClick={() => void onCreate()}>
-        Spróbuj ponownie
+        {t("shared.retry")}
       </Button>
     </div>
   );
@@ -92,31 +96,33 @@ export function CreateGameButton({ heldGame, botEnabled = false }: Props) {
   return (
     <>
       {failure?.kind === "active" && (
-        <Alert status="warning" title="Masz już partię" role="alert">
-          Najpierw dokończ bieżącą partię.{" "}
-          {heldGame && <TextLink href={`/games/${heldGame.gameId}`}>Przejdź do partii</TextLink>}
+        <Alert status="warning" title={t("shared.activeGame.title")} role="alert">
+          {t("shared.activeGame.body")}{" "}
+          {heldGame && <TextLink href={`/games/${heldGame.gameId}`}>{t("shared.goToGame")}</TextLink>}
         </Alert>
       )}
       {failure?.kind === "limit" && (
-        <Alert status="danger" title="Zbyt wiele zaproszeń">
-          Limit to {CREATE_GAME_LIMIT} utworzeń na godzinę. {rateLimitedError(failure.retryAfterSeconds).details}
+        <Alert status="danger" title={t("shared.tooManyInvitations")}>
+          {t("shared.createLimit", { count: CREATE_GAME_LIMIT })} {rateLimitedError(failure.retryAfterSeconds).details}
         </Alert>
       )}
       {failure?.kind === "signed-out" && (
-        <Alert status="warning" title="Sesja wygasła">
-          <TextLink href="/login?next=%2F">Zaloguj się ponownie</TextLink>, żeby utworzyć zaproszenie.
+        <Alert status="warning" title={t("shared.sessionExpired")}>
+          {withNodes(t("create.signedOut", { link: "{link}" }), {
+            link: <TextLink href="/login?next=%2F">{t("shared.loginAgain")}</TextLink>,
+          })}
         </Alert>
       )}
-      {failure?.kind === "bot-unavailable" && <Alert status="warning" title={BOT_UNAVAILABLE_TEXT} role="alert" />}
+      {failure?.kind === "bot-unavailable" && <Alert status="warning" title={t("shared.botUnavailable")} role="alert" />}
       {failure?.kind === "server" && (
-        <Alert status="danger" title="Nie udało się utworzyć partii">
-          Błąd po stronie serwera. Spróbuj ponownie.
+        <Alert status="danger" title={t("create.failedTitle")}>
+          {t("create.failedBody")}
           {retry}
         </Alert>
       )}
       {failure?.kind === "network" && (
-        <Alert status="danger" title="Brak połączenia">
-          Nie udało się połączyć z serwerem. Spróbuj ponownie.
+        <Alert status="danger" title={t("shared.network.title")}>
+          {t("shared.network.body")}
           {retry}
         </Alert>
       )}
@@ -127,13 +133,14 @@ export function CreateGameButton({ heldGame, botEnabled = false }: Props) {
           setVariant(next.variant);
         }}
         disabled={busy}
+        {...texts}
       />
-      {botEnabled && <OpponentPicker value={opponent} variant={settings.variant} onChange={setOpponent} disabled={busy} />}
+      {botEnabled && <OpponentPicker value={opponent} variant={settings.variant} onChange={setOpponent} disabled={busy} {...texts} />}
       {/* A game with the bot is always private (R14): no audience to open it to. */}
       {!withBot && (
         <Checkbox
-          label="Partia publiczna"
-          hint="Po rozpoczęciu partii każdy z kodem lub linkiem będzie mógł ją oglądać."
+          label={t("shared.publicGame.label")}
+          hint={t("shared.publicGame.hint")}
           checked={isPublic}
           onCheckedChange={(value) => setIsPublic(value === true)}
           disabled={busy}
@@ -143,7 +150,9 @@ export function CreateGameButton({ heldGame, botEnabled = false }: Props) {
       {/* Choice vs action (issue 273): a rule sets the settings above apart from the one main action. */}
       <div className="border-t border-border-default pt-stack">
         <Button data-testid="create-game" size="large" className="w-full" loading={busy} onClick={() => void onCreate()}>
-          {withBot ? (busy ? "Tworzenie partii…" : "Zagraj z botem") : busy ? "Tworzenie zaproszenia…" : "Utwórz zaproszenie"}
+          {withBot
+            ? t(busy ? "shared.creatingGame" : "create.playBot")
+            : t(busy ? "shared.creatingInvitation" : "create.createInvitation")}
         </Button>
       </div>
     </>

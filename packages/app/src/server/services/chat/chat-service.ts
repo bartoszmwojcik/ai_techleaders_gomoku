@@ -224,6 +224,7 @@ export class ChatService {
       const message = CHAT_REJECTION_MESSAGES[checked.reason];
       throw new ValidationError(message, {
         fieldErrors: { text: [message] },
+        fieldIssues: { text: [{ code: "CHAT_REJECTED", params: { reason: checked.reason } }] },
         data: { reason: checked.reason },
       });
     }
@@ -231,7 +232,7 @@ export class ChatService {
       return await this.#em.transactional(async (tx) => {
         await tx.execute(LOCK_GAME_SQL, [gameId], "run");
         const context = await this.#spectatorContext(tx, spectator, gameId);
-        if (context.name === null) throw new ForbiddenError(CHAT_SPECTATOR_NAME_REQUIRED_MESSAGE);
+        if (context.name === null) throw new ForbiddenError(CHAT_SPECTATOR_NAME_REQUIRED_MESSAGE, { data: { reason: "spectator_name_required" } });
         const [repeat] = await tx.execute<MessageRow[]>(REPEAT_SPECTATOR_SQL, [spectator.spectatorId, input.clientId]);
         if (repeat) {
           return {
@@ -249,7 +250,7 @@ export class ChatService {
         if (wait > 0) {
           throw new TooManyRequestsError(CHAT_RATE_LIMITED_MESSAGE, {
             retryAfterSeconds: Math.ceil(wait / 1000),
-            data: { retryAfterMs: wait },
+            data: { retryAfterMs: wait, reason: "chat_interval" },
           });
         }
         await tx.execute(
@@ -287,6 +288,7 @@ export class ChatService {
       const message = CHAT_REJECTION_MESSAGES[checked.reason];
       throw new ValidationError(message, {
         fieldErrors: { text: [message] },
+        fieldIssues: { text: [{ code: "CHAT_REJECTED", params: { reason: checked.reason } }] },
         data: { reason: checked.reason },
       });
     }
@@ -310,7 +312,7 @@ export class ChatService {
         if (wait > 0) {
           throw new TooManyRequestsError(CHAT_RATE_LIMITED_MESSAGE, {
             retryAfterSeconds: Math.ceil(wait / 1000),
-            data: { retryAfterMs: wait },
+            data: { retryAfterMs: wait, reason: "chat_interval" },
           });
         }
         await tx.execute(
@@ -346,7 +348,7 @@ export class ChatService {
       return await this.#em.transactional(async (tx) => {
         await tx.execute(LOCK_GAME_SQL, [gameId], "run");
         const context = await this.#context(tx, participant, gameId);
-        if (context.kind === "agent") throw new ForbiddenError(CHAT_AGENT_SETTINGS_MESSAGE);
+        if (context.kind === "agent") throw new ForbiddenError(CHAT_AGENT_SETTINGS_MESSAGE, { data: { reason: "agent_settings" } });
         const before = this.#stateOf(context);
         if (before === "unavailable" || before === "closed") {
           throw new ConflictError(CHAT_UNAVAILABLE_MESSAGE, { code: "CHAT_UNAVAILABLE" });

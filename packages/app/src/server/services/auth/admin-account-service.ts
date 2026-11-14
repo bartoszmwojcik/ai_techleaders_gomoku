@@ -118,5 +118,6 @@ function nameTaken(): ValidationError {
   return new ValidationError(DISPLAY_NAME_TAKEN_BY_OPERATOR_MESSAGE, {
     code: "DISPLAY_NAME_TAKEN",
     fieldErrors: { displayName: [DISPLAY_NAME_TAKEN_BY_OPERATOR_MESSAGE] },
+    fieldIssues: { displayName: [{ code: "DISPLAY_NAME_TAKEN" }] },
   });
 }

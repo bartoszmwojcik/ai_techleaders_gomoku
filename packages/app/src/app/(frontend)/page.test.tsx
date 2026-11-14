@@ -1,19 +1,24 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { connection, getCurrentUserWith, currentGame, loadGuestCurrentGame } = vi.hoisted(() => ({
+const { connection, getCurrentUserWith, currentGame, loadGuestCurrentGame, request } = vi.hoisted(() => ({
+  request: { lang: undefined as string | undefined },
   loadGuestCurrentGame: vi.fn(),
   connection: vi.fn(),
   getCurrentUserWith: vi.fn(),
   currentGame: vi.fn(),
 }));
 vi.mock("next/server", () => ({ connection }));
+vi.mock("next/headers", () => ({
+  cookies: async () => ({ get: (name: string) => (name === "gomoku_lang" && request.lang ? { name, value: request.lang } : undefined) }),
+  headers: async () => new Headers(),
+}));
 vi.mock("@/server/http/auth", () => ({ getCurrentUserWith }));
 vi.mock("@/server/http/guest-game", () => ({ loadGuestCurrentGame }));
 vi.mock("@/server/http/bot-availability", () => ({ isBotEnabled: async () => true }));
 vi.mock("@/components/games/create-game-button", () => ({
-  CreateGameButton: ({ heldGame, botEnabled }: { heldGame: unknown; botEnabled?: boolean }) => (
-    <button data-testid="create" data-held={JSON.stringify(heldGame)} data-bot={String(botEnabled)}>
+  CreateGameButton: ({ heldGame, botEnabled, locale }: { heldGame: unknown; botEnabled?: boolean; locale?: string }) => (
+    <button data-testid="create" data-held={JSON.stringify(heldGame)} data-bot={String(botEnabled)} data-locale={locale}>
       Utwórz zaproszenie
     </button>
   ),
@@ -23,8 +28,8 @@ vi.mock("@/components/games/dismissible-notice", () => ({
 }));
 
 vi.mock("@/components/auth/verify-email-banner", () => ({
-  VerifyEmailNotice: ({ userId, email }: { userId: string; email: string }) => (
-    <aside data-testid="banner" data-user={userId}>
+  VerifyEmailNotice: ({ userId, email, locale }: { userId: string; email: string; locale?: string }) => (
+    <aside data-testid="banner" data-user={userId} data-locale={locale}>
       {email}
     </aside>
   ),
@@ -46,6 +51,7 @@ function signedIn() {
 const count = (html: string, fragment: string) => html.split(fragment).length - 1;
 
 beforeEach(() => {
+  request.lang = undefined;
   connection.mockReset().mockResolvedValue(undefined);
   currentGame.mockReset().mockResolvedValue(null);
   loadGuestCurrentGame.mockReset().mockResolvedValue(null);
@@ -214,5 +220,43 @@ describe("HomePage", () => {
 
   it("shows no banner to a guest", async () => {
     expect(renderToStaticMarkup(await HomePage({ searchParams: Promise.resolve({}) }))).not.toContain('data-testid="banner"');
+  });
+});
+
+describe("HomePage in French (E15-S03)", () => {
+  beforeEach(() => {
+    request.lang = "fr";
+  });
+
+  it("words the visitor's page and hands nothing Polish to it", async () => {
+    loadGuestCurrentGame.mockResolvedValue({ gameId: "g7", status: "waiting" });
+    const html = renderToStaticMarkup(await HomePage({ searchParams: Promise.resolve({ notice: "account-deleted" }) }));
+    expect(html).toContain("Cinq alignés gagnent.");
+    expect(html).toContain("Règles libres · plateau 15×15");
+    expect(html).toContain("Vous attendez un adversaire.");
+    expect(html).toContain("Créer un compte");
+    expect(html).toContain("Jouer avec un ami sans compte");
+    expect(html).toContain('data-testid="notice">Le compte a été supprimé');
+    expect(html).not.toMatch(/[ąćęłńóśźż]/);
+  });
+
+  it("words the player's page and passes the language to the client components", async () => {
+    signedIn();
+    currentGame.mockResolvedValue({ gameId: "g1", status: "active" });
+    const html = renderToStaticMarkup(await HomePage({ searchParams: Promise.resolve({ notice: "cancelled" }) }));
+    expect(html).toContain("Vous avez une partie");
+    expect(html).toContain("En cours.");
+    expect(html).toContain("Revenir à la partie");
+    expect(html).toContain("Salon</a>");
+    expect(html).toContain('data-testid="notice">Invitation annulée');
+    expect(html).toContain('data-testid="create" data-held="{&quot;gameId&quot;:&quot;g1&quot;,&quot;status&quot;:&quot;active&quot;}" data-bot="true" data-locale="fr"');
+    expect(html).toContain('data-testid="banner" data-user="u1" data-locale="fr"');
+  });
+
+  it("passes no language to the client components in Polish", async () => {
+    request.lang = undefined;
+    signedIn();
+    const html = renderToStaticMarkup(await HomePage({ searchParams: Promise.resolve({}) }));
+    expect(html).not.toContain("data-locale");
   });
 });

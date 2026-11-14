@@ -1,5 +1,6 @@
 import {
   botDisplayName,
+  botViewOf,
   decodeHistoryCursor,
   defaultNickname,
   encodeHistoryCursor,
@@ -82,7 +83,11 @@ function toEntry(row: Row): HistoryEntry {
     finishedAt: new Date(row.finished_at).toISOString(),
     result: historyResultOf(row.winner_seat, row.my_seat),
     reason: row.end_reason,
-    opponent: { kind: row.opponent_kind, name: opponentNameOf(row) },
+    opponent: {
+      kind: row.opponent_kind,
+      name: opponentNameOf(row),
+      ...(row.opponent_kind === "bot" && { bot: botViewOf(row.opponent_bot_level!, row.opponent_bot_memory_mb) }),
+    },
     variant: row.variant,
     ...(row.variant === "paper" && {
       scores: (row.my_seat === 1 ? [row.score_1!, row.score_2!] : [row.score_2!, row.score_1!]) as [number, number],

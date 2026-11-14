@@ -31,14 +31,14 @@ type OpponentInput = {
  */
 export function checkOpponent(input: OpponentInput, ctx: z.RefinementCtx): void {
   if (input.opponent !== "bot") {
-    if (input.botLevel !== undefined) ctx.addIssue({ code: "custom", path: ["botLevel"], message: BOT_LEVEL_WITHOUT_BOT_MESSAGE });
+    if (input.botLevel !== undefined) ctx.addIssue({ code: "custom", path: ["botLevel"], message: BOT_LEVEL_WITHOUT_BOT_MESSAGE, params: { code: "BOT_LEVEL_WITHOUT_BOT" } });
     return;
   }
-  if (input.botLevel === undefined) ctx.addIssue({ code: "custom", path: ["botLevel"], message: BOT_LEVEL_REQUIRED_MESSAGE });
+  if (input.botLevel === undefined) ctx.addIssue({ code: "custom", path: ["botLevel"], message: BOT_LEVEL_REQUIRED_MESSAGE, params: { code: "BOT_LEVEL_REQUIRED" } });
   if ((input.variant ?? DEFAULT_VARIANT) !== "classic") {
-    ctx.addIssue({ code: "custom", path: ["opponent"], message: BOT_VARIANT_UNSUPPORTED_MESSAGE });
+    ctx.addIssue({ code: "custom", path: ["opponent"], message: BOT_VARIANT_UNSUPPORTED_MESSAGE, params: { code: "BOT_VARIANT_UNSUPPORTED" } });
   }
-  if (input.isPublic === true) ctx.addIssue({ code: "custom", path: ["isPublic"], message: BOT_PUBLIC_MESSAGE });
+  if (input.isPublic === true) ctx.addIssue({ code: "custom", path: ["isPublic"], message: BOT_PUBLIC_MESSAGE, params: { code: "BOT_PUBLIC" } });
 }
 
 /** The opponent of an (already validated) input: `{ kind: 'bot', level }` or a person. */

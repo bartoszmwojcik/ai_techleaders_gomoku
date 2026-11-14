@@ -1,33 +1,52 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { connection, notFound, loadGameView, loadSpectatorView } = vi.hoisted(() => ({
+const { connection, notFound, loadGameView, loadSpectatorView, request } = vi.hoisted(() => ({
+  request: { lang: undefined as string | undefined },
   loadSpectatorView: vi.fn(),
   connection: vi.fn(),
   notFound: vi.fn(),
   loadGameView: vi.fn(),
 }));
 vi.mock("next/server", () => ({ connection }));
+vi.mock("next/headers", () => ({
+  cookies: async () => ({ get: (name: string) => (name === "gomoku_lang" && request.lang ? { name, value: request.lang } : undefined) }),
+  headers: async () => new Headers(),
+}));
 vi.mock("next/navigation", () => ({ notFound }));
 vi.mock("@/server/http/game-view", () => ({ loadGameView }));
 vi.mock("@/server/http/spectator-view", () => ({ loadSpectatorView }));
+vi.mock("@/i18n/context", () => ({
+  I18nProvider: ({ locale, dicts, children }: { locale?: string; dicts?: Record<string, unknown>; children: React.ReactNode }) => (
+    <section data-testid="provider" data-locale={locale} data-namespaces={Object.keys(dicts ?? {}).join(",")}>
+      {children}
+    </section>
+  ),
+}));
 vi.mock("./spectator-room", () => ({
   SpectatorRoom: (props: { gameId: string; initial: { status: string } }) => (
     <div data-testid="spectator-room" data-id={props.gameId} data-status={props.initial.status} />
   ),
 }));
 vi.mock("./game-room", () => ({
-  GameRoom: (props: { gameId: string; ownWaitingNotice: boolean; initial: { status: string } }) => (
-    <div data-testid="room" data-id={props.gameId} data-notice={String(props.ownWaitingNotice)} data-status={props.initial.status} />
+  GameRoom: (props: { gameId: string; ownWaitingNotice: boolean; initial: { status: string }; homeTexts: { locale?: string } }) => (
+    <div
+      data-testid="room"
+      data-id={props.gameId}
+      data-notice={String(props.ownWaitingNotice)}
+      data-status={props.initial.status}
+      data-home={props.homeTexts.locale}
+    />
   ),
 }));
 
-import GamePage, { metadata } from "./page";
+import GamePage, { generateMetadata } from "./page";
 
 const render = async (notice?: string | string[]) =>
   renderToStaticMarkup(await GamePage({ params: Promise.resolve({ gameId: "g1" }), searchParams: Promise.resolve({ notice }) }));
 
 beforeEach(() => {
+  request.lang = undefined;
   connection.mockReset().mockResolvedValue(undefined);
   loadGameView.mockReset().mockResolvedValue({ status: "waiting" });
   loadSpectatorView.mockReset().mockResolvedValue(null);
@@ -37,7 +56,8 @@ beforeEach(() => {
 });
 
 describe("GamePage", () => {
-  it("stays out of search engines", () => {
+  it("stays out of search engines", async () => {
+    const metadata = await generateMetadata();
     expect(metadata.robots).toEqual({ index: false, follow: false });
   });
 
@@ -87,5 +107,24 @@ describe("GamePage", () => {
     loadGameView.mockResolvedValue(null);
     await expect(render()).rejects.toThrow("NEXT_NOT_FOUND");
     expect(notFound).toHaveBeenCalledOnce();
+  });
+});
+
+describe("GamePage in French (E15-S04)", () => {
+  it("passes no catalog in Polish and the room's namespaces otherwise", async () => {
+    expect(await render()).toContain('data-testid="provider" data-namespaces=""');
+    expect((await generateMetadata()).title).toBe("Partia — Gomoku");
+
+    request.lang = "fr";
+    const html = await render();
+    expect(html).toContain('data-testid="provider" data-locale="fr" data-namespaces="game,chat"');
+    expect(html).toContain('data-home="fr"');
+    expect((await generateMetadata()).title).toBe("Partie — Gomoku");
+
+    loadGameView.mockResolvedValue(null);
+    loadSpectatorView.mockResolvedValue({ status: "active" });
+    expect(await render()).toContain('data-locale="fr" data-namespaces="game,chat"><div data-testid="spectator-room"');
+    loadSpectatorView.mockResolvedValue("closed");
+    expect(await render()).toContain("Le créateur a fermé le public");
   });
 });

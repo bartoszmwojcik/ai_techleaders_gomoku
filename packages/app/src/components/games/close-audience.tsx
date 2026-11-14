@@ -4,12 +4,10 @@ import { Button } from "@gomoku/ui/game/button";
 import { ConfirmDialog } from "@gomoku/ui/game/confirm-dialog";
 import { useRef, useState } from "react";
 
+import plGame from "@/i18n/catalogs/pl/game";
+import { useT } from "@/i18n/context";
 import { apiCall } from "@/lib/api-client";
 import type { GameView } from "@/server/http/game-view";
-
-const NETWORK_ERROR = "Nie udało się połączyć z serwerem. Spróbuj ponownie.";
-const UNKNOWN_ERROR = "Nie udało się zamknąć publiczności. Spróbuj ponownie.";
-const NOT_CLOSABLE_ERROR = "Publiczności nie można już zamknąć. Stan partii został odświeżony.";
 
 type Props = {
   gameId: string;
@@ -27,6 +25,7 @@ type Props = {
  * so the dialog says what happens. A repeat is harmless on the server, so "Spróbuj ponownie" may resend.
  */
 export function CloseAudience({ gameId, game, onState, onRefresh, onGone }: Props) {
+  const t = useT("game", plGame);
   // State alone lags a double click by one render; the ref closes that gap.
   const inFlight = useRef(false);
   const [asking, setAsking] = useState(false);
@@ -51,17 +50,17 @@ export function CloseAudience({ gameId, game, onState, onRefresh, onGone }: Prop
       setAsking(false);
       onGone();
     } else if (code === "GAME_NOT_ACTIVE" || code === "GAME_NOT_PUBLIC") {
-      setError(NOT_CLOSABLE_ERROR);
+      setError(t("audience.notClosable"));
       onRefresh();
     } else {
-      setError(code === "network" ? NETWORK_ERROR : UNKNOWN_ERROR);
+      setError(t(code === "network" ? "shared.network" : "audience.closeFailed"));
     }
   }
 
   if (game.audienceClosed) {
     return (
       <p role="status" className="m-0 text-meta text-text-secondary" data-testid="audience-closed-note">
-        Publiczność zamknięta przez twórcę — partia jest prywatna.
+        {t("audience.closedNote")}
       </p>
     );
   }
@@ -77,10 +76,10 @@ export function CloseAudience({ gameId, game, onState, onRefresh, onGone }: Prop
         }}
         trigger={
           <Button variant="secondary" data-testid="close-audience">
-            Zamknij publiczność
+            {t("audience.close")}
           </Button>
         }
-        title="Zamknąć publiczność?"
+        title={t("audience.closeTitle")}
         description={
           <>
             {error && (
@@ -88,11 +87,11 @@ export function CloseAudience({ gameId, game, onState, onRefresh, onGone }: Prop
                 {error}
               </span>
             )}
-            Widzowie zostaną od razu odłączeni, a kod i link przestaną otwierać oglądanie i przegląd partii. Nie da się tego cofnąć.
+            {t("audience.closeBody")}
           </>
         }
-        confirmLabel={closing ? "Zamykanie…" : error ? "Spróbuj ponownie" : "Zamknij publiczność"}
-        cancelLabel="Zostaw publiczność"
+        confirmLabel={t(closing ? "audience.closing" : error ? "shared.retry" : "audience.close")}
+        cancelLabel={t("audience.keep")}
         confirming={closing}
         onConfirm={() => void close()}
       />

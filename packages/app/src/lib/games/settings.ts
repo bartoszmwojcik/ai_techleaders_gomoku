@@ -1,18 +1,38 @@
 import { PAPER_DEFAULT_TIME_MS, PAPER_TIME_CONTROLS_MS, type GameVariant } from "@gomoku/core";
 
+import plHome from "@/i18n/catalogs/pl/home";
+import { textsOf, type TranslatorOf } from "@/i18n/client";
+
 /** What the creator of a game picks: the variant and, for the paper game, the clock of each player (E11, BR-46). */
 export type GameSettingsChoice = { variant: GameVariant; timeControlMs: number };
+
+export type HomeTranslator = TranslatorOf<"home">;
+
+/** Polish, from the bundle: the default of every helper below, so callers not yet migrated keep their texts. */
+export const PL_HOME: HomeTranslator = textsOf<"home">(plHome);
 
 /** The classic game's clock per player. */
 const CLASSIC_TIME_MS = 600_000;
 
 export const DEFAULT_SETTINGS: GameSettingsChoice = { variant: "classic", timeControlMs: PAPER_DEFAULT_TIME_MS };
 
-export const VARIANT_NAME: Record<GameVariant, string> = { classic: "Klasyczny", paper: "Papier i ołówek" };
-export const VARIANT_OPTIONS = (Object.keys(VARIANT_NAME) as GameVariant[]).map((value) => ({ value, label: VARIANT_NAME[value] }));
-export const TIME_OPTIONS = PAPER_TIME_CONTROLS_MS.map((ms) => ({ value: String(ms), label: `${ms / 60_000} min` }));
+const VARIANTS: readonly GameVariant[] = ["classic", "paper"];
 
-const isVariant = (value: string): value is GameVariant => value in VARIANT_NAME;
+const minutesOf = (ms: number) => ms / 60_000;
+
+/** The name of a variant: "Klasyczny", "Papier i ołówek". */
+export const variantName = (variant: GameVariant, t: HomeTranslator = PL_HOME): string => t(`settings.variants.${variant}`);
+
+export const VARIANT_NAME: Record<GameVariant, string> = { classic: variantName("classic"), paper: variantName("paper") };
+
+export const variantOptions = (t: HomeTranslator = PL_HOME) => VARIANTS.map((value) => ({ value, label: variantName(value, t) }));
+export const timeOptions = (t: HomeTranslator = PL_HOME) =>
+  PAPER_TIME_CONTROLS_MS.map((ms) => ({ value: String(ms), label: t("settings.minutes", { minutes: t.number(minutesOf(ms)) }) }));
+
+export const VARIANT_OPTIONS = variantOptions();
+export const TIME_OPTIONS = timeOptions();
+
+const isVariant = (value: string): value is GameVariant => (VARIANTS as readonly string[]).includes(value);
 export const variantOf = (value: string): GameVariant => (isVariant(value) ? value : "classic");
 
 /**
@@ -24,20 +44,18 @@ export function settingsBody({ variant, timeControlMs }: GameSettingsChoice): { 
 }
 
 /** One line naming what is played: "Papier i ołówek · 3 min", "Klasyczny · 10 min" (lobby list, history). */
-export function settingsLabel(variant: GameVariant, timeControlMs: number): string {
-  return `${VARIANT_NAME[variant]} · ${timeControlMs / 60_000} min`;
+export function settingsLabel(variant: GameVariant, timeControlMs: number, t: HomeTranslator = PL_HOME): string {
+  return t("settings.line", { variant: variantName(variant, t), minutes: t.number(minutesOf(timeControlMs)) });
 }
 
 /** The rules line of an invitation: the classic text stays as it was, the paper game names its variant and clock. */
-export function rulesLabel(variant: GameVariant, timeControlMs: number): string {
+export function rulesLabel(variant: GameVariant, timeControlMs: number, t: HomeTranslator = PL_HOME): string {
   return variant === "paper"
-    ? `${settingsLabel(variant, timeControlMs)} na gracza`
-    : `Swobodne zasady · plansza 15×15 · ${timeControlMs / 60_000} minut na gracza`;
+    ? t("settings.paperRules", { settings: settingsLabel(variant, timeControlMs, t) })
+    : t("settings.classicRules", { count: minutesOf(timeControlMs) });
 }
 
 /** The rules line under the variant choice on the home page: the classic text as it was, the paper game's approved sentence. */
-export function homeRulesLabel(variant: GameVariant): string {
-  return variant === "paper"
-    ? "Kółko i krzyżyk na kartce papieru, 5 w linii, gra na czas."
-    : rulesLabel("classic", CLASSIC_TIME_MS);
+export function homeRulesLabel(variant: GameVariant, t: HomeTranslator = PL_HOME): string {
+  return variant === "paper" ? t("settings.paperHome") : rulesLabel("classic", CLASSIC_TIME_MS, t);
 }

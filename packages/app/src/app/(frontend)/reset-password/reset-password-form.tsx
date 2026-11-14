@@ -1,6 +1,5 @@
 "use client";
 
-import { toValidationError } from "@gomoku/core/http/zod-error";
 import { passwordResetConfirmSchema } from "@gomoku/core/validators/auth/password-reset-schema";
 import { Alert } from "@gomoku/ui/game/alert";
 import { Button } from "@gomoku/ui/game/button";
@@ -11,8 +10,12 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { ErrorMessage } from "@/components/feedback/error-message";
 import { rateLimitedError } from "@/components/feedback/rate-limited-error";
+import plAuth from "@/i18n/catalogs/pl/auth";
+import plCommon from "@/i18n/catalogs/pl/common";
+import { textsOf, type TextsProps } from "@/i18n/client";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { apiCall } from "@/lib/api-client";
+import { fieldMessages, localFieldMessages, type ErrorTexts } from "@/lib/api-error-text";
 
 const PASSWORD_ID = "reset-new-password";
 
@@ -23,7 +26,17 @@ type GeneralError = { title: string; details: string };
 // own outline is hidden. Fields and buttons keep the focus ring.
 const FOCUS_TARGET = "outline-none";
 
-export function ResetPasswordForm({ token }: { token: string | undefined }) {
+type Props = TextsProps<"auth"> & {
+  token: string | undefined;
+  /** The `common` namespace (the limit message); nothing in Polish. */
+  commonTexts?: TextsProps<"common">;
+  /** The `errors` namespace (field errors by code); nothing in Polish. */
+  errorTexts?: ErrorTexts;
+};
+
+export function ResetPasswordForm({ token, commonTexts = {}, errorTexts = {}, ...texts }: Props) {
+  const t = textsOf<"auth">(plAuth, texts);
+  const common = textsOf<"common">(plCommon, commonTexts);
   const router = useRouter();
   // No token in the address is a broken link: the form could never succeed.
   const [phase, setPhase] = useState<Phase>(token ? "form" : "invalid");
@@ -54,7 +67,7 @@ export function ResetPasswordForm({ token }: { token: string | undefined }) {
     const input = { token: token as string, newPassword: password };
     const parsed = passwordResetConfirmSchema.safeParse(input);
     if (!parsed.success) {
-      setError(toValidationError(parsed.error)?.fieldErrors?.newPassword?.[0]);
+      setError(localFieldMessages(errorTexts, ["newPassword"], parsed.error, "reset").newPassword);
       setFocusTarget({ id: PASSWORD_ID });
       return;
     }
@@ -72,8 +85,8 @@ export function ResetPasswordForm({ token }: { token: string | undefined }) {
       return;
     }
 
-    const { code, retryAfterSeconds, fieldErrors } = result.error;
-    const fieldError = fieldErrors?.newPassword?.[0];
+    const { code, retryAfterSeconds } = result.error;
+    const fieldError = fieldMessages(errorTexts, ["newPassword"], result.error, "reset").newPassword;
     // A malformed token is a broken link, the same to the player as an expired one.
     if (code === "INVALID_TOKEN" || (code === "VALIDATION" && !fieldError)) {
       setPhase("invalid");
@@ -82,14 +95,14 @@ export function ResetPasswordForm({ token }: { token: string | undefined }) {
     if (fieldError) {
       setError(fieldError);
     } else if (code === "RATE_LIMITED") {
-      setGeneral(rateLimitedError(retryAfterSeconds));
+      setGeneral(rateLimitedError(retryAfterSeconds, common));
     } else if (code === "network") {
       setGeneral({
-        title: "Brak połączenia",
-        details: "Nie udało się połączyć z serwerem. Wpisane hasło zostało zachowane. Spróbuj ponownie.",
+        title: t("shared.networkTitle"),
+        details: t("reset.network"),
       });
     } else {
-      setGeneral({ title: "Nie udało się zmienić hasła", details: "Spróbuj ponownie." });
+      setGeneral({ title: t("reset.failed"), details: t("shared.retry") });
     }
     setFocusTarget({ id: PASSWORD_ID });
   }
@@ -97,12 +110,12 @@ export function ResetPasswordForm({ token }: { token: string | undefined }) {
   if (phase === "done") {
     return (
       <div ref={resultRef} tabIndex={-1} className={`flex flex-col gap-stack ${FOCUS_TARGET}`} data-testid="reset-done">
-        <Alert status="success" role="status" title="Hasło zmienione">
-          Zaloguj się nowym hasłem. Wszystkie dotychczasowe sesje zostały wylogowane.
+        <Alert status="success" role="status" title={t("reset.doneTitle")}>
+          {t("reset.doneBody")}
         </Alert>
         <div>
           <Button asChild>
-            <a href="/login">Zaloguj się</a>
+            <a href="/login">{t("reset.login")}</a>
           </Button>
         </div>
       </div>
@@ -112,11 +125,11 @@ export function ResetPasswordForm({ token }: { token: string | undefined }) {
   if (phase === "invalid") {
     return (
       <div ref={resultRef} tabIndex={-1} className={`flex flex-col gap-stack ${FOCUS_TARGET}`} data-testid="reset-invalid">
-        <Alert status="danger" title={token ? "Link wygasł lub został już użyty" : "Ten link jest niepełny"}>
-          Hasło nie zostało zmienione. Poproś o nowy link.
+        <Alert status="danger" title={t(token ? "reset.expired" : "reset.incomplete")}>
+          {t("reset.unchanged")}
         </Alert>
         <TextLink href="/forgot-password" placement="standalone">
-          Wyślij nowy link
+          {t("reset.newLink")}
         </TextLink>
       </div>
     );
@@ -135,17 +148,17 @@ export function ResetPasswordForm({ token }: { token: string | undefined }) {
           id={PASSWORD_ID}
           name="newPassword"
           autoComplete="new-password"
-          label="Nowe hasło"
-          showLabel="Pokaż hasło"
-          hideLabel="Ukryj hasło"
-          hint="Co najmniej 8 znaków"
+          label={t("fields.newPassword")}
+          showLabel={t("fields.showPassword")}
+          hideLabel={t("fields.hidePassword")}
+          hint={t("fields.passwordHint")}
           error={error}
           required
           value={password}
           onChange={setPassword}
         />
-        <SubmitButton pending={pending} pendingLabel="Zapisywanie…">
-          Ustaw nowe hasło
+        <SubmitButton pending={pending} pendingLabel={t("reset.pending")}>
+          {t("reset.submit")}
         </SubmitButton>
       </form>
     </>

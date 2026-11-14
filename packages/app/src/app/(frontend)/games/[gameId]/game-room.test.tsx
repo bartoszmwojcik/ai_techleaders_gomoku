@@ -1191,7 +1191,7 @@ describe("GameRoom against the bot (hosted-bot R15)", () => {
     active({
       players: [
         { seat: 1, kind: "account", displayName: "Ala_7", seen: true },
-        { seat: 2, kind: "bot", displayName: "Bot · poziom 1", bot: { level: 1, memoryMb: null }, seen: true },
+        { seat: 2, kind: "bot", displayName: "Bot · poziom 1", bot: { level: 1, memoryMb: null, tableMb: null }, seen: true },
       ],
       ...over,
     });

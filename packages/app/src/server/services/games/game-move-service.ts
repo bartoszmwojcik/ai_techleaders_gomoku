@@ -168,13 +168,13 @@ export class GameMoveService {
       if (await this.#timeoutSettler.settleGame(gameId, tx, now)) return SETTLED_BY_TIME;
       if (row.status === "finished") throw gameFinished();
       if (row.status !== "active" || blackSeat === null) {
-        throw new ConflictError(GAME_NOT_ACTIVE_MESSAGE, { code: "GAME_NOT_ACTIVE" });
+        throw new ConflictError(GAME_NOT_ACTIVE_MESSAGE, { code: "GAME_NOT_ACTIVE", data: { reason: "game_not_active" } });
       }
       if (row.turn_started_ms === null) {
         throw new ConflictError(GAME_NOT_STARTED_MESSAGE, { code: "GAME_NOT_STARTED" });
       }
       if (seatOnTurn(row.move_count, blackSeat) !== seat) {
-        throw new ConflictError(NOT_YOUR_TURN_MESSAGE, { code: "NOT_YOUR_TURN" });
+        throw new ConflictError(NOT_YOUR_TURN_MESSAGE, { code: "NOT_YOUR_TURN", data: { reason: "opponent_turn" } });
       }
       if (input.moveNumber !== row.move_count + 1) throw staleMove();
 
@@ -264,7 +264,7 @@ export class GameMoveService {
       const outcome = resolveResignation(row.status as GameStatus, seat);
       if (!outcome.ok) {
         if (outcome.reason === "finished") throw gameFinished();
-        throw new ConflictError(GAME_NOT_ACTIVE_MESSAGE, { code: "GAME_NOT_ACTIVE" });
+        throw new ConflictError(GAME_NOT_ACTIVE_MESSAGE, { code: "GAME_NOT_ACTIVE", data: { reason: "game_not_active" } });
       }
 
       const written = await tx.execute<{ id: string }[]>(RESIGN_SQL, [

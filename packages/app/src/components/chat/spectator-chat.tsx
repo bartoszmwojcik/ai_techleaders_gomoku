@@ -10,6 +10,9 @@ import { useId, useState } from "react";
 
 import { PlayerLabel } from "@/components/games/player-label";
 import { CHAT_FAILURES_BEFORE_ALERT } from "@/lib/chat/chat";
+import plChat from "@/i18n/catalogs/pl/chat";
+import plCommon from "@/i18n/catalogs/pl/common";
+import { useT } from "@/i18n/context";
 import { playerNameOf } from "@/lib/games/play";
 import type { SpectatorView } from "@/server/http/spectator-view";
 
@@ -27,13 +30,7 @@ type Props = {
   onGone: () => void;
 };
 
-const CLOSED_TEXT = "Czat jest już zamknięty.";
-const LOADING_TEXT = "Wczytujemy czat…";
-const READ_ONLY_TEXT = "Aby pisać na czacie, wejdź z nickiem lub zalogowany jako konto. Bez tego możesz tylko czytać.";
-const INFO_LABEL = "Informacja o wiadomościach czatu";
-// BR-34 and BR-41: the messages go about an hour after the game ends; the players may turn the chat off for themselves.
-const INFO_TEXT =
-  "Wiadomości nie są trwale zapisywane: usuwamy je około godziny po zakończeniu partii, a przy usunięciu konta od razu. Widzą je gracze i widzowie. Gracz może wyłączyć czat dla siebie — wtedy nie zobaczy Twoich wiadomości, ale pozostali nadal rozmawiają. Czat nie ma moderacji ani zgłaszania nadużyć.";
+// `chat.spectatorInfo` (BR-34, BR-41): the messages go about an hour after the game ends; the players may turn the chat off for themselves.
 
 /**
  * The chat of a public game for a spectator (E10-S03, BR-41): the same conversation and composer as a
@@ -42,6 +39,8 @@ const INFO_TEXT =
  */
 export function SpectatorChat({ gameId, players, canWrite, onGone }: Props) {
   const chat = useChat({ gameId, onGone, path: `/api/games/${gameId}/spectate/chat` });
+  const t = useT("chat", plChat);
+  const common = useT("common", plCommon);
   const bodyId = useId();
   const infoId = useId();
   const [collapsed, setCollapsed] = useState(false);
@@ -51,42 +50,44 @@ export function SpectatorChat({ gameId, players, canWrite, onGone }: Props) {
   const open = chat.loaded && state === "open";
 
   return (
-    <Panel title="Czat" data-testid="chat-panel">
+    <Panel title={t("title")} data-testid="chat-panel">
       <div className="flex flex-wrap items-center justify-between gap-group">
         <InfoToggleButton
-          label={INFO_LABEL}
+          label={t("infoLabel")}
           expanded={infoOpen}
           controls={infoId}
           onClick={() => setInfoOpen(!infoOpen)}
           data-testid="chat-info-toggle"
         />
         <Button variant="secondary" aria-expanded={!collapsed} aria-controls={bodyId} onClick={() => setCollapsed(!collapsed)} data-testid="chat-toggle">
-          {collapsed ? "Rozwiń czat" : "Zwiń czat"}
+          {t(collapsed ? "expand" : "collapse")}
         </Button>
       </div>
       <InfoToggleNote id={infoId} open={infoOpen} data-testid="chat-info">
-        {INFO_TEXT}
+        {t("spectatorInfo")}
       </InfoToggleNote>
       <div id={bodyId} hidden={collapsed} className="flex flex-col gap-stack">
         {chat.fails >= CHAT_FAILURES_BEFORE_ALERT && (
-          <Alert status="danger" title="Nie udało się odświeżyć czatu. Ponawiamy próby.">
+          <Alert status="danger" title={t("refreshFailed")}>
             <Button variant="secondary" onClick={() => void chat.refresh()}>
-              Spróbuj ponownie
+              {t("retry")}
             </Button>
           </Alert>
         )}
         {!chat.loaded && (
-          <SkeletonRegion label={LOADING_TEXT}>
+          <SkeletonRegion label={t("loading")}>
             <Skeleton className="h-6 w-full" />
             <Skeleton className="h-6 w-full" />
           </SkeletonRegion>
         )}
-        {chat.loaded && state !== "open" && <p className="m-0 text-body text-text-secondary">{CLOSED_TEXT}</p>}
+        {chat.loaded && state !== "open" && <p className="m-0 text-body text-text-secondary">{t("closed")}</p>}
         {open && (
           <ChatMessageList
             messages={chat.messages}
-            labelOf={(seat) => <PlayerLabel name={playerNameOf(players.find((player) => player.seat === seat))} testId="chat-sender" />}
-            pending={chat.pending ? { text: chat.pending.text, seat: null, spectatorName: "Ty" } : null}
+            labelOf={(seat) => (
+              <PlayerLabel name={playerNameOf(players.find((player) => player.seat === seat), common)} testId="chat-sender" t={common} />
+            )}
+            pending={chat.pending ? { text: chat.pending.text, seat: null, spectatorName: t("you") } : null}
           />
         )}
         {open && canWrite && (
@@ -94,7 +95,7 @@ export function SpectatorChat({ gameId, players, canWrite, onGone }: Props) {
         )}
         {open && !canWrite && (
           <p className="m-0 text-body text-text-secondary" data-testid="chat-read-only">
-            {READ_ONLY_TEXT}
+            {t("readOnly")}
           </p>
         )}
       </div>

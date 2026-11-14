@@ -14,7 +14,13 @@ vi.mock("./lobby-panel", () => ({
   LobbyPanel: ({ initial }: { initial: unknown }) => <section data-testid="panel">{JSON.stringify(initial)}</section>,
 }));
 
-import LobbyPage, { metadata } from "./page";
+const request = vi.hoisted(() => ({ lang: undefined as string | undefined }));
+vi.mock("next/headers", () => ({
+  cookies: async () => ({ get: (name: string) => (name === "gomoku_lang" && request.lang ? { name, value: request.lang } : undefined) }),
+  headers: async () => new Headers(),
+}));
+
+import LobbyPage, { generateMetadata } from "./page";
 
 const lobby = {
   me: { id: "s1", createdAt: new Date("2026-10-31T12:00:00Z"), expiresInMs: 200_000 },
@@ -67,7 +73,17 @@ describe("LobbyPage", () => {
     expect(redirect).toHaveBeenCalledExactlyOnceWith("/login?next=%2Flobby");
   });
 
-  it("is not indexed", () => {
+  it("is not indexed", async () => {
+    const metadata = await generateMetadata();
     expect(metadata.robots).toEqual({ index: false, follow: false });
+  });
+});
+
+describe("LobbyPage in French (E15-S05)", () => {
+  it("names the page and hands the panel the language", async () => {
+    request.lang = "fr";
+    expect((await generateMetadata()).title).toBe("Salon — Gomoku");
+    request.lang = undefined;
+    expect((await generateMetadata()).title).toBe("Lobby — Gomoku");
   });
 });

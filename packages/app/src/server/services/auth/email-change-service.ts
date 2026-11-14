@@ -115,6 +115,7 @@ export class EmailChangeService {
       throw new ValidationError(INVALID_CURRENT_PASSWORD_MESSAGE, {
         code: "INVALID_CURRENT_PASSWORD",
         fieldErrors: { currentPassword: [INVALID_CURRENT_PASSWORD_MESSAGE] },
+        fieldIssues: { currentPassword: [{ code: "INVALID_CURRENT_PASSWORD" }] },
       });
     }
     // BR-35, Q7: after the password check (so it is not an oracle without it) and before any write.
@@ -124,6 +125,7 @@ export class EmailChangeService {
     if (user.email === newEmail) {
       throw new ValidationError(SAME_EMAIL_MESSAGE, {
         fieldErrors: { newEmail: [SAME_EMAIL_MESSAGE] },
+        fieldIssues: { newEmail: [{ code: "EMAIL_UNCHANGED" }] },
       });
     }
     await this.#rateLimiter.hit(

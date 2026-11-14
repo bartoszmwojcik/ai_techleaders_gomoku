@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import type { BotView } from "../bot/profile";
 import { ValidationError } from "../http/errors";
 import type { GameVariant } from "./paper/constants";
 import type { EndReason, ParticipantKind, Seat } from "./types";
@@ -25,7 +26,8 @@ export type HistoryEntry = {
   finishedAt: string;
   result: HistoryResult;
   reason: EndReason;
-  opponent: { kind: ParticipantKind; name: string | null };
+  /** `bot` only for the bot (E15-S05, additive): its strength, so the UI names it in the reader's language. */
+  opponent: { kind: ParticipantKind; name: string | null; bot?: BotView };
   /** The game's variant (E11, BR-51). */
   variant: GameVariant;
   /** Points of the paper game as `[mine, opponent's]`; absent for the classic game. */
@@ -62,7 +64,7 @@ function isRealInstant(finishedAt: string): boolean {
 }
 
 const CURSOR_PARTS = z.tuple([
-  z.string().regex(CURSOR_FINISHED_AT).refine(isRealInstant),
+  z.string().regex(CURSOR_FINISHED_AT).refine(isRealInstant, { params: { code: "HISTORY_CURSOR_INVALID" } }),
   z.string().regex(CURSOR_ID),
 ]);
 

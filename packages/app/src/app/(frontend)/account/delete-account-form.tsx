@@ -10,29 +10,29 @@ import { TextLink } from "@gomoku/ui/game/text-link";
 import { useRef, useState } from "react";
 
 import { ErrorMessage } from "@/components/feedback/error-message";
+import { rateLimitedError } from "@/components/feedback/rate-limited-error";
+import plAccount from "@/i18n/catalogs/pl/account";
+import plCommon from "@/i18n/catalogs/pl/common";
+import { textsOf, type TextsProps } from "@/i18n/client";
 import { apiCall } from "@/lib/api-client";
+import { fieldMessages, type ErrorTexts } from "@/lib/api-error-text";
 import { fullPageLoad } from "@/lib/full-page-load";
 
 type DeleteAccountFormProps = {
   displayName: string;
   /** The game the account holds (waiting or in progress), read on the server. */
   currentGame: { gameId: string; status: "waiting" | "active" } | null;
+  /** The `account` and `common` namespaces; nothing in Polish. */
+  texts?: TextsProps<"account">;
+  commonTexts?: TextsProps<"common">;
+  /** The `errors` namespace (field errors by code); nothing in Polish. */
+  errorTexts?: ErrorTexts;
 };
 
 type Phase = "idle" | "asking" | "deleting";
 type General = { title: string; text: string };
 
 const PASSWORD_ID = "delete-account-password";
-const SERVER_ERROR = "Nie udało się usunąć konta. Nic nie zostało zmienione. Spróbuj ponownie.";
-const WRONG_PASSWORD = "Nieprawidłowe hasło.";
-
-function rateLimited(retryAfterSeconds: number | undefined): General {
-  const minutes = retryAfterSeconds === undefined ? undefined : Math.max(1, Math.ceil(retryAfterSeconds / 60));
-  return {
-    title: "Zbyt wiele prób",
-    text: minutes === undefined ? "Spróbuj ponownie za jakiś czas." : `Spróbuj ponownie za ${minutes} min.`,
-  };
-}
 
 // Radix returns focus to the trigger when the dialog closes; the field or the message must win.
 const focusLater = (focus: () => void) => setTimeout(focus, 80);
@@ -42,7 +42,9 @@ const focusLater = (focus: () => void) => setTimeout(focus, 80);
  * password sits in the panel, the dialog only asks. The deletion is final, so a success reloads
  * the whole page on `/?notice=account-deleted` (the layout reads the session).
  */
-export function DeleteAccountForm({ displayName, currentGame }: DeleteAccountFormProps) {
+export function DeleteAccountForm({ displayName, currentGame, texts = {}, commonTexts = {}, errorTexts = {} }: DeleteAccountFormProps) {
+  const t = textsOf<"account">(plAccount, texts);
+  const common = textsOf<"common">(plCommon, commonTexts);
   const [password, setPassword] = useState("");
   // Remounting a password field hides the password again.
   const [passwordKey, setPasswordKey] = useState(0);
@@ -58,9 +60,9 @@ export function DeleteAccountForm({ displayName, currentGame }: DeleteAccountFor
   const blockRef = useRef<HTMLDivElement>(null);
 
   const reason = activeGameId
-    ? "Usunięcie jest możliwe dopiero po zakończeniu partii."
+    ? t("delete.activeReason")
     : !checked
-      ? "Zaznacz potwierdzenie, aby usunąć konto."
+      ? t("delete.confirmReason")
       : null;
 
   const focusPassword = () => focusLater(() => document.getElementById(PASSWORD_ID)?.focus());
@@ -69,7 +71,7 @@ export function DeleteAccountForm({ displayName, currentGame }: DeleteAccountFor
     setGeneral(null);
     setDialogError(false);
     if (!password) {
-      setFieldError("Wpisz hasło.");
+      setFieldError(t("delete.enterPassword"));
       focusPassword();
       return;
     }
@@ -91,7 +93,7 @@ export function DeleteAccountForm({ displayName, currentGame }: DeleteAccountFor
       fullPageLoad("/?notice=account-deleted");
       return;
     }
-    const { code, data, fieldErrors, retryAfterSeconds } = result.error;
+    const { code, data, retryAfterSeconds } = result.error;
     if (code === "UNAUTHORIZED") {
       // The session is gone (or the account already): sign in again and come back here.
       fullPageLoad(`/login?next=${encodeURIComponent("/account")}`);
@@ -101,13 +103,14 @@ export function DeleteAccountForm({ displayName, currentGame }: DeleteAccountFor
       setPhase("idle");
       setPassword("");
       setPasswordKey((key) => key + 1);
-      setFieldError(fieldErrors?.password?.[0] ?? WRONG_PASSWORD);
+      setFieldError(fieldMessages(errorTexts, ["password"], result.error, "deleteAccount").password ?? t("delete.wrongPassword"));
       focusPassword();
       return;
     }
     if (code === "RATE_LIMITED") {
       setPhase("idle");
-      setGeneral(rateLimited(retryAfterSeconds));
+      const limited = rateLimitedError(retryAfterSeconds, common);
+      setGeneral({ title: limited.title, text: limited.details });
       return;
     }
     if (code === "ACTIVE_GAME" && typeof data?.gameId === "string") {
@@ -123,23 +126,20 @@ export function DeleteAccountForm({ displayName, currentGame }: DeleteAccountFor
   }
 
   return (
-    <Panel title="Usuń konto" className="border-status-danger" data-testid="delete-account-panel">
-      <Alert status="warning" role="none" title="Tego nie da się cofnąć">
-        <p className="m-0">
-          Twoje konto, e-mail i hasło zostaną usunięte od razu i na zawsze. Twoje zakończone partie zostaną u
-          przeciwników jako „Usunięty gracz”.
-        </p>
+    <Panel title={t("delete.title")} className="border-status-danger" data-testid="delete-account-panel">
+      <Alert status="warning" role="none" title={t("delete.warningTitle")}>
+        <p className="m-0">{t("delete.warningBody")}</p>
         {currentGame?.status === "waiting" && (
           <p className="m-0 mt-group" data-testid="delete-account-waiting">
-            Twoja oczekująca partia i jej zaproszenie zostaną usunięte.
+            {t("delete.waiting")}
           </p>
         )}
       </Alert>
       {activeGameId && (
         <div ref={blockRef} tabIndex={-1} className="focus-visible:focus-ring" data-testid="delete-account-active-game">
-          <Alert status="warning" title="Najpierw dokończ albo poddaj partię.">
-            Masz partię w toku. Na stronie partii wybierz „Poddaj partię”, a potem odśwież tę stronę.{" "}
-            <TextLink href={`/games/${activeGameId}`}>Przejdź do partii</TextLink>
+          <Alert status="warning" title={t("delete.activeTitle")}>
+            {t("delete.activeBody")}{" "}
+            <TextLink href={`/games/${activeGameId}`}>{t("delete.goToGame")}</TextLink>
           </Alert>
         </div>
       )}
@@ -152,10 +152,10 @@ export function DeleteAccountForm({ displayName, currentGame }: DeleteAccountFor
         key={passwordKey}
         id={PASSWORD_ID}
         name="password"
-        label="Hasło"
-        showLabel="Pokaż hasło"
-        hideLabel="Ukryj hasło"
-        hint="Podaj hasło, aby potwierdzić, że to Ty."
+        label={t("password")}
+        showLabel={t("showPassword")}
+        hideLabel={t("hidePassword")}
+        hint={t("delete.passwordHint")}
         error={fieldError}
         autoComplete="current-password"
         value={password}
@@ -166,7 +166,7 @@ export function DeleteAccountForm({ displayName, currentGame }: DeleteAccountFor
         className="max-w-sm"
       />
       <Checkbox
-        label="Rozumiem, że tego nie da się cofnąć"
+        label={t("delete.understand")}
         checked={checked}
         onCheckedChange={(value) => setChecked(value === true)}
         data-testid="delete-account-confirm"
@@ -187,19 +187,19 @@ export function DeleteAccountForm({ displayName, currentGame }: DeleteAccountFor
               aria-describedby={reason ? "delete-account-reason" : undefined}
               data-testid="delete-account-submit"
             >
-              Usuń konto na zawsze
+              {t("delete.submit")}
             </Button>
           }
-          title={`Usunąć konto ${displayName}?`}
+          title={t("delete.dialogTitle", { name: displayName })}
           description={
             <>
-              Twoje zakończone partie zostaną u przeciwników jako „Usunięty gracz”. Tego nie da się cofnąć.
-              {currentGame?.status === "waiting" ? " Twoja oczekująca partia i jej zaproszenie zostaną usunięte." : ""}
+              {t("delete.dialogBody")}
+              {currentGame?.status === "waiting" ? ` ${t("delete.waiting")}` : ""}
             </>
           }
-          message={dialogError ? SERVER_ERROR : undefined}
-          confirmLabel="Usuń konto na zawsze"
-          cancelLabel="Zostaw konto"
+          message={dialogError ? t("delete.serverError") : undefined}
+          confirmLabel={t("delete.submit")}
+          cancelLabel={t("delete.keep")}
           confirming={phase === "deleting"}
           onConfirm={() => void confirm()}
         />

@@ -285,11 +285,12 @@ export class InvitationService {
   ): Promise<AcceptResult> {
     const { userId } = viewer;
     if (input.as === "user" && !userId) {
-      throw new UnauthorizedError(SIGN_IN_MESSAGE);
+      throw new UnauthorizedError(SIGN_IN_MESSAGE, { data: { reason: "join_sign_in" } });
     }
     if (input.as === "user" && input.nickname !== undefined) {
       throw new ValidationError(NICKNAME_GUEST_ONLY_MESSAGE, {
         fieldErrors: { nickname: [NICKNAME_GUEST_ONLY_MESSAGE] },
+        fieldIssues: { nickname: [{ code: "NICKNAME_GUEST_ONLY" }] },
       });
     }
     if (input.as === "guest") {
@@ -299,6 +300,7 @@ export class InvitationService {
       if (input.acknowledgedGuestWarning !== true) {
         throw new ValidationError(GUEST_WARNING_MESSAGE, {
           fieldErrors: { acknowledgedGuestWarning: [GUEST_WARNING_MESSAGE] },
+          fieldIssues: { acknowledgedGuestWarning: [{ code: "GUEST_WARNING_REQUIRED" }] },
         });
       }
     }
@@ -411,7 +413,7 @@ export class InvitationService {
       if (!input.cancelOwnWaitingGame || slot.game_id !== extraGame) {
         throw new ConflictError(OWN_WAITING_GAME_MESSAGE, {
           code: "OWN_WAITING_GAME",
-          data: { gameId: slot.game_id },
+          data: { gameId: slot.game_id, reason: "join" },
         });
       }
       await tx.execute(CANCEL_WAITING_GAME_SQL, [slot.game_id, now]);

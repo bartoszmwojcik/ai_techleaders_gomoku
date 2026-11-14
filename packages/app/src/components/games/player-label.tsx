@@ -1,7 +1,7 @@
 import { TruncatedName } from "@gomoku/ui/game/truncated-name";
 import type { ReactNode } from "react";
 
-import { DECLARED_LABEL, type PlayerName } from "@/lib/games/play";
+import { PL_COMMON, type CommonTranslator, type PlayerName } from "@/lib/games/player-name";
 
 type Props = {
   name: PlayerName;
@@ -9,6 +9,8 @@ type Props = {
   you?: boolean;
   /** `data-testid` of the wrapper; the chat uses its own, so a page's names stay countable by `player-name`. */
   testId?: string;
+  /** The `common` namespace of the reader; Polish by default. */
+  t?: CommonTranslator;
 };
 
 /**
@@ -23,17 +25,19 @@ type Props = {
  * The cutting rule itself is the design system's `TruncatedName`; this wrapper only maps a
  * participant onto its lead, name and tail.
  */
-export function PlayerLabel({ name, you = false, testId = "player-name" }: Props): ReactNode {
-  if (name.agent) return <AgentLabel name={name} agent={name.agent} testId={testId} />;
-  if (!name.guest) return you ? `Ty (${name.nick})` : name.nick;
+export function PlayerLabel({ name, you = false, testId = "player-name", t = PL_COMMON }: Props): ReactNode {
+  if (name.agent) return <AgentLabel name={name} agent={name.agent} testId={testId} t={t} />;
+  if (!name.guest) return you ? t("player.youAccount", { name: name.nick }) : name.nick;
   return (
-    <TruncatedName lead={you ? "Ty: " : undefined} tail=" (gość)" title={name.label} data-testid={testId}>
+    <TruncatedName lead={you ? t("player.youGuestLead") : undefined} tail={` ${t("player.guestSuffix")}`} title={name.label} data-testid={testId}>
       {name.nick}
     </TruncatedName>
   );
 }
 
-function AgentLabel({ name, agent, testId }: { name: PlayerName; agent: NonNullable<PlayerName["agent"]>; testId: string }): ReactNode {
+type AgentProps = { name: PlayerName; agent: NonNullable<PlayerName["agent"]>; testId: string; t: CommonTranslator };
+
+function AgentLabel({ name, agent, testId, t }: AgentProps): ReactNode {
   if (agent.declared === null) {
     return (
       <span className="flex min-w-0 max-w-full items-baseline" title={name.label} data-testid={testId}>
@@ -42,7 +46,7 @@ function AgentLabel({ name, agent, testId }: { name: PlayerName; agent: NonNulla
     );
   }
   return (
-    <TruncatedName lead={`${name.nick} · `} tail={` ${DECLARED_LABEL}`} title={name.label} data-testid={testId}>
+    <TruncatedName lead={`${name.nick} · `} tail={` ${t("player.declaredSuffix")}`} title={name.label} data-testid={testId}>
       {agent.declared}
     </TruncatedName>
   );

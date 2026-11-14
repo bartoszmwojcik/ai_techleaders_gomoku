@@ -7,6 +7,8 @@ const { replace, refresh, apiCall } = vi.hoisted(() => ({ replace: vi.fn(), refr
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace, refresh }) }));
 vi.mock("@/lib/api-client", () => ({ apiCall }));
 
+import frHome from "@/i18n/catalogs/fr/home";
+
 import { JoinActions } from "./join-actions";
 
 const failure = (code: string) => ({ ok: false, error: { code, message: "x" } });
@@ -279,5 +281,47 @@ describe("JoinActions with an own waiting game", () => {
     });
     expect(replace).toHaveBeenCalledWith("/games/g1");
     expect(screen.getByRole("button", { name: "Dołączanie…" })).toBeTruthy();
+  });
+});
+
+describe("JoinActions in French (E15-S03)", () => {
+  it("words the visitor's choices, the guest warning and the nickname hint for seat 2", async () => {
+    const user = userEvent.setup();
+    render(<JoinActions code="ABCD-EFGH" mode="visitor" locale="fr" dict={frHome} />);
+    expect(screen.getByRole("link", { name: "Se connecter" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Créer un compte" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Jouer en invité" }));
+    expect(screen.getByText(/Vous jouez sans compte/)).toBeTruthy();
+    expect(screen.getByText(/^Laissez vide et vous serez « Joueur 2 »$/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Retour" })).toBeTruthy();
+    apiCall.mockResolvedValue(failure("network"));
+    await user.click(screen.getByRole("button", { name: "J’ai compris, jouer en invité" }));
+    expect(await screen.findByText("Pas de connexion")).toBeTruthy();
+  });
+
+  it("words the member's refusals", async () => {
+    const user = userEvent.setup();
+    render(<JoinActions code="ABCD-EFGH" mode="member" locale="fr" dict={frHome} />);
+    for (const [code, title] of [
+      ["RATE_LIMITED", "Trop de tentatives — réessayez dans un instant"],
+      ["SERVER_ERROR", "Impossible de rejoindre la partie"],
+    ] as const) {
+      apiCall.mockResolvedValue(failure(code));
+      await user.click(screen.getByRole("button", { name: "Rejoindre la partie" }));
+      expect(await screen.findByText(title)).toBeTruthy();
+    }
+    apiCall.mockResolvedValue(failure("UNAUTHORIZED"));
+    await user.click(screen.getByRole("button", { name: "Rejoindre la partie" }));
+    expect(await screen.findByText("Session expirée")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Reconnectez-vous" }).parentElement?.textContent).toContain("Reconnectez-vous pour rejoindre la partie.");
+    apiCall.mockResolvedValue(failure("INVALID_INVITATION"));
+    await user.click(screen.getByRole("button", { name: "Rejoindre la partie" }));
+    expect(await screen.findByText("Quelque chose a changé, nous avons actualisé la page")).toBeTruthy();
+  });
+
+  it("words the swaps", () => {
+    render(<JoinActions code="ABCD-EFGH" mode="swap" locale="fr" dict={frHome} />);
+    render(<JoinActions code="ABCD-EFGH" mode="swap-guest" locale="fr" dict={frHome} />);
+    expect(screen.getAllByRole("button", { name: "Annuler ma partie et rejoindre" })).toHaveLength(2);
   });
 });

@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_OPPONENT } from "@/lib/games/opponent";
 
+import frHome from "@/i18n/catalogs/fr/home";
+
 import { OpponentPicker } from "./opponent-picker";
 
 afterEach(cleanup);
@@ -44,5 +46,18 @@ describe("OpponentPicker (hosted-bot UI/UX)", () => {
     render(<OpponentPicker value={{ opponent: "bot", botLevel: 1 }} variant="classic" onChange={() => {}} disabled />);
     expect((screen.getByRole("radio", { name: "Bot" }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole("radio", { name: "Poziom 2" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe("OpponentPicker in French (E15-S03)", () => {
+  it("labels both groups and says why the bot is off", () => {
+    const { unmount } = render(
+      <OpponentPicker value={{ opponent: "bot", botLevel: 2 }} variant="classic" onChange={() => {}} locale="fr" dict={frHome} />,
+    );
+    expect(screen.getByRole("radiogroup", { name: "Adversaire" })).toBeTruthy();
+    expect(checked("Niveau 2")).toBe("true");
+    unmount();
+    render(<OpponentPicker value={DEFAULT_OPPONENT} variant="paper" onChange={() => {}} locale="fr" dict={frHome} />);
+    expect(screen.getByTestId("bot-classic-only").textContent).toBe("Le bot ne joue qu’à la partie classique.");
   });
 });

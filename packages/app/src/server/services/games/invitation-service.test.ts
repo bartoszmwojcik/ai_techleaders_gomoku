@@ -316,7 +316,7 @@ describe("InvitationService.accept", () => {
     const error = await errorOf(service.accept(CODE, { userId: USER }, AS_USER, GUARD));
     expect(error.status).toBe(409);
     expect(error.code).toBe("OWN_WAITING_GAME");
-    expect(error.data).toEqual({ gameId: "own-game" });
+    expect(error.data).toEqual({ gameId: "own-game", reason: "join" });
     expect(sqlsOf(calls).some((sql) => sql.includes("update games set status = 'cancelled' where id = ?"))).toBe(false);
   });
 
@@ -358,7 +358,7 @@ describe("InvitationService.accept", () => {
       service.accept(CODE, { userId: USER }, { as: "user", cancelOwnWaitingGame: true }, GUARD),
     );
     expect(error.code).toBe("OWN_WAITING_GAME");
-    expect(error.data).toEqual({ gameId: "new-own" });
+    expect(error.data).toEqual({ gameId: "new-own", reason: "join" });
   });
 
   it.each([
@@ -536,7 +536,7 @@ describe("InvitationService.accept as a guest", () => {
     const refused = setup({ slot: [[own], [own]] });
     const error = await errorOf(refused.service.accept(CODE, { guestTokenHash: TOKEN_HASH }, GUEST_INPUT, GUARD));
     expect(error.code).toBe("OWN_WAITING_GAME");
-    expect(error.data).toEqual({ gameId: "a-own-game" });
+    expect(error.data).toEqual({ gameId: "a-own-game", reason: "join" });
 
     const { service, calls } = setup({ slot: [[own], [own]] });
     const result = await service.accept(

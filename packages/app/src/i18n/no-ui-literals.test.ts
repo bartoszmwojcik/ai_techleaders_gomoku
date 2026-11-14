@@ -1,5 +1,5 @@
 import { globSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { relative, resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -13,16 +13,10 @@ const SRC = resolve(import.meta.dirname, "..");
  * Every migration package (phase B and C) adds its globs, relative to `packages/app/src`.
  */
 export const ENFORCED_GROUPS: readonly string[] = [
-  // E15-S01: the top bar of every player page.
-  "app/(frontend)/layout.tsx",
-  "components/theme/theme-toggle.tsx",
-  "components/i18n/*.tsx",
-  "components/auth/session-menu.tsx",
-  "components/auth/account-menu.tsx",
-  "components/auth/logout-button.tsx",
-  // E14-S01 (#280, E15 note f): the administrator's show, its console and its view.
-  "app/(frontend)/show/**/*.tsx",
-  "lib/show/*.ts",
+  // E15 closure (Phase 7 step 1): every player screen, component and helper, both extensions.
+  "app/(frontend)/**/*.{ts,tsx}",
+  "components/**/*.{ts,tsx}",
+  "lib/**/*.{ts,tsx}",
 ];
 
 const isTest = (file: string) => /\.test\.tsx?$/.test(file);
@@ -32,6 +26,17 @@ describe("no Polish UI literals in migrated groups", () => {
 
   it("every group matches at least one file", () => {
     for (const pattern of ENFORCED_GROUPS) expect(globSync(pattern, { cwd: SRC }), pattern).not.toEqual([]);
+  });
+
+  it("scans every source file of the player's screens, components and helpers", () => {
+    // Whatever the extension or depth: a file added under these roots is scanned (tests and stories excepted).
+    const all = ["app/(frontend)", "components", "lib"]
+      .flatMap((root) => globSync(`${root}/**/*`, { cwd: SRC, withFileTypes: true }))
+      .filter((entry) => entry.isFile())
+      .map((entry) => relative(SRC, resolve(entry.parentPath, entry.name)))
+      .filter((file) => /\.tsx?$/.test(file) && !isTest(file) && !/\.stories\.tsx?$/.test(file));
+
+    expect(all.filter((file) => !files.includes(file))).toEqual([]);
   });
 
   it.each(files)("%s", (file) => {

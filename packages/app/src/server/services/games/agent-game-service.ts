@@ -106,6 +106,7 @@ type Seated = { participant: GameParticipant; gameId: string; variant: string | 
 function invalidInput(field: string): ValidationError {
   return new ValidationError(`Nieprawidłowe pole: ${field}.`, {
     code: "INVALID_INPUT",
+    data: { reason: "invalid_field" },
   });
 }
 
@@ -218,7 +219,9 @@ export class AgentGameService {
     const paper = seated.variant === "paper";
     const size = paper ? PAPER_BOARD_SIZE : BOARD_SIZE;
     if (x < 0 || x >= size || y < 0 || y >= size) {
-      throw new ValidationError(paper ? OUT_OF_PAPER_BOARD_MESSAGE : OUT_OF_BOARD_MESSAGE, { code: "ILLEGAL_MOVE" });
+      throw paper
+        ? new ValidationError(OUT_OF_PAPER_BOARD_MESSAGE, { code: "ILLEGAL_MOVE", data: { reason: "paper_board" } })
+        : new ValidationError(OUT_OF_BOARD_MESSAGE, { code: "ILLEGAL_MOVE", data: { reason: "classic_board" } });
     }
 
     await this.#gameMoveService.play(seated.participant, seated.gameId, { x, y, moveNumber });

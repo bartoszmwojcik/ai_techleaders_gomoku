@@ -8,6 +8,7 @@ import { VerifyEmailNotice } from "@/components/auth/verify-email-banner";
 import { CreateGameButton } from "@/components/games/create-game-button";
 import { HomeRulesLine, HomeRulesProvider } from "@/components/games/home-rules";
 import { DismissibleNotice } from "@/components/games/dismissible-notice";
+import { clientI18n, getI18n } from "@/i18n/server";
 import { getCurrentUserWith } from "@/server/http/auth";
 import { isBotEnabled } from "@/server/http/bot-availability";
 import { loadGuestCurrentGame } from "@/server/http/guest-game";
@@ -26,9 +27,7 @@ type HomePageProps = {
   searchParams: Promise<{ notice?: string | string[] }>;
 };
 
-const GAME_PHASE_TEXT = { waiting: "Czeka na przeciwnika.", active: "W toku." } as const;
-/** L27: a guest (creator or joiner) sees "Masz partię" for a waiting and an active game only. */
-const GUEST_PHASE_TEXT = { waiting: "Czekasz na przeciwnika.", active: "Partia w toku." } as const;
+// L27: a guest (creator or joiner) sees "Masz partię" for a waiting and an active game only (`page.guestPhase`).
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   // Reads the session cookie, so the page is rendered per request.
@@ -48,6 +47,11 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const cancelled = notice === "cancelled";
   const accountDeleted = notice === "account-deleted" && !user;
 
+  const home = await getI18n("home");
+  const { t } = home;
+  const homeTexts = clientI18n(home);
+  const authTexts = user && !user.emailVerifiedAt ? clientI18n(await getI18n("auth")) : {};
+
   const cells = Array.from({ length: BOARD_SIZE * BOARD_SIZE }, (_, i) => {
     const row = Math.floor(i / BOARD_SIZE);
     const col = i % BOARD_SIZE;
@@ -57,15 +61,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   return (
     <main className="mx-auto flex w-full flex-1 max-w-5xl flex-col items-center justify-center gap-section px-panel py-section">
       {cancelled && (
-        <DismissibleNotice title="Zaproszenie anulowane" closeLabel="Zamknij">
-          Zaproszenie zostało anulowane. Link jest już nieważny.
+        <DismissibleNotice title={t("page.cancelled.title")} closeLabel={t("page.close")}>
+          {t("page.cancelled.body")}
         </DismissibleNotice>
       )}
       {accountDeleted && (
-        <DismissibleNotice title="Konto zostało usunięte" closeLabel="Zamknij" />
+        <DismissibleNotice title={t("page.accountDeleted")} closeLabel={t("page.close")} />
       )}
       {user && !user.emailVerifiedAt && (
-        <VerifyEmailNotice userId={user.id} email={user.email} />
+        <VerifyEmailNotice userId={user.id} email={user.email} {...authTexts} />
       )}
       <div className="flex w-full flex-col items-center justify-center gap-section md:flex-row">
         <HomeRulesProvider>
@@ -73,18 +77,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             <h1 className="text-title font-strong tracking-(--letter-spacing-title)">
               Gomoku
             </h1>
-            <p className="text-lead text-text-secondary">
-              Pięć w linii wygrywa. Zagraj ze znajomym albo znajdź przeciwnika w
-              lobby.
-            </p>
-            <HomeRulesLine />
+            <p className="text-lead text-text-secondary">{t("page.intro")}</p>
+            <HomeRulesLine {...homeTexts} />
             {user ? (
               <div className="flex flex-col gap-stack text-left">
                 {currentGame && (
-                  <Alert status="info" title="Masz partię">
-                    {GAME_PHASE_TEXT[currentGame.status]}{" "}
+                  <Alert status="info" title={t("page.hasGame")}>
+                    {t(`page.phase.${currentGame.status}`)}{" "}
                     <TextLink href={`/games/${currentGame.gameId}`}>
-                      Wróć do partii
+                      {t("shared.backToGame")}
                     </TextLink>
                   </Alert>
                 )}
@@ -96,39 +97,40 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                     }
                   }
                   botEnabled={await isBotEnabled()}
+                  {...homeTexts}
                 />
                 {/* Two equal secondary buttons: a link to another page is still a link (role=link). */}
                 <div className="grid grid-cols-2 gap-group">
                   <Button asChild variant="secondary">
-                    <a href="/lobby">Lobby</a>
+                    <a href="/lobby">{t("page.lobby")}</a>
                   </Button>
                   <Button asChild variant="secondary">
-                    <a href="/join">Masz kod?</a>
+                    <a href="/join">{t("shared.haveCode")}</a>
                   </Button>
                 </div>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-stack md:items-start">
                 {guestGame && (
-                  <Alert status="info" title="Masz partię">
-                    {GUEST_PHASE_TEXT[guestGame.status]}{" "}
-                    <TextLink href={`/games/${guestGame.gameId}`}>Wróć do partii</TextLink>
+                  <Alert status="info" title={t("page.hasGame")}>
+                    {t(`page.guestPhase.${guestGame.status}`)}{" "}
+                    <TextLink href={`/games/${guestGame.gameId}`}>{t("shared.backToGame")}</TextLink>
                   </Alert>
                 )}
                 <div className="flex flex-wrap justify-center gap-group md:justify-start">
                   <Button asChild>
-                    <a href="/register">Załóż konto</a>
+                    <a href="/register">{t("shared.register")}</a>
                   </Button>
                   <Button asChild variant="secondary">
-                    <a href="/login">Zaloguj się</a>
+                    <a href="/login">{t("shared.login")}</a>
                   </Button>
                   <TextLink href="/join" placement="standalone">
-                    Masz kod?
+                    {t("shared.haveCode")}
                   </TextLink>
                 </div>
                 {/* L34: a secondary button (not a small link) in the action column; "Załóż konto" stays the main action. */}
                 <Button asChild variant="secondary" className="w-full">
-                  <a href="/play">Zagraj ze znajomym bez konta</a>
+                  <a href="/play">{t("page.playWithoutAccount")}</a>
                 </Button>
               </div>
             )}

@@ -95,7 +95,7 @@ export class AccountService {
    */
   async delete(userId: string, password: string): Promise<void> {
     const user = await this.#em.findOne(User, { id: userId });
-    if (!user) throw new UnauthorizedError(SESSION_REQUIRED_MESSAGE);
+    if (!user) throw new UnauthorizedError(SESSION_REQUIRED_MESSAGE, { data: { reason: "session_required" } });
     // Before the password check and any write: the administrator's account is never deleted.
     if (isInstallationAdmin(user.email, this.#adminEmail)) throw adminProtected();
     const passwordHash = user.passwordHash;
@@ -108,7 +108,7 @@ export class AccountService {
 
     await this.#em.transactional(async (tx) => {
       const locked = await tx.execute<{ id: string; email: string }[]>(LOCK_USER_SQL, [userId]);
-      if (locked.length === 0) throw new UnauthorizedError(SESSION_REQUIRED_MESSAGE);
+      if (locked.length === 0) throw new UnauthorizedError(SESSION_REQUIRED_MESSAGE, { data: { reason: "session_required" } });
       // Read under the row lock, so a race with `admin:create` cannot let the deletion through.
       if (isInstallationAdmin(locked[0]!.email, this.#adminEmail)) throw adminProtected();
 
@@ -145,6 +145,7 @@ function invalidPassword(): ValidationError {
   return new ValidationError(INVALID_PASSWORD_MESSAGE, {
     code: "INVALID_PASSWORD",
     fieldErrors: { password: [INVALID_PASSWORD_MESSAGE] },
+    fieldIssues: { password: [{ code: "INVALID_PASSWORD" }] },
   });
 }
 

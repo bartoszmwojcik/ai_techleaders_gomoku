@@ -23,7 +23,7 @@ async function run(...args: string[]) {
   await import("./i18n-export-cli");
 }
 
-it("prints every namespace of the real catalogs as CSV, French drafts and all", async () => {
+it("prints every namespace of the real catalogs as CSV, French and German drafts and all", async () => {
   await run();
   const csv = stdout.mock.calls[0]![0] as string;
   const lines = csv.slice(1).split("\r\n");
@@ -31,7 +31,7 @@ it("prints every namespace of the real catalogs as CSV, French drafts and all", 
   expect(lines.some((line) => line.startsWith("common."))).toBe(true);
   expect(lines.some((line) => line.startsWith("header."))).toBe(true);
   // The French typography travels with the text (a non-breaking space before the colon).
-  expect(lines).toContain("show.room.title,Pokaz: {layout},Show: {layout},Démonstration : {layout},,en: draft; fr: draft; de: draft,layout");
+  expect(lines).toContain("show.room.title,Pokaz: {layout},Show: {layout},Démonstration : {layout},Vorführung: {layout},en: draft; fr: draft; de: draft,layout");
   expect(writeFileSync).not.toHaveBeenCalled();
 });
 

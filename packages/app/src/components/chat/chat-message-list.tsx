@@ -6,6 +6,8 @@ import { Button } from "@gomoku/ui/game/button";
 import { EmptyState } from "@gomoku/ui/game/empty-state";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
+import plChat from "@/i18n/catalogs/pl/chat";
+import { useT } from "@/i18n/context";
 import { messageTime } from "@/lib/chat/chat";
 
 type Props = {
@@ -44,6 +46,7 @@ const BOTTOM_SLACK_PX = 16;
  * newest message only while the reader is at the bottom; otherwise "Nowe wiadomości" offers the jump.
  */
 export function ChatMessageList({ messages, labelOf, pending }: Props) {
+  const t = useT("chat", plChat);
   const list = useRef<HTMLDivElement>(null);
   const stuck = useRef(true);
   const known = useRef(messages.length);
@@ -73,7 +76,7 @@ export function ChatMessageList({ messages, labelOf, pending }: Props) {
   return (
     <div className="flex flex-col gap-group">
       {messages.length === 0 && !pending && (
-        <EmptyState title="Nikt jeszcze nic nie napisał. Napisz pierwszy." />
+        <EmptyState title={t("empty")} />
       )}
       {/* The log is a block around the list: `log` is not allowed on an `ol`. Focusable, so the keyboard can scroll it. */}
       <div
@@ -81,7 +84,7 @@ export function ChatMessageList({ messages, labelOf, pending }: Props) {
         role="log"
         aria-live="polite"
         aria-relevant="additions"
-        aria-label="Wiadomości czatu"
+        aria-label={t("log")}
         tabIndex={0}
         onScroll={onScroll}
         className="max-h-60 overflow-y-auto rounded-base focus-visible:focus-ring"
@@ -104,7 +107,7 @@ export function ChatMessageList({ messages, labelOf, pending }: Props) {
             <li aria-hidden="true" className="flex min-w-0 flex-col gap-1" data-testid="chat-pending">
               <div className="flex min-w-0 items-baseline gap-group text-meta text-text-secondary">
                 <span className="min-w-0 font-strong">{senderOf(pending, labelOf)}</span>
-                <span className="shrink-0 text-text-muted">Wysyłanie…</span>
+                <span className="shrink-0 text-text-muted">{t("sending")}</span>
               </div>
               <p className="m-0 text-body wrap-anywhere text-text-muted" dir="auto" style={{ unicodeBidi: "isolate" }}>
                 {pending.text}
@@ -116,7 +119,7 @@ export function ChatMessageList({ messages, labelOf, pending }: Props) {
       {unseen && (
         <div>
           <Button variant="secondary" onClick={jumpToNewest}>
-            Nowe wiadomości
+            {t("newMessages")}
           </Button>
         </div>
       )}

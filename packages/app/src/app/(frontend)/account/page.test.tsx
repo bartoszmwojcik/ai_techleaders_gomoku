@@ -1,6 +1,12 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const i18nRequest = vi.hoisted(() => ({ lang: undefined as string | undefined }));
+vi.mock("next/headers", () => ({
+  cookies: async () => ({ get: (name: string) => (name === "gomoku_lang" && i18nRequest.lang ? { name, value: i18nRequest.lang } : undefined) }),
+  headers: async () => new Headers(),
+}));
+
 const { connection, requirePageSession, withRequestScope, currentGame, availableAt } = vi.hoisted(() => ({
   availableAt: vi.fn(),
   connection: vi.fn(),

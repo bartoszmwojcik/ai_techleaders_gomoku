@@ -836,7 +836,7 @@ describe("PlayField, the paper game (E11)", () => {
 });
 
 describe("PlayField against the bot (hosted-bot spec)", () => {
-  const botPlayer = { seat: 2 as const, kind: "bot" as const, displayName: "Bot · poziom 2 · 16 MB", bot: { level: 2 as const, memoryMb: 768 }, seen: true };
+  const botPlayer = { seat: 2 as const, kind: "bot" as const, displayName: "Bot · poziom 2 · 16 MB", bot: { level: 2 as const, memoryMb: 768, tableMb: 16 }, seen: true };
   const vsBot = (over: Partial<GameView> = {}) => game({ players: [player(1, "Ala_7"), botPlayer], ...over });
 
   it("names the bot with its strength and says it thinks while it is to move, without a chat", () => {

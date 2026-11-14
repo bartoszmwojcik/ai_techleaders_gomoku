@@ -195,4 +195,13 @@ Specyfikacja `.ai/specs/2026-11-10-i18n.md` zatwierdzona 2026-11-10 (PR #290). E
 
 - E15-S01 (#291): scalone (PR #302).
 - E15-S02 (#292): przestrzeń `show` w PL/EN/FR w PR-ach #304–#307; eksport CSV (`npm run i18n:export`) i typografia FR w #307. Otwarte: natywna recenzja FR (`status.ts` → `reviewed`) i decyzja dnia pokazu − 5 (I17) — należą do właściciela.
-- S03…S09: nierozpoczęte.
+- S03…S09: nierozpoczęte (stan 2026-11-11).
+
+**Stan E15 (2026-11-14):** kod S03–S08 (paczki C1–C6) gotowy lokalnie na gałęzi `cez/51169d14`, do przeglądu i podziału na PR-y przez konduktora (log `.ai/runs/2026-11-14-e15-continuation.md`).
+
+| Historia | Kto | Stan i warunek zamknięcia |
+|---|---|---|
+| S03–S07 (#293–#297) | agent | kod gotowy (C1–C5); zamknięcie po scaleniu |
+| S08 (#298) | agent | kod gotowy: DE 100 % `draft`, bramka przełącznika, CSV; recenzja DE → nowe zadanie E15-S10 (⚠ decyzja właściciela) |
+| S09 (#299) | agent + właściciel | notatka `research/decisions/2026-11-13-e15-s09-recommendations.md`; właściciel przyjmuje rekomendację → Q-26 `decided`, #299 zamknięte |
+| Recenzja FR | właściciel | nowe zadanie E15-S11 (wszystkie przestrzenie) |

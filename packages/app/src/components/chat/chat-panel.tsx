@@ -10,7 +10,10 @@ import { Skeleton, SkeletonRegion } from "@gomoku/ui/game/skeleton";
 import { useId, useState } from "react";
 
 import { PlayerLabel } from "@/components/games/player-label";
-import { CHAT_FAILURES_BEFORE_ALERT, pluralNew } from "@/lib/chat/chat";
+import plChat from "@/i18n/catalogs/pl/chat";
+import plCommon from "@/i18n/catalogs/pl/common";
+import { useT } from "@/i18n/context";
+import { CHAT_FAILURES_BEFORE_ALERT } from "@/lib/chat/chat";
 import { playerNameOf } from "@/lib/games/play";
 import type { GameView } from "@/server/http/game-view";
 
@@ -25,23 +28,8 @@ type Props = {
   onGone: () => void;
 };
 
-const WAITING_TEXT = "Czat będzie dostępny, gdy przeciwnik dołączy do partii.";
-const CLOSED_TEXT = "Czat jest już zamknięty.";
-const DISABLED_BY_YOU_TEXT =
-  "Wyłączyłeś czat. Nie widzisz wiadomości rozmówcy i nie możesz pisać. Rozmówca zobaczy, że czat jest wyłączony.";
-const TURN_OFF_LABEL = "Wyłącz czat";
-const TURN_ON_LABEL = "Włącz czat";
-const TURN_OFF_FAILED = "Nie udało się wyłączyć czatu. Spróbuj ponownie.";
-const TURN_ON_FAILED = "Nie udało się włączyć czatu. Spróbuj ponownie.";
-const DISABLED_BY_OPPONENT_TEXT = "Rozmówca wyłączył czat. Nie możesz teraz pisać.";
-const DISABLED_BY_OPPONENT_REASON = "Pisanie jest zablokowane: rozmówca wyłączył czat.";
-// A public game: the other player left the conversation, the spectators did not (BR-41).
-const OPPONENT_DISABLED_PUBLIC_TEXT = "Rozmówca wyłączył czat i nie zobaczy Twoich wiadomości. Możesz pisać do widzów.";
-const LOADING_TEXT = "Wczytujemy czat…";
-const INFO_LABEL = "Informacja o wiadomościach czatu";
-// BR-34: the messages stay in the database until about an hour after the game ends, so "not saved" would be untrue.
-const INFO_TEXT =
-  "Wiadomości nie są trwale zapisywane: usuwamy je około godziny po zakończeniu partii, a przy usunięciu konta od razu. Widzą je tylko uczestnicy partii. Każdy z nich może wyłączyć czat w tej partii. Czat nie ma moderacji ani zgłaszania nadużyć.";
+// `chat.info`: the messages stay in the database until about an hour after the game ends, so "not saved" would be
+// untrue (BR-34). `chat.opponentDisabledPublic`: in a public game the other player left, the spectators did not (BR-41).
 
 /**
  * The chat of a game under the board and under the result (E07-S01). A game that waits shows only a
@@ -49,11 +37,12 @@ const INFO_TEXT =
  * system's Panel, field, button and alert, so the panel owns no look of its own.
  */
 export function ChatPanel({ gameId, game, onGone }: Props) {
+  const t = useT("chat", plChat);
   if (game.status === "cancelled") return null;
   if (game.status === "waiting") {
     return (
-      <Panel title="Czat" data-testid="chat-panel">
-        <p className="m-0 text-body text-text-secondary">{WAITING_TEXT}</p>
+      <Panel title={t("title")} data-testid="chat-panel">
+        <p className="m-0 text-body text-text-secondary">{t("waiting")}</p>
       </Panel>
     );
   }
@@ -61,6 +50,8 @@ export function ChatPanel({ gameId, game, onGone }: Props) {
 }
 
 function LiveChat({ gameId, game, onGone }: Props) {
+  const t = useT("chat", plChat);
+  const common = useT("common", plCommon);
   const chat = useChat({ gameId, onGone });
   const bodyId = useId();
   const [collapsed, setCollapsed] = useState(false);
@@ -75,14 +66,19 @@ function LiveChat({ gameId, game, onGone }: Props) {
   const mySeat = game.you.seat;
   const opponent = game.players.find((player) => player.seat !== mySeat);
   const labelOf = (seat: Seat) => (
-    <PlayerLabel name={playerNameOf(game.players.find((player) => player.seat === seat))} you={seat === mySeat} testId="chat-sender" />
+    <PlayerLabel
+      name={playerNameOf(game.players.find((player) => player.seat === seat), common)}
+      you={seat === mySeat}
+      testId="chat-sender"
+      t={common}
+    />
   );
   const newest = chat.messages.at(-1)?.id ?? 0;
   const unread = collapsed ? chat.messages.filter((m) => m.seat !== mySeat && m.id > seenUpTo).length : 0;
 
   const { state } = chat;
   const writable = chat.loaded && (state === "open" || state === "disabled_by_opponent");
-  const blockedReason = !chat.loaded ? LOADING_TEXT : state === "disabled_by_opponent" ? DISABLED_BY_OPPONENT_REASON : null;
+  const blockedReason = !chat.loaded ? t("loading") : state === "disabled_by_opponent" ? t("disabledByOpponentReason") : null;
 
   // The setting can be changed whenever the panel shows a chat; it is not offered when nothing can be done.
   const switchable = !chat.loaded || (state !== "unavailable" && state !== "closed");
@@ -100,17 +96,17 @@ function LiveChat({ gameId, game, onGone }: Props) {
   }
 
   return (
-    <Panel title="Czat" data-testid="chat-panel">
+    <Panel title={t("title")} data-testid="chat-panel">
       <div className="flex flex-wrap items-center justify-between gap-group">
         <div className="flex min-w-0 items-center gap-group">
           <p className="m-0 flex min-w-0 items-baseline gap-group text-meta text-text-secondary">
-            <span className="shrink-0">z</span>
+            <span className="shrink-0">{t("with")}</span>
             <span className="min-w-0 font-strong">
-              <PlayerLabel name={playerNameOf(opponent)} testId="chat-sender" />
+              <PlayerLabel name={playerNameOf(opponent, common)} testId="chat-sender" t={common} />
             </span>
           </p>
           <InfoToggleButton
-            label={INFO_LABEL}
+            label={t("infoLabel")}
             expanded={infoOpen}
             controls={infoId}
             onClick={() => setInfoOpen(!infoOpen)}
@@ -129,52 +125,52 @@ function LiveChat({ gameId, game, onGone }: Props) {
               onClick={() => void changeSetting()}
               data-testid="chat-switch"
             >
-              {enabledNow ? TURN_OFF_LABEL : TURN_ON_LABEL}
+              {t(enabledNow ? "turnOff" : "turnOn")}
             </Button>
           )}
           <Button variant="secondary" aria-expanded={!collapsed} aria-controls={bodyId} onClick={toggle} data-testid="chat-toggle">
-            {!collapsed ? "Zwiń czat" : unread > 0 ? `Czat (${unread} ${pluralNew(unread)})` : "Rozwiń czat"}
+            {!collapsed ? t("collapse") : unread > 0 ? t("unread", { count: unread }) : t("expand")}
           </Button>
         </div>
       </div>
       <InfoToggleNote id={infoId} open={infoOpen} data-testid="chat-info">
-        {INFO_TEXT}
+        {t("info")}
       </InfoToggleNote>
       {!chat.loaded && (
         <span id={loadingId} className="sr-only">
-          {LOADING_TEXT}
+          {t("loading")}
         </span>
       )}
-      {failedChange !== null && <Alert status="danger" title={failedChange ? TURN_ON_FAILED : TURN_OFF_FAILED} />}
+      {failedChange !== null && <Alert status="danger" title={t(failedChange ? "turnOnFailed" : "turnOffFailed")} />}
       <span role="status" className="sr-only">
-        {unread > 0 ? `Czat: ${unread} ${pluralNew(unread)}` : ""}
+        {unread > 0 ? t("unreadStatus", { count: unread }) : ""}
       </span>
       <div id={bodyId} hidden={collapsed} className="flex flex-col gap-stack">
         {chat.fails >= CHAT_FAILURES_BEFORE_ALERT && (
-          <Alert status="danger" title="Nie udało się odświeżyć czatu. Ponawiamy próby.">
+          <Alert status="danger" title={t("refreshFailed")}>
             <Button variant="secondary" onClick={() => void chat.refresh()}>
-              Spróbuj ponownie
+              {t("retry")}
             </Button>
           </Alert>
         )}
         {!chat.loaded && (
-          <SkeletonRegion label={LOADING_TEXT}>
+          <SkeletonRegion label={t("loading")}>
             <Skeleton className="h-6 w-full" />
             <Skeleton className="h-6 w-full" />
           </SkeletonRegion>
         )}
-        {chat.loaded && state === "closed" && <p className="m-0 text-body text-text-secondary">{CLOSED_TEXT}</p>}
-        {chat.loaded && state === "unavailable" && <p className="m-0 text-body text-text-secondary">{WAITING_TEXT}</p>}
+        {chat.loaded && state === "closed" && <p className="m-0 text-body text-text-secondary">{t("closed")}</p>}
+        {chat.loaded && state === "unavailable" && <p className="m-0 text-body text-text-secondary">{t("waiting")}</p>}
         {chat.loaded && state === "disabled_by_you" && (
           <p role="status" className="m-0 text-body text-text-secondary">
-            {DISABLED_BY_YOU_TEXT}
+            {t("disabledByYou")}
           </p>
         )}
         {chat.loaded && state === "open" && chat.opponentDisabled && (
-          <Alert status="info" title={OPPONENT_DISABLED_PUBLIC_TEXT} role="status" />
+          <Alert status="info" title={t("opponentDisabledPublic")} role="status" />
         )}
         {chat.loaded && state === "disabled_by_opponent" && (
-          <Alert status="info" title={DISABLED_BY_OPPONENT_TEXT} role="status" />
+          <Alert status="info" title={t("disabledByOpponent")} role="status" />
         )}
         {writable && (
           <ChatMessageList
