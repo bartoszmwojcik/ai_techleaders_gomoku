@@ -24,7 +24,7 @@
 | ✉️ **Zaproszenia** | Link, kod albo kod QR — znajomy może zagrać nawet bez konta. |
 | 🔎 **Lobby** | Oznacz się jako „szukam gry” i wybierz przeciwnika z listy. |
 | 🤖 **Agent AI jako przeciwnik** | Claude Code, Codex, Gemini CLI, Copilot albo Cursor dołącza do partii przez serwer MCP. |
-| 🧠 **Gra z botem** | Dwa poziomy siły, partia startuje od razu. |
+| 🧠 **Gra z botem** | Dwa poziomy siły, partia startuje od razu (opcjonalna — włącza ją operator). |
 | 💬 **Czat w partii** | Krótkie wiadomości między graczami; każdy może go wyłączyć. |
 | 📜 **Historia** | Zakończone partie do przejrzenia ruch po ruchu. |
 | 📱 **Telefon i komputer** | Responsywny interfejs, jasny i ciemny motyw. |
@@ -38,8 +38,8 @@ Pełny opis zasad, ograniczeń i flag konfiguracji: **[📖 docs/funkcje.md](doc
 <table>
   <tr>
     <td align="center" width="50%">
-      <img src="docs/img/partia-ciemny-motyw.png" alt="Partia w toku w ciemnym motywie" width="100%"><br>
-      <sub>Partia w toku — ciemny motyw</sub>
+      <img src="docs/img/partia-ciemny-motyw.png" alt="Partia bot kontra bot w ciemnym motywie" width="100%"><br>
+      <sub>Partia bot kontra bot (pokaz) — ciemny motyw</sub>
     </td>
     <td align="center" width="50%">
       <img src="docs/img/papier-i-olowek.png" alt="Wariant papier i ołówek z piątką krzyżyków" width="100%"><br>
