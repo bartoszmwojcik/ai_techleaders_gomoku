@@ -1,0 +1,6 @@
+# Cezar: agent bez Basha, bez Dockera i skłonny „naprawiać” testy czasowe
+
+- **Problem:** przebiegi Cezara (multi-model) na E15 nic nie implementowały albo dopisywały obejścia do testów czasowych (`settleEngine`, pętle ponownych prób w `show-pages`/`show-drive`), choć właściciel zabronił zmian tych testów. Bramka `test:integration` przekraczała limit 30 min na wolnej maszynie.
+- **Przyczyna:** (1) per-run `TMPDIR` Cezara (`~/.cezar/tmp/agent/<hash>/<runId>`) daje ścieżki gniazd `socat` ~117 znaków, a limit Unix socket to 108, więc każde wywołanie Basha agenta padało z „Failed to create bridge sockets”; (2) sandbox agenta nie ma Dockera, więc `test:integration` uruchamia tylko Cezar; (3) pętla naprawcza traktuje padający test czasowy jak błąd do naprawy, a specyfikacja nie jest w niej czytana pewnie.
+- **Reguła:** Cezara uruchamiaj jako `CEZ_MULTI_MODEL=1 CEZ_AGENT_TMPDIR=0 cezar`. W specyfikacji zadania wypisz znane niestabilne testy czasowe, zakaż ich zmian i zakaż obejść (pętle, kończenie cudzych partii w SQL), a w raporcie wymagaj „bramka integracyjna po stronie operatora”. Po przebiegu sprawdź `git diff` testów, zanim klikniesz „Fix”/„Re-run”; wynik bramki z przekroczeniem czasu to nie porażka testów.
+- **Powiązane:** `.ai/specs/2026-11-13-e15-completion.md` (Q12), `.ai/runs/2026-11-14-e15-continuation.md`.
