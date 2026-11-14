@@ -38,14 +38,22 @@ Uprościć `README.md` do atrakcyjnej strony wejściowej: wyśrodkowany tytuł, 
 
 ## Progress
 
+PR: #318
+
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles.
 
 ### Phase 1: Treść
 
-- [ ] 1.1 Przenieść szczegóły do `docs/funkcje.md`
-- [ ] 1.2 Dobrać i skopiować zrzuty ekranu do `docs/img/`
-- [ ] 1.3 Przepisać `README.md`
+- [x] 1.1 Przenieść szczegóły do `docs/funkcje.md` — 5bf64ba
+- [x] 1.2 Dobrać i skopiować zrzuty ekranu do `docs/img/` — 6c8fb7a
+- [x] 1.3 Przepisać `README.md` — c08d65e
 
 ### Phase 2: Weryfikacja
 
-- [ ] 2.1 Sprawdzić linki względne i obrazy, przejrzeć diff
+- [x] 2.1 Sprawdzić linki względne i obrazy, przejrzeć diff — c08d65e
+
+## Wynik
+
+- Zrzuty: `strona-glowna` (artefakt QA PR #302), `partia-ciemny-motyw`, `papier-i-olowek`, `zaproszenie`, `gra-z-botem` (przebiegi AI w `.ai/cezar/runs`, przycięte; baner z testowym e-mailem wycięty), `lobby` (artefakt QA PR #123), `partia-telefon` (bez zmian).
+- Weryfikacja: wszystkie linki względne i obrazy w `README.md` i `docs/funkcje.md` istnieją; kotwice do `architektura.md` i `wdrozenie-i-utrzymanie.md` przeniesione bez zmian z poprzedniego README. Bramka kodu (`lint`/`typecheck`/`test`/`build`/`test:integration`) nie dotyczy — PR tylko z dokumentacją, CI pomija ciężkie joby.
+- Status: complete.
