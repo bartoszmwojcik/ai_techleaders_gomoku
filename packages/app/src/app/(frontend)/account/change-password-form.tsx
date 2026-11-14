@@ -1,6 +1,5 @@
 "use client";
 
-import { toValidationError } from "@gomoku/core/http/zod-error";
 import { passwordChangeSchema } from "@gomoku/core/validators/auth/password-change-schema";
 import { Alert } from "@gomoku/ui/game/alert";
 import { PasswordField } from "@gomoku/ui/game/password-field";
@@ -8,7 +7,12 @@ import { useEffect, useState, type FormEvent } from "react";
 
 import { ErrorMessage } from "@/components/feedback/error-message";
 import { SubmitButton } from "@/components/forms/submit-button";
+import { rateLimitedError } from "@/components/feedback/rate-limited-error";
+import plAccount from "@/i18n/catalogs/pl/account";
+import plCommon from "@/i18n/catalogs/pl/common";
+import { textsOf, type TextsProps } from "@/i18n/client";
 import { apiCall } from "@/lib/api-client";
+import { fieldMessages, localFieldMessages, type ErrorTexts } from "@/lib/api-error-text";
 import { fullPageLoad } from "@/lib/full-page-load";
 
 type FieldName = "currentPassword" | "newPassword";
@@ -21,26 +25,19 @@ const FIELD_IDS: Record<FieldName, string> = {
   newPassword: "change-new-password",
 };
 
-const GENERIC_ERROR: GeneralError = { title: "Nie udało się zmienić hasła", details: "Spróbuj ponownie." };
 
-function firstMessages(fieldErrors: Record<string, string[]> | undefined): FieldMessages {
-  const messages: FieldMessages = {};
-  for (const field of FIELD_ORDER) {
-    const message = fieldErrors?.[field]?.[0];
-    if (message) messages[field] = message;
-  }
-  return messages;
-}
 
-function rateLimitedError(retryAfterSeconds: number | undefined): GeneralError {
-  const minutes = retryAfterSeconds === undefined ? undefined : Math.max(1, Math.ceil(retryAfterSeconds / 60));
-  return {
-    title: "Zbyt wiele prób",
-    details: minutes === undefined ? "Spróbuj ponownie za jakiś czas." : `Spróbuj ponownie za ${minutes} min.`,
-  };
-}
+type Props = {
+  /** The `account` and `common` namespaces; nothing in Polish. */
+  texts?: TextsProps<"account">;
+  commonTexts?: TextsProps<"common">;
+  /** The `errors` namespace (field errors by code); nothing in Polish. */
+  errorTexts?: ErrorTexts;
+};
 
-export function ChangePasswordForm() {
+export function ChangePasswordForm({ texts = {}, commonTexts = {}, errorTexts = {} }: Props = {}) {
+  const t = textsOf<"account">(plAccount, texts);
+  const common = textsOf<"common">(plCommon, commonTexts);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   // Remounting a password field hides the password again.
@@ -73,7 +70,7 @@ export function ChangePasswordForm() {
     const input = { currentPassword, newPassword };
     const parsed = passwordChangeSchema.safeParse(input);
     if (!parsed.success) {
-      showFieldErrors(firstMessages(toValidationError(parsed.error)?.fieldErrors));
+      showFieldErrors(localFieldMessages(errorTexts, FIELD_ORDER, parsed.error, "changePassword"));
       return;
     }
 
@@ -90,13 +87,13 @@ export function ChangePasswordForm() {
       return;
     }
 
-    const { code, retryAfterSeconds, fieldErrors } = result.error;
+    const { code, retryAfterSeconds } = result.error;
     if (code === "UNAUTHORIZED") {
       // The session expired while the form was open: sign in again and come back here.
       fullPageLoad(`/login?next=${encodeURIComponent("/account")}`);
       return;
     }
-    const messages = firstMessages(fieldErrors);
+    const messages: FieldMessages = fieldMessages(errorTexts, FIELD_ORDER, result.error, "changePassword");
     if (code === "INVALID_CURRENT_PASSWORD") {
       // Only the wrong password is cleared (and hidden again); the new one stays.
       setCurrentPassword("");
@@ -107,14 +104,14 @@ export function ChangePasswordForm() {
       return;
     }
     if (code === "RATE_LIMITED") {
-      setGeneral(rateLimitedError(retryAfterSeconds));
+      setGeneral(rateLimitedError(retryAfterSeconds, common));
     } else if (code === "network") {
       setGeneral({
-        title: "Brak połączenia",
-        details: "Nie udało się połączyć z serwerem. Wpisane dane zostały zachowane. Spróbuj ponownie.",
+        title: t("networkTitle"),
+        details: t("networkKept"),
       });
     } else {
-      setGeneral(GENERIC_ERROR);
+      setGeneral({ title: t("changePassword.failed"), details: t("retry") });
     }
     // The error has no field of its own: focus the current password.
     setFocusTarget({ id: FIELD_IDS.currentPassword });
@@ -126,8 +123,8 @@ export function ChangePasswordForm() {
       <div aria-live="polite" data-testid="change-password-live">
         {changed && (
           <div data-testid="change-password-success">
-            <Alert status="success" role="status" title="Hasło zmienione">
-              Inne urządzenia zostały wylogowane.
+            <Alert status="success" role="status" title={t("changePassword.doneTitle")}>
+              {t("changePassword.doneBody")}
             </Alert>
           </div>
         )}
@@ -143,9 +140,9 @@ export function ChangePasswordForm() {
           id={FIELD_IDS.currentPassword}
           name="currentPassword"
           autoComplete="current-password"
-          label="Obecne hasło"
-          showLabel="Pokaż hasło"
-          hideLabel="Ukryj hasło"
+          label={t("currentPassword")}
+          showLabel={t("showPassword")}
+          hideLabel={t("hidePassword")}
           error={errors.currentPassword}
           required
           value={currentPassword}
@@ -156,21 +153,21 @@ export function ChangePasswordForm() {
           id={FIELD_IDS.newPassword}
           name="newPassword"
           autoComplete="new-password"
-          label="Nowe hasło"
-          showLabel="Pokaż hasło"
-          hideLabel="Ukryj hasło"
-          hint="Co najmniej 8 znaków"
+          label={t("newPassword")}
+          showLabel={t("showPassword")}
+          hideLabel={t("hidePassword")}
+          hint={t("passwordHint")}
           error={errors.newPassword}
           required
           value={newPassword}
           onChange={setNewPassword}
         />
         {/* Static text, not a message: no role, so it is not announced as a live region. */}
-        <Alert status="warning" role="none" title="Wylogowanie z innych urządzeń">
-          Inne urządzenia zostaną wylogowane, także w trakcie partii.
+        <Alert status="warning" role="none" title={t("changePassword.warningTitle")}>
+          {t("changePassword.warningBody")}
         </Alert>
-        <SubmitButton pending={pending} pendingLabel="Zmienianie hasła…">
-          Zmień hasło
+        <SubmitButton pending={pending} pendingLabel={t("changePassword.pending")}>
+          {t("changePassword.submit")}
         </SubmitButton>
       </form>
     </>

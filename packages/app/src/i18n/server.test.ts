@@ -12,7 +12,7 @@ vi.mock("next/headers", () => ({
   headers: async () => new Headers(request.acceptLanguage === null ? {} : { "accept-language": request.acceptLanguage }),
 }));
 
-import { clientI18n, getI18n, getLocale } from "./server";
+import { clientI18n, getI18n, getLocale, providerI18n } from "./server";
 
 beforeEach(() => {
   request.cookie = undefined;
@@ -53,5 +53,16 @@ describe("getI18n", () => {
     request.cookie = "en";
     const english = await getI18n("header");
     expect(clientI18n(english)).toEqual({ locale: "en", dict: english.dict });
+  });
+});
+
+describe("providerI18n", () => {
+  it("passes no catalog in Polish and every namespace with the language otherwise (spec Q10)", async () => {
+    expect(providerI18n(await getI18n("common"), await getI18n("header"))).toEqual({});
+    expect(providerI18n()).toEqual({});
+    request.cookie = "fr";
+    const common = await getI18n("common");
+    const header = await getI18n("header");
+    expect(providerI18n(common, header)).toEqual({ locale: "fr", dicts: { common: common.dict, header: header.dict } });
   });
 });

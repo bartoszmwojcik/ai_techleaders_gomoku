@@ -87,9 +87,24 @@ describe("GameReviewService.open", () => {
 
     const review = await service.open({ kind: "account", userId: ME }, ID);
 
-    expect(review?.players[1]).toEqual({ seat: 2, kind: "bot", displayName: "Bot · poziom 2 · 16 MB" });
+    expect(review?.players[1]).toEqual({
+      seat: 2,
+      kind: "bot",
+      displayName: "Bot · poziom 2 · 16 MB",
+      bot: { level: 2, memoryMb: 768, tableMb: 16 },
+    });
+    expect(review?.players[0]).not.toHaveProperty("bot");
     expect(review?.moves.length).toBeGreaterThan(0);
     expect(review?.viewerSeat).toBe(1);
+  });
+
+  it("gives a level 1 bot without stored memory no table size (E15-S05)", async () => {
+    const bot = { seat: 2, kind: "bot", user: null, botLevel: 1, botMemoryMb: undefined, botDepthCap: null };
+    const { service } = setup(game(), [mine, bot]);
+
+    const review = await service.open({ kind: "account", userId: ME }, ID);
+
+    expect(review?.players[1]).toMatchObject({ displayName: "Bot · poziom 1", bot: { level: 1, memoryMb: null, tableMb: null } });
   });
 
   it("answers null for a malformed id without reading anything", async () => {

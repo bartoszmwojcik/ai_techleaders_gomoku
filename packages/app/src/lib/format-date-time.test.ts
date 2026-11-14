@@ -27,3 +27,12 @@ describe("formatFinishedAt", () => {
     expect(formatFinishedAt("2026-06-30T22:30:00Z")).toBe("1 lipca 2026, 00:30 CEST");
   });
 });
+
+describe("dates in the reader's language (E15-S04, I15)", () => {
+  it("prints the same moment in French and English, in the same zone", () => {
+    expect(formatValidUntil("2026-01-15T09:00:00Z", "fr")).toBe("jeudi 15 janvier à 10:00 CET");
+    expect(formatFinishedAt("2026-07-15T09:00:00Z", "fr")).toBe("15 juillet 2026, 11:00 CEST");
+    expect(formatFinishedAt("2026-07-15T09:00:00Z", "en")).toBe("15 July 2026, 11:00 CEST");
+    expect(formatValidUntil("2026-01-15T09:00:00Z", "pl")).toBe(formatValidUntil("2026-01-15T09:00:00Z"));
+  });
+});

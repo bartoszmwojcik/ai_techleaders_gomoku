@@ -5,6 +5,7 @@ import { connection } from "next/server";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { VerifyEmailNotice } from "@/components/auth/verify-email-banner";
+import { clientI18n, getI18n } from "@/i18n/server";
 import { withRequestScope } from "@/server/container";
 import { requirePageSession } from "@/server/http/auth";
 
@@ -26,38 +27,52 @@ export default async function AccountPage() {
   const hasActiveGame = currentGame?.status === "active";
 
   const verified = user.emailVerifiedAt !== null;
+  const account = await getI18n("account");
+  const { t } = account;
+  const texts = clientI18n(account);
+  const commonTexts = clientI18n(await getI18n("common"));
+  const errorTexts = clientI18n(await getI18n("errors"));
 
   return (
     <main className="mx-auto flex w-full flex-1 max-w-xl flex-col justify-center gap-stack px-panel py-section">
-      <h1 className="m-0 text-section font-strong">Konto</h1>
-      {!verified && <VerifyEmailNotice userId={user.id} email={user.email} />}
-      <Panel title="Dane konta">
+      <h1 className="m-0 text-section font-strong">{t("heading")}</h1>
+      {!verified && <VerifyEmailNotice userId={user.id} email={user.email} {...clientI18n(await getI18n("auth"))} />}
+      <Panel title={t("data")}>
         <p className="m-0 text-body">
-          Nazwa gracza: <strong className="font-strong" data-testid="account-name">{user.displayName}</strong>
+          {t("name")}<strong className="font-strong" data-testid="account-name">{user.displayName}</strong>
         </p>
         <p className="m-0 flex flex-wrap items-center gap-group text-body">
-          E-mail: <strong className="font-strong" data-testid="account-email">{user.email}</strong>
+          {t("email")}<strong className="font-strong" data-testid="account-email">{user.email}</strong>
           <StatusBadge status={verified ? "success" : "warning"}>
-            {verified ? "Potwierdzony" : "Niepotwierdzony"}
+            {t(verified ? "verified" : "unverified")}
           </StatusBadge>
         </p>
-        <LogoutButton hasActiveGame={hasActiveGame} />
+        <LogoutButton hasActiveGame={hasActiveGame} dict={clientI18n(await getI18n("header")).dict} />
       </Panel>
-      <Panel title="Zmień nazwę gracza">
-        <ChangeDisplayNameForm displayName={user.displayName} availableAt={nameAvailableAt?.toISOString() ?? null} />
+      <Panel title={t("changeName.title")}>
+        <ChangeDisplayNameForm
+          displayName={user.displayName}
+          availableAt={nameAvailableAt?.toISOString() ?? null}
+          texts={texts}
+          commonTexts={commonTexts}
+          errorTexts={errorTexts}
+        />
       </Panel>
-      <Panel title="Zmień adres e-mail">
-        <ChangeEmailForm />
+      <Panel title={t("changeEmail.title")}>
+        <ChangeEmailForm texts={texts} commonTexts={commonTexts} errorTexts={errorTexts} />
       </Panel>
-      <Panel title="Zmień hasło">
-        <ChangePasswordForm />
+      <Panel title={t("changePassword.title")}>
+        <ChangePasswordForm texts={texts} commonTexts={commonTexts} errorTexts={errorTexts} />
       </Panel>
       <DeleteAccountForm
         displayName={user.displayName}
         currentGame={currentGame && { gameId: currentGame.gameId, status: currentGame.status }}
+        texts={texts}
+        commonTexts={commonTexts}
+        errorTexts={errorTexts}
       />
       <TextLink href="/" placement="standalone">
-        Wróć na stronę główną
+        {t("backHome")}
       </TextLink>
     </main>
   );

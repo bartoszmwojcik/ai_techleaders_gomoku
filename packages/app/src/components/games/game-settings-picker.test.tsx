@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_SETTINGS } from "@/lib/games/settings";
 
+import frHome from "@/i18n/catalogs/fr/home";
+
 import { GameSettingsPicker } from "./game-settings-picker";
 
 afterEach(cleanup);
@@ -30,5 +32,15 @@ describe("GameSettingsPicker", () => {
     rerender(<GameSettingsPicker value={{ variant: "paper", timeControlMs: 180_000 }} onChange={onChange} />);
     fireEvent.click(screen.getByRole("radio", { name: "5 min" }));
     expect(onChange).toHaveBeenLastCalledWith({ variant: "paper", timeControlMs: 300_000 });
+  });
+});
+
+describe("GameSettingsPicker in French (E15-S03)", () => {
+  it("labels the variant and the clock", () => {
+    render(<GameSettingsPicker value={{ variant: "paper", timeControlMs: 180_000 }} onChange={() => {}} locale="fr" dict={frHome} />);
+    expect(screen.getByRole("radiogroup", { name: "Variante" })).toBeTruthy();
+    expect(screen.getByRole("radio", { name: "Papier et crayon" }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("radiogroup", { name: "Temps par joueur" })).toBeTruthy();
+    expect(screen.getByRole("radio", { name: "3\u00a0min" }).getAttribute("aria-checked")).toBe("true");
   });
 });

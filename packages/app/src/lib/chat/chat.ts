@@ -30,22 +30,6 @@ export function messageTime(iso: string): string {
   return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
-/** "znak", "znaki", "znaków" for a count (Polish plural). */
-export function pluralChars(count: number): string {
-  if (count === 1) return "znak";
-  const lastTwo = count % 100;
-  const last = count % 10;
-  return last >= 2 && last <= 4 && !(lastTwo >= 12 && lastTwo <= 14) ? "znaki" : "znaków";
-}
-
-/** "nowa", "nowe", "nowych" for a count of messages (Polish plural). */
-export function pluralNew(count: number): string {
-  if (count === 1) return "nowa";
-  const lastTwo = count % 100;
-  const last = count % 10;
-  return last >= 2 && last <= 4 && !(lastTwo >= 12 && lastTwo <= 14) ? "nowe" : "nowych";
-}
-
 /**
  * The id of one send attempt. `randomUUID` exists only in a secure context (https, localhost), so a
  * page served over plain http falls back to `getRandomValues`, which is always there.

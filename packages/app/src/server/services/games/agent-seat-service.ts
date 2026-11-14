@@ -96,7 +96,7 @@ export class AgentSeatService {
     const text = typeof code === "string" ? code.trim() : "";
     const name = normalizeAgentName(agentName);
     if (text.length < 1 || text.length > AGENT_CODE_MAX_LENGTH || !name.ok) {
-      throw new ValidationError(INVALID_AGENT_INPUT_MESSAGE, { code: "INVALID_INPUT" });
+      throw new ValidationError(INVALID_AGENT_INPUT_MESSAGE, { code: "INVALID_INPUT", data: { reason: "invalid_join" } });
     }
 
     // Only successful joins count towards the limit: a failure gives its place back.

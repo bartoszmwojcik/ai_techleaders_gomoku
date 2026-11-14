@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { FormField } from "@/components/forms/form-field";
+import plHome from "@/i18n/catalogs/pl/home";
+import { textsOf, type TextsProps } from "@/i18n/client";
 
 const CODE_ID = "join-code";
 
@@ -14,7 +16,8 @@ const CODE_ID = "join-code";
  * checked here; whether the code means anything is decided by the invitation page, which is
  * also where the lookup limit applies (#21 Q12, Q13), so this page is no oracle for codes.
  */
-export function JoinForm() {
+export function JoinForm(texts: TextsProps<"home">) {
+  const t = textsOf<"home">(plHome, texts);
   const router = useRouter();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | undefined>();
@@ -39,7 +42,7 @@ export function JoinForm() {
     if (inFlight.current) return;
     const cleaned = code.replace(/[\s-]+/g, "").toUpperCase();
     if (cleaned.length !== INVITATION_CODE_LENGTH) {
-      setError("Sprawdź kod: ma 8 znaków.");
+      setError(t("join.invalid", { length: INVITATION_CODE_LENGTH }));
       document.getElementById(CODE_ID)?.focus();
       return;
     }
@@ -55,8 +58,8 @@ export function JoinForm() {
       <FormField
         id={CODE_ID}
         name="code"
-        label="Kod zaproszenia"
-        hint="8 znaków. Wielkość liter i myślnik nie mają znaczenia."
+        label={t("join.label")}
+        hint={t("join.hint", { length: INVITATION_CODE_LENGTH })}
         error={error}
         required
         autoComplete="off"
@@ -68,7 +71,7 @@ export function JoinForm() {
         onChange={(event) => setCode(event.target.value)}
       />
       <Button type="submit" loading={pending}>
-        {pending ? "Sprawdzanie kodu…" : "Dalej"}
+        {t(pending ? "join.checking" : "join.next")}
       </Button>
     </form>
   );

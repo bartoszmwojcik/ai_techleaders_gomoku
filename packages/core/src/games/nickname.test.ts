@@ -4,6 +4,7 @@ import {
   NICKNAME_MAX_LENGTH,
   NICKNAME_RESERVED_MESSAGE,
   defaultNickname,
+  defaultNicknameSeat,
   isReservedNickname,
   nicknameSchema,
   normalizeNickname,
@@ -94,6 +95,33 @@ describe("defaultNickname", () => {
   it("is derived from the seat", () => {
     expect(defaultNickname(1)).toBe("Gracz 1");
     expect(defaultNickname(2)).toBe("Gracz 2");
+  });
+});
+
+describe("defaultNicknameSeat", () => {
+  it("recognises exactly the default guest names", () => {
+    expect(defaultNicknameSeat("Gracz 1")).toBe(1);
+    expect(defaultNicknameSeat("Gracz 2")).toBe(2);
+    expect(defaultNicknameSeat(defaultNickname(1))).toBe(1);
+    for (const other of ["Gracz 3", "gracz 1", "Gracz 1 ", "Gracz", ""]) {
+      expect(defaultNicknameSeat(other)).toBeNull();
+    }
+  });
+});
+
+describe("nicknameSchema issue codes", () => {
+  it("tags custom rules with a params code", () => {
+    const codeOf = (value: string) => {
+      const result = parse(value);
+      if (result.success) return undefined;
+      return (result.error.issues[0] as { params?: Record<string, unknown> }).params;
+    };
+    expect(codeOf("a".repeat(NICKNAME_MAX_LENGTH + 1))).toEqual({
+      code: "NICKNAME_TOO_LONG",
+      max: NICKNAME_MAX_LENGTH,
+    });
+    expect(codeOf("a@b")).toEqual({ code: "NICKNAME_INVALID" });
+    expect(codeOf("admin")).toEqual({ code: "NICKNAME_RESERVED" });
   });
 });
 

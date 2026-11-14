@@ -2,6 +2,8 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
+import frHome from "@/i18n/catalogs/fr/home";
+
 import { HomeRulesLine, HomeRulesProvider, useHomeRules } from "./home-rules";
 
 afterEach(cleanup);
@@ -42,5 +44,19 @@ describe("HomeRulesLine", () => {
     expect(screen.getByTestId("home-rules").textContent).toBe("Kółko i krzyżyk na kartce papieru, 5 w linii, gra na czas.");
     act(() => screen.getByText("classic").click());
     expect(screen.getByTestId("home-rules").textContent).toContain("Swobodne zasady");
+  });
+});
+
+describe("HomeRulesLine in French (E15-S03)", () => {
+  it("words the rules of each variant", () => {
+    render(
+      <HomeRulesProvider>
+        <Pick />
+        <HomeRulesLine locale="fr" dict={frHome} />
+      </HomeRulesProvider>,
+    );
+    expect(screen.getByTestId("home-rules").textContent).toBe("Règles libres · plateau 15×15 · 10\u00a0minutes par joueur");
+    act(() => screen.getByRole("button", { name: "paper" }).click());
+    expect(screen.getByTestId("home-rules").textContent).toBe("Morpion sur une feuille de papier, 5 alignés, contre la montre.");
   });
 });

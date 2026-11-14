@@ -20,9 +20,12 @@ import { PublicFlag } from "@/components/games/public-flag";
 import { PublicGameQr } from "@/components/games/public-game-qr";
 import { useGameClock } from "@/components/games/use-game-clock";
 import { usePageVisibility } from "@/components/games/use-page-visibility";
+import plCommon from "@/i18n/catalogs/pl/common";
+import plGame from "@/i18n/catalogs/pl/game";
+import { useT } from "@/i18n/context";
 import { apiCall } from "@/lib/api-client";
-import { lastPaperMove, PAPER_LABELS, paperColors } from "@/lib/games/paper";
-import { cellLabel, colorOfSeat, knownMoves, mergeState, paperStonesOf, playerNameOf, sideWords, stonesOf } from "@/lib/games/play";
+import { lastPaperMove, paperColors, paperLabelsOf } from "@/lib/games/paper";
+import { cellLabelOf, colorOfSeat, knownMoves, mergeState, paperStonesOf, playerNameOf, sideWords, stonesOf } from "@/lib/games/play";
 import { neutralOutcomeOf } from "@/lib/games/review";
 import { SPECTATOR_FAILURES_BEFORE_BANNER, spectatorPollDelay } from "@/lib/games/spectate";
 import type { SpectatorView } from "@/server/http/spectator-view";
@@ -43,6 +46,8 @@ type Props = {
  * (`useGameClock`), so a wrong device clock changes nothing.
  */
 export function SpectatorRoom({ gameId, initial }: Props) {
+  const t = useT("game", plGame);
+  const common = useT("common", plCommon);
   const [game, setGame] = useState(initial);
   const [gone, setGone] = useState(false);
   // The creator closed the audience (BR-43): the board and the chat are gone for good.
@@ -129,20 +134,20 @@ export function SpectatorRoom({ gameId, initial }: Props) {
   // Only the server decides that the time is up: when the running clock reaches zero, it is asked at once.
   const clocks = useGameClock(game.clock, { finished: game.status !== "active", onExpire: () => void poll() });
 
-  if (closed) return <AudienceClosedScreen />;
+  if (closed) return <AudienceClosedScreen t={t} />;
 
   if (gone) {
     return (
       <Shell>
         <ErrorState
-          title="Oglądanie wygasło albo partii już nie ma"
+          title={t("spectator.goneTitle")}
           action={
             <TextLink href="/join" placement="standalone">
-              Masz kod? Wpisz go ponownie
+              {t("spectator.goneLink")}
             </TextLink>
           }
         >
-          Dostęp widza trwa godzinę od ostatniego odczytu, a partia znika po zakończeniu.
+          {t("spectator.goneBody")}
         </ErrorState>
       </Shell>
     );
@@ -151,10 +156,10 @@ export function SpectatorRoom({ gameId, initial }: Props) {
   if (game.status === "cancelled") {
     return (
       <Shell>
-        <h1 className="m-0 text-section font-strong">Partia anulowana</h1>
-        <Alert status="warning" title="Partię anulowano: nie została rozegrana." />
+        <h1 className="m-0 text-section font-strong">{t("shared.cancelledHeading")}</h1>
+        <Alert status="warning" title={t("spectator.cancelled")} />
         <TextLink href="/" placement="standalone">
-          Wróć na stronę główną
+          {t("shared.backHome")}
         </TextLink>
       </Shell>
     );
@@ -162,36 +167,41 @@ export function SpectatorRoom({ gameId, initial }: Props) {
 
   // The server lists the seats in order; the clocks go by colour, black first.
   const seats = game.blackSeat === 2 ? [...game.players].reverse() : game.players;
-  const outcome = game.result ? neutralOutcomeOf({ result: game.result, blackSeat: game.blackSeat!, players: game.players, variant: game.variant }) : null;
+  const outcome = game.result
+    ? neutralOutcomeOf({ result: game.result, blackSeat: game.blackSeat!, players: game.players, variant: game.variant }, t, common)
+    : null;
   const lastMove = game.moves.at(-1);
   const paper = game.paper;
-  const words = sideWords(game.variant);
+  const words = sideWords(game.variant, t);
   const turnText = () =>
-    `Ruch ${words.genitive[colorOfSeat(game.blackSeat, game.turnSeat!)!]}: ${playerNameOf(game.players.find((player) => player.seat === game.turnSeat)).label}`;
+    t("spectator.turn", {
+      side: words.genitive[colorOfSeat(game.blackSeat, game.turnSeat!)!],
+      name: playerNameOf(game.players.find((player) => player.seat === game.turnSeat), common).label,
+    });
 
   if ((game.variant as string) !== "classic" && (game.variant as string) !== "paper") {
     // A variant this page does not know (a stale page after a release): do not guess the board.
     return (
       <Shell>
-        <Alert status="warning" title="Ta partia jest w wariancie, którego ta wersja strony nie obsługuje. Odśwież stronę." role="alert" />
+        <Alert status="warning" title={t("shared.unknownVariant")} role="alert" />
       </Shell>
     );
   }
 
   return (
     <Shell>
-      <h1 className="m-0 text-section font-strong">{finished ? "Koniec partii" : "Oglądasz partię"}</h1>
-      <Alert status="info" title="Jesteś widzem — oglądasz partię bez wpływu na jej przebieg." />
-      <PublicFlag audience={game.audience} />
+      <h1 className="m-0 text-section font-strong">{t(finished ? "shared.finishedHeading" : "spectator.watching")}</h1>
+      <Alert status="info" title={t("spectator.youWatch")} />
+      <PublicFlag audience={game.audience} t={t} />
       {!finished && fails > 0 && fails < SPECTATOR_FAILURES_BEFORE_BANNER && (
         <p role="status" className="m-0 text-meta text-text-secondary">
-          Ponawiamy sprawdzanie stanu partii (próba {fails} z {SPECTATOR_FAILURES_BEFORE_BANNER}).
+          {t("shared.pollRetry", { attempt: fails, max: SPECTATOR_FAILURES_BEFORE_BANNER })}
         </p>
       )}
       {!finished && fails >= SPECTATOR_FAILURES_BEFORE_BANNER && (
-        <Alert status="danger" title="Nie udało się sprawdzić stanu partii. Ponawiamy próby.">
+        <Alert status="danger" title={t("shared.pollFailed")}>
           <Button variant="secondary" onClick={() => void poll()}>
-            Sprawdź teraz
+            {t("shared.checkNow")}
           </Button>
         </Alert>
       )}
@@ -209,10 +219,18 @@ export function SpectatorRoom({ gameId, initial }: Props) {
         {seats.map((player) => (
           <GameClock
             key={player.seat}
-            name={<ColorName player={player} blackSeat={game.blackSeat} variant={game.variant} score={paper?.scores[player.seat - 1]} auto={paper?.autoSeat === player.seat} />}
+            name={
+              <ColorName
+                player={player}
+                blackSeat={game.blackSeat}
+                variant={game.variant}
+                score={paper?.scores[player.seat - 1]}
+                auto={paper?.autoSeat === player.seat}
+              />
+            }
             remainingMs={clocks.remainingMs[player.seat - 1]!}
             active={!finished && (paper ? game.clock.running : game.turnSeat) === player.seat}
-            activeLabel="Ruch"
+            activeLabel={t("spectator.clock")}
             timeControlMs={game.timeControlMs}
           />
         ))}
@@ -223,12 +241,12 @@ export function SpectatorRoom({ gameId, initial }: Props) {
             fives={paper.fives}
             lastMove={lastPaperMove(paper)}
             disabled
-            labels={PAPER_LABELS}
+            labels={paperLabelsOf(t)}
           />
         ) : (
           <Board
-            label="Plansza 15 na 15"
-            cellLabel={cellLabel}
+            label={t("shared.boardLabel")}
+            cellLabel={cellLabelOf(t)}
             stones={stonesOf(game.moves)}
             lastMove={lastMove}
             winLine={game.result?.winLine ?? undefined}
@@ -236,10 +254,10 @@ export function SpectatorRoom({ gameId, initial }: Props) {
           />
         )}
       </div>
-      <PublicGameQr gameId={gameId} audience={game.audience} />
+      <PublicGameQr gameId={gameId} audience={game.audience} t={t} />
       <SpectatorChat gameId={gameId} players={game.players} canWrite={game.canChat} onGone={() => void read()} />
       <TextLink href="/" placement="standalone">
-        Wróć na stronę główną
+        {t("shared.backHome")}
       </TextLink>
     </Shell>
   );
@@ -259,15 +277,17 @@ function ColorName({
   score?: number | undefined;
   auto?: boolean | undefined;
 }) {
+  const t = useT("game", plGame);
+  const common = useT("common", plCommon);
   const color = colorOfSeat(blackSeat, player.seat);
-  const words = sideWords(variant);
+  const words = sideWords(variant, t);
   return (
     <>
       {color && variant === "paper" && <PaperMark framed color={color} className="mr-1" />}
-      {color && `${words.title[color]}: `}
-      <PlayerLabel name={playerNameOf(player)} />
-      {score !== undefined && ` · punkty: ${score}`}
-      {auto && " · Automat"}
+      {color && t("spectator.sideName", { side: words.title[color] })}
+      <PlayerLabel name={playerNameOf(player, common)} t={common} />
+      {score !== undefined && t("shared.score", { score })}
+      {auto && t("shared.automat")}
     </>
   );
 }

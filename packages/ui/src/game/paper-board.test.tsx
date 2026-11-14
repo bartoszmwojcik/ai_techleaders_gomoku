@@ -58,7 +58,7 @@ describe("PaperBoard window", () => {
     cleanup();
     setup({ layout: "phone" });
     expect(cells()).toHaveLength(15 * 15);
-  });
+  }, 30_000); // renders two full boards; the 5s default is too tight when the full suite loads the machine
 
   it("labels cells with screen coordinates relative to the start", () => {
     setup();

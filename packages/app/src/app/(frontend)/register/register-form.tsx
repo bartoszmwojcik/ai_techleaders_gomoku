@@ -1,6 +1,5 @@
 "use client";
 
-import { toValidationError } from "@gomoku/core/http/zod-error";
 import { registerSchema } from "@gomoku/core/validators/auth/register-schema";
 import { PasswordField } from "@gomoku/ui/game/password-field";
 import { TextLink } from "@gomoku/ui/game/text-link";
@@ -9,7 +8,13 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { ErrorMessage } from "@/components/feedback/error-message";
 import { FormField } from "@/components/forms/form-field";
 import { SubmitButton } from "@/components/forms/submit-button";
+import { rateLimitedError } from "@/components/feedback/rate-limited-error";
+import plAuth from "@/i18n/catalogs/pl/auth";
+import plCommon from "@/i18n/catalogs/pl/common";
+import { textsOf, type TextsProps } from "@/i18n/client";
+import { withNodes } from "@/i18n/rich";
 import { apiCall } from "@/lib/api-client";
+import { fieldMessages, localFieldMessages, type ErrorTexts } from "@/lib/api-error-text";
 import { fullPageLoad } from "@/lib/full-page-load";
 
 type FieldName = "email" | "displayName" | "password";
@@ -24,29 +29,18 @@ const FIELD_IDS: Record<FieldName, string> = {
   password: "register-password",
 };
 
-const GENERIC_ERROR: GeneralError = {
-  title: "Nie udało się założyć konta",
-  details: "Spróbuj ponownie.",
+
+type Props = TextsProps<"auth"> & {
+  nextPath: string;
+  /** The `common` namespace (the limit message); nothing in Polish. */
+  commonTexts?: TextsProps<"common">;
+  /** The `errors` namespace (field errors by code); nothing in Polish. */
+  errorTexts?: ErrorTexts;
 };
 
-function firstMessages(fieldErrors: Record<string, string[]> | undefined): FieldMessages {
-  const messages: FieldMessages = {};
-  for (const field of FIELD_ORDER) {
-    const message = fieldErrors?.[field]?.[0];
-    if (message) messages[field] = message;
-  }
-  return messages;
-}
-
-function rateLimitedError(retryAfterSeconds: number | undefined): GeneralError {
-  const minutes = retryAfterSeconds === undefined ? undefined : Math.max(1, Math.ceil(retryAfterSeconds / 60));
-  return {
-    title: "Zbyt wiele prób",
-    details: minutes === undefined ? "Spróbuj ponownie za jakiś czas." : `Spróbuj ponownie za ${minutes} min.`,
-  };
-}
-
-export function RegisterForm({ nextPath }: { nextPath: string }) {
+export function RegisterForm({ nextPath, commonTexts = {}, errorTexts = {}, ...texts }: Props) {
+  const t = textsOf<"auth">(plAuth, texts);
+  const common = textsOf<"common">(plCommon, commonTexts);
   const loginHref = nextPath === "/" ? "/login" : `/login?next=${encodeURIComponent(nextPath)}`;
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -79,7 +73,7 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
     const input = { email, displayName, password };
     const parsed = registerSchema.safeParse(input);
     if (!parsed.success) {
-      showFieldErrors(firstMessages(toValidationError(parsed.error)?.fieldErrors));
+      showFieldErrors(localFieldMessages(errorTexts, FIELD_ORDER, parsed.error, "register"));
       return;
     }
 
@@ -96,39 +90,32 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
     setPending(false);
     setPassword("");
     setPasswordKey((key) => key + 1);
-    const { code, fieldErrors, retryAfterSeconds } = result.error;
-    const messages = firstMessages(fieldErrors);
+    const { code, retryAfterSeconds } = result.error;
+    const messages: FieldMessages = fieldMessages(errorTexts, FIELD_ORDER, result.error, "register");
     if (Object.keys(messages).length > 0) {
       showFieldErrors(messages);
     } else if (code === "CONFLICT") {
       // Same answer for a taken e-mail, whether or not the name is taken too (no account enumeration).
       setGeneral({
-        title: "Nie udało się założyć konta",
-        details: (
-          <>
-            Jeśli masz już konto, <TextLink href={loginHref}>zaloguj się</TextLink>.
-          </>
-        ),
+        title: t("register.failed"),
+        details: withNodes(t("register.conflict", { link: "{link}" }), {
+          link: <TextLink href={loginHref}>{t("register.conflictLink")}</TextLink>,
+        }),
       });
     } else if (code === "RATE_LIMITED") {
-      setGeneral(rateLimitedError(retryAfterSeconds));
+      setGeneral(rateLimitedError(retryAfterSeconds, common));
     } else if (code === "ALREADY_AUTHENTICATED") {
       setGeneral({
-        title: "Jesteś już zalogowany",
-        details: (
-          <>
-            Sesja jest aktywna w innej karcie. <TextLink href="/">Przejdź na stronę główną</TextLink>.
-          </>
-        ),
+        title: t("shared.alreadySignedIn"),
+        details: withNodes(t("register.otherTab", { link: "{link}" }), { link: <TextLink href="/">{t("register.goHome")}</TextLink> }),
       });
     } else if (code === "network") {
       setGeneral({
-        title: "Brak połączenia",
-        details:
-          "Nie udało się połączyć z serwerem. Wpisane dane zostały zachowane, poza hasłem. Spróbuj ponownie.",
+        title: t("shared.networkTitle"),
+        details: t("register.network"),
       });
     } else {
-      setGeneral(GENERIC_ERROR);
+      setGeneral({ title: t("register.failed"), details: t("shared.retry") });
     }
     // The password field was remounted empty; a general error has no field of its own, so focus it.
     if (Object.keys(messages).length === 0) setFocusTarget({ id: FIELD_IDS.password });
@@ -147,8 +134,8 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
           name="email"
           type="email"
           autoComplete="email"
-          label="E-mail"
-          hint="Używasz go do logowania. Wyślemy na ten adres link do potwierdzenia. Grasz od razu, adres możesz potwierdzić później."
+          label={t("fields.email")}
+          hint={t("register.emailHint")}
           error={errors.email}
           required
           value={email}
@@ -158,8 +145,8 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
           id={FIELD_IDS.displayName}
           name="displayName"
           autoComplete="nickname"
-          label="Nazwa gracza"
-          hint="Widzą ją Twoi przeciwnicy."
+          label={t("fields.displayName")}
+          hint={t("register.nameHint")}
           error={errors.displayName}
           required
           value={displayName}
@@ -170,23 +157,23 @@ export function RegisterForm({ nextPath }: { nextPath: string }) {
           id={FIELD_IDS.password}
           name="password"
           autoComplete="new-password"
-          label="Hasło"
-          showLabel="Pokaż hasło"
-          hideLabel="Ukryj hasło"
-          hint="Co najmniej 8 znaków"
+          label={t("fields.password")}
+          showLabel={t("fields.showPassword")}
+          hideLabel={t("fields.hidePassword")}
+          hint={t("fields.passwordHint")}
           error={errors.password}
           required
           value={password}
           onChange={setPassword}
         />
-        <SubmitButton pending={pending} pendingLabel="Zakładanie konta…">
-          Załóż konto
+        <SubmitButton pending={pending} pendingLabel={t("register.pending")}>
+          {t("register.submit")}
         </SubmitButton>
       </form>
       <p className="m-0 text-body text-text-secondary">
-        Masz już konto?{" "}
+        {t("register.haveAccount")}{" "}
         <TextLink href={loginHref} placement="standalone">
-          Zaloguj się
+          {t("register.login")}
         </TextLink>
       </p>
     </>

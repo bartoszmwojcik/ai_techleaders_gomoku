@@ -113,7 +113,7 @@ describe("creating a game with the bot", () => {
     expect(bot).toEqual({ seat: 2, user_id: null, bot_level: 2, bot_memory_mb: 768, bot_depth_cap: 8, seen: true, is_active: true, join_channel: "web" });
 
     const data = await state(created.gameId, cookie);
-    expect(data.players[1]).toEqual({ seat: 2, kind: "bot", displayName: "Bot · poziom 2 · 16 MB", bot: { level: 2, memoryMb: 768 }, seen: true });
+    expect(data.players[1]).toEqual({ seat: 2, kind: "bot", displayName: "Bot · poziom 2 · 16 MB", bot: { level: 2, memoryMb: 768, tableMb: 16 }, seen: true });
     expect(data).not.toHaveProperty("invitation");
     expect(data).not.toHaveProperty("audience");
   });

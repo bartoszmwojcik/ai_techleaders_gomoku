@@ -16,12 +16,16 @@ import { ChatPanel } from "@/components/chat/chat-panel";
 import { CloseAudience } from "@/components/games/close-audience";
 import { PublicFlag } from "@/components/games/public-flag";
 import { PublicGameQr } from "@/components/games/public-game-qr";
+import plCommon from "@/i18n/catalogs/pl/common";
+import plGame from "@/i18n/catalogs/pl/game";
+import { useT } from "@/i18n/context";
 import { apiCall } from "@/lib/api-client";
 import {
   botOf,
-  cellLabel,
+  cellLabelOf,
   cellName,
   colorOfSeat,
+  opponentMoveText,
   outcomeOf,
   playerNameOf,
   paperStonesOf,
@@ -29,7 +33,7 @@ import {
   stonesOf,
 } from "@/lib/games/play";
 import { guestNickname } from "@/lib/games/opponent";
-import { FIRST_STONE, lastPaperMove, opponentPaperMove, PAPER_LABELS, paperColors, paperRules, refusalText } from "@/lib/games/paper";
+import { FIRST_STONE, lastPaperMove, opponentPaperMove, paperColors, paperLabelsOf, paperRules, refusalText } from "@/lib/games/paper";
 import type { GameView } from "@/server/http/game-view";
 
 import { BotReplay } from "./bot-replay";
@@ -41,21 +45,21 @@ import { useGameClock } from "./use-game-clock";
 /** Failed polls in a row before the banner appears (L02); the counter lives in the room. */
 export const PLAY_POLL_FAILURES_BEFORE_BANNER = 3;
 
-const NETWORK_ERROR = "Nie udało się połączyć z serwerem. Spróbuj ponownie.";
-const RESIGN_UNKNOWN_ERROR = "Nie udało się poddać partii. Spróbuj ponownie.";
-const UNKNOWN_ERROR = "Nie udało się zagrać ruchu. Spróbuj ponownie.";
+/**
+ * Codes of the moves the server turned down, with their text in `field.refusals`; the board is refreshed next to them
+ * (p05.8, p05.9). `GAME_NOT_ACTIVE` reads like `GAME_FINISHED`; the last two come only from the paper game.
+ */
+const REFUSALS = {
+  STALE_MOVE: "STALE_MOVE",
+  NOT_YOUR_TURN: "NOT_YOUR_TURN",
+  CELL_OCCUPIED: "CELL_OCCUPIED",
+  GAME_FINISHED: "GAME_FINISHED",
+  GAME_NOT_ACTIVE: "GAME_FINISHED",
+  MOVE_TOO_FAR: "MOVE_TOO_FAR",
+  FIRST_MOVE_CENTER: "FIRST_MOVE_CENTER",
+} as const;
 
-/** Messages of the moves the server turned down; the board is refreshed next to them (p05.8, p05.9). */
-const REFUSALS: Record<string, string> = {
-  STALE_MOVE: "Plansza była nieaktualna i została odświeżona. Spróbuj ponownie.",
-  NOT_YOUR_TURN: "Teraz ruch przeciwnika. Plansza została odświeżona.",
-  CELL_OCCUPIED: "To pole jest już zajęte",
-  GAME_FINISHED: "Partia jest już zakończona. Plansza została odświeżona.",
-  GAME_NOT_ACTIVE: "Partia jest już zakończona. Plansza została odświeżona.",
-  // Both come only from the paper game: the classic board has no such rule.
-  MOVE_TOO_FAR: "Za daleko od znaków: najwyżej 3 pola od innego.",
-  FIRST_MOVE_CENTER: "Pierwszy znak trafia na środek planszy.",
-};
+const refusalOf = (code: string) => (code in REFUSALS ? REFUSALS[code as keyof typeof REFUSALS] : null);
 
 type Props = {
   gameId: string;
@@ -87,9 +91,6 @@ const subscribePointer = (notify: () => void) => {
 const isTouch = () => window.matchMedia("(pointer: coarse)").matches;
 const notTouchOnServer = () => false;
 
-const LOW_TIME_ANNOUNCEMENT = "Zostało mniej niż minuta";
-const PAPER_LOW_TIME_ANNOUNCEMENT = "Zostało mało czasu";
-const REFRESH_NOTICE = "Ta partia jest w wariancie, którego ta wersja strony nie obsługuje. Odśwież stronę.";
 
 /**
  * The board of a game in progress or finished (p05, p06). It owns what the player is doing (the
@@ -100,6 +101,8 @@ const REFRESH_NOTICE = "Ta partia jest w wariancie, którego ta wersja strony ni
  */
 export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onState, onRefresh, onAccepting, onGone }: Props) {
   const touch = useSyncExternalStore(subscribePointer, isTouch, notTouchOnServer);
+  const t = useT("game", plGame);
+  const common = useT("common", plCommon);
   // A selection belongs to the move it was made for: it lapses with the next move or the end of the turn.
   const [pick, setPick] = useState<{ x: number; y: number; moveCount: number } | null>(null);
   // "Wyśrodkuj" on the phone (the paper board has no toolbar there): each press changes the board's recentre token.
@@ -125,7 +128,7 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
   const bot = botOf(game);
   const myColor = colorOfSeat(game.blackSeat, game.you.seat)!;
   const paper = game.paper;
-  const words = sideWords(game.variant);
+  const words = sideWords(game.variant, t);
   const placeLabel = words.place[myColor];
   // The automat plays for the leading player whose time ran out (BR-50): a turn that belongs to the automat is nobody's.
   const autoTurn = paper !== undefined && paper.autoSeat !== null && game.turnSeat === paper.autoSeat;
@@ -138,7 +141,7 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
   const myLow = clocks.live && !finished && isLow(clocks.remainingMs[game.you.seat - 1]!, game.timeControlMs);
   const [announced, setAnnounced] = useState(false);
   if (myLow && !announced) setAnnounced(true);
-  const outcome = outcomeOf(game);
+  const outcome = outcomeOf(game, t);
   const lastMove = game.moves.at(-1);
   const stonesOnSheet = paper ? paperStonesOf(paper) : [];
   const rules = paperRules(stonesOnSheet);
@@ -147,7 +150,7 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
   const classicSelected = myTurn && pick?.moveCount === game.moveCount ? cellOf(pick.x, pick.y) : null;
   const paperSelected = !paper || !myTurn ? null : pick?.moveCount === game.moveCount ? pick : stonesOnSheet.length === 0 ? FIRST_STONE : null;
   const target = paperSelected ?? (classicSelected === null ? null : coordsOf(classicSelected));
-  const selectedRefusal = paperSelected ? refusalText(rules, paperSelected) : "";
+  const selectedRefusal = paperSelected ? refusalText(rules, paperSelected, t) : "";
 
   async function submit(attempt: Attempt) {
     if (inFlight.current) return;
@@ -168,12 +171,12 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
     }
     const { code } = result.error;
     if (code === "NOT_FOUND") onGone();
-    else if (code in REFUSALS) {
-      setRefusal(REFUSALS[code]!);
+    else if (refusalOf(code)) {
+      setRefusal(t(`field.refusals.${refusalOf(code)!}`));
       onRefresh();
     } else {
       // The same move is sent again with the same number: the server answers a repeat with 200 (Q4).
-      setFailed({ attempt, message: code === "network" ? NETWORK_ERROR : UNKNOWN_ERROR });
+      setFailed({ attempt, message: t(code === "network" ? "shared.network" : "field.moveFailed") });
     }
   }
 
@@ -198,10 +201,10 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
     } else if (code === "GAME_FINISHED" || code === "GAME_NOT_ACTIVE") {
       // The game ended in the meantime (a five, the clock): the result is read and shown instead.
       setAsking(false);
-      setRefusal(REFUSALS[code]!);
+      setRefusal(t("field.refusals.GAME_FINISHED"));
       onRefresh();
     } else {
-      setResignError(code === "network" ? NETWORK_ERROR : RESIGN_UNKNOWN_ERROR);
+      setResignError(t(code === "network" ? "shared.network" : "field.resignFailed"));
     }
   }
 
@@ -227,22 +230,22 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
   const stones = pendingCell === undefined ? stonesOf(game.moves) : [...stonesOf(game.moves), { cell: pendingCell, color: myColor }];
   const sheetStones = pending && paper ? [...stonesOnSheet, { x: pending.x, y: pending.y, seat: game.you.seat, auto: false }] : stonesOnSheet;
   const status = busy
-    ? "Wysyłanie ruchu…"
+    ? t("field.sending")
     : myTurn
-      ? `Twój ruch (${words.name[myColor]})`
+      ? t("field.yourTurn", { side: words.name[myColor] })
       : paper?.autoSeat === game.you.seat
-        ? "Twój czas minął — automat stawia znaki za Ciebie"
+        ? t("field.automatForYou")
         : autoTurn
-          ? "Automat stawia znak…"
+          ? t("field.automatMoves")
           : bot
-            ? "Bot myśli…"
-            : "Ruch przeciwnika";
-  const scoreOf = (seat: 1 | 2) => ` · punkty: ${paper!.scores[seat - 1]}`;
-  const autoNote = (seat: 1 | 2) => (paper?.autoSeat === seat ? " · Automat" : "");
+            ? t("field.botThinking")
+            : t("field.opponentTurn");
+  const scoreOf = (seat: 1 | 2) => t("shared.score", { score: paper!.scores[seat - 1]! });
+  const autoNote = (seat: 1 | 2) => (paper?.autoSeat === seat ? t("shared.automat") : "");
   const nameWith = (name: ReturnType<typeof playerNameOf>, seat: 1 | 2, you = false) => (
     <>
       {paper && <PaperMark framed color={colorOfSeat(game.blackSeat, seat)!} label={words.name[colorOfSeat(game.blackSeat, seat)!]} className="mr-1" />}
-      <PlayerLabel name={name} you={you} />
+      <PlayerLabel name={name} you={you} t={common} />
       {paper && (
         <span data-testid={`score-${you ? "mine" : "theirs"}`}>
           {scoreOf(seat)}
@@ -254,21 +257,21 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
 
   if ((game.variant as string) !== "classic" && (game.variant as string) !== "paper") {
     // A state of a variant this page does not know (a stale page after a release): do not guess the board.
-    return <Alert status="warning" title={REFRESH_NOTICE} role="alert" />;
+    return <Alert status="warning" title={t("shared.unknownVariant")} role="alert" />;
   }
 
   return (
     <>
-      <h1 className="m-0 flex min-h-target items-center pl-11 text-lead font-strong sm:pl-0 sm:text-section">{finished ? "Koniec partii" : "Partia w toku"}</h1>
-      <PublicFlag audience={game.audience} />
+      <h1 className="m-0 flex min-h-target items-center pl-11 text-lead font-strong sm:pl-0 sm:text-section">{t(finished ? "shared.finishedHeading" : "field.inProgress")}</h1>
+      <PublicFlag audience={game.audience} t={t} />
       <CloseAudience gameId={gameId} game={game} onState={onState} onRefresh={onRefresh} onGone={onGone} />
       <div className="flex max-w-(--layout-width-board) flex-col gap-stack">
         {game.fromRematch && guest && !tokenNoticeSeen && (
           // p06.15: the guest holds a new token for the rematch, in the same browser (rematch Q5).
-          <Alert status="info" title="Nowa partia ma nowy dostęp w tej przeglądarce" role="status">
-            Wynik poprzedniej partii nie będzie już tu dostępny.{" "}
+          <Alert status="info" title={t("field.newAccessTitle")} role="status">
+            {t("field.newAccessBody")}{" "}
             <Button variant="secondary" onClick={() => setTokenNoticeSeen(true)} data-testid="token-notice-dismiss">
-              Rozumiem
+              {t("field.understood")}
             </Button>
           </Alert>
         )}
@@ -276,13 +279,13 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
         {/* A finished game is read in the background for an offer: its failed reads are quiet (offline, a sleeping laptop). */}
         {!finished && pollFails > 0 && pollFails < PLAY_POLL_FAILURES_BEFORE_BANNER && (
           <p role="status" className="m-0 text-meta text-text-secondary">
-            Ponawiamy sprawdzanie stanu partii (próba {pollFails} z {PLAY_POLL_FAILURES_BEFORE_BANNER}).
+            {t("shared.pollRetry", { attempt: pollFails, max: PLAY_POLL_FAILURES_BEFORE_BANNER })}
           </p>
         )}
         {!finished && pollFails >= PLAY_POLL_FAILURES_BEFORE_BANNER && (
-          <Alert status="danger" title="Nie udało się sprawdzić stanu partii. Ponawiamy próby.">
+          <Alert status="danger" title={t("shared.pollFailed")}>
             <Button variant="secondary" onClick={onRefresh}>
-              Sprawdź teraz
+              {t("shared.checkNow")}
             </Button>
           </Alert>
         )}
@@ -298,23 +301,23 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
         {finished && guest && (
           // p06.6: the guest token works for an hour after the end (BR-22).
           <p className="m-0 text-body text-text-secondary" data-testid="guest-until">
-            Wynik zobaczysz w tej przeglądarce do 1 godziny po zakończeniu partii.
+            {t("field.guestUntil")}
           </p>
         )}
         {finished && reopened && (
           // p06.5: back on a finished game; nothing can be played.
           <p role="status" className="m-0 text-body text-text-secondary" data-testid="reload-note">
-            Powrót do zakończonej partii: wynik jest ten sam, ruch nie jest możliwy.
+            {t("field.reloaded")}
           </p>
         )}
         <span role="status" className="sr-only" data-testid="low-live">
-          {announced ? (paper ? PAPER_LOW_TIME_ANNOUNCEMENT : LOW_TIME_ANNOUNCEMENT) : ""}
+          {announced ? t(paper ? "field.paperLowTime" : "field.lowTime") : ""}
         </span>
         <GameClock
-          name={nameWith(playerNameOf(other), (3 - game.you.seat) as 1 | 2)}
+          name={nameWith(playerNameOf(other, common), (3 - game.you.seat) as 1 | 2)}
           remainingMs={clocks.remainingMs[2 - game.you.seat]!}
           active={otherClockRuns}
-          activeLabel="Ruch przeciwnika"
+          activeLabel={t("field.opponentTurn")}
           timeControlMs={game.timeControlMs}
         />
         {paper ? (
@@ -329,15 +332,15 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
             onSelect={onPointSelect}
             allowed={rules.allowed}
             disabled={!myTurn || busy}
-            labels={PAPER_LABELS}
+            labels={paperLabelsOf(t)}
             layout={touch ? "phone" : "desktop"}
             toolbar={!touch}
             recenterToken={`${sheetStones.filter((stone) => stone.seat === game.you.seat).length}:${recentered}`}
           />
         ) : (
           <Board
-            label="Plansza 15 na 15"
-            cellLabel={cellLabel}
+            label={t("shared.boardLabel")}
+            cellLabel={cellLabelOf(t)}
             stones={stones}
             lastMove={pendingCell ?? lastMove}
             winLine={game.result?.winLine ?? undefined}
@@ -349,7 +352,7 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
         {!paper && myTurn && lastMove !== undefined && (
           // The opponent's stone appears on its own; a screen reader hears where (visually hidden).
           <p role="status" className="sr-only" data-testid="opponent-move">
-            Przeciwnik: {cellName(lastMove).replace(/^K/, "k")}
+            {opponentMoveText(lastMove, t)}
           </p>
         )}
         {touch && !finished && (
@@ -364,22 +367,18 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
               </Button>
               {paper && (
                 <Button variant="secondary" onClick={() => setRecentered((count) => count + 1)} data-testid="paper-recenter">
-                  Wyśrodkuj
+                  {t("field.recenter")}
                 </Button>
               )}
             </div>
             <p role="status" className="m-0 text-meta text-text-secondary" data-testid="selection">
               {paperSelected
-                ? selectedRefusal || `Zaznaczono pole ${paperSelected.x - 50}, ${paperSelected.y - 50}. Naciśnij „${placeLabel}”.`
+                ? selectedRefusal || t("field.paperSelected", { x: paperSelected.x - 50, y: paperSelected.y - 50, place: placeLabel })
                 : classicSelected !== null
-                  ? `Zaznaczono: ${cellName(classicSelected)}. Naciśnij „${placeLabel}”.`
+                  ? t("field.classicSelected", { cell: cellName(classicSelected, t), place: placeLabel })
                   : myTurn
-                    ? paper
-                      ? "Dotknij pola albo przesuń zaznaczenie strzałkami."
-                      : "Dotknij przecięcia, żeby je zaznaczyć."
-                    : autoTurn || paper?.autoSeat === game.you.seat
-                      ? "Poczekaj, aż automat postawi znak."
-                      : "Poczekaj na ruch przeciwnika."}
+                    ? t(paper ? "field.paperHint" : "field.classicHint")
+                    : t(autoTurn || paper?.autoSeat === game.you.seat ? "field.waitAutomat" : "field.waitOpponent")}
             </p>
           </div>
         )}
@@ -387,15 +386,15 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
         {failed && (
           <Alert status="danger" title={failed.message}>
             <Button variant="secondary" onClick={() => void submit(failed.attempt)}>
-              Spróbuj ponownie
+              {t("shared.retry")}
             </Button>
           </Alert>
         )}
         {guest && !finished && (
           // p05.11: permanent for a guest (BR-22) while the game is played. Under the action block, not above the board,
           // so it does not push "Postaw kamień" out of the first screen on a phone (issue 181).
-          <Alert status="warning" title="Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii">
-            Stracisz dostęp do partii, a Twój zegar będzie biegł dalej.
+          <Alert status="warning" title={t("shared.guestWarningTitle")}>
+            {t("shared.guestWarningBody")}
           </Alert>
         )}
         {game.moveCount === 0 && !finished && (
@@ -404,21 +403,21 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
             status="info"
             title={
               game.fromRematch
-                ? `${words.rematchSwapped} Grasz ${words.plays[myColor]}.`
-                : `Wylosowano: Ty grasz ${words.plays[myColor]}.`
+                ? t("field.drawnRematch", { swapped: words.rematchSwapped, plays: words.plays[myColor] })
+                : t("field.drawn", { plays: words.plays[myColor] })
             }
             role="status"
           />
         )}
         <GameClock
-          name={nameWith(playerNameOf(mine), game.you.seat, true)}
+          name={nameWith(playerNameOf(mine, common), game.you.seat, true)}
           remainingMs={clocks.remainingMs[game.you.seat - 1]!}
           active={myClockRuns}
-          activeLabel="Twój ruch"
+          activeLabel={t("field.yourClock")}
           timeControlMs={game.timeControlMs}
         />
         <p className="m-0 text-body text-text-secondary" data-testid="my-color">
-          {finished ? "Grałeś" : "Grasz"} {words.plays[myColor]}.
+          {t(finished ? "field.youPlayed" : "field.youPlay", { plays: words.plays[myColor] })}
         </p>
         {!finished && (
           // p05.13, p05.14: any time in a game in progress, also out of turn (resignation Q1).
@@ -433,10 +432,10 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
               }}
               trigger={
                 <Button variant="secondary" data-testid="resign">
-                  Poddaj partię
+                  {t("field.resign")}
                 </Button>
               }
-              title="Czy na pewno chcesz się poddać?"
+              title={t("field.resignTitle")}
               description={
                 <>
                   {resignError && (
@@ -444,11 +443,11 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
                       {resignError}
                     </span>
                   )}
-                  Przeciwnik wygra partię.
+                  {t("field.resignBody")}
                 </>
               }
-              confirmLabel={resigning ? "Poddawanie…" : resignError ? "Spróbuj ponownie" : "Poddaj partię"}
-              cancelLabel="Wróć do gry"
+              confirmLabel={t(resigning ? "field.resigning" : resignError ? "shared.retry" : "field.resign")}
+              cancelLabel={t("field.backToGame")}
               confirming={resigning}
               onConfirm={() => void resign()}
             />
@@ -463,7 +462,7 @@ export function PlayField({ gameId, game, pollFails, returnNotice, reopened, onS
             <RematchPanel gameId={gameId} game={game} reopened={reopened ?? false} onState={onState} onRefresh={onRefresh} onAccepting={onAccepting} onGone={onGone} />
           ))}
         {/* Under the controls, so it never pushes the board or its button off the first screen on a phone. */}
-        <PublicGameQr gameId={gameId} audience={game.audience} />
+        <PublicGameQr gameId={gameId} audience={game.audience} t={t} />
         {/* E07-S01: under the controls and, on the result screen, under the rematch block, so it never pushes the main action down. */}
         {/* The bot does not chat (R14): a game with it has no chat panel at all. */}
         {!bot && <ChatPanel gameId={gameId} game={game} onGone={onGone} />}

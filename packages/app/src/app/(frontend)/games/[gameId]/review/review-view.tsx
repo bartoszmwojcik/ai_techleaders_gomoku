@@ -10,9 +10,14 @@ import { TextLink } from "@gomoku/ui/game/text-link";
 import { useState } from "react";
 
 import { PlayerLabel } from "@/components/games/player-label";
+import plCommon from "@/i18n/catalogs/pl/common";
+import plGame from "@/i18n/catalogs/pl/game";
+import plHistory from "@/i18n/catalogs/pl/history";
+import plReview from "@/i18n/catalogs/pl/review";
+import { useT } from "@/i18n/context";
 import { formatFinishedAt } from "@/lib/format-date-time";
-import { REASON_LABEL } from "@/lib/games/history";
-import { cellLabel, playerNameOf, sideWords } from "@/lib/games/play";
+import { reasonLabel } from "@/lib/games/history";
+import { cellLabelOf, playerNameOf, sideWords } from "@/lib/games/play";
 import { isPaperReview, lastMoveAt, reviewOutcomeOf, stepStatus, stonesAt, winLineAt } from "@/lib/games/review";
 
 type Props = {
@@ -31,25 +36,30 @@ export function ReviewView({ review, back }: Props) {
   const total = review.moves.length;
   const [step, setStep] = useState(total);
   const go = (to: number) => setStep(clampReviewStep(to, total));
-  const outcome = reviewOutcomeOf(review);
-  const words = sideWords(review.variant);
+  const t = useT("review", plReview);
+  const game = useT("game", plGame);
+  const history = useT("history", plHistory);
+  const common = useT("common", plCommon);
+  const outcome = reviewOutcomeOf(review, game, common);
+  const words = sideWords(review.variant, game);
 
   return (
     <main className="mx-auto flex w-full flex-1 max-w-xl flex-col gap-stack px-panel py-section">
-      <h1 className="m-0 text-section font-strong">Przegląd partii</h1>
+      <h1 className="m-0 text-section font-strong">{t("heading")}</h1>
       <GameResultBanner result={outcome.result} title={outcome.title}>
-        {REASON_LABEL[review.result.reason]}. {outcome.detail}
+        {t("banner", { reason: reasonLabel(review.result.reason, history), detail: outcome.detail })}
       </GameResultBanner>
       <p className="m-0 text-meta text-text-muted" data-testid="review-finished-at">
-        Zakończona: {formatFinishedAt(review.finishedAt)}
+        {t("finishedAt", { date: formatFinishedAt(review.finishedAt, t.locale) })}
       </p>
-      <ul className="m-0 flex list-none flex-col gap-group p-0" aria-label="Gracze" data-testid="review-players">
+      <ul className="m-0 flex list-none flex-col gap-group p-0" aria-label={t("players")} data-testid="review-players">
         {review.players.map((player) => {
           const color = player.seat === review.blackSeat ? "black" : "white";
           return (
             <li key={player.seat} className="text-body">
               {isPaperReview(review) && <PaperMark framed color={color} className="mr-1" />}
-              {words.title[color]}: <PlayerLabel name={playerNameOf(player)} you={player.seat === review.viewerSeat} />
+              {t("playerLine", { side: words.title[color] })}
+              <PlayerLabel name={playerNameOf(player, common)} you={player.seat === review.viewerSeat} t={common} />
             </li>
           );
         })}
@@ -57,35 +67,35 @@ export function ReviewView({ review, back }: Props) {
       {isPaperReview(review) ? (
         // E11: the sheet of a paper game is not in the classic move log, so there is nothing to step through yet.
         <div data-testid="review-paper-note">
-          <Alert status="info" title="Podgląd ruch po ruchu jest niedostępny" role="status">
-            Ta partia była rozegrana w wariancie „Papier i ołówek”. Wynik i gracze są powyżej.
+          <Alert status="info" title={t("paperTitle")} role="status">
+            {t("paperBody")}
           </Alert>
         </div>
       ) : (
         <>
         <Board
-          label="Plansza 15 na 15"
-          cellLabel={cellLabel}
+          label={game("shared.boardLabel")}
+          cellLabel={cellLabelOf(game)}
           stones={stonesAt(review, step)}
           lastMove={lastMoveAt(review, step)}
           winLine={winLineAt(review, step)}
           readOnly
         />
         <p role="status" className="m-0 text-body text-text-secondary" data-testid="review-step">
-          {stepStatus(review, step)}
+          {stepStatus(review, step, t)}
         </p>
-        <div className="grid grid-cols-2 gap-group sm:grid-cols-4" role="group" aria-label="Przechodzenie po ruchach">
+        <div className="grid grid-cols-2 gap-group sm:grid-cols-4" role="group" aria-label={t("steps")}>
           <Button variant="secondary" onClick={() => go(0)} disabled={step === 0} data-testid="review-start">
-            Początek
+            {t("start")}
           </Button>
           <Button variant="secondary" onClick={() => go(step - 1)} disabled={step === 0} data-testid="review-prev">
-            Poprzedni
+            {t("previous")}
           </Button>
           <Button variant="secondary" onClick={() => go(step + 1)} disabled={step === total} data-testid="review-next">
-            Następny
+            {t("next")}
           </Button>
           <Button variant="secondary" onClick={() => go(total)} disabled={step === total} data-testid="review-end">
-            Koniec
+            {t("end")}
           </Button>
         </div>
         </>

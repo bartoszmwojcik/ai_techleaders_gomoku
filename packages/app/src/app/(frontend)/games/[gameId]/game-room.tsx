@@ -25,10 +25,14 @@ import { PlayerLabel } from "@/components/games/player-label";
 import { PlayField } from "@/components/games/play-field";
 import { serverNowMs } from "@/components/games/use-server-now";
 import { usePageVisibility } from "@/components/games/use-page-visibility";
+import plCommon from "@/i18n/catalogs/pl/common";
+import plGame from "@/i18n/catalogs/pl/game";
+import { useT } from "@/i18n/context";
 import { apiCall } from "@/lib/api-client";
-import { AGENT_CLIENT_COPY } from "@/lib/games/agent-clients";
+import { agentClientCopyOf } from "@/lib/games/agent-clients";
 import { formatValidUntil } from "@/lib/format-date-time";
 import { botThinking, knownMoves, mergeState, playerName, playerNameOf } from "@/lib/games/play";
+import type { TextsProps } from "@/i18n/client";
 import type { GameView } from "@/server/http/game-view";
 
 /** Polling of a waiting game (#21 Q6): short polling every 3 s until a transport from #30 exists. */
@@ -63,19 +67,13 @@ type Props = {
   initial: GameView;
   /** The player pressed "Utwórz zaproszenie" while already waiting in this game (L01). */
   ownWaitingNotice: boolean;
+  /** The `home` namespace for "Utwórz zaproszenie" after a cancelled or expired invitation; nothing in Polish. */
+  homeTexts?: TextsProps<"home">;
 };
 
 type Copy = "idle" | "ok" | "fail" | "share-fail" | "command-ok" | "config-ok" | "code-ok" | "text-fail";
 
-const COPY_FEEDBACK: Record<Exclude<Copy, "idle">, string> = {
-  ok: "Skopiowano link do schowka.",
-  fail: "Nie można skopiować automatycznie. Link jest zaznaczony — skopiuj go ręcznie (Ctrl+C).",
-  "share-fail": "Nie udało się otworzyć udostępniania. Skopiuj link ręcznie.",
-  "command-ok": "Skopiowano polecenie do schowka.",
-  "config-ok": "Skopiowano konfigurację do schowka.",
-  "code-ok": "Skopiowano kod do schowka.",
-  "text-fail": "Nie można skopiować automatycznie. Tekst jest zaznaczony — skopiuj go ręcznie (Ctrl+C).",
-};
+// Each copy result has its sentence in `room.copy`.
 
 // `navigator.share` exists only in some browsers; the server cannot know, so the first render says no.
 const subscribeNothing = () => () => {};
@@ -110,8 +108,15 @@ function Shell({ children, compact = false }: { children: ReactNode; compact?: b
  * Once both players opened the page the board takes over (p05, p06: `PlayField`); this component
  * polls the state and merges it, `PlayField` shows it and sends the moves.
  */
-export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
+export function GameRoom({ gameId, initial, ownWaitingNotice, homeTexts = {} }: Props) {
   const router = useRouter();
+  const t = useT("game", plGame);
+  const common = useT("common", plCommon);
+  // The effect that reads the state formats the return notice with the translator of the current render.
+  const texts = useRef(t);
+  useEffect(() => {
+    texts.current = t;
+  });
   const [game, setGame] = useState(initial);
   const [gone, setGone] = useState(false);
   const [fails, setFails] = useState(0);
@@ -206,7 +211,7 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
         // A game that ended while the player was away shows its result instead (p06.3).
         if (fresh && merged.status === "active" && merged.players.every((player) => player.seen)) {
           const left = merged.clock.remainingMs[merged.you.seat - 1]!;
-          setNotice({ text: `Wróciłeś do partii. Twój zegar: ${formatClock(left)}.`, moveCount: merged.moveCount });
+          setNotice({ text: texts.current("room.returned", { clock: formatClock(left) }), moveCount: merged.moveCount });
         }
       }
     } else if (result.error.code === "NOT_FOUND") {
@@ -316,14 +321,14 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
   if (gone) {
     return (
       <Shell>
-        <GameGate />
+        <GameGate t={t} />
       </Shell>
     );
   }
 
   const other = game.players.find((player) => player.seat !== game.you.seat);
   const mine = game.players.find((player) => player.seat === game.you.seat);
-  const nameOf = playerName;
+  const nameOf = (player: GameView["players"][number] | undefined) => playerName(player, common);
   const isGuest = game.you.kind === "guest";
 
   async function onCopy() {
@@ -364,7 +369,7 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
   async function onShare() {
     setCopy("idle");
     try {
-      await navigator.share({ title: "Zaproszenie do partii Gomoku", url: game.invitation!.url });
+      await navigator.share({ title: t("room.shareTitle"), url: game.invitation!.url });
     } catch (error) {
       // Closing the share sheet is not an error.
       if ((error as { name?: string }).name !== "AbortError") setCopy("share-fail");
@@ -390,8 +395,8 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
     if (code === "GAME_NOT_CANCELLABLE") {
       // The opponent joined before the cancel (Q9): show the new state, not an error.
       setCancelProblem(
-        <Alert status="warning" title="Przeciwnik zdążył dołączyć, zanim anulowałeś">
-          Partii nie można już anulować jako zaproszenia.
+        <Alert status="warning" title={t("room.joinedFirstTitle")}>
+          {t("room.joinedFirstBody")}
         </Alert>,
       );
       void poll();
@@ -399,8 +404,8 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
       markGone();
     } else {
       setCancelProblem(
-        <Alert status="danger" title="Nie udało się anulować zaproszenia">
-          {code === "network" ? "Nie udało się połączyć z serwerem. " : ""}Spróbuj ponownie.
+        <Alert status="danger" title={t("room.cancelFailedTitle")}>
+          {t(code === "network" ? "room.cancelFailedNetwork" : "room.cancelFailedBody")}
         </Alert>,
       );
     }
@@ -411,25 +416,25 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
     if (game.closedReason === "cancelled" || game.closedReason === "expired") {
       const ending =
         game.closedReason === "cancelled"
-          ? { heading: "Zaproszenie zostało anulowane", details: "Link i kod nie działają." }
-          : { heading: "Zaproszenie wygasło", details: "Zaproszenie jest ważne 24 godziny. Link i kod nie działają." };
+          ? { heading: t("room.cancelledHeading"), details: t("room.cancelledDetails") }
+          : { heading: t("room.expiredHeading"), details: t("room.expiredDetails") };
       return (
         <Shell>
           <h1 className="m-0 text-section font-strong">{ending.heading}</h1>
-          <Alert status="warning" title={`${ending.heading}. Utwórz nowe.`} role="status">
+          <Alert status="warning" title={t("room.createNewTitle", { heading: ending.heading })} role="status">
             {ending.details}
           </Alert>
           <div className="flex flex-wrap items-center gap-group">
             {isGuest ? (
               // A guest creates from p08 (nickname and warning), not with one click (p03.13).
               <Button asChild>
-                <Link href="/play">Utwórz nowe zaproszenie</Link>
+                <Link href="/play">{t("room.createNew")}</Link>
               </Button>
             ) : (
-              <CreateGameButton heldGame={null} />
+              <CreateGameButton heldGame={null} {...homeTexts} />
             )}
             <TextLink href="/" placement="standalone">
-              Wróć na stronę główną
+              {t("shared.backHome")}
             </TextLink>
           </div>
         </Shell>
@@ -438,20 +443,18 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
     // L06, A-07: the player who opened the page and the one who did not read different sentences.
     return (
       <Shell>
-        <h1 className="m-0 text-section font-strong">Partia anulowana</h1>
+        <h1 className="m-0 text-section font-strong">{t("shared.cancelledHeading")}</h1>
         <Alert
           status="warning"
           title={
-            mine?.seen
-              ? "Przeciwnik nie otworzył partii w ciągu 15 minut. Partię anulowano."
-              : "Partię anulowano: nie została otwarta w ciągu 15 minut."
+            mine?.seen ? t("room.notOpenedByOpponent") : t("room.notOpened")
           }
         >
-          Nikt nie stracił czasu, a partia nie trafi do historii.
+          {t("room.nobodyLost")}
         </Alert>
         <div>
           <Button asChild>
-            <Link href="/">Wróć na stronę główną</Link>
+            <Link href="/">{t("shared.backHome")}</Link>
           </Button>
         </div>
       </Shell>
@@ -460,90 +463,91 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
 
   if (game.status === "waiting") {
     const invitation = game.invitation!;
-    const clientCopy = AGENT_CLIENT_COPY[agentClient];
+    const copies = agentClientCopyOf(t);
+    const clientCopy = copies[agentClient];
     const setup = invitation.mcpUrl ? agentClientSetup(agentClient, invitation.mcpUrl) : null;
     const problem =
       fails >= POLL_FAILURES_BEFORE_BANNER ? (
-        <Alert status="danger" title="Nie udało się sprawdzić, czy przeciwnik dołączył. Ponawiamy próby.">
+        <Alert status="danger" title={t("room.joinCheckFailed")}>
           <Button variant="secondary" onClick={() => void poll()}>
-            Sprawdź teraz
+            {t("shared.checkNow")}
           </Button>
         </Alert>
       ) : null;
     return (
       <Shell>
-        <h1 className="m-0 text-section font-strong">Partia czeka na przeciwnika</h1>
+        <h1 className="m-0 text-section font-strong">{t("room.waitingHeading")}</h1>
         {ownWaitingNotice && (
-          <DismissibleNotice title="Masz już oczekującą partię." closeLabel="Zamknij" />
+          <DismissibleNotice title={t("room.ownWaiting")} closeLabel={t("room.close")} />
         )}
         {cancelProblem}
         <TurnStatus>
           {fails > 0 && fails < POLL_FAILURES_BEFORE_BANNER
-            ? `Czekamy na przeciwnika… Ponawiamy sprawdzanie (próba ${fails} z ${POLL_FAILURES_BEFORE_BANNER}).`
-            : "Czekamy na przeciwnika…"}
+            ? t("room.waitingRetry", { attempt: fails, max: POLL_FAILURES_BEFORE_BANNER })
+            : t("room.waiting")}
         </TurnStatus>
         {problem}
         <div ref={cardRef}>
           {/* LUKA D03: the card has no copy states; the page owns the result line below it. */}
           <InviteCodeCard
-            title="Zaproś znajomego"
+            title={t("room.inviteTitle")}
             link={invitation.url}
             code={invitation.code}
-            linkLabel="Link zaproszenia"
-            codeLabel="Kod do wpisania na stronie „Masz kod?”"
-            qr={<QrCode src={inviteQrPath(gameId)} label="Kod QR z linkiem zaproszenia" caption="Zeskanuj telefonem, żeby dołączyć." />}
-            validUntil={`Ważne do ${formatValidUntil(invitation.expiresAt)}`}
-            copyLabel="Kopiuj"
-            copiedLabel="Skopiowano"
+            linkLabel={t("room.linkLabel")}
+            codeLabel={t("room.codeLabel")}
+            qr={<QrCode src={inviteQrPath(gameId)} label={t("room.qrLabel")} caption={t("room.qrCaption")} />}
+            validUntil={t("room.validUntil", { date: formatValidUntil(invitation.expiresAt, t.locale) })}
+            copyLabel={t("room.copyLabel")}
+            copiedLabel={t("room.copied")}
             copied={copy === "ok"}
             onCopy={() => void onCopy()}
-            shareLabel={canShare ? "Udostępnij" : undefined}
+            shareLabel={canShare ? t("room.share") : undefined}
             onShare={canShare ? () => void onShare() : undefined}
-            cancelLabel="Anuluj zaproszenie"
+            cancelLabel={t("room.cancelInvitation")}
             onCancel={() => setAsking(true)}
           />
         </div>
         {setup && (
           <div ref={agentRef}>
             <AgentConnectCard
-              summary="Jak podłączyć agenta"
-              clientLabel="Klient"
-              clients={AGENT_CLIENTS.map((value) => ({ value, label: AGENT_CLIENT_COPY[value].label }))}
+              summary={t("room.agentSummary")}
+              clientLabel={t("room.agentClient")}
+              clients={AGENT_CLIENTS.map((value) => ({ value, label: copies[value].label }))}
               client={agentClient}
               onClientChange={onAgentClientChange}
               snippetIntro={clientCopy.intro}
               snippet={setup.text}
               copySnippetLabel={clientCopy.copyLabel}
               checkText={clientCopy.check}
-              codeIntro={`Powiedz agentowi: „Dołącz do partii gomoku narzędziem join z kodem ${invitation.code}”.`}
+              codeIntro={t("room.agentCodeIntro", { code: invitation.code })}
               code={invitation.code}
-              copyCodeLabel="Kopiuj kod"
-              serverLabel="Adres serwera"
+              copyCodeLabel={t("room.copyCode")}
+              serverLabel={t("room.serverAddress")}
               serverUrl={invitation.mcpUrl}
-              copiedLabel="Skopiowano"
+              copiedLabel={t("room.copied")}
               copied={copy === "command-ok" || copy === "config-ok" ? "snippet" : copy === "code-ok" ? "code" : null}
               onCopySnippet={() => void onCopyAgentText("snippet", setup.text, setup.kind === "config" ? "config-ok" : "command-ok")}
               onCopyCode={() => void onCopyAgentText("code", invitation.code, "code-ok")}
-              note={`Inny klient MCP? Podaj mu adres serwera (Streamable HTTP, bez uwierzytelniania). Agent dołączy jako „Agent”. Nie podawaj mu hasła ani tokenów — nie są potrzebne. Agent może czytać czat partii i na nim pisać; wiadomości, które wpiszesz, trafią do modelu jako tekst. Nie wpisuj tajnych danych. Czat możesz wyłączyć w partii.${clientCopy.note ? ` ${clientCopy.note}` : ""}`}
+              note={`${t("room.agentNote")}${clientCopy.note ? ` ${clientCopy.note}` : ""}`}
             />
           </div>
         )}
         <p role="status" className="m-0 max-w-(--layout-width-dialog) text-meta text-text-secondary" data-testid="copy-status">
-          {copy === "idle" ? "" : COPY_FEEDBACK[copy]}
+          {copy === "idle" ? "" : t(`room.copy.${copy}`)}
         </p>
         {isGuest && (
           // p03.12 (L28): permanent, because losing the browser means losing the game. LUKA D10: no pattern
           // for a warning under the code card; a plain Alert.
-          <Alert status="warning" title="Nie zmieniaj przeglądarki, bo stracisz dostęp do partii." />
+          <Alert status="warning" title={t("room.keepBrowser")} />
         )}
         <ChatPanel gameId={gameId} game={game} onGone={markGone} />
         <ConfirmDialog
           open={asking}
           onOpenChange={(open) => !open && !cancelling && setAsking(false)}
-          title="Anulować zaproszenie?"
-          description="Link i kod przestaną działać, a partia zostanie anulowana. Tej operacji nie można cofnąć."
-          confirmLabel={cancelling ? "Anulowanie…" : "Tak, anuluj zaproszenie"}
-          cancelLabel="Wróć"
+          title={t("room.cancelTitle")}
+          description={t("room.cancelDescription")}
+          confirmLabel={t(cancelling ? "room.cancelling" : "room.cancelConfirm")}
+          cancelLabel={t("shared.back")}
           confirming={cancelling}
           onConfirm={() => void onConfirmCancel()}
         />
@@ -554,13 +558,13 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
   if (joinStep) {
     return (
       <Shell>
-        <h1 className="m-0 text-section font-strong">Przeciwnik dołączył</h1>
+        <h1 className="m-0 text-section font-strong">{t("room.joinedHeading")}</h1>
         {cancelProblem}
-        <Alert status="success" title={`${nameOf(other)} dołączył do partii`}>
-          Za chwilę przejdziesz do partii.
+        <Alert status="success" title={t("room.joinedTitle", { name: nameOf(other) })}>
+          {t("room.joinedBody")}
         </Alert>
         <div>
-          <Button onClick={() => setJoinStep(false)}>Przejdź do partii</Button>
+          <Button onClick={() => setJoinStep(false)}>{t("room.goToGame")}</Button>
         </div>
       </Shell>
     );
@@ -587,22 +591,22 @@ export function GameRoom({ gameId, initial, ownWaitingNotice }: Props) {
   // `active`, but the other player has not opened the page yet (p04.1): the clocks do not run (Q20).
   return (
     <Shell>
-      <h1 className="m-0 text-section font-strong">Czekamy na otwarcie partii</h1>
+      <h1 className="m-0 text-section font-strong">{t("room.openingHeading")}</h1>
       {cancelProblem}
       {isGuest && (
         // p04.4: permanent for a guest (BR-22).
-        <Alert status="warning" title="Grasz bez konta — nie zmieniaj przeglądarki w trakcie partii">
-          Stracisz dostęp do partii, a Twój zegar będzie biegł dalej.
+        <Alert status="warning" title={t("shared.guestWarningTitle")}>
+          {t("shared.guestWarningBody")}
         </Alert>
       )}
       <div className="flex max-w-(--layout-width-board) flex-col gap-stack">
         <TurnStatus>
-          {`Czekamy, aż ${nameOf(other)} otworzy partię — zegar ruszy, gdy obaj będziecie na stronie (do 15 min)`}
+          {t("room.opening", { name: nameOf(other) })}
         </TurnStatus>
-        <PlayerClock name={<PlayerLabel name={playerNameOf(other)} />} remainingMs={game.timeControlMs} />
-        <PlayerClock name={<PlayerLabel name={playerNameOf(mine)} you />} remainingMs={game.timeControlMs} />
+        <PlayerClock name={<PlayerLabel name={playerNameOf(other, common)} t={common} />} remainingMs={game.timeControlMs} />
+        <PlayerClock name={<PlayerLabel name={playerNameOf(mine, common)} you t={common} />} remainingMs={game.timeControlMs} />
         <TextLink href="/" placement="standalone">
-          Wróć na stronę główną
+          {t("shared.backHome")}
         </TextLink>
       </div>
     </Shell>

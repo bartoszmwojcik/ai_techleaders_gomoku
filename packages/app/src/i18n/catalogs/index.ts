@@ -9,10 +9,34 @@ type Loader = () => Promise<{ default: Dict }>;
 
 // Literal dynamic imports, so the bundler splits every catalog on its own and only the server ever loads them.
 export const LOADERS: Readonly<Record<Locale, Readonly<Record<Namespace, Loader>>>> = {
-  pl: { common: () => import("./pl/common"), header: () => import("./pl/header"), show: () => import("./pl/show") },
-  en: { common: () => import("./en/common"), header: () => import("./en/header"), show: () => import("./en/show") },
-  fr: { common: () => import("./fr/common"), header: () => import("./fr/header"), show: () => import("./fr/show") },
-  de: { common: () => import("./de/common"), header: () => import("./de/header"), show: () => import("./de/show") },
+  pl: { common: () => import("./pl/common"), header: () => import("./pl/header"), show: () => import("./pl/show"), home: () => import("./pl/home"), auth: () => import("./pl/auth"), game: () => import("./pl/game"), chat: () => import("./pl/chat"),
+    lobby: () => import("./pl/lobby"),
+    history: () => import("./pl/history"),
+    review: () => import("./pl/review"),
+    account: () => import("./pl/account"),
+    errors: () => import("./pl/errors"),
+  },
+  en: { common: () => import("./en/common"), header: () => import("./en/header"), show: () => import("./en/show"), home: () => import("./en/home"), auth: () => import("./en/auth"), game: () => import("./en/game"), chat: () => import("./en/chat"),
+    lobby: () => import("./en/lobby"),
+    history: () => import("./en/history"),
+    review: () => import("./en/review"),
+    account: () => import("./en/account"),
+    errors: () => import("./en/errors"),
+  },
+  fr: { common: () => import("./fr/common"), header: () => import("./fr/header"), show: () => import("./fr/show"), home: () => import("./fr/home"), auth: () => import("./fr/auth"), game: () => import("./fr/game"), chat: () => import("./fr/chat"),
+    lobby: () => import("./fr/lobby"),
+    history: () => import("./fr/history"),
+    review: () => import("./fr/review"),
+    account: () => import("./fr/account"),
+    errors: () => import("./fr/errors"),
+  },
+  de: { common: () => import("./de/common"), header: () => import("./de/header"), show: () => import("./de/show"), home: () => import("./de/home"), auth: () => import("./de/auth"), game: () => import("./de/game"), chat: () => import("./de/chat"),
+    lobby: () => import("./de/lobby"),
+    history: () => import("./de/history"),
+    review: () => import("./de/review"),
+    account: () => import("./de/account"),
+    errors: () => import("./de/errors"),
+  },
 };
 
 /**

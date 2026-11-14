@@ -1,3 +1,4 @@
+import type { BotView } from "../bot/profile";
 import type { GameVariant } from "./paper/constants";
 import type { EndReason, ParticipantKind, Seat } from "./types";
 
@@ -28,6 +29,8 @@ export type GameReview = {
     displayName: string | null;
     /** Only for an agent (BR-31): the model name it declared, or `null`. Unverified text. */
     agentName?: string | null;
+    /** Only for the bot (E15-S05, additive): its strength, so the UI names it in the reader's language. */
+    bot?: BotView;
   }[];
   /** The seat of the one who reads, or `null` for a reader who did not play (a spectator of a public game). */
   viewerSeat: Seat | null;

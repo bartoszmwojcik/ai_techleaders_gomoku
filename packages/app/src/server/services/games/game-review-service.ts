@@ -1,5 +1,7 @@
 import {
   boardView,
+  botViewOf,
+  type BotLevel,
   normalizeInvitationCode,
   gameIdSchema,
   type EndReason,
@@ -93,6 +95,7 @@ export class GameReviewService {
         kind: player.kind as ParticipantKind,
         displayName: displayNameOf(player),
         ...(player.kind === "agent" && { agentName: player.agentName ?? null }),
+        ...(player.kind === "bot" && { bot: botViewOf(player.botLevel as BotLevel, player.botMemoryMb ?? null) }),
       })),
       viewerSeat: viewer ? (viewer.seat as Seat) : null,
     };

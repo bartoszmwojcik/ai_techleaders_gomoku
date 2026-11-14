@@ -7,8 +7,13 @@ vi.mock("./watch-actions", () => ({
   ),
 }));
 vi.mock("./join-actions", () => ({
-  JoinActions: ({ code, mode }: { code: string; mode: string }) => <div data-testid="actions" data-code={code} data-mode={mode} />,
+  JoinActions: ({ code, mode, locale }: { code: string; mode: string; locale?: string }) => (
+    <div data-testid="actions" data-code={code} data-mode={mode} data-locale={locale} />
+  ),
 }));
+
+import frCommon from "@/i18n/catalogs/fr/common";
+import frHome from "@/i18n/catalogs/fr/home";
 
 import { InviteScreen } from "./invite-screen";
 
@@ -112,5 +117,43 @@ describe("InviteScreen, variant (E11)", () => {
     const html = render(view);
     expect(html).toContain("Papier i ołówek · 3 min na gracza.");
     expect(html).not.toContain("plansza 15×15");
+  });
+});
+
+describe("InviteScreen in French (E15-S03)", () => {
+  const fr = (view: View, code = "ABCD-EFGH") =>
+    renderToStaticMarkup(
+      <InviteScreen code={code} view={view} texts={{ locale: "fr", dict: frHome }} commonTexts={{ locale: "fr", dict: frCommon }} />,
+    );
+
+  it("translates a guest creator's default name, and only a guest's (Q11)", () => {
+    const guest = fr({ kind: "joinable", creatorName: "Gracz 1", creatorKind: "guest", isPublic: true, signedIn: false });
+    expect(guest).toContain("Joueur 1 (invité) vous invite à une partie de Gomoku</h1>");
+    expect(guest).toContain("Code d’invitation\u202f: ABCD-EFGH. Règles libres · plateau 15×15 · 10\u00a0minutes par joueur.");
+    expect(guest).toContain("Partie publique\u202f: toute personne ayant le code peut la regarder");
+    expect(guest).toContain('data-mode="visitor" data-locale="fr"');
+    expect(fr({ kind: "joinable", creatorName: null, creatorKind: "guest", isPublic: false, signedIn: false })).toContain("Joueur 1 (invité)");
+    expect(fr({ kind: "joinable", creatorName: "Ala", creatorKind: "guest", isPublic: false, signedIn: false })).toContain("Ala (invité)");
+    expect(fr({ kind: "joinable", creatorName: "Gracz 1", creatorKind: "account", isPublic: false, signedIn: false })).toContain(
+      "Gracz 1 vous invite à une partie de Gomoku</h1>",
+    );
+    expect(fr({ kind: "joinable", creatorName: null, creatorKind: "account", isPublic: false, signedIn: false })).toContain("Un joueur vous invite");
+  });
+
+  it("words every other state", () => {
+    expect(fr({ kind: "watch", isPublic: true, creatorName: "Ala", creatorKind: "account", gameId: "g1", signedIn: true })).toContain(
+      "Les deux joueurs sont déjà dans la partie.",
+    );
+    const active = fr({ kind: "has-active-game", creatorName: "Ala", creatorKind: "account", isPublic: false, gameId: "g9", signedIn: true });
+    expect(active).toContain("Vous avez déjà une partie");
+    expect(active).toContain("Revenir à votre partie");
+    expect(fr({ kind: "has-own-waiting-game", creatorName: "Ala", creatorKind: "account", isPublic: false, gameId: "g9", signedIn: true })).toContain(
+      "vous devez d’abord annuler la vôtre",
+    );
+    expect(fr({ kind: "limit" }, "")).toContain("Trop de tentatives — réessayez dans un instant");
+    const invalid = fr({ kind: "invalid" }, "");
+    expect(invalid).toContain("Cette invitation n’est plus valable</h1>");
+    expect(invalid).toContain("Vous avez un code\u202f?</a>");
+    expect(invalid).not.toMatch(/[ąćęłńóśźż]/);
   });
 });

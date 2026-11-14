@@ -3,6 +3,8 @@ import { turnColor } from "@gomoku/core/games/rules";
 import type { GameVariant } from "@gomoku/core/games/paper/constants";
 import type { GameColor, Seat } from "@gomoku/core/games/types";
 
+import plGame from "@/i18n/catalogs/pl/game";
+import { textsOf, type TranslatorOf } from "@/i18n/client";
 import type { GameView } from "@/server/http/game-view";
 
 /** A stone for the board component: moves alternate, black first (#22 Q1). */
@@ -67,136 +69,108 @@ export type SideWords = {
   rematchInfo: string;
 };
 
-const CLASSIC_WORDS: SideWords = {
-  name: { black: "czarne", white: "białe" },
-  plays: { black: "czarnymi", white: "białymi" },
-  title: { black: "Czarne", white: "Białe" },
-  genitive: { black: "czarnych", white: "białych" },
-  wins: { black: "Wygrały czarne", white: "Wygrały białe" },
-  place: { black: "Postaw kamień", white: "Postaw kamień" },
-  rematchSwapped: "Rewanż: kolory zostały zamienione.",
-  rematchOffer: "Kolory zostaną zamienione.",
-  rematchInfo: "Rewanż to nowa partia z odwróconymi kolorami",
-};
+export type GameTranslator = TranslatorOf<"game">;
 
-const PAPER_WORDS: SideWords = {
-  name: { black: "krzyżyk", white: "kółko" },
-  plays: { black: "krzyżykiem", white: "kółkiem" },
-  title: { black: "Krzyżyk", white: "Kółko" },
-  genitive: { black: "krzyżyka", white: "kółka" },
-  wins: { black: "Wygrał krzyżyk", white: "Wygrało kółko" },
-  place: { black: "Postaw krzyżyk", white: "Postaw kółko" },
-  rematchSwapped: "Rewanż: znaki zostały zamienione.",
-  rematchOffer: "Znaki zostaną zamienione.",
-  rematchInfo: "Rewanż to nowa partia z zamienionymi znakami",
-};
+/** Polish, from the bundle: the default of every helper below, so callers not yet migrated keep their texts. */
+export const PL_GAME: GameTranslator = textsOf<"game">(plGame);
+
+const COLORS = ["black", "white"] as const;
+
+const wordsCache = new WeakMap<GameTranslator, Record<"classic" | "paper", SideWords>>();
 
 /** Anything but the paper variant reads as classic, so a page that meets a variant it does not know can still say it does not know it. */
-export const sideWords = (variant: GameVariant | undefined): SideWords => (variant === "paper" ? PAPER_WORDS : CLASSIC_WORDS);
-
-const COLUMN_STATE = { empty: "puste", black: "czarny kamień", white: "biały kamień" } as const;
-
-/** "Kolumna C, rząd 7, puste". */
-export function cellLabel({ column, row, state }: { column: string; row: number; state: keyof typeof COLUMN_STATE }) {
-  return `Kolumna ${column}, rząd ${row}, ${COLUMN_STATE[state]}`;
+export function sideWords(variant: GameVariant | undefined, t: GameTranslator = PL_GAME): SideWords {
+  let words = wordsCache.get(t);
+  if (!words) {
+    words = { classic: wordsOf("classic", t), paper: wordsOf("paper", t) };
+    wordsCache.set(t, words);
+  }
+  return variant === "paper" ? words.paper : words.classic;
 }
 
-/** "Kolumna C, rząd 7" for a cell index. */
-export function cellName(cell: number): string {
-  const { x, y } = coordsOf(cell);
-  return `Kolumna ${String.fromCharCode(65 + x)}, rząd ${y + 1}`;
-}
-
-/**
- * How a participant is named on screen: the nickname or account name, and whether "(gość)" follows
- * (E02-S07, L30). `agent` marks an agent (BR-31): `nick` is then "Agent" and `declared` the model
- * name it gave about itself (unverified), shown as "Agent · {declared} (deklarowane)".
- */
-export type PlayerName = {
-  nick: string;
-  guest: boolean;
-  label: string;
-  agent?: { declared: string | null };
-};
-
-export const AGENT_LABEL = "Agent";
-/** The bot's name always starts with it (`Bot · poziom 2 · 16 MB`, R9); alone when the server gave none. */
-export const BOT_LABEL = "Bot";
-export const DECLARED_LABEL = "(deklarowane)";
-
-/** The name of an agent opponent; `declared` is plain text, never markup (BR-31, decision 7 of #138). */
-export function agentNameOf(declared: string | null | undefined): PlayerName {
-  const name = declared ?? null;
+function wordsOf(kind: "classic" | "paper", t: GameTranslator): SideWords {
+  const both = (group: "name" | "plays" | "title" | "genitive" | "wins" | "place") =>
+    Object.fromEntries(COLORS.map((color) => [color, t(`sides.${kind}.${group}.${color}`)])) as Record<GameColor, string>;
   return {
-    nick: AGENT_LABEL,
-    guest: false,
-    label: name === null ? AGENT_LABEL : `${AGENT_LABEL} · ${name} ${DECLARED_LABEL}`,
-    agent: { declared: name },
+    name: both("name"),
+    plays: both("plays"),
+    title: both("title"),
+    genitive: both("genitive"),
+    wins: both("wins"),
+    place: both("place"),
+    rematchSwapped: t(`sides.${kind}.rematchSwapped`),
+    rematchOffer: t(`sides.${kind}.rematchOffer`),
+    rematchInfo: t(`sides.${kind}.rematchInfo`),
   };
 }
 
-/**
- * `displayName` is the nickname (never empty for a guest: the server fills in "Gracz N") or the
- * account name (`null` for a deleted account). The "(gość)" suffix comes from `kind`, here in the UI layer;
- * an agent has no `displayName` and is named by `kind` and its declared `agentName`; the bot's name
- * (`Bot · poziom 2 · 16 MB`) is computed by the server and is itself its "Bot" mark (hosted-bot R9).
- */
-export function playerNameOf(player: (Omit<GameView["players"][number], "seen"> & { seen?: boolean }) | undefined): PlayerName {
-  if (player?.kind === "agent") return agentNameOf(player.agentName);
-  const guest = player?.kind === "guest";
-  const nick = player?.displayName ?? (player?.kind === "bot" ? BOT_LABEL : "Usunięty gracz");
-  return { nick, guest, label: guest ? `${nick} (gość)` : nick };
+type CellState = "empty" | "black" | "white";
+
+/** "Kolumna C, rząd 7, puste": the board's screen reader labels in the reader's language. */
+export function cellLabelOf(t: GameTranslator) {
+  return ({ column, row, state }: { column: string; row: number; state: CellState }) =>
+    t("board.cell", { column, row, state: t(`board.state.${state}`) });
 }
 
-/** The full label as one string, for running text ("Gracz 2 (gość) dołączył do partii"). */
-export function playerName(player: GameView["players"][number] | undefined): string {
-  return playerNameOf(player).label;
+export const cellLabel = cellLabelOf(PL_GAME);
+
+const columnOf = (cell: number) => String.fromCharCode(65 + coordsOf(cell).x);
+const rowOf = (cell: number) => coordsOf(cell).y + 1;
+
+/** "Kolumna C, rząd 7" for a cell index. */
+export function cellName(cell: number, t: GameTranslator = PL_GAME): string {
+  return t("board.cellName", { column: columnOf(cell), row: rowOf(cell) });
 }
+
+/** "Przeciwnik: kolumna C, rząd 7", read out when the opponent's stone appears. */
+export function opponentMoveText(cell: number, t: GameTranslator = PL_GAME): string {
+  return t("board.opponentMove", { column: columnOf(cell), row: rowOf(cell) });
+}
+
+export { agentNameOf, playerName, playerNameOf, type PlayerName } from "./player-name";
 
 export type Outcome = { result: "win" | "loss" | "draw"; title: string; detail: string };
 
 /** "7 : 5" with the viewer's points first. */
 const scoreText = (scores: [number, number], seat: Seat) => `${scores[seat - 1]} : ${scores[2 - seat]}`;
 
-function pointsOutcome(winnerSeat: Seat | null, seat: Seat, scores: [number, number] | undefined): Outcome {
-  const text = scores ? ` ${scoreText(scores, seat)}` : "";
-  const detail = scores ? "Wynik końcowy według punktów za piątki." : "";
-  if (winnerSeat === null) return { result: "draw", title: `Remis${text}`, detail };
+function pointsOutcome(winnerSeat: Seat | null, seat: Seat, scores: [number, number] | undefined, t: GameTranslator): Outcome {
+  const score = scores ? scoreText(scores, seat) : "";
+  const detail = scores ? t("outcome.pointsDetail") : "";
+  if (winnerSeat === null) return { result: "draw", title: scores ? t("outcome.drawScore", { score }) : t("outcome.draw"), detail };
   return winnerSeat === seat
-    ? { result: "win", title: scores ? `Wygrana${text}` : "Wygrałeś na punkty", detail }
-    : { result: "loss", title: scores ? `Przegrana${text}` : "Przegrałeś na punkty", detail };
+    ? { result: "win", title: scores ? t("outcome.winScore", { score }) : t("outcome.pointsWon"), detail }
+    : { result: "loss", title: scores ? t("outcome.lossScore", { score }) : t("outcome.pointsLost"), detail };
 }
 
 /** The banner of a finished game from the point of view of the viewer (p06.1, p06.2, p06.4; texts of the prototype). */
-export function outcomeOf(game: { result: GameView["result"]; you: { seat: Seat } }): Outcome | null {
+export function outcomeOf(game: { result: GameView["result"]; you: { seat: Seat } }, t: GameTranslator = PL_GAME): Outcome | null {
   const { result } = game;
   if (!result) return null;
-  if (result.reason === "draw") {
-    return { result: "draw", title: "Remis", detail: "Plansza jest pełna, nikt nie ułożył pięciu kamieni." };
-  }
+  if (result.reason === "draw") return { result: "draw", title: t("outcome.draw"), detail: t("outcome.drawFull") };
   const won = result.winnerSeat === game.you.seat;
   switch (result.reason) {
     case "five_in_row":
       return won
-        ? { result: "win", title: "Wygrałeś", detail: "Ułożyłeś pięć kamieni w jednej linii." }
-        : { result: "loss", title: "Przegrałeś", detail: "Przeciwnik ułożył pięć kamieni w jednej linii." };
+        ? { result: "win", title: t("outcome.won"), detail: t("outcome.fiveWon") }
+        : { result: "loss", title: t("outcome.lost"), detail: t("outcome.fiveLost") };
     case "timeout":
       return won
-        ? { result: "win", title: "Wygrałeś — przeciwnikowi skończył się czas", detail: "" }
-        : { result: "loss", title: "Przegrałeś — skończył się Twój czas", detail: "" };
+        ? { result: "win", title: t("outcome.timeoutWon"), detail: "" }
+        : { result: "loss", title: t("outcome.timeoutLost"), detail: "" };
     case "resignation":
       if (result.scores) {
         // The paper game: the points are shown, the resignation decided anyway (R5).
-        const detail = `Wynik w chwili poddania: ${scoreText(result.scores, game.you.seat)}.`;
+        const detail = t("outcome.resignedScore", { score: scoreText(result.scores, game.you.seat) });
         return won
-          ? { result: "win", title: "Wygrana — przeciwnik poddał partię", detail }
-          : { result: "loss", title: "Przegrana przez poddanie", detail };
+          ? { result: "win", title: t("outcome.resignWonScore"), detail }
+          : { result: "loss", title: t("outcome.resignLostScore"), detail };
       }
       return won
-        ? { result: "win", title: "Wygrałeś, przeciwnik poddał partię", detail: "" }
-        : { result: "loss", title: "Przegrałeś, poddałeś partię", detail: "" };
+        ? { result: "win", title: t("outcome.resignWon"), detail: "" }
+        : { result: "loss", title: t("outcome.resignLost"), detail: "" };
     case "points":
-      return pointsOutcome(result.winnerSeat, game.you.seat, result.scores);
+      return pointsOutcome(result.winnerSeat, game.you.seat, result.scores, t);
   }
 }
 

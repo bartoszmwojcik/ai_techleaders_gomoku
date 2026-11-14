@@ -12,6 +12,8 @@ vi.mock("@gomoku/core", async (importOriginal) => ({
   CREATE_GAME_LIMIT: 7,
 }));
 
+import frHome from "@/i18n/catalogs/fr/home";
+
 import { CreateGameButton } from "./create-game-button";
 import { HomeRulesLine, HomeRulesProvider } from "./home-rules";
 
@@ -218,5 +220,40 @@ describe("CreateGameButton with the bot (hosted-bot UI/UX)", () => {
     await u.click(screen.getByRole("button", { name: "Zagraj z botem" }));
     expect(screen.getByRole("alert").textContent).toContain("Bot jest teraz niedostępny. Spróbuj za chwilę albo zaproś osobę.");
     expect((screen.getByRole("button", { name: "Zagraj z botem" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+});
+
+describe("CreateGameButton in French (E15-S03)", () => {
+  const fr = { locale: "fr", dict: frHome } as const;
+  const create = () => userEvent.setup().click(screen.getByRole("button", { name: "Créer une invitation" }));
+
+  it("labels the settings and words every refusal", async () => {
+    render(<CreateGameButton heldGame={{ gameId: "g1", status: "active" }} botEnabled {...fr} />);
+    expect(screen.getByRole("radiogroup", { name: "Variante" })).toBeTruthy();
+    expect(screen.getByRole("radiogroup", { name: "Adversaire" })).toBeTruthy();
+    expect(screen.getByRole("checkbox", { name: /Partie publique/ })).toBeTruthy();
+    for (const [error, text] of [
+      [{ code: "ACTIVE_GAME_EXISTS" }, "Terminez d’abord votre partie en cours."],
+      [{ code: "RATE_LIMITED", retryAfterSeconds: 60 }, "La limite est de 7 parties par heure."],
+      [{ code: "UNAUTHORIZED" }, "Reconnectez-vous pour créer une invitation."],
+      [{ code: "BOT_UNAVAILABLE" }, "Le bot est indisponible pour le moment."],
+      [{ code: "INTERNAL" }, "Erreur du serveur. Réessayez."],
+      [{ code: "network" }, "Impossible de joindre le serveur. Réessayez."],
+    ] as const) {
+      apiCall.mockResolvedValue(failure(error));
+      await create();
+      expect(document.body.textContent).toContain(text);
+    }
+    expect(screen.getByRole("button", { name: "Réessayer" })).toBeTruthy();
+  });
+
+  it("names the bot game and the busy states", async () => {
+    apiCall.mockReturnValue(new Promise(() => {}));
+    const user = userEvent.setup();
+    render(<CreateGameButton heldGame={null} botEnabled {...fr} />);
+    await user.click(screen.getByRole("radio", { name: "Bot" }));
+    expect(screen.getByRole("radiogroup", { name: "Niveau du bot" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Jouer contre le bot" }));
+    expect(screen.getByRole("button", { name: "Création de la partie…" })).toBeTruthy();
   });
 });

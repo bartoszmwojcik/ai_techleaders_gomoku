@@ -261,7 +261,7 @@ describe("useChat, sending", () => {
     apiCall.mockClear();
     apiCall.mockResolvedValueOnce(failure("CHAT_DISABLED"));
     apiCall.mockResolvedValue(data("disabled_by_opponent"));
-    expect(await act(() => hook.result.current.send("a", "c1"))).toEqual({ ok: false, kind: "refused", message: "Komunikat serwera." });
+    expect(await act(() => hook.result.current.send("a", "c1"))).toEqual({ ok: false, kind: "refused", message: "Komunikat serwera.", code: "CHAT_DISABLED" });
     await tick(0);
     expect(urls().filter((url) => url.startsWith("/api/games/g1/chat?") || url === "/api/games/g1/chat")).toHaveLength(2);
     expect(hook.result.current.state).toBe("disabled_by_opponent");
@@ -273,6 +273,12 @@ describe("useChat, sending", () => {
     expect(await act(() => hook.result.current.send("a", "c1"))).toEqual({ ok: false, kind: "field", message: "Za długa." });
     apiCall.mockResolvedValueOnce(failure("VALIDATION"));
     expect(await act(() => hook.result.current.send("a", "c2"))).toEqual({ ok: false, kind: "field", message: "Komunikat serwera." });
+  });
+
+  it("passes the server's `data.reason` on with a field error, so the composer translates it (E15-S04)", async () => {
+    const hook = await mount();
+    apiCall.mockResolvedValueOnce(failure("VALIDATION", { fieldErrors: { text: ["Za długa."] }, data: { reason: "too_long" } }));
+    expect(await act(() => hook.result.current.send("a", "c1"))).toEqual({ ok: false, kind: "field", message: "Za długa.", reason: "too_long" });
   });
 
   it("tells the room the game is gone on a 404", async () => {

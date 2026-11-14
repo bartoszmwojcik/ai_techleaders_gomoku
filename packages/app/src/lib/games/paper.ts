@@ -3,10 +3,11 @@ import type { PaperBoardLabels, StoneColor } from "@gomoku/ui/game/paper-board";
 
 import type { GameView } from "@/server/http/game-view";
 
+import { PL_GAME, type GameTranslator } from "./play";
+
 type Paper = NonNullable<GameView["paper"]>;
 type Point = { x: number; y: number };
 
-const STATE_WORD = { empty: "puste", black: "krzyżyk", white: "kółko" } as const;
 const ARROWS: Record<string, string> = {
   "-1,-1": "↖",
   "0,-1": "↑",
@@ -18,38 +19,42 @@ const ARROWS: Record<string, string> = {
   "1,1": "↘",
 };
 
-/** Texts of `PaperBoard` (the component has none of its own). Coordinates are screen ones: the start is 0, 0. */
-export const PAPER_LABELS: PaperBoardLabels = {
-  board: "Plansza bez granic, papier i ołówek",
-  cell: ({ x, y, state, allowed, last, auto, selected }) =>
-    [
-      `Pole ${x}, ${y}`,
-      STATE_WORD[state],
-      state === "empty" && !allowed ? "za daleko od znaków" : "",
-      last ? "ostatni ruch" : "",
-      auto ? "postawiony przez automat" : "",
-      selected ? "zaznaczone" : "",
-    ]
-      .filter(Boolean)
-      .join(", "),
-  notAllowed: "Za daleko od znaków: znak można postawić najwyżej 3 pola od innego.",
-  autoMoved: ({ x, y }) => `Automat postawił znak na polu ${x}, ${y}`,
-  opponentMarker: ({ dx, dy }) => `Ruch przeciwnika ${ARROWS[`${dx},${dy}`]}`,
-  toolbar: "Przesuwanie i powiększanie planszy",
-  level: (level) => `${level} × ${level} pól`,
-  zoomIn: "Przybliż",
-  zoomOut: "Oddal",
-  center: "Wyśrodkuj",
-  panLeft: "Przesuń widok w lewo",
-  panRight: "Przesuń widok w prawo",
-  panUp: "Przesuń widok w górę",
-  panDown: "Przesuń widok w dół",
-  selectionBar: "Przesuwanie zaznaczenia",
-  selectionLeft: "Zaznaczenie w lewo",
-  selectionRight: "Zaznaczenie w prawo",
-  selectionUp: "Zaznaczenie w górę",
-  selectionDown: "Zaznaczenie w dół",
-};
+/** Texts of `PaperBoard` (the component has none of its own) in the reader's language. Coordinates are screen ones: the start is 0, 0. */
+export function paperLabelsOf(t: GameTranslator): PaperBoardLabels {
+  return {
+    board: t("paper.board"),
+    cell: ({ x, y, state, allowed, last, auto, selected }) =>
+      [
+        t("paper.cell", { x, y }),
+        t(`paper.state.${state}`),
+        state === "empty" && !allowed ? t("paper.tooFar") : "",
+        last ? t("paper.last") : "",
+        auto ? t("paper.auto") : "",
+        selected ? t("paper.selected") : "",
+      ]
+        .filter(Boolean)
+        .join(", "),
+    notAllowed: t("paper.notAllowed"),
+    autoMoved: ({ x, y }) => t("paper.autoMoved", { x, y }),
+    opponentMarker: ({ dx, dy }) => t("paper.opponentMarker", { arrow: ARROWS[`${dx},${dy}`]! }),
+    toolbar: t("paper.toolbar"),
+    level: (level) => t("paper.level", { level }),
+    zoomIn: t("paper.zoomIn"),
+    zoomOut: t("paper.zoomOut"),
+    center: t("paper.center"),
+    panLeft: t("paper.panLeft"),
+    panRight: t("paper.panRight"),
+    panUp: t("paper.panUp"),
+    panDown: t("paper.panDown"),
+    selectionBar: t("paper.selectionBar"),
+    selectionLeft: t("paper.selectionLeft"),
+    selectionRight: t("paper.selectionRight"),
+    selectionUp: t("paper.selectionUp"),
+    selectionDown: t("paper.selectionDown"),
+  };
+}
+
+export const PAPER_LABELS: PaperBoardLabels = paperLabelsOf(PL_GAME);
 
 /** The side of each seat (black plays ×, white plays ○); before the draw (`blackSeat` null) the seats take the default order. */
 export function paperColors(blackSeat: Seat | null): Record<Seat, StoneColor> {
@@ -75,11 +80,9 @@ export function paperRules(stones: readonly { x: number; y: number; seat: Seat; 
 }
 
 /** Why the selected field cannot take a stone, in words ("" when it can). */
-export function refusalText(rules: PaperRules, point: Point): string {
+export function refusalText(rules: PaperRules, point: Point, t: GameTranslator = PL_GAME): string {
   const why = refusalIn(rules.index, point.x, point.y);
   if (why === null) return "";
-  if (why === "CELL_OCCUPIED") return "To pole jest już zajęte.";
-  if (why === "FIRST_MOVE_CENTER") return "Pierwszy znak trafia na środek planszy.";
-  if (why === "OFF_BOARD") return "To pole jest poza planszą.";
-  return "Za daleko od znaków: najwyżej 3 pola od innego.";
+  if (why === "CELL_OCCUPIED" || why === "FIRST_MOVE_CENTER" || why === "OFF_BOARD") return t(`paper.refusal.${why}`);
+  return t("paper.refusal.TOO_FAR");
 }

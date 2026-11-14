@@ -200,6 +200,8 @@ describe("ChatService.send", () => {
       code: "VALIDATION",
       message: "Wiadomość nie może zawierać adresów internetowych.",
       fieldErrors: { text: ["Wiadomość nie może zawierać adresów internetowych."] },
+      // Additive (E15 C5): the code of the field error, the reason as its only parameter.
+      fieldIssues: { text: [{ code: "CHAT_REJECTED", params: { reason: "url" } }] },
       data: { reason: "url" },
     });
     expect(JSON.stringify(error)).not.toContain("example");

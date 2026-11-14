@@ -50,5 +50,15 @@ export function botStrengthOf(level: BotLevel, memoryMb: number | null): BotStre
   return { level, tableMb: tier ? tier.ttMb : null };
 }
 
+/**
+ * The `bot` of a player view (game, history, review): the stored level and memory, plus the table size the UI names
+ * the bot by (i18n I14). Additive: `memoryMb` keeps its meaning, `tableMb` is `botStrengthOf(...).tableMb`.
+ */
+export type BotView = { level: BotLevel; memoryMb: number | null; tableMb: number | null };
+
+export function botViewOf(level: BotLevel, memoryMb: number | null): BotView {
+  return { level, memoryMb, tableMb: botStrengthOf(level, memoryMb).tableMb };
+}
+
 /** What a refused player reads (`503 BOT_UNAVAILABLE`): the server's error and the client's alert share it. */
 export const BOT_UNAVAILABLE_MESSAGE = "Bot jest teraz niedostępny. Spróbuj za chwilę albo zaproś osobę.";

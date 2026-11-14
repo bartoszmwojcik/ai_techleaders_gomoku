@@ -102,7 +102,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 /** Guard for route handlers: the current user, or a `401` (via `apiHandler`) without a valid session. */
 export async function requireSession(): Promise<CurrentUser> {
   const user = await getCurrentUser();
-  if (!user) throw new UnauthorizedError("Zaloguj się, aby kontynuować.");
+  if (!user) throw new UnauthorizedError("Zaloguj się, aby kontynuować.", { data: { reason: "session_required" } });
   return user;
 }
 
@@ -117,7 +117,7 @@ export async function requireSessionWithId(): Promise<{
   const current = await getCurrentUserWith(
     async (_user, _cradle, session) => session.id,
   );
-  if (!current) throw new UnauthorizedError("Zaloguj się, aby kontynuować.");
+  if (!current) throw new UnauthorizedError("Zaloguj się, aby kontynuować.", { data: { reason: "session_required" } });
   return { user: current.user, sessionId: current.data };
 }
 

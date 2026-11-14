@@ -52,6 +52,7 @@ export const displayNameSchema = z
     (name) => !RESERVED_DISPLAY_NAMES.includes(normalizeDisplayName(name)),
     {
       error: "Ta nazwa jest zastrzeżona.",
+      params: { code: "DISPLAY_NAME_RESERVED" },
     },
   );
 

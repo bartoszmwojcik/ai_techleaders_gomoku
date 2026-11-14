@@ -11,9 +11,14 @@ import { useRef, useState } from "react";
 
 import { CreateGameButton } from "@/components/games/create-game-button";
 import { PlayerLabel } from "@/components/games/player-label";
+import plCommon from "@/i18n/catalogs/pl/common";
+import plHistory from "@/i18n/catalogs/pl/history";
+import plHome from "@/i18n/catalogs/pl/home";
+import { textsOf, type TextsProps } from "@/i18n/client";
+import { withNodes } from "@/i18n/rich";
 import { apiCall } from "@/lib/api-client";
 import { formatFinishedAt } from "@/lib/format-date-time";
-import { historyDetailOf, opponentNameOf, RESULT_LABEL } from "@/lib/games/history";
+import { historyDetailOf, opponentNameOf, resultLabel } from "@/lib/games/history";
 
 type Problem = "signed-out" | "failed";
 
@@ -21,7 +26,17 @@ type Problem = "signed-out" | "failed";
  * `/history` (E04-S01): the first page arrives from the server, "Pokaż starsze" appends the next
  * ones. Each row links to the review of the game (E09-S01).
  */
-export function HistoryView({ initial }: { initial: HistoryPage }) {
+type Props = TextsProps<"history"> & {
+  initial: HistoryPage;
+  /** The `common` namespace (the opponents' names) and `home` (the settings, the create button); nothing in Polish. */
+  commonTexts?: TextsProps<"common">;
+  homeTexts?: TextsProps<"home">;
+};
+
+export function HistoryView({ initial, commonTexts = {}, homeTexts = {}, ...texts }: Props) {
+  const t = textsOf<"history">(plHistory, texts);
+  const common = textsOf<"common">(plCommon, commonTexts);
+  const home = textsOf<"home">(plHome, homeTexts);
   const [entries, setEntries] = useState(initial.entries);
   const [nextCursor, setNextCursor] = useState(initial.nextCursor);
   const [loading, setLoading] = useState(false);
@@ -52,28 +67,28 @@ export function HistoryView({ initial }: { initial: HistoryPage }) {
 
   return (
     <main className="mx-auto flex w-full flex-1 max-w-xl flex-col gap-stack px-panel py-section">
-      <h1 className="m-0 text-section font-strong">Historia partii</h1>
-      <Panel title="Zakończone partie">
+      <h1 className="m-0 text-section font-strong">{t("heading")}</h1>
+      <Panel title={t("listTitle")}>
         {entries.length === 0 ? (
           <EmptyState
-            title="Nie rozegrałeś jeszcze żadnej partii"
-            action={<CreateGameButton heldGame={null} />}
+            title={t("emptyTitle")}
+            action={<CreateGameButton heldGame={null} {...homeTexts} />}
           >
-            Zagraj ze znajomym albo wybierz przeciwnika w lobby, a zakończone partie pojawią się tutaj.
+            {t("emptyBody")}
           </EmptyState>
         ) : (
-          <HistoryList label="Zakończone partie">
+          <HistoryList label={t("listTitle")}>
             {entries.map((entry) => (
               <HistoryRow
                 key={entry.gameId}
-                opponent={<PlayerLabel name={opponentNameOf(entry.opponent)} />}
+                opponent={<PlayerLabel name={opponentNameOf(entry.opponent, common)} t={common} />}
                 result={entry.result}
-                resultLabel={RESULT_LABEL[entry.result]}
-                date={formatFinishedAt(entry.finishedAt)}
-                reason={historyDetailOf(entry)}
+                resultLabel={resultLabel(entry.result, t)}
+                date={formatFinishedAt(entry.finishedAt, t.locale)}
+                reason={historyDetailOf(entry, t, home)}
                 action={
                   <TextLink href={`/games/${entry.gameId}/review`} data-testid="history-review">
-                    Przejrzyj partię
+                    {t("review")}
                   </TextLink>
                 }
               />
@@ -81,11 +96,13 @@ export function HistoryView({ initial }: { initial: HistoryPage }) {
           </HistoryList>
         )}
         <p className="sr-only" role="status" aria-live="polite" data-testid="history-added">
-          {added > 0 ? `Dodano ${added} starszych partii.` : ""}
+          {added > 0 ? t("added", { count: added }) : ""}
         </p>
         {problem === "signed-out" && (
-          <Alert status="warning" title="Sesja wygasła" role="alert">
-            <TextLink href="/login?next=%2Fhistory">Zaloguj się ponownie</TextLink>, żeby zobaczyć starsze partie.
+          <Alert status="warning" title={t("sessionExpired")} role="alert">
+            {withNodes(t("signedOut", { link: "{link}" }), {
+              link: <TextLink href="/login?next=%2Fhistory">{t("loginAgain")}</TextLink>,
+            })}
           </Alert>
         )}
         {nextCursor !== null && (
@@ -94,16 +111,16 @@ export function HistoryView({ initial }: { initial: HistoryPage }) {
               status={loading ? "loading" : problem === "failed" ? "error" : "idle"}
               onLoadMore={() => void onMore()}
               data-testid="history-more"
-              label="Pokaż starsze"
-              retryLabel="Spróbuj ponownie"
-              errorTitle="Nie udało się wczytać starszych partii"
-              errorMessage="Sprawdź połączenie z internetem i spróbuj ponownie."
+              label={t("more")}
+              retryLabel={t("retry")}
+              errorTitle={t("moreFailedTitle")}
+              errorMessage={t("moreFailedBody")}
             />
           </div>
         )}
       </Panel>
       <TextLink href="/" placement="standalone">
-        Wróć na stronę główną
+        {t("backHome")}
       </TextLink>
     </main>
   );

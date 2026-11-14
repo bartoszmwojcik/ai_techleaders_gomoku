@@ -16,6 +16,10 @@ import { rateLimitedError } from "@/components/feedback/rate-limited-error";
 import { GameSettingsPicker } from "@/components/games/game-settings-picker";
 import { usePageVisibility } from "@/components/games/use-page-visibility";
 import { apiCall } from "@/lib/api-client";
+import plHome from "@/i18n/catalogs/pl/home";
+import plLobby from "@/i18n/catalogs/pl/lobby";
+import { textsOf, type TextsProps } from "@/i18n/client";
+import { withNodes } from "@/i18n/rich";
 import { sinceLabel, type LobbyData } from "@/lib/games/lobby";
 import { DEFAULT_SETTINGS, settingsBody, settingsLabel, type GameSettingsChoice } from "@/lib/games/settings";
 
@@ -50,7 +54,15 @@ function pickProblemOf(code: string): Problem {
 }
 
 /** `/lobby` (E03-S01): the own "looking for a game" status and the read-only list of the others. */
-export function LobbyPanel({ initial }: { initial: LobbyData }) {
+type Props = TextsProps<"lobby"> & {
+  initial: LobbyData;
+  /** The `home` namespace (the settings and their lines); nothing in Polish. */
+  homeTexts?: TextsProps<"home">;
+};
+
+export function LobbyPanel({ initial, homeTexts = {}, ...texts }: Props) {
+  const t = textsOf<"lobby">(plLobby, texts);
+  const home = textsOf<"home">(plHome, homeTexts);
   const router = useRouter();
   // When the server's answer reached this page. Only read once mounted (`now` is `null` before), so the
   // server and the first client render agree although this value differs between them.
@@ -227,25 +239,27 @@ export function LobbyPanel({ initial }: { initial: LobbyData }) {
 
   const markButton = (variant: "primary" | "secondary") => (
     <Button variant={variant} loading={busy === "mark"} onClick={() => void onMark()}>
-      Szukam przeciwnika
+      {t("mark")}
     </Button>
   );
 
   return (
     <main className="mx-auto flex w-full flex-1 max-w-xl flex-col gap-stack px-panel py-section">
-      <h1 className="m-0 text-section font-strong">Lobby</h1>
+      <h1 className="m-0 text-section font-strong">{t("heading")}</h1>
       {problem?.kind === "signed-out" && (
-        <Alert status="warning" title="Sesja wygasła" role="alert">
-          <TextLink href="/login?next=%2Flobby">Zaloguj się ponownie</TextLink>, żeby wejść do lobby.
+        <Alert status="warning" title={t("sessionExpired")} role="alert">
+          {withNodes(t("signedOut", { link: "{link}" }), {
+            link: <TextLink href="/login?next=%2Flobby">{t("loginAgain")}</TextLink>,
+          })}
         </Alert>
       )}
       {currentGame ? (
         <>
-          <Alert status="warning" title="Masz już partię">
-            Możesz grać tylko jedną partię naraz.
+          <Alert status="warning" title={t("activeTitle")}>
+            {t("activeBody")}
           </Alert>
           <TextLink href={`/games/${currentGame.gameId}`} placement="standalone">
-            Wróć do swojej partii
+            {t("backToOwn")}
           </TextLink>
         </>
       ) : (
@@ -256,94 +270,92 @@ export function LobbyPanel({ initial }: { initial: LobbyData }) {
             </Alert>
           )}
           {problem?.kind === "server" && (
-            <Alert status="danger" title="Nie udało się oznaczyć" role="alert">
-              Błąd po stronie serwera. Spróbuj ponownie.
+            <Alert status="danger" title={t("markFailedTitle")} role="alert">
+              {t("markFailedBody")}
             </Alert>
           )}
           {problem?.kind === "network" && (
-            <Alert status="danger" title="Brak połączenia" role="alert">
-              Nie udało się połączyć z serwerem. Spróbuj ponownie.
+            <Alert status="danger" title={t("networkTitle")} role="alert">
+              {t("networkBody")}
             </Alert>
           )}
           {problem?.kind === "taken" && (
-            <Alert status="warning" title="Gracz niedostępny" role="alert">
-              Ten gracz zagrał już z kimś innym. Wybierz kogoś innego z listy.
+            <Alert status="warning" title={t("takenTitle")} role="alert">
+              {t("takenBody")}
             </Alert>
           )}
           {problem?.kind === "seeker-expired" && (
-            <Alert status="info" title="Status wygasł" role="status">
-              Status tego gracza wygasł. Wybierz kogoś innego z listy.
+            <Alert status="info" title={t("expiredTitle")} role="status">
+              {t("seekerExpired")}
             </Alert>
           )}
           {problem?.kind === "pick-failed" && (
-            <Alert status="danger" title="Nie udało się rozpocząć partii" role="alert">
-              Spróbuj ponownie. Lista graczy się nie zmieniła.
+            <Alert status="danger" title={t("pickFailedTitle")} role="alert">
+              {t("pickFailedBody")}
             </Alert>
           )}
           {problem?.kind === "withdraw" && (
-            <Alert status="danger" title="Nie udało się wycofać" role="alert">
-              Spróbuj ponownie. Status i tak wygaśnie sam po upływie czasu.
+            <Alert status="danger" title={t("withdrawFailedTitle")} role="alert">
+              {t("withdrawFailedBody")}
             </Alert>
           )}
           {expired && !seeking && (
-            <Alert status="info" title="Status wygasł" role="status">
-              Możesz oznaczyć się ponownie.
+            <Alert status="info" title={t("expiredTitle")} role="status">
+              {t("markAgain")}
             </Alert>
           )}
           {seeking ? (
             <div data-testid="lobby-seeking">
               <SeekingStatus
-                title="Szukasz gry"
-                expiresLabel="Status wygasa za"
+                title={t("seekingTitle")}
+                expiresLabel={t("seekingExpires")}
                 expiresInMs={myLeft}
-                withdrawLabel="Wycofaj"
+                withdrawLabel={t("withdraw")}
                 onWithdraw={() => void onWithdraw()}
               />
             </div>
           ) : (
             <div data-testid="lobby-mark" className="flex flex-col items-start gap-stack">
-              <GameSettingsPicker value={settings} onChange={setSettings} disabled={busy === "mark"} />
+              <GameSettingsPicker value={settings} onChange={setSettings} disabled={busy === "mark"} {...homeTexts} />
               {markButton("primary")}
             </div>
           )}
-          <Panel title="Gracze szukający gry">
+          <Panel title={t("listTitle")}>
             {reloading ? (
-              <SkeletonRegion label="Ładowanie lobby" className="gap-stack">
+              <SkeletonRegion label={t("loading")} className="gap-stack">
                 {[0, 1, 2].map((row) => (
                   <Skeleton key={row} className="h-target" />
                 ))}
               </SkeletonRegion>
             ) : failures >= LOBBY_FAILURES_BEFORE_ERROR ? (
               <ErrorState
-                title="Nie udało się wczytać lobby"
+                title={t("loadFailedTitle")}
                 action={
                   <Button variant="secondary" onClick={onRetry}>
-                    Spróbuj ponownie
+                    {t("retry")}
                   </Button>
                 }
               >
-                Sprawdź połączenie z internetem i spróbuj ponownie.
+                {t("loadFailedBody")}
               </ErrorState>
             ) : seekers.length === 0 ? (
               <EmptyState
-                title="Nikt teraz nie szuka gry"
+                title={t("emptyTitle")}
                 action={seeking ? undefined : markButton("secondary")}
               >
-                {seeking
-                  ? "Gdy ktoś inny się oznaczy, zobaczysz go tutaj. Możesz też zaprosić znajomego kodem."
-                  : "Oznacz się jako szukający gry, a pojawisz się tu na 5 minut, albo zaproś znajomego kodem."}
+                {t(seeking ? "emptySeeking" : "emptyIdle")}
               </EmptyState>
             ) : (
-              <LobbyList label="Gracze szukający gry">
+              <LobbyList label={t("listTitle")}>
                 {seekers.map((seeker) => (
                   <LobbyRow
                     key={seeker.id}
                     name={seeker.displayName}
-                    since={`${settingsLabel(seeker.variant, seeker.timeControlMs)} · ${sinceLabel(seeker.sinceMs)}`}
-                    expiresLabel="wygasa za"
+                    since={t("rowSince", { settings: settingsLabel(seeker.variant, seeker.timeControlMs, home), since: sinceLabel(seeker.sinceMs, t) })}
+                    expiresLabel={t("rowExpires")}
                     expiresInMs={seeker.expiresInMs}
-                    selectLabel="Zagraj"
-                    selectAriaLabel={`Zagraj z ${seeker.displayName}`}
+                    selectLabel={t("play")}
+                    selectAriaLabel={t("playWith", { name: seeker.displayName })}
                     selecting={picking === seeker.id}
                     selectDisabled={picking !== null && picking !== seeker.id}
                     onSelect={() => void onPick(seeker.id)}
@@ -355,7 +367,7 @@ export function LobbyPanel({ initial }: { initial: LobbyData }) {
         </>
       )}
       <TextLink href="/" placement="standalone">
-        Wróć na stronę główną
+        {t("backHome")}
       </TextLink>
     </main>
   );

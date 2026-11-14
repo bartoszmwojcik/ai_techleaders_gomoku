@@ -14,8 +14,12 @@ export const newPasswordSchema = z
   .string({ error: "Podaj hasło." })
   .refine((password) => [...password].length >= PASSWORD_MIN_LENGTH, {
     error: `Hasło musi mieć co najmniej ${PASSWORD_MIN_LENGTH} znaków.`,
+    params: { code: "PASSWORD_TOO_SHORT", min: PASSWORD_MIN_LENGTH },
   })
   .refine(
     (password) => utf8Encoder.encode(password).length <= PASSWORD_MAX_BYTES,
-    { error: `Hasło może mieć najwyżej ${PASSWORD_MAX_BYTES} bajtów.` },
+    {
+      error: `Hasło może mieć najwyżej ${PASSWORD_MAX_BYTES} bajtów.`,
+      params: { code: "PASSWORD_TOO_LONG", max: PASSWORD_MAX_BYTES },
+    },
   );

@@ -7,6 +7,7 @@ import { cache } from "react";
 
 import { loadNamespace } from "./catalogs";
 import type { Namespace, NamespaceDict } from "./catalogs/types";
+import type { ProvidedDicts } from "./context";
 
 /**
  * The language of this request, read once (React `cache`), so the layout, the page and every server component render
@@ -21,6 +22,7 @@ export const getLocale = cache(async (): Promise<Locale> =>
 );
 
 export type I18n<N extends Namespace> = {
+  namespace: N;
   locale: Locale;
   /** The complete namespace, to pass to a client component as its `dict` prop. */
   dict: NamespaceDict<N>;
@@ -35,9 +37,21 @@ export function clientI18n<N extends Namespace>({ locale, dict }: I18n<N>): { lo
   return locale === DEFAULT_LOCALE ? {} : { locale, dict };
 }
 
+/**
+ * Props for `I18nProvider` (spec Q10): nothing in Polish, the language and the given namespaces otherwise. Every
+ * namespace must come from the same request, so they share one language.
+ */
+export function providerI18n(
+  ...namespaces: readonly Pick<I18n<Namespace>, "namespace" | "locale" | "dict">[]
+): { locale?: Locale; dicts?: ProvidedDicts } {
+  const locale = namespaces[0]?.locale ?? DEFAULT_LOCALE;
+  if (locale === DEFAULT_LOCALE) return {};
+  return { locale, dicts: Object.fromEntries(namespaces.map(({ namespace, dict }) => [namespace, dict])) as ProvidedDicts };
+}
+
 /** Texts of one namespace in the request's language, for a server component. */
 export async function getI18n<N extends Namespace>(namespace: N): Promise<I18n<N>> {
   const locale = await getLocale();
   const dict = await loadNamespace(locale, namespace);
-  return { locale, dict, t: createTranslator(locale, dict) };
+  return { namespace, locale, dict, t: createTranslator(locale, dict) };
 }

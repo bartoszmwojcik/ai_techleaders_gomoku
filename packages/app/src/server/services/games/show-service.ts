@@ -325,7 +325,7 @@ export class ShowService {
       const state = await this.#stateOf(tx, gameId, 0, now);
       return state.status === "finished" ? { finished: true } : { state };
     });
-    if ("finished" in outcome) throw new ConflictError(SHOW_NOT_ACTIVE_MESSAGE, { code: "GAME_NOT_ACTIVE" });
+    if ("finished" in outcome) throw new ConflictError(SHOW_NOT_ACTIVE_MESSAGE, { code: "GAME_NOT_ACTIVE", data: { reason: "show_ended" } });
     return outcome.state;
   }
 

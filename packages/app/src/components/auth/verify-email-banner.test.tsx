@@ -8,6 +8,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { apiCall } = vi.hoisted(() => ({ apiCall: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiCall }));
 
+import frAuth from "@/i18n/catalogs/fr/auth";
+
 import { BANNER_REOPEN_MS } from "./verify-email-banner-memory";
 import { VerifyEmailNotice } from "./verify-email-banner";
 
@@ -235,5 +237,21 @@ describe("VerifyEmailNotice: resend", () => {
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("Sesja wygasła.");
     expect(alert.querySelector("a")?.getAttribute("href")).toBe("/login?next=/account");
+  });
+});
+
+describe("VerifyEmailNotice in French (E15-S03)", () => {
+  it("words the banner, its buttons and the outcome", async () => {
+    render(
+      <main>
+        <h1>Compte</h1>
+        <VerifyEmailNotice userId="u1" email="ala@example.com" locale="fr" dict={frAuth} />
+      </main>,
+    );
+    expect(screen.getByText("Confirmez votre adresse e-mail")).toBeTruthy();
+    expect(screen.getByText(/Nous envoyons le lien à ala@example\.com/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Fermer" })).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Renvoyer" }));
+    expect((await outcomeText()).textContent).toBe("Envoyé. Le nouveau lien remplace le précédent.");
   });
 });

@@ -47,7 +47,7 @@ describe("exportRows", () => {
     en: { common: draft, header: draft, show: draft },
     fr: { common: draft, header: draft, show: reviewed },
     de: { common: draft, header: draft, show: draft },
-  };
+  } as unknown as Parameters<typeof exportRows>[1];
 
   it("gives one row per Polish text with every language, the statuses and the parameters; a gap stays empty", () => {
     expect(exportRows(catalogs, status, ["show"])).toEqual([

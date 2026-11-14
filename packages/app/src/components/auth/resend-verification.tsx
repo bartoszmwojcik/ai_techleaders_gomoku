@@ -2,7 +2,14 @@ import { Button } from "@gomoku/ui/game/button";
 import { TextLink } from "@gomoku/ui/game/text-link";
 import type { ReactNode } from "react";
 
+import plAuth from "@/i18n/catalogs/pl/auth";
+import { textsOf, type TranslatorOf } from "@/i18n/client";
+import { withNodes } from "@/i18n/rich";
 import { apiCall } from "@/lib/api-client";
+
+export type AuthTranslator = TranslatorOf<"auth">;
+
+const PL_AUTH: AuthTranslator = textsOf<"auth">(plAuth);
 
 /** Where a signed-out visitor goes to sign in before asking for a new link (s03.6). */
 export const LOGIN_TO_RESEND_HREF = "/login?next=/account";
@@ -19,35 +26,36 @@ export type ResendState =
   | { kind: "expired" };
 
 /** The "try again in N min" part of the limit message: whole minutes, rounded up, at least 1. */
-function waitText(retryAfterSeconds: number | undefined): string {
+function waitText(t: AuthTranslator, retryAfterSeconds: number | undefined): string {
   return retryAfterSeconds === undefined
-    ? "Spróbuj później."
-    : `Spróbuj za ${Math.max(1, Math.ceil(retryAfterSeconds / 60))} min.`;
+    ? t("resend.later")
+    : t("resend.inMinutes", { minutes: t.number(Math.max(1, Math.ceil(retryAfterSeconds / 60))) });
 }
 
-export function resendFeedback(state: ResendState): { role: "status" | "alert"; content: ReactNode } | null {
+/** What a resend request ended with, in the reader's language (Polish by default). */
+export function resendFeedback(
+  state: ResendState,
+  t: AuthTranslator = PL_AUTH,
+): { role: "status" | "alert"; content: ReactNode } | null {
   switch (state.kind) {
     case "sent":
-      return { role: "status", content: "Wysłano. Nowy link zastępuje poprzedni." };
+      return { role: "status", content: t("resend.sent") };
     case "limited":
-      return { role: "alert", content: `Za wiele prób. ${waitText(state.retryAfterSeconds)}` };
+      return { role: "alert", content: t("resend.limited", { wait: waitText(t, state.retryAfterSeconds) }) };
     case "failed":
-      return { role: "alert", content: "Nie udało się wysłać wiadomości. Spróbuj później." };
+      return { role: "alert", content: t("resend.failed") };
     case "quota":
-      return {
-        role: "alert",
-        content: "Wysyłka wiadomości jest chwilowo niedostępna. Spróbuj jutro. Gra nie zależy od potwierdzenia.",
-      };
+      return { role: "alert", content: t("resend.quota") };
     case "network":
-      return { role: "alert", content: "Nie udało się połączyć z serwerem. Spróbuj ponownie." };
+      return { role: "alert", content: t("resend.network") };
     case "already":
       return {
         role: "status",
         content: (
           <>
-            Ten adres jest już potwierdzony.{" "}
+            {t("resend.already")}{" "}
             <Button variant="secondary" onClick={() => window.location.reload()}>
-              Odśwież stronę
+              {t("resend.refresh")}
             </Button>
           </>
         ),
@@ -55,11 +63,9 @@ export function resendFeedback(state: ResendState): { role: "status" | "alert"; 
     case "expired":
       return {
         role: "alert",
-        content: (
-          <>
-            Sesja wygasła. <TextLink href={LOGIN_TO_RESEND_HREF}>Zaloguj się</TextLink>, aby wysłać link.
-          </>
-        ),
+        content: withNodes(t("resend.expired", { link: "{link}" }), {
+          link: <TextLink href={LOGIN_TO_RESEND_HREF}>{t("resend.login")}</TextLink>,
+        }),
       };
     default:
       return null;

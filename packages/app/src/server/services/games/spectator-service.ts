@@ -133,6 +133,7 @@ export class SpectatorService {
     if (viewer.userId && input.nickname !== undefined) {
       throw new ValidationError(NICKNAME_GUEST_ONLY_MESSAGE, {
         fieldErrors: { nickname: [NICKNAME_GUEST_ONLY_MESSAGE] },
+        fieldIssues: { nickname: [{ code: "NICKNAME_GUEST_ONLY" }] },
       });
     }
     return withLookupAttempt(this.#rateLimiter, guard, () => this.#join(code, viewer, input));

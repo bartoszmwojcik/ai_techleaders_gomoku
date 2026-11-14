@@ -820,7 +820,7 @@ describe("GameService.getState", () => {
       seat: 2,
       kind: "bot",
       displayName: "Bot · poziom 2 · 16 MB",
-      bot: { level: 2, memoryMb: 768 },
+      bot: { level: 2, memoryMb: 768, tableMb: 16 },
       seen: true,
     });
     expect(state.players[0]).not.toHaveProperty("bot");
@@ -830,7 +830,7 @@ describe("GameService.getState", () => {
     const weak = setup({ game: { status: "active", origin: "bot" }, players: [creator, { ...bot, botLevel: 1, botMemoryMb: undefined }] });
     expect((await weak.service.getState({ playerId: "p1" }, "game-1")).players[1]).toMatchObject({
       displayName: "Bot · poziom 1",
-      bot: { level: 1, memoryMb: null },
+      bot: { level: 1, memoryMb: null, tableMb: null },
     });
   });
 

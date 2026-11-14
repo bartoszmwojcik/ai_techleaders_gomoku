@@ -96,7 +96,7 @@ export class PaperMoveService {
     const [row] = await tx.execute<Row[]>(GAME_SQL, [gameId]);
     if (row!.status === "finished") return { refusal: new ConflictError(GAME_FINISHED_MESSAGE, { code: "GAME_FINISHED" }) };
     if (row!.status !== "active" || row!.black_seat === null) {
-      return { refusal: new ConflictError(GAME_NOT_ACTIVE_MESSAGE, { code: "GAME_NOT_ACTIVE" }) };
+      return { refusal: new ConflictError(GAME_NOT_ACTIVE_MESSAGE, { code: "GAME_NOT_ACTIVE", data: { reason: "game_not_active" } }) };
     }
     if (row!.turn_started_ms === null) {
       return { refusal: new ConflictError(GAME_NOT_STARTED_MESSAGE, { code: "GAME_NOT_STARTED" }) };
@@ -105,8 +105,12 @@ export class PaperMoveService {
     const onTurn = seatOnTurn(snapshot.moveCount, row!.black_seat as Seat);
     // The seat the automat plays for never moves by hand, also when it is on turn (BR-50).
     if (onTurn !== seat || snapshot.autoSeat === seat) {
-      const message = onTurn === snapshot.autoSeat ? AUTO_TURN_MESSAGE : NOT_YOUR_TURN_MESSAGE;
-      return { refusal: new ConflictError(message, { code: "NOT_YOUR_TURN" }) };
+      const auto = onTurn === snapshot.autoSeat;
+      return {
+        refusal: auto
+          ? new ConflictError(AUTO_TURN_MESSAGE, { code: "NOT_YOUR_TURN", data: { reason: "auto_turn" } })
+          : new ConflictError(NOT_YOUR_TURN_MESSAGE, { code: "NOT_YOUR_TURN", data: { reason: "opponent_turn" } }),
+      };
     }
     if (input.moveNumber !== snapshot.moveCount + 1) return { refusal: staleMove() };
 

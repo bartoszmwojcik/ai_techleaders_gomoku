@@ -1,5 +1,7 @@
 import { connection } from "next/server";
 
+import { clientI18n, getI18n } from "@/i18n/server";
+
 import { ConfirmEmailChange } from "./confirm-email-change";
 
 type Props = { searchParams: Promise<{ token?: string | string[] }> };
@@ -17,7 +19,7 @@ export default async function ConfirmEmailChangePage({ searchParams }: Props) {
   const token = first((await searchParams).token) || undefined;
   return (
     <main className="mx-auto flex w-full flex-1 max-w-md flex-col justify-center gap-stack px-panel py-section">
-      <ConfirmEmailChange token={token} />
+      <ConfirmEmailChange token={token} {...clientI18n(await getI18n("auth"))} />
     </main>
   );
 }

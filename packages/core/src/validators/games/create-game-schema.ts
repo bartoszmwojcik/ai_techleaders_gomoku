@@ -25,6 +25,7 @@ export const createGuestGameSchema = z
   .refine((input) => input.acknowledgedGuestWarning === true, {
     path: ["acknowledgedGuestWarning"],
     error: GUEST_WARNING_REQUIRED_MESSAGE,
+    params: { code: "GUEST_WARNING_REQUIRED" },
   });
 
 export type CreateGuestGameInput = z.infer<typeof createGuestGameSchema>;

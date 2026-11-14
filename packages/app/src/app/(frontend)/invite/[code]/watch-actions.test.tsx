@@ -7,6 +7,8 @@ const { replace, refresh, apiCall } = vi.hoisted(() => ({ replace: vi.fn(), refr
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace, refresh }) }));
 vi.mock("@/lib/api-client", () => ({ apiCall }));
 
+import frHome from "@/i18n/catalogs/fr/home";
+
 import { WatchActions } from "./watch-actions";
 
 const failure = (code: string, extra: Record<string, unknown> = {}) => ({ ok: false, error: { code, message: "x", ...extra } });
@@ -115,5 +117,25 @@ describe("WatchActions when the server says no", () => {
       button.click();
     });
     expect(apiCall).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("WatchActions in French (E15-S03)", () => {
+  it("labels the field and words every refusal", async () => {
+    const user = userEvent.setup();
+    render(<WatchActions code="ABCD-EFGH" signedIn={false} locale="fr" dict={frHome} />);
+    expect(screen.getByText("Laissez vide pour regarder anonymement")).toBeTruthy();
+    expect(screen.getByText("(facultatif)")).toBeTruthy();
+    for (const [code, title, details] of [
+      ["SPECTATORS_FULL", "La partie a atteint le nombre maximal de spectateurs", "20\u00a0personnes peuvent la regarder à la fois."],
+      ["RATE_LIMITED", "Trop de tentatives — réessayez dans un instant", "Vérifiez le code ou revenez plus tard."],
+      ["network", "Pas de connexion", "Impossible de joindre le serveur. Réessayez."],
+      ["SERVER_ERROR", "Impossible d’ouvrir la partie", "Réessayez."],
+    ] as const) {
+      apiCall.mockResolvedValue(failure(code));
+      await user.click(screen.getByRole("button", { name: "Regarder la partie" }));
+      expect(await screen.findByText(title)).toBeTruthy();
+      expect(document.body.textContent).toContain(details);
+    }
   });
 });

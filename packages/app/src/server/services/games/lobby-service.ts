@@ -158,7 +158,7 @@ export class LobbyService {
     const outcome = await this.#em.transactional(
       async (tx): Promise<{ me: LobbyMeView } | { refusal: ConflictError }> => {
         const locked = await tx.execute<{ id: string }[]>(LOCK_USER_SQL, [userId]);
-        if (locked.length === 0) throw new UnauthorizedError(SESSION_REQUIRED_MESSAGE);
+        if (locked.length === 0) throw new UnauthorizedError(SESSION_REQUIRED_MESSAGE, { data: { reason: "session_required" } });
         await closeStaleSlotsOfUser(tx, userId, now);
         const [slot] = await tx.execute<{ game_id: string }[]>(ACTIVE_SLOT_SQL, [userId]);
         if (slot) {
@@ -206,7 +206,7 @@ export class LobbyService {
     return this.#em.transactional(async (tx) => {
       const now = this.#clock.now();
       const locked = await tx.execute<{ id: string }[]>(LOCK_PAIR_SQL, [pickerId, ownerId]);
-      if (!locked.some((row) => row.id === pickerId)) throw new UnauthorizedError(SESSION_REQUIRED_MESSAGE);
+      if (!locked.some((row) => row.id === pickerId)) throw new UnauthorizedError(SESSION_REQUIRED_MESSAGE, { data: { reason: "session_required" } });
       // A deleted owner took the status with them (cascade).
       if (!locked.some((row) => row.id === ownerId)) throw seekerTaken();
 

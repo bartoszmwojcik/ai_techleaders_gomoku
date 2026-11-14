@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { LOADERS, loadNamespace, mergeFallback } from "./index";
 import { NAMESPACES } from "./types";
-import enCommon from "./en/common";
+import deCommon from "./de/common";
+import deHeader from "./de/header";
 import enHeader from "./en/header";
 import frHeader from "./fr/header";
 import plHeader from "./pl/header";
@@ -50,14 +51,17 @@ describe("loadNamespace", () => {
     expect(await loadNamespace("pl", "common")).toEqual(plCommon);
   });
 
-  it("returns complete English and French", async () => {
+  it("returns complete English, French and German", async () => {
     expect(await loadNamespace("en", "header")).toEqual(enHeader);
     expect(await loadNamespace("fr", "header")).toEqual(frHeader);
+    expect(await loadNamespace("de", "header")).toEqual(deHeader);
   });
 
-  it("fills German through English, then Polish, and warns once per key in development", async () => {
+  it("fills a German gap through English, then Polish, and warns once per key in development", async () => {
     vi.stubEnv("NODE_ENV", "development");
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    // German is complete; a catalog with gaps stands in for a future text not yet translated.
+    vi.spyOn(LOADERS.de, "header").mockResolvedValue({ default: { theme: { light: "Helles Design" }, session: { account: "Konto" } } } as never);
 
     const de = await loadNamespace("de", "header");
     await loadNamespace("de", "header");
@@ -74,8 +78,12 @@ describe("loadNamespace", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
     const de = await loadNamespace("de", "common");
+    vi.spyOn(LOADERS.de, "review").mockResolvedValue({ default: { heading: "Partieanalyse" } } as never);
+    const gappy = await loadNamespace("de", "review");
 
-    expect(de).toEqual(enCommon);
+    expect(de).toEqual(deCommon);
+    expect(gappy.heading).toBe("Partieanalyse");
+    expect(gappy.start).toBe("Start");
     expect(Object.keys(LOADERS)).toEqual(["pl", "en", "fr", "de"]);
     expect(warn).not.toHaveBeenCalled();
   });

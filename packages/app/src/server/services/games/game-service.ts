@@ -1,5 +1,6 @@
 import {
   botDisplayName,
+  botViewOf,
   CREATE_GAME_LIMIT,
   CREATE_GAME_WINDOW_MS,
   ConflictError,
@@ -229,7 +230,7 @@ export type GameState = BoardView & {
      */
     agentName?: string | null;
     /** Only for the bot (BR-54): its level and, for level 2, the memory its strength was chosen from (R9). */
-    bot?: { level: BotLevel; memoryMb: number | null };
+    bot?: { level: BotLevel; memoryMb: number | null; tableMb: number | null };
     /** Whether the player already opened the game page (#21 Q20). */
     seen: boolean;
   }[];
@@ -371,7 +372,7 @@ function playersOf(players: readonly StatePlayer[]): WatchableState["players"] {
     kind: player.kind as ParticipantKind,
     displayName: displayNameOf(player),
     ...(player.kind === "agent" && { agentName: player.agentName ?? null }),
-    ...(player.kind === "bot" && { bot: { level: player.botLevel as BotLevel, memoryMb: player.botMemoryMb ?? null } }),
+    ...(player.kind === "bot" && { bot: botViewOf(player.botLevel as BotLevel, player.botMemoryMb ?? null) }),
     seen: player.seenAt != null,
   }));
 }
@@ -483,7 +484,7 @@ export class GameService {
       const gameId = await this.#em.transactional(async (tx) => {
         const locked = await tx.execute<{ id: string; display_name: string }[]>(LOCK_USER_SQL, [userId]);
         // The account was deleted between the session check and now (#37).
-        if (locked.length === 0) throw new UnauthorizedError(SESSION_REQUIRED_MESSAGE);
+        if (locked.length === 0) throw new UnauthorizedError(SESSION_REQUIRED_MESSAGE, { data: { reason: "session_required" } });
         // Whoever starts a game stops looking for one (#25 Q5); right after the user lock (lock order).
         await tx.execute(deleteSeekersSql(1), [userId], "run");
         await closeStaleSlotsOfUser(tx, userId, now);
@@ -542,7 +543,7 @@ export class GameService {
               refusal: own
                 ? new ConflictError(OWN_WAITING_GAME_MESSAGE, {
                     code: "OWN_WAITING_GAME",
-                    data: { gameId: slot.game_id },
+                    data: { gameId: slot.game_id, reason: "create" },
                   })
                 : activeGameExists(slot.game_id),
             };
@@ -703,7 +704,7 @@ export class GameService {
       const now = this.#clock.now();
       if (!game.closed) {
         if (game.status !== "active" && game.status !== "finished") {
-          throw new ConflictError(AUDIENCE_NOT_CLOSABLE_MESSAGE, { code: "GAME_NOT_ACTIVE" });
+          throw new ConflictError(AUDIENCE_NOT_CLOSABLE_MESSAGE, { code: "GAME_NOT_ACTIVE", data: { reason: "audience_not_closable" } });
         }
         if (!game.is_public) throw new ConflictError(GAME_NOT_PUBLIC_MESSAGE, { code: "GAME_NOT_PUBLIC" });
         await tx.execute(CLOSE_AUDIENCE_SQL, [now, gameId], "run");

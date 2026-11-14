@@ -1,29 +1,173 @@
-import type { PartialTranslation } from "../types";
+import type { Translation } from "../types";
 
-/** Skeleton: German is selectable with `?lang=de`, but hidden from the switch until reviewed; gaps fall back to English. */
-const show: PartialTranslation<"show"> = {
+/**
+ * Complete machine draft (status `draft`), awaiting native review (E15-S10). German is selectable with `?lang=de`,
+ * but hidden from the switch until every namespace is reviewed.
+ */
+const show: Translation<"show"> = {
+  layout: {
+    "bot-bot": "Bot gegen Bot",
+    "bot-agent": "Bot gegen Agent",
+  },
   bot: {
     name: "Bot · Stufe {level}",
     nameWithTable: "Bot · Stufe {level} · {table}",
   },
+  agent: {
+    name: "Agent",
+    declared: "Agent · {name} (angegeben)",
+  },
   console: {
     title: "Vorführung",
+    lead: "Eine Partie zwischen Bots auf großem Bildschirm. Nur der Administrator schaut zu; sie erscheint weder im Verlauf noch in den Zählern.",
+    disabledTitle: "Die Vorführung ist ausgeschaltet",
+    disabledBody: "Schalte sie mit SHOW_ENABLED=true in der Serverkonfiguration ein und starte die Anwendung neu.",
+    runningTitle: "Eine Vorführung läuft",
+    runningLayout: "Aufstellung: {layout}",
+    runningStatus: {
+      active: "Status: läuft",
+      waiting: "Status: wartet auf den Agenten",
+    },
+    back: "Zurück zur Vorführung",
+    formBlocked: "Eine neue Vorführung kannst du starten, sobald diese beendet ist.",
+    formTitle: "Neue Vorführung",
+    layoutLabel: "Aufstellung",
+    agentLead: "Der Bot nimmt Platz 1 ein. Dein Agent tritt mit einem Code über MCP auf Platz 2 bei; den Code zeigt die Ansicht der Vorführung.",
+    botLevelLabel: "Bot-Stufe",
+    botVsBotDisabled: "Die Aufstellung Bot gegen Bot ist ausgeschaltet: Setze SHOW_BOT_VS_BOT_ENABLED=true.",
+    levelLabel: "Bot auf Platz {seat}",
+    level: "Stufe {level}",
+    levelDisabled: "Stufe {level} (ausgeschaltet)",
+    level2Blocked: "Stufe 2 bei Bot gegen Bot ist ausgeschaltet (SHOW_BOT_LEVEL2_ENABLED): Sie wird eingeschaltet, sobald das Tempo abgestimmt und auf dem Server gemessen ist.",
+    check: "Prüfen, ob die Vorführung startet",
     start: "Vorführung starten",
   },
+  checks: {
+    title: "Prüfergebnis",
+    ready: "Die Vorführung wird starten.",
+    notReady: "Die Vorführung wird nicht starten: Behebe die als nicht erfüllt markierten Punkte.",
+    failed: "Die Prüfung ist fehlgeschlagen. Versuche es erneut.",
+    pass: "erfüllt",
+    fail: "nicht erfüllt",
+    unknown: "nicht geprüft",
+    item: {
+      show_enabled: "Vorführung eingeschaltet (SHOW_ENABLED)",
+      bot_vs_bot_enabled: "Aufstellung Bot gegen Bot eingeschaltet (SHOW_BOT_VS_BOT_ENABLED)",
+      level2_enabled: "Stufe 2 bei Bot gegen Bot eingeschaltet (SHOW_BOT_LEVEL2_ENABLED)",
+      bot_enabled: "Bot eingeschaltet (BOT_ENABLED)",
+      memory: "Speicher: {available} verfügbar, mindestens {min} nötig",
+      slot: "Laufende Partien mit dem Bot: {active} von {max}",
+      no_show_running: "Keine laufende Vorführung",
+      engine: "Bot-Engine (ein Probezug der Stufe 1)",
+      engineTimed: "Bot-Engine: ein Probezug der Stufe 1 in {ms} ms (Limit {limit} ms)",
+    },
+  },
+  errors: {
+    createTitle: "Die Vorführung konnte nicht gestartet werden",
+    code: "Fehlercode: {code}",
+    SHOW_RUNNING: "Es läuft bereits eine Vorführung. Kehre zu ihr zurück oder beende sie.",
+    SHOW_UNAVAILABLE: {
+      disabled: "Die Vorführung ist ausgeschaltet (SHOW_ENABLED).",
+      bot_vs_bot_disabled: "Die Aufstellung Bot gegen Bot ist ausgeschaltet (SHOW_BOT_VS_BOT_ENABLED).",
+    },
+    BOT_UNAVAILABLE: {
+      disabled: "Der Bot ist ausgeschaltet (BOT_ENABLED).",
+      memory: "Der Server hat zu wenig freien Speicher für den Bot (BOT_MIN_AVAILABLE_MB).",
+      busy: "Alle Plätze für Partien mit dem Bot sind belegt (BOT_MAX_ACTIVE_GAMES).",
+      level2_not_allowed: "Stufe 2 bei Bot gegen Bot ist ausgeschaltet (SHOW_BOT_LEVEL2_ENABLED).",
+      other: "Der Bot ist gerade nicht verfügbar.",
+    },
+    RATE_LIMITED: "Zu viele Vorführungen innerhalb einer Stunde. Versuche es später erneut.",
+    other: "Etwas ist schiefgelaufen. Versuche es erneut.",
+  },
+  end: {
+    action: "Vorführung beenden",
+    title: "Vorführung beenden?",
+    body: "Die Partie wird ohne Ergebnis abgebrochen. Das lässt sich nicht rückgängig machen.",
+    confirm: "Vorführung beenden",
+    cancel: "Zurück",
+    failed: "Die Vorführung konnte nicht beendet werden. Versuche es erneut.",
+  },
   room: {
+    title: "Vorführung: {layout}",
+    finishedTitle: "Ende der Vorführung",
     drive: {
       running: "Antrieb läuft",
+      slowed: "Antrieb wird langsamer: Der Status wird erneut abgefragt",
       stalledBecause: "Antrieb angehalten: {reason}",
+      reason: {
+        hidden: "Tab im Hintergrund",
+        bot: "Der Bot antwortet nicht",
+        silent: {
+          one: "Keine Antwort vom Server seit {seconds} Sekunde",
+          other: "Keine Antwort vom Server seit {seconds} Sekunden",
+        },
+      },
+      announce: {
+        hidden: "Tab im Hintergrund",
+        bot: "Der Bot antwortet nicht",
+        silent: "Keine Antwort vom Server",
+      },
+      hint: {
+        hidden: "Der Browser verlangsamt Abfragen in einem Hintergrund-Tab. Lass die Vorführung im Vordergrund.",
+        bot: "Der Server wartet auf den Zug des Bots länger als dessen Pause und Zuglimit zusammen.",
+        silent: "Prüfe die Verbindung zum Server.",
+      },
+      clock: "Die Uhr läuft weiter, die Partie endet durch Zeitablauf (noch {time}).",
       check: "Jetzt prüfen",
     },
     projector: "Projektoransicht",
+    projectorOn: "Projektoransicht eingeschaltet",
+    projectorOff: "Projektoransicht ausgeschaltet",
+    ended: "Vorführung vom Administrator beendet",
+    expired: "Vorführung abgelaufen (der Agent ist nicht beigetreten)",
     agent: {
       title: "Code in deinen Agenten einfügen",
+      body: "Der Agent tritt mit dem Werkzeug join des MCP-Servers gomoku bei. Der Code ist verborgen, weil das Publikum den Bildschirm sieht.",
+      codeLabel: "Einladungscode",
+      codeHidden: "Code verborgen",
       show: "Anzeigen",
+      hide: "Verbergen",
       copy: "Kopieren",
+      copied: "Code kopiert",
+      copyFailed: "Kopieren fehlgeschlagen. Zeige den Code an und tippe ihn ab.",
+      mcpLabel: "Adresse des MCP-Servers",
       waiting: "Wartet auf den Agenten (noch {time})",
     },
+    goneTitle: "Die Vorführung gibt es nicht mehr",
+    goneBody: "Die Vorführung wurde nach ihrem Ende entfernt, oder die Sitzung des Administrators ist abgelaufen.",
+    goneAction: "Zurück zur Vorführungskonsole",
+    newShow: "Neue Vorführung",
     logout: "Abmelden",
+    logoutFailed: "Abmelden fehlgeschlagen. Versuche es erneut.",
+    clockActive: "Am Zug",
+    side: {
+      black: "Schwarz: {name}",
+      white: "Weiß: {name}",
+    },
+    turn: {
+      black: "Schwarz am Zug: {name}",
+      white: "Weiß am Zug: {name}",
+    },
+    wins: {
+      black: "Schwarz gewinnt: {name}",
+      white: "Weiß gewinnt: {name}",
+    },
+    draw: "Remis",
+    reason: {
+      five_in_row: "Fünf Steine in einer Linie.",
+      timeout: "Der Gegenseite ist die Zeit abgelaufen.",
+      resignation: "Die Gegenseite hat aufgegeben.",
+      draw: "Das Brett ist voll, niemand hat fünf in einer Reihe gelegt.",
+      points: "Die höhere Punktzahl hat gewonnen.",
+    },
+  },
+  board: {
+    label: "Brett 15 mal 15",
+    cell: "Spalte {column}, Reihe {row}, {state}",
+    empty: "leer",
+    black: "schwarzer Stein",
+    white: "weißer Stein",
   },
 };
 
