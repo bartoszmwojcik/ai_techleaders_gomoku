@@ -1,6 +1,6 @@
 # 2026-11-14 — Ręczny workflow wydawania Gomoku (GitHub Actions)
 
-Status: in-progress · Branch: `feat/release-workflow` · Engine: om-auto-create-pr (steps: 9, --loop: no)
+Status: complete (CI na PR i przegląd — w toku) · Branch: `feat/release-workflow` · Engine: om-auto-create-pr (steps: 9, --loop: no)
 
 ## Goal
 
@@ -33,16 +33,18 @@ Publikacja obrazu Docker, wdrożenie na Mikrus, automatyczne generowanie wpisu C
 
 ## Progress
 
+PR: #317
+
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles.
 
 ### Phase 1: Logika wydania (skrypty + testy)
 
-- [ ] 1.1 Wersja: walidacja, porównanie, wyliczenie następnej (`scripts/release/version.mjs`)
-- [ ] 1.2 Notatki z `CHANGELOG.md` dla wersji (`scripts/release/changelog.mjs`)
-- [ ] 1.3 Podbicie `package.json` i `package-lock.json` (`scripts/release/bump.mjs`)
-- [ ] 1.4 Wejście CLI i `coverage.include` (`main.mjs`, `cli.mjs`)
+- [x] 1.1 Wersja: walidacja, porównanie, wyliczenie następnej (`scripts/release/version.mjs`) — b763893
+- [x] 1.2 Notatki z `CHANGELOG.md` dla wersji (`scripts/release/changelog.mjs`) — b763893
+- [x] 1.3 Podbicie `package.json` i `package-lock.json` (`scripts/release/bump.mjs`) — b763893
+- [x] 1.4 Wejście CLI i `coverage.include` (`main.mjs`, `cli.mjs`) — b763893
 
 ### Phase 2: Workflow i dokumentacja
 
-- [ ] 2.1 `.github/workflows/release.yml`
-- [ ] 2.2 Sekcja „Wydawanie wersji” w `docs/wdrozenie-i-utrzymanie.md`
+- [x] 2.1 `.github/workflows/release.yml` — da867b8
+- [x] 2.2 Sekcja „Wydawanie wersji” w `docs/wdrozenie-i-utrzymanie.md` — da867b8
