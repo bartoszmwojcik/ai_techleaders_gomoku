@@ -1,0 +1,204 @@
+# 0.1.0 (2026-11-14)
+
+## Highlights
+<!-- TODO: Highlights — auto-update-changelog leaves this blank for the human author to fill in. -->
+
+## ✨ Features
+- ✨ Idempotentny instalator npm run setup (fixes #6). (#8) *(@bartoszmwojcik)*
+- ✨ Design system graczy w Storybooku i tokeny na stronie głównej. (#56) *(@bartoszmwojcik)*
+- ✨ Obraz Docker i stos produkcyjny na mikr.us. (#57) *(@bartoszmwojcik)*
+- ✨ Klikalny prototyp Epiku 01 (konta) z design systemu. (#59) *(@bartoszmwojcik)*
+- ✨ Prototypy po uproszczeniu startu konta (PR 3 z 3). (#62) *(@bartoszmwojcik)*
+- ✨ Szary prototyp revision-003 i 004 (numer rewizji, podpis przy e-mailu, Wyloguj, fokus). (#64) *(@bartoszmwojcik)*
+- ✨ Skrypt synchronizujący prototypy i mapa ekranów partii z zaproszenia. (#65) *(@bartoszmwojcik)*
+- ✨ Faza 1 Epiku 01 — konto i sesja przez API (#19 PR A, #28). (#67) *(@bartoszmwojcik)*
+- ✨ Faza 2 Epiku 01 — formularz rejestracji i stan zalogowania (#19 PR B). (#68) *(@bartoszmwojcik)*
+- ✨ Faza 3 Epiku 01 — logowanie (#20, kroki 1–5). (#69) *(@bartoszmwojcik)*
+- ✨ Faza 4 Epiku 01 — wylogowanie, strażnik sesji i konto (#20, kroki 6–8). (#70) *(@bartoszmwojcik)*
+- ✨ Faza 5 Epiku 01 — zmiana hasła (#36). (#71) *(@bartoszmwojcik)*
+- ✨ Faza 6 Epiku 01 — potwierdzenie e-maila (#34, kroki 1–5). (#72) *(@bartoszmwojcik)*
+- ✨ Faza 7 Epiku 01 — ponowne wysłanie i baner potwierdzenia (#34, kroki 6–8). (#73) *(@bartoszmwojcik)*
+- ✨ Faza 8 Epiku 01 — reset hasła (#35). (#74) *(@bartoszmwojcik)*
+- ✨ Faza 9 Epiku 01 — sprzątanie wygasłych rekordów (#39). (#75) *(@bartoszmwojcik)*
+- ✨ Faza 11 — przełącznik motywu jasny/ciemny. (#76) *(@bartoszmwojcik)*
+- ✨ Epik 02, Faza 1 — fundament backendu (domena, schemat, GameService). (#79) *(@bartoszmwojcik)*
+- ✨ Epik 02, Faza 2 — zaproszenia i dołączanie (#21). (#80) *(@bartoszmwojcik)*
+- ✨ Epik 02, Faza 3 — ruchy i wygrana, backend (#22). (#81) *(@bartoszmwojcik)*
+- ✨ Epik 02, Faza 4 — zegar partii, backend (#23). (#83) *(@bartoszmwojcik)*
+- ✨ Zadanie 3.5 — plansza, ruchy i koniec partii na /games/[gameId] (#22). (#84) *(@bartoszmwojcik)*
+- ✨ Uwagi z review stron fazy 2 — powód zamknięcia, strefa czasowa, komunikat po odświeżeniu. (#85) *(@bartoszmwojcik)*
+- ✨ Zadanie 4.4 — UI zegara partii (#23). (#90) *(@bartoszmwojcik)*
+- ✨ Faza 5A — powrót po rozłączeniu (#24). (#92) *(@bartoszmwojcik)*
+- ✨ E02-S07 — nick uczestnika, backend (#94). (#97) *(@bartoszmwojcik)*
+- ✨ Klikalny prototyp gry bez konta — etap C (E02-S07, E02-S08), zatwierdzony. (#98) *(@bartoszmwojcik)*
+- ✨ E02-S07 — UI nicku uczestnika i etykieta „{nick} (gość)” (#94). (#99) *(@bartoszmwojcik)*
+- ✨ E02-S08 — gość tworzy partię i wysyła zaproszenie kodem lub linkiem (#95). (#101) *(@bartoszmwojcik)*
+- ✨ E02-S05 — poddanie partii (backend i UI) (fixes #87). (#104) *(@bartoszmwojcik)*
+- ✨ Adapter wysyłki e-maili przez Brevo (#38). (#106) *(@bartoszmwojcik)*
+- ✨ E02-S06 — rewanż po zakończonej partii (backend i UI) (fixes #88). (#110) *(@bartoszmwojcik)*
+- ✨ Usunięcie konta i reguła sprzątania 9.4 (#37). (#115) *(@bartoszmwojcik)*
+- ✨ Status „szukam gry” i widok lobby (E03-S01 #25, migracja #31). (#119) *(@bartoszmwojcik)*
+- ✨ Wybór przeciwnika z lobby i partia origin=lobby (E03-S02 #26). (#123) *(@bartoszmwojcik)*
+- ✨ Historia zakończonych partii (E04-S01, #27). (#134) *(@bartoszmwojcik)*
+- ✨ Agent dołącza do partii prywatnej przez MCP jako „Agent” (E06-S01 #127, #126). (#143) *(@bartoszmwojcik)*
+- ✨ Get_state i play_move — agent gra partię przez MCP (E06-S02 #128). (#163) *(@bartoszmwojcik)*
+- ✨ Licznik zakończonych partii wg pary typów (E06-S03 #129). (#165) *(@bartoszmwojcik)*
+- ✨ Wskazówka „Jak podłączyć agenta” na ekranie oczekiwania (E06-S04 #140). (#167) *(@bartoszmwojcik)*
+- ✨ Czat w partii — wysyłanie i czytanie wiadomości (E07-S01 #146, #145). (#169) *(@bartoszmwojcik)*
+- ✨ Wyłączanie czatu przez uczestnika (E07-S02 #147). (#172) *(@bartoszmwojcik)*
+- ✨ Czat znika po grze — reguła cleanup, konto, kopie (E07-S03 #148). (#174) *(@bartoszmwojcik)*
+- ✨ Czat przez MCP — send_message, chat w get_state (E07-S04 #149). (#176) *(@bartoszmwojcik)*
+- ✨ Instrukcje podłączenia dla Codex, Gemini CLI, Copilot i Cursor (E07-S05 #168). (#178) *(@bartoszmwojcik)*
+- ✨ Reguła skracania długiego nicka gościa (TruncatedName) (#135). (#192) *(@bartoszmwojcik)*
+- ✨ Wzorzec „Pokaż więcej” (LoadMore) w design systemie (#136). (#193) *(@bartoszmwojcik)*
+- ✨ Informacja o retencji czatu pod ikonką (i) (#180). (#194) *(@bartoszmwojcik)*
+- ✨ Zmiana adresu e-mail i nazwy gracza (E05-S01, #190). (#195) *(@bartoszmwojcik)*
+- ✨ Konto administratora — ADMIN_EMAIL i npm run admin:create (E08-S01, #156, #157). (#196) *(@bartoszmwojcik)*
+- ✨ Panel /backend dla administratora — liczniki i lista kont (E08-S02, #158). (#198) *(@bartoszmwojcik)*
+- ✨ Przegląd partii i partie publiczne z widzami (E09, E10: #202–#212) (fixes #203, #204, #205, #206, #207, #208, #209, #210, #211). (#224) *(@bartoszmwojcik)*
+- ✨ Wariant „papier i ołówek” (E11, #215–#223) (fixes #216, #217, #218, #219, #220, #221, #222). (#226) *(@bartoszmwojcik)*
+- ✨ Menu użytkownika, tekst zasad, kartka w kratkę i znaki ○/× (#227–#230) (fixes #228, #229). (#231) *(@bartoszmwojcik)*
+- ✨ Kod QR zaproszenia (E12, #232–#234) (fixes #233). (#235) *(@bartoszmwojcik)*
+- ✨ Silnik bota poziomu 1 i 2 z areną bot–bot (E13-S03) (fixes #260). (#267) *(@bartoszmwojcik)*
+- ✨ Gra z botem — uczestnik Bot, tworzenie partii i ruch bota (E13-S02, T01) (fixes #259, #261). (#268) *(@bartoszmwojcik)*
+- ✨ Siła, nazwa i polityka zasobów bota — wątek roboczy, bramka, sonda, bot:bench (E13-S04, T01, T02) (fixes #262, #263). (#269) *(@bartoszmwojcik)*
+- ✨ Partie z botem w historii, licznik par i sprzątanie gość–bot (E13-S05) (fixes #265). (#270) *(@bartoszmwojcik)*
+- ✨ Scripts/gomoku-local.sh — lokalne uruchomienie jednym poleceniem. (#271) *(@bartoszmwojcik)*
+- ✨ Odróżnienie wyboru opcji od akcji — segmenty neutralne, Button large, dwa równe przyciski (#273). (#274) *(@bartoszmwojcik)*
+- ✨ Origin 'show', bot na miejscu 1, konfiguracja pokazu (E14-S01-T01). (#301) *(@bartoszmwojcik)*
+- ✨ Fundament wielojęzyczności — ?lang=, ciasteczko, nagłówek PL/EN/FR (E15-S01). (#302) *(@bartoszmwojcik)*
+- ✨ Pokaz bot vs bot i widok tylko do odczytu dla administratora (E14-S01) (fixes #280). (#304) *(@bartoszmwojcik)*
+- ✨ Boty w pokazie grają same, napędzane pollingiem widoku (E14-S02) (fixes #282). (#305) *(@bartoszmwojcik)*
+- ✨ Pokaz bot vs agent — agent MCP gra z botem (E14-S03) (fixes #283). (#306) *(@bartoszmwojcik)*
+- ✨ Strojenie tempa pokazu, bot:bench --show, test przedlotowy z silnikiem, runbook + eksport i18n (E14-S04, E15-S02) (fixes #285). (#307) *(@bartoszmwojcik)*
+- ✨ Domknięcie epiku E15 — przestrzenie C1–C6, błędy API, niemiecki szkic. (#313) *(@bartoszmwojcik)*
+
+## 🔒 Security
+- 🔒 Podbicie Next.js do 16.4.2 (poprawki bezpieczeństwa). (#2) *(@bartoszmwojcik)*
+- 🔒 Panel /backend zamknięty w produkcji do czasu roli administratora (fixes #152). (#154) *(@bartoszmwojcik)*
+- 🔒 Nagłówki bezpieczeństwa, strażnik tras gry, zastrzeżone pseudonimy, CI skilli (T-03, T-08, T-10, T-13). (#238) *(@bartoszmwojcik)*
+- 🔒 Logi zdarzeń bezpieczeństwa, limit ciała, Cache-Control, audyt zależności i strażnik tras (OWASP, #243). (#244) *(@bartoszmwojcik)*
+
+## 🐛 Fixes
+- 🐛 Db:status traktuje zerwane połączenie przy starcie bazy jako nieosiągalne. (#12) *(@bartoszmwojcik)*
+- 🐛 MikroORM nie tworzy brakującej bazy przy połączeniu (#9). (#13) *(@bartoszmwojcik)*
+- 🐛 Etykieta przełącznika motywu + build na VPS z małym RAM. (#82) *(@bartoszmwojcik)*
+- 🐛 Fixtury testów GameView mają pole clock (typecheck na main). (#86) *(@bartoszmwojcik)*
+- 🐛 Znacznik kamienia w TurnStatus widać w ciemnym motywie. (#91) *(@bartoszmwojcik)*
+- 🔐 Brevo — domknięcie uwag z przeglądu #106 (BREVO_ABORTED, ostrzeżenie o limicie, specyfikacja). (#107) *(@bartoszmwojcik)*
+- 🐛 Sprzątanie partii samych gości (#102). (#109) *(@bartoszmwojcik)*
+- 🐛 Deterministyczne pokrycie limitu czasu odczytu w GameRoom (czerwone CI na main) (fixes #120). (#132) *(@bartoszmwojcik)*
+- 🐛 Widok partii na telefonie — kamień tylko przyciskiem, przycisk w pierwszym ekranie, przełącznik jako ikona (#181). (#183) *(@bartoszmwojcik)*
+- 🐛 Heurystyka URL nie odrzuca zwykłych zdań (#170). (#184) *(@bartoszmwojcik)*
+- 🐛 Stabilny test planu zapytania historii (#160). (#185) *(@bartoszmwojcik)*
+- 🐛 Sprzątanie zakończonych partii bez żywego uczestnika (#137). (#186) *(@bartoszmwojcik)*
+- 🐛 Jednolita grubość linii siatki planszy na tablecie (#116). (#187) *(@bartoszmwojcik)*
+- 🐛 CLI MikroORM ładuje .env* w trybie development jak aplikacja (#10). (#188) *(@bartoszmwojcik)*
+- 🐛 Stała nazwa przeciwnika w teście papieru przy 320 px (#249). (#288) *(@bartoszmwojcik)*
+- 🐳 Zmienne pokazu w compose.prod.yaml (SHOW_*, BOT_SHOW_PAUSE_*). (#309) *(@bartoszmwojcik)*
+
+## 🛠️ Improvements
+- 🛠️ Chore/monorepo migration. (#1) *(@bartoszmwojcik)*
+- 🛠️ Dodanie skilla grill-me. (#51) *(@bartoszmwojcik)*
+- 🛠️ Skille eliminate-no-op i task-router (pat-lewczuk/skills). (#100) *(@bartoszmwojcik)*
+- 🛠️ Skrypty środowiska testowego (om-prepare-test-env). (#133) *(@bartoszmwojcik)*
+- 🛠️ MCP_TOKEN_LIMIT i MCP_CHAT_LIMIT w .env.example. (#179) *(@bartoszmwojcik)*
+- 🛠️ Test-env-up z ADMIN_EMAIL; BR-42 — limit widzów liczy obecnych. (#225) *(@bartoszmwojcik)*
+- 🛠️ Bump the minor-and-patch group with 19 updates. (#239)
+- 🛠️ Bump @types/node from 24.19.2 to 26.6.6. (#240)
+- 🛠️ Bump eslint from 9.39.5 to 10.14.0. (#241)
+- 🛠️ Bump typescript from 5.9.3 to 6.0.3. (#242)
+- 🛠️ Bump cn from 0.5.1 to 0.5.2, Dependabot ignoruje majory Postgresa. (#250)
+- 🛠️ Dependabot ignoruje majory Node do czasu #251. (#253) *(@bartoszmwojcik)*
+- 🛠️ Bump node from `4b150b4` to `5ec23b7`. (#277)
+- 🛠️ Bump the minor-and-patch group with 23 updates. (#278)
+- 🛠️ Bump jsdom from 30.1.3 to 31.0.0. (#279)
+- 🛠️ Zmienne konfiguracyjne pokazu. (#303) *(@bartoszmwojcik)*
+- 🛠️ Budżet ruchu bota w pokazie. (#308) *(@bartoszmwojcik)*
+
+## 📝 Specs & Documentation
+- 📝 Konfiguracja pipeline'u agentów (skille Open Mercato om-*). (#4) *(@bartoszmwojcik)*
+- 📝 Porządki po merge: specyfikacja CI do implemented/, zakres eslint-config-next. (#5) *(@bartoszmwojcik)*
+- 📝 Idempotentny instalator npm run setup. (#7) *(@bartoszmwojcik)*
+- 📝 Interesariusze i RACI dla discovery. (#14) *(@bartoszmwojcik)*
+- 📝 Mapa ścieżki, benchmark i rejestr backlogu. (#32) *(@bartoszmwojcik)*
+- 📝 Odświeżony brief (konta i dane) i specyfikacja rejestracji #19. (#40) *(@bartoszmwojcik)*
+- 📝 Przesłuchanie #19, gra gościa, specyfikacja logowania #20. (#41) *(@bartoszmwojcik)*
+- 📝 Potwierdzenie adresu e-mail (E01-S03, #34). (#42) *(@bartoszmwojcik)*
+- 📝 Reset hasła przez e-mail (E01-S04, #35). (#43) *(@bartoszmwojcik)*
+- 📝 Zmiana hasła po zalogowaniu (E01-S05, #36). (#44) *(@bartoszmwojcik)*
+- 📝 Usunięcie konta z anonimizacją partii (E01-S06, #37). (#45) *(@bartoszmwojcik)*
+- 📝 Dostawca wysyłki poczty (E01-S03-T01, #38). (#46) *(@bartoszmwojcik)*
+- 📝 Sprzątanie wygasłych sesji, liczników i tokenów (E01-S02-T01, #39). (#47) *(@bartoszmwojcik)*
+- 📝 Przesłuchanie specyfikacji #20 (limity logowania, „Pokaż hasło”). (#48) *(@bartoszmwojcik)*
+- 📝 Ustalenia z przesłuchania specyfikacji auth (#34–#39). (#49) *(@bartoszmwojcik)*
+- 📝 Partia z zaproszenia, gość (E02-S01, #21). (#50) *(@bartoszmwojcik)*
+- 📝 Ustalenia grill-me dla partii z zaproszenia (#21). (#52) *(@bartoszmwojcik)*
+- 📝 Ruchy, bitboard planszy i detekcja wygranej O(1) (E02-S02, #22). (#53) *(@bartoszmwojcik)*
+- 📝 Ruchy w wierszu games zamiast tabeli (#22). (#54) *(@bartoszmwojcik)*
+- 📝 Decyzje z grill-me dla #22. (#55) *(@bartoszmwojcik)*
+- 📝 Mapa ekranów Epiku 01 (rejestracja, logowanie, potwierdzenie e-maila). (#58) *(@bartoszmwojcik)*
+- 📝 Decyzje uproszczonego startu konta (PR 1 z 3). (#60) *(@bartoszmwojcik)*
+- 📝 Specyfikacje, mapa i design system po uproszczeniu startu konta (PR 2 z 3). (#61) *(@bartoszmwojcik)*
+- 📝 Tytuł E01-S03 (#34) po zmianie na potwierdzenie nieblokujące. (#63) *(@bartoszmwojcik)*
+- 📝 Specyfikacja zegara partii (#23). (#66) *(@bartoszmwojcik)*
+- 📝 Plan Epiku 02, specyfikacje #23/#24/poddanie/rewanż i mapa ekranów partii. (#77) *(@bartoszmwojcik)*
+- 📝 Szary prototyp partii z zaproszenia (etapy A i B). (#78) *(@bartoszmwojcik)*
+- 📝 Faza 5 rozpisana na zadania, zgłoszenia E02-S05 i E02-S06. (#89) *(@bartoszmwojcik)*
+- 📝 Gra bez konta — nick uczestnika (E02-S07) i gość tworzy partię (E02-S08). (#93) *(@bartoszmwojcik)*
+- 📝 Mapa ekranów E02 — gra bez konta (E02-S07, E02-S08), do zatwierdzenia. (#96) *(@bartoszmwojcik)*
+- 📝 Usunięcie konta (#37) zaktualizowane do stanu E02 — do zatwierdzenia. (#103) *(@bartoszmwojcik)*
+- 📝 Prototyp usunięcia konta (E01-S06, #37) — do zatwierdzenia. (#105) *(@bartoszmwojcik)*
+- 📝 Sprzątanie partii złożonych wyłącznie z gości (#102). (#108) *(@bartoszmwojcik)*
+- 📝 Domknięcie story E02 — #21, #22, #23, #24, #29, #30. (#111) *(@bartoszmwojcik)*
+- 📝 Cztery wdrożone specyfikacje E02 do implemented (#87, #88, #94, #95). (#113) *(@bartoszmwojcik)*
+- 📝 Domknięcie dokumentacji E01 — sześć specyfikacji do implemented. (#114) *(@bartoszmwojcik)*
+- 📝 Status „szukający gry” i widok lobby (E03-S01, #25). (#117) *(@bartoszmwojcik)*
+- 📝 Wybór przeciwnika z lobby i partia z lobby (E03-S02, #26). (#118) *(@bartoszmwojcik)*
+- 📝 Brief — gra z własnym agentem LLM przez MCP (D-28, BR-30, N-10). (#122) *(@bartoszmwojcik)*
+- 📝 Backlog E06 — gra z własnym agentem (MCP). (#130) *(@bartoszmwojcik)*
+- 📝 Historia zakończonych partii (E04-S01, #27). (#131) *(@bartoszmwojcik)*
+- 📝 Tożsamość klienta MCP, token i limity nadużyć (E06-S01-T01, Q-09). (#138) *(@bartoszmwojcik)*
+- 📝 Agent dołącza do partii prywatnej jako uczestnik „Agent” (E06-S01 #127). (#139) *(@bartoszmwojcik)*
+- 📝 Brief — czat w partii (D-30, N-11). (#141) *(@bartoszmwojcik)*
+- 📝 Agent gra partię przez narzędzia MCP get_state i play_move (E06-S02 #128). (#142) *(@bartoszmwojcik)*
+- 📝 Backlog E07 — czat w partii; Q-12 zamknięte (cron db:cleanup). (#150) *(@bartoszmwojcik)*
+- 📝 Czat w partii — wysyłanie i czytanie wiadomości (E07-S01 #146, T01 #145). (#151) *(@bartoszmwojcik)*
+- 📝 Brief — rola administratora (D-32, BR-35…BR-38). (#153) *(@bartoszmwojcik)*
+- 📝 Backlog E08 — administrator instancji i panel /backend (v1). (#159) *(@bartoszmwojcik)*
+- 📝 Konto administratora instalacyjnego — ADMIN_EMAIL i admin:create (E08-S01). (#161) *(@bartoszmwojcik)*
+- 📝 Panel /backend — liczniki partii i lista kont, tylko odczyt (E08-S02 #158). (#162) *(@bartoszmwojcik)*
+- 📝 Licznik zakończonych partii wg pary typów (FR #129). (#164) *(@bartoszmwojcik)*
+- 📝 Wskazówka „Jak podłączyć agenta” na ekranie oczekiwania (E06-S04 #140). (#166) *(@bartoszmwojcik)*
+- 📝 Wyłączenie czatu w partii przez uczestnika (E07-S02 #147). (#171) *(@bartoszmwojcik)*
+- 📝 Czat znika po grze — kasowanie wiadomości (E07-S03). (#173) *(@bartoszmwojcik)*
+- 📝 Agent czyta i pisze na czacie przez MCP (E07-S04 #149). (#175) *(@bartoszmwojcik)*
+- 📝 Instrukcje podłączenia agenta dla Codex, Gemini CLI, Copilot i Cursor (E07-S05). (#177) *(@bartoszmwojcik)*
+- 📝 Add spec for mobile-game-view (#181). (#182) *(@bartoszmwojcik)*
+- 📝 README z opisem projektu, funkcjami i instalacją; reszta do docs/. (#189) *(@bartoszmwojcik)*
+- 📝 Zmiana adresu e-mail i nazwy gracza (E05-S01). (#191) *(@bartoszmwojcik)*
+- 📝 Brief — przegląd historii i partie publiczne (D-33). (#199) *(@bartoszmwojcik)*
+- 📝 Backlog E09–E10 — przegląd partii i partie publiczne. (#213) *(@bartoszmwojcik)*
+- 📝 Model zagrożeń całego systemu. (#236) *(@bartoszmwojcik)*
+- 📝 Wynik pomiaru adresu klienta za proxy mikr.us (#112). (#237) *(@bartoszmwojcik)*
+- 📝 Brief — bot algorytmiczny hostowany przez nas (D-36). (#254) *(@bartoszmwojcik)*
+- 📝 Backlog E13 — bot algorytmiczny (epik i S01). (#257) *(@bartoszmwojcik)*
+- 📝 Bot algorytmiczny hostowany przez nas — specyfikacja zamykająca Q-23. (#258) *(@bartoszmwojcik)*
+- 📝 Backlog E13 — historie S02–S05. (#266) *(@bartoszmwojcik)*
+- 📝 Wynik pomiaru bota na Mikrusie (#264) i włączenie bota (A-21, A-22). (#272) *(@bartoszmwojcik)*
+- 📝 Pokaz — prywatna partia bez miejsca człowieka (bot vs bot, bot vs agent), podgląd admina. (#276) *(@bartoszmwojcik)*
+- 📝 Backlog E14 — Pokaz (adopcja #275, historie S01–S04). (#287) *(@bartoszmwojcik)*
+- 📝 Wielojęzyczność (E15) — fundament i18n, widok pokazu, pozostałe ekrany. (#290) *(@bartoszmwojcik)*
+- 📝 Backlog E15 — drzewo zgłoszone (#289, #291–#299). (#300) *(@bartoszmwojcik)*
+- 📝 Domknięcie epiku E14 (pokaz) (fixes #275, #284, #286). (#311) *(@bartoszmwojcik)*
+- 📝 Funkcje administratora i plan wersji wielojęzycznej. (#312) *(@bartoszmwojcik)*
+- 📝 Log wdrożenia E15, lekcje i aktualizacja README. (#314) *(@bartoszmwojcik)*
+
+## 🚀 CI/CD & Infrastructure
+- 🚀 CI (GitHub Actions), testy jednostkowe ze 100% pokryciem i testy integracyjne. (#3) *(@bartoszmwojcik)*
+- 🚀 PR tylko z dokumentacją pomija ciężkie joby. (#214) *(@bartoszmwojcik)*
+
+## 👥 Contributors
+
+- @bartoszmwojcik
+
