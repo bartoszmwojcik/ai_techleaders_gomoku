@@ -33,7 +33,8 @@ const getQr = apiHandler(async (_request: Request, { params }: Context) => {
       // Never from a cache: a closed audience or a cancelled invitation has no code any more.
       "Cache-Control": "private, no-store",
       "X-Content-Type-Options": "nosniff",
-      // Opened directly, the image runs nothing and loads nothing.
+      // Opened directly, the image runs nothing and loads nothing. On a build next.config.ts replaces it with the API
+      // policy, which contains both directives; this one still holds wherever the config headers do not apply.
       "Content-Security-Policy": "default-src 'none'; sandbox",
     },
   });

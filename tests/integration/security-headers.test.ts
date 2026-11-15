@@ -1,5 +1,5 @@
-// T-08: the baseline security headers of next.config.ts on a built app, and the exceptions that must keep
-// winning over it (token pages: no-referrer; the QR image: its own nosniff and CSP). Completed after the Qualys scan
+// T-08: the baseline security headers of next.config.ts on a built app, the exceptions that must keep winning over
+// it (token pages: no-referrer), and the QR image, whose own CSP the API policy replaces. Completed after the Qualys scan
 // of 2026-11-10 (`.ai/docs/2026-11-15-security-scan-triage.md`): HSTS, COOP, CORP, no X-Powered-By, and a CSP on
 // every page (nonce from `src/proxy.ts`) and on the API and Next's assets (fixed, from next.config.ts).
 import { afterAll, describe, expect, inject, it } from "vitest";
