@@ -95,7 +95,7 @@ describe("next.config", () => {
       expect(rules.find((rule) => rule.source === source)?.headers).toEqual([
         {
           key: "Content-Security-Policy",
-          value: "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+          value: "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; sandbox",
         },
       ]);
     }

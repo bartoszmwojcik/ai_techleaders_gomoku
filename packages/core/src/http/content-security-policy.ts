@@ -24,9 +24,12 @@ export function pageContentSecurityPolicy({ nonce, dev }: { nonce: string; dev: 
 
 /**
  * Policy for responses that are never a page (API, Next's assets): nothing may load or run, should one be opened as a
- * document (an SVG QR code, an error body), and nothing may frame it.
+ * document (an SVG QR code, an error body), it is sandboxed, and nothing may frame it. A browser applies a response's
+ * policy only to documents and workers, so the scripts and styles our pages load are unaffected. Next's config headers
+ * replace a route handler's header of the same name, so this one also stands for the QR route's own `sandbox` policy.
  */
-export const RESOURCE_CONTENT_SECURITY_POLICY = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
+export const RESOURCE_CONTENT_SECURITY_POLICY =
+  "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; sandbox";
 
 /** Request header through which the proxy hands the page's nonce to server components. */
 export const CSP_NONCE_REQUEST_HEADER = "x-nonce";

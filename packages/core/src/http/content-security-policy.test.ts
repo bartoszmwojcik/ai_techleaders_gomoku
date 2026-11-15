@@ -48,12 +48,13 @@ describe("pageContentSecurityPolicy", () => {
 });
 
 describe("RESOURCE_CONTENT_SECURITY_POLICY", () => {
-  it("allows nothing to load, frame, post or set a base", () => {
+  it("allows nothing to load, frame, post or set a base, and sandboxes the document", () => {
     expect(directives(RESOURCE_CONTENT_SECURITY_POLICY)).toEqual({
       "default-src": "'none'",
       "frame-ancestors": "'none'",
       "base-uri": "'none'",
       "form-action": "'none'",
+      sandbox: "",
     });
   });
 });
