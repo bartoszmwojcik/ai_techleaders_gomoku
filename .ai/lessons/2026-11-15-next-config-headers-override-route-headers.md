@@ -1,0 +1,5 @@
+# Nagłówki z `next.config.ts` zastępują nagłówki route handlera
+
+- **Problem:** dodanie `Content-Security-Policy` dla `/api/:path*` w `headers()` w `next.config.ts` po cichu zastąpiło własne `default-src 'none'; sandbox` trasy QR (`/api/games/[id]/qr`). Test integracyjny `security-headers.test.ts` wyłapał to dopiero na buildzie; komentarz T-08 zakładał, że trasa „zachowuje własne nagłówki” (było tak tylko dlatego, że wartości `nosniff` były identyczne).
+- **Kontekst:** PR „security scan remediation” (skan Qualys z 2026-11-10), `.ai/docs/2026-11-15-security-scan-triage.md`.
+- **Reguła:** nagłówek z `next.config.ts` wygrywa z nagłówkiem o tej samej nazwie ustawionym w route handlerze. Polityka z konfiguracji dla ścieżki musi zawierać ograniczenia każdej trasy pod nią (tu: `sandbox` w polityce API) albo omijać tę ścieżkę. Strony dostają CSP z `src/proxy.ts`, a konfiguracja nie ustawia CSP na ścieżkach stron, bo dwie polityki przeglądarka egzekwuje obie. Pierwszeństwo nagłówków sprawdzaj `curl -sI` na buildzie, nie testem jednostkowym konfiguracji.
