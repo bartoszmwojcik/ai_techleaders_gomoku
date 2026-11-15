@@ -28,20 +28,30 @@ Fix the real findings of the Qualys WAS scan of https://gomoku.byst.re and prove
 
 ## Progress
 
+PR: #319
+
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles.
 
 ### Phase 1: Headers
 
-- [ ] 1.1 CSP builders in core
-- [ ] 1.2 Proxy sets the nonce CSP on pages; layout passes the nonce to the theme script
-- [ ] 1.3 next.config: poweredByHeader, HSTS, COOP, CORP, API CSP
+- [x] 1.1 CSP builders in core — fff71f6
+- [x] 1.2 Proxy sets the nonce CSP on pages; layout passes the nonce to the theme script — fff71f6
+- [x] 1.3 next.config: poweredByHeader, HSTS, COOP, CORP, API CSP — d6d3746
 
 ### Phase 2: Verification
 
-- [ ] 2.1 Integration scenario: CSP and headers on pages and API, no CSP violations
-- [ ] 2.2 Before/after header evidence from a local build
+- [x] 2.1 Integration scenario: CSP and headers on pages and API, no CSP violations — 3d9f004
+- [x] 2.2 Before/after header evidence from a local build — dcfb81d
 
 ### Phase 3: Triage
 
-- [ ] 3.1 Triage document covering every finding
-- [ ] 3.2 Full validation gate
+- [x] 3.1 Triage document covering every finding — dcfb81d
+- [x] 3.2 Full validation gate — cb32139
+
+## Validation (2026-11-15)
+
+- `npm run lint`: 0 errors (2 pre-existing warnings in `game-service.test.ts`)
+- `npm run typecheck`: OK
+- `npm test`: 405 files, 4636 tests, 100% statements/branches/functions/lines
+- `npm run build`: OK (all pages `ƒ`, only `○ /_not-found` static)
+- `TMPDIR=/tmp npm run test:integration`: 98 files, 1064 tests passed
