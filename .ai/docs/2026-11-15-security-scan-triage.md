@@ -131,6 +131,14 @@ Verification on the local production build:
 - `theme-switch.test.ts` checks that the nonce-carrying inline theme script still runs before the first paint (light system preference → light page).
 - The whole integration suite runs under the CSP (validation gate below).
 
+**Cloudflare-injected scripts:** with `'strict-dynamic'`, a script without our nonce does not run, so Cloudflare features that add scripts to the HTML would stop working:
+
+- Email Address Obfuscation (`/cdn-cgi/scripts/…/email-decode.min.js`);
+- the Web Analytics beacon;
+- Rocket Loader.
+
+On 2026-11-15 no public production page carried any of them. This was checked with `curl` and `grep cdn-cgi|cloudflareinsights|rocket-loader` on `/`, `/login`, `/register`, `/play`, `/join`, `/lobby`, `/forgot-password` and `/history`, with no match. Pages behind a session (account, admin panel) render e-mail addresses and were not checked. After the deploy, open `/account` while signed in and check that the address is shown as text and not as `[email protected]`. If obfuscation is on, the zone owner should switch it off (**Scrape Shield → Email Address Obfuscation**), or exclude the host with a Configuration Rule.
+
 **Residual:** a URL that matches no route gets Next's default 404 page. It is prerendered at build time (`○ /_not-found`), so its HTML has no nonce and the browser blocks its scripts. The page has no interactive parts. Its server-rendered text ("404 This page could not be found.") still shows, and the status stays `404`. The proper fix is an app-wide `global-not-found.tsx` (experimental in Next 16, our own localized 404 page). That is a new player-facing page with PL/EN/FR texts, so it is proposed as a follow-up and not done here. A `notFound()` from an existing route (for example an unknown game) renders per request and has the nonce.
 
 ### 150135 — HSTS missing — FIXED
@@ -246,4 +254,5 @@ Content-Security-Policy: default-src 'none'; frame-ancestors 'none'; base-uri 'n
 1. Cloudflare minimum TLS version 1.2 (steps under 38794/38628). Who does it depends on who controls the `byst.re` zone.
 2. Optional: a domain of our own instead of the shared `byst.re`. That gives control over TLS, HSTS `includeSubDomains`/preload, and removes 150142.
 3. Follow-up issue: an app-wide localized 404 (`global-not-found.tsx`) so that unmatched URLs also render with the CSP nonce.
-4. After the next deploy, scan again and check that 150210, 150206, 150135, 531930 and 531928 are gone.
+4. After the next deploy, check a signed-in page with an e-mail address for Cloudflare's e-mail obfuscation (see 150206).
+5. After the next deploy, scan again and check that 150210, 150206, 150135, 531930 and 531928 are gone.
