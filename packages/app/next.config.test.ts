@@ -73,8 +73,32 @@ describe("next.config", () => {
     expect(headers["Permissions-Policy"]).toBe(
       "accelerometer=(), bluetooth=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), serial=(), usb=()",
     );
-    expect(Object.keys(headers)).not.toContain("Strict-Transport-Security");
+    expect(headers["Strict-Transport-Security"]).toBe("max-age=63072000");
+    expect(headers["Cross-Origin-Opener-Policy"]).toBe("same-origin");
+    expect(headers["Cross-Origin-Resource-Policy"]).toBe("same-origin");
+    // Pages get their policy (with a nonce) from the proxy; a second one here would be enforced on top of it.
     expect(Object.keys(headers)).not.toContain("Content-Security-Policy");
+    expect(Object.keys(headers)).not.toContain("Cross-Origin-Embedder-Policy");
+  });
+
+  it("does not announce the framework in X-Powered-By", async () => {
+    const { default: config } = await import("./next.config");
+
+    expect(config.poweredByHeader).toBe(false);
+  });
+
+  it("sends a policy that allows nothing on the API and Next's assets, which are never pages", async () => {
+    const { default: config } = await import("./next.config");
+    const rules = (await config.headers?.()) ?? [];
+
+    for (const source of ["/api/:path*", "/_next/:path*"]) {
+      expect(rules.find((rule) => rule.source === source)?.headers).toEqual([
+        {
+          key: "Content-Security-Policy",
+          value: "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+        },
+      ]);
+    }
   });
 
   it("sends Referrer-Policy: no-referrer on /verify-email, /confirm-email-change and /reset-password, where the token is in the URL, after the baseline so it wins", async () => {
@@ -83,11 +107,13 @@ describe("next.config", () => {
 
     expect(rules.map((rule) => rule.source)).toEqual([
       "/:path*",
+      "/api/:path*",
+      "/_next/:path*",
       "/verify-email",
       "/confirm-email-change",
       "/reset-password",
     ]);
-    for (const rule of rules.slice(1)) {
+    for (const rule of rules.slice(3)) {
       expect(rule.headers).toEqual([{ key: "Referrer-Policy", value: "no-referrer" }]);
     }
   });

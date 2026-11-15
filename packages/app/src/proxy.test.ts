@@ -106,7 +106,7 @@ describe("proxy: matcher", () => {
   const matchesLang = (url: string) => unstable_doesMiddlewareMatch({ ...langRule, url });
 
   it("runs for player pages with lang", () => {
-    expect(config.matcher[0]!.has[0]!.key).toBe(LANG_QUERY_PARAM);
+    expect(config.matcher[0]!.has![0]!.key).toBe(LANG_QUERY_PARAM);
     expect(matches("/?lang=fr")).toBe(true);
     expect(matches("/show/abc?projektor=1&lang=fr")).toBe(true);
     expect(matches("/games/g1?lang=en")).toBe(true);
