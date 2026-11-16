@@ -1,5 +1,7 @@
 # Klikalny prototyp: Epik 02, partia z zaproszenia (etapy A, B i C: od zaproszenia do rewanżu, także dla gracza bez konta)
 
+> Uwaga: katalog `lekcja-07/` (mapy ekranów; silnik przeglądu nie był śledzony w gitcie) został usunięty z repozytorium; mapy ekranów są w commicie `b9d59a9` (np. `git show b9d59a9:lekcja-07/mapa-ekranow.md`). Odwołania do `lekcja-07/` poniżej wskazują na ten commit.
+
 Prototyp pokazuje, jak będą wyglądać i działać ekrany z zatwierdzonej mapy (`lekcja-07/mapa-ekranow-partia.md`), zanim powstanie kod produkcyjny. Korzysta z niego gracz, który klika i komentuje, oraz developer, który buduje z niego prawdziwe ekrany. Nic tu nie jest prawdziwą usługą: konta, partie, zaproszenia i limity istnieją tylko w pamięci strony, a dane są fikcyjne.
 
 **Zakres etapu A:** utworzenie zaproszenia (p01), kod na `/join` (p02), wejście z linku (s07, wspólne z Epikiem 01), oczekiwanie twórcy (p03) i „Partia gotowa” (p04). **Etap B (D3.2):** plansza z zegarami (p05), koniec partii z wynikiem, poddaniem i rewanżem (p06), błędy dostępu i ładowania (p07), powrót po rozłączeniu. „Przejdź do planszy” i „Partia w toku” prowadzą teraz na prawdziwą planszę (w etapie A otwierały dialog „Poza tym prototypem”); poza tym zachowanie etapu A jest bez zmian.

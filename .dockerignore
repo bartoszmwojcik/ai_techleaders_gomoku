@@ -9,7 +9,6 @@ node_modules
 coverage
 **/storybook-static
 tests
-lekcja-06
 .ai
 **/*.test.ts
 **/*.test.tsx

@@ -68,7 +68,7 @@ Jedna faza, jeden krótki PR (`Closes #24`) po #22 i #23.
 
 ## 📝 Odstępstwa wdrożenia i dowody (2026-10-31)
 
-Odstępstwa od pierwotnej treści: brak wskaźnika „przeciwnik rozłączony” (Q1) i brak komunikatu „Wróciłeś” po odświeżeniu strony (opis w „Proposed Solution”, p. 2); decyzja o układzie komunikatu p05.10 — `track-e02.md`, faza 5A. Dowody kryteriów zgłoszenia #24:
+Odstępstwa od pierwotnej treści: brak wskaźnika „przeciwnik rozłączony” (Q1) i brak komunikatu „Wróciłeś” po odświeżeniu strony (opis w „Proposed Solution”, p. 2); decyzja o układzie komunikatu p05.10 — `.ai/runs/2026-10-29-e02-tracking.md`, faza 5A. Dowody kryteriów zgłoszenia #24:
 
 | Kryterium #24 | Dowód |
 | --- | --- |

@@ -1,5 +1,7 @@
 # Prototyp discovery: partia z zaproszenia, etap A (revision-001)
 
+> Uwaga: katalog `lekcja-07/` (mapy ekranów; silnik przeglądu nie był śledzony w gitcie) został usunięty z repozytorium; mapy ekranów są w commicie `b9d59a9` (np. `git show b9d59a9:lekcja-07/mapa-ekranow.md`). Odwołania do `lekcja-07/` poniżej wskazują na ten commit.
+
 - Brief: `.ai/specs/product-brief.md` (po zmianie 2026-10-26: D-24…D-26, BR-26…BR-28). Przepływ: Key flow „zaproszenie znajomego do partii”, etap A z podziału mapy: **utworzenie zaproszenia i oczekiwanie** (etap B: plansza, ruchy, zegary, wynik, poddanie, rewanż, powrót po rozłączeniu, nie jest w tej rewizji).
 - Data: 2026-10-29. Rewizja pierwsza nowego slugu `game-from-invitation`; poprzednia rewizja: brak (`previousRevision: null`). Granica symulacji zatwierdzona przez właściciela 2026-10-29.
 - Mapa ekranów: `lekcja-07/mapa-ekranow-partia.md` (ID p01–p04 i s07 z mapy; sekcje 0a, 0b, 1, 1a, 2, 3). Specyfikacje: `.ai/specs/implemented/2026-10-24-game-invitations.md` (#21: UI/UX, Edge Cases, Q3, Q5, Q6, Q11–Q13, Q18–Q22), `.ai/specs/implemented/2026-10-26-game-clock.md` (#23) i `.ai/specs/implemented/2026-10-29-game-reconnection.md` (#24), tylko pod kątem stanów p03/p04.

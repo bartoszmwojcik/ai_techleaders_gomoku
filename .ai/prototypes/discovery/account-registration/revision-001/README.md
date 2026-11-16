@@ -1,5 +1,7 @@
 # Prototyp discovery: rejestracja konta (revision-001)
 
+> Uwaga: katalog `lekcja-07/` (mapy ekranów; silnik przeglądu nie był śledzony w gitcie) został usunięty z repozytorium; mapy ekranów są w commicie `b9d59a9` (np. `git show b9d59a9:lekcja-07/mapa-ekranow.md`). Odwołania do `lekcja-07/` poniżej wskazują na ten commit.
+
 - Brief: `.ai/specs/product-brief.md`. Przepływ: „account registration” (Key flow, krok 1: rejestracja i potwierdzenie e-maila linkiem).
 - Data: 2026-10-25. Poprzednia wersja: brak. Panel syntetyczny (`--panel-report`): nie podano, prototyp powstał bez niego.
 - Mapa ekranów (zatwierdzona): `lekcja-07/mapa-ekranow.md`. ID ekranów i stanów (s01…, sNN.M) pochodzą z niej.

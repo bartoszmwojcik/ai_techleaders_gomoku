@@ -1,5 +1,7 @@
 # Postęp: klikalny prototyp Epiku 02 (partia z zaproszenia)
 
+> Uwaga: katalog `lekcja-07/` (mapy ekranów; silnik przeglądu nie był śledzony w gitcie) został usunięty z repozytorium; mapy ekranów są w commicie `b9d59a9` (np. `git show b9d59a9:lekcja-07/mapa-ekranow.md`). Odwołania do `lekcja-07/` poniżej wskazują na ten commit.
+
 Stan: **etap A gotowy (D3.1); etap B (p05–p07: plansza, zegary, wynik, poddanie, rewanż, powrót) zbudowany w zadaniu D3.2, do przeglądu przez właściciela.**
 
 ## Źródła

@@ -1,6 +1,6 @@
 # Przełącznik motywu jasny/ciemny na stronach gracza
 
-> Status: **wdrożona** (2026-10-29; Q1–Q5 rozstrzygnięte) (`om-spec-writing`, tryb interaktywny, 2026-10-28). Źródło: decyzja właściciela z 2026-10-28 (dodać przełącznik do planu E01, `track.md` Faza 11), `packages/ui/docs/foundations/motywy.mdx`, `packages/ui/src/styles/game-tokens.css`, `packages/ui/docs/design-system.md`. Dotyczy tylko grupy tras `(frontend)`; panel `(backend)` ma własny motyw shadcn.
+> Status: **wdrożona** (2026-10-29; Q1–Q5 rozstrzygnięte) (`om-spec-writing`, tryb interaktywny, 2026-10-28). Źródło: decyzja właściciela z 2026-10-28 (dodać przełącznik do planu E01, `.ai/runs/2026-10-27-e01-tracking.md` Faza 11), `packages/ui/docs/foundations/motywy.mdx`, `packages/ui/src/styles/game-tokens.css`, `packages/ui/docs/design-system.md`. Dotyczy tylko grupy tras `(frontend)`; panel `(backend)` ma własny motyw shadcn.
 
 ## 📝 TLDR
 

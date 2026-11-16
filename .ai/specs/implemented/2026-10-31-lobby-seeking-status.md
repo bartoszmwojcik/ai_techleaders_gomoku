@@ -155,7 +155,7 @@ Odpowiedzi na pytania otwarte zostały zastosowane tak, jak proponował szkic (o
 9. **Odpowiedź `409` z `gameId` bez statusu partii:** strona wstawia `status: "active"` jako zastępczy (tekst „Masz już partię” go nie używa); następny odczyt (3 s) podaje prawdziwy.
 10. **Migracja i snapshot:** zatwierdzony `.snapshot-gomoku.json` był nieaktualny (18 KB, bez tabel `games`), więc generator dopisał do migracji niezwiązane `alter column … set default` dla `games`; usunąłem je z pliku migracji (zostaje wyłącznie `lobby_seekers`), a snapshot został odświeżony w całości (jego rozrost to nie zmiana schematu). Migracja przeszła up/down/up na PostgreSQL 17.
 11. **Reguła sprzątania `lobbySeekers`** stoi po `passwordResetTokens` (przed grami; `unverifiedUsers` nadal ostatnia). Najgorszy przebieg `db:cleanup`: 11 reguł × 15 s = 165 s (komentarz w `cleanup-expired.ts`, README), mieści się w godzinnym odstępie `cron`.
-12. **Brak wpisu `track.md` dla Epiku 03:** istniejące `track.md` (E01) i `track-e02.md` dotyczą innych epików, więc dla tego PR-a powstał `track-e03.md` z odhaczoną Fazą 1 (#25/#31) i otwartą Fazą 2 (#26).
+12. **Brak wpisu `.ai/runs/2026-10-27-e01-tracking.md` dla Epiku 03:** istniejące `.ai/runs/2026-10-27-e01-tracking.md` (E01) i `.ai/runs/2026-10-29-e02-tracking.md` dotyczą innych epików, więc dla tego PR-a powstał `.ai/runs/2026-10-31-e03-tracking.md` z odhaczoną Fazą 1 (#25/#31) i otwartą Fazą 2 (#26).
 13. **Prywatność w teście:** odpowiedź listy zawiera `id` wiersza, `displayName`, `sinceMs`, `expiresInMs`; test integracyjny sprawdza, że nie ma w niej `user_id` ani adresu e-mail.
 
 ### Dowody kryteriów

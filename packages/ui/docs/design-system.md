@@ -1,6 +1,6 @@
 # Design system Gomoku: skrót dla agentów
 
-Przeczytaj ten plik jako pierwszy, zanim zbudujesz ekran dla gracza. Pełna dokumentacja jest w Storybooku (`npm run storybook -w @gomoku/ui`, `packages/ui/.storybook`), a decyzje i ich źródła w `lekcja-06/referencje.md` i `lekcja-06/tokeny.md`. Stan prac: `packages/ui/POSTEP.md`.
+Przeczytaj ten plik jako pierwszy, zanim zbudujesz ekran dla gracza. Pełna dokumentacja jest w Storybooku (`npm run storybook -w @gomoku/ui`, `packages/ui/.storybook`), a decyzje i ich źródła w `game-tokens.css` i `packages/ui/POSTEP.md` (dawne `lekcja-06/referencje.md` i `tokeny.md` usunięte z repozytorium, ostatnia wersja w commicie `b9d59a9`). Stan prac: `packages/ui/POSTEP.md`.
 
 ## Charakter produktu
 
