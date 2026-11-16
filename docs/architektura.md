@@ -353,6 +353,10 @@ Interfejs gracza mówi po polsku (domyślnie), angielsku i francusku; niemiecki 
 - **Brak polskich literałów:** `no-ui-literals.test.ts` skanuje (kompilatorem TypeScript) każdy plik `.ts`/`.tsx` z `app/(frontend)`, `components` i `lib` (globy całości, E15 Faza 7; osobny test sprawdza, że żaden plik tych katalogów nie jest pominięty) i zgłasza polskie napisy w JSX, atrybutach etykiet i łańcuchach; wyjątki z powodem w `i18n-allowlist.ts`.
 - **Testy integracyjne:** helper `tests/integration/browser.ts` uruchamia Chrome z `--lang=pl --accept-lang=pl` (domyślny agent-browser wysyła `en-US,en;q=0.9`), więc istniejące scenariusze widzą polski; `fetch` bez nagłówka dostaje polski. Scenariusze języka: `tests/integration/i18n-pages.test.ts`.
 
+### Narzędzia agentów (hook `PreToolUse`)
+
+`.claude/settings.json` rejestruje hook Claude Code dla narzędzi `Edit`, `Write` i `MultiEdit` (`scripts/hooks/cli.mjs`, logika w `guard-edits.mjs`, wzorzec jak w `scripts/ci`). Hook czyta JSON ze stdin i kończy się kodem 2 (z powodem na stderr), gdy agent próbuje zmienić istniejący plik `packages/db/src/migrations/Migration*.ts` (nowy plik przez `Write` jest dozwolony) albo wprowadzić komentarz `v8 ignore`/`istanbul ignore`. To te same zasady, które opisuje `AGENTS.md` („MikroORM”, „Testy”); hook tylko je egzekwuje przed zapisem, a nie zastępuje CI.
+
 ### `@gomoku/core` — części wielokrotnego użytku
 
 Czysty TypeScript bez zależności od frameworków:
