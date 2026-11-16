@@ -312,3 +312,16 @@ Odstępstwa od pierwotnej treści opisuje adnotacja „Zmienione przez `2026-10-
 | #28 „Done when”: migracja w górę i w dół na PostgreSQL; encja w `packages/db/src/entities/index.ts` | Encje: `packages/db/src/entities/index.test.ts` (rejestr `users`, `sessions`, `rate_limit_buckets`); migracja `Migration20261027173339.ts` ma `up` i `down`, a w górę stosuje ją `tests/integration/global-setup.ts` przed każdym przebiegiem. Sprawdzenie up/down/up na PostgreSQL 17: tylko opis PR #67 (nie ma testu automatycznego dla `down`) |
 
 Sprawdzenie 2026-10-31 na `origin/main` przez czytanie testów i kodu; testy nie były uruchamiane w ramach tego domknięcia (zmiana dokumentacyjna).
+
+## Recenzja innego modelu (2026-11-16)
+
+**Autor specyfikacji:** Claude Opus (Anthropic).
+**Recenzent:** gpt-6.1-sol (OpenAI) przez GitHub Copilot CLI.
+**Werdykt:** do poprawy.
+
+**Uwagi:**
+
+1. **[ważne] „API Contracts”, tabela wyników (wiersze 179–184), „Decisions in play”: brak wyjątku BR-35 dla `ADMIN_EMAIL`.** Kryteria E01-S01 są pokryte, łącznie z aktualnymi BR-26 i BR-28, ale specyfikacja nie uwzględnia późniejszej, obowiązującej decyzji o zakazie publicznej rejestracji administratora instalacyjnego. `UserService.register` już odrzuca ten adres ogólnym `CONFLICT` przed zapisem. Odtworzenie funkcji tylko z tej specyfikacji pominęłoby zabezpieczenie. Dopisać wymaganie, odpowiedź identyczną jak dla zajętego e-maila i scenariusz: próba na znormalizowany `ADMIN_EMAIL` nie tworzy użytkownika, sesji ani wiadomości.
+2. **[drobne] „Risks & Impact Review”, akapit „Enumeracja kont” (wiersz 240): zbyt mocna gwarancja niezależnego czasu odpowiedzi.** Jednakowy koszt bcrypt nie oznacza jednakowego czasu całego żądania: `UserService.register` po udanym commicie czeka na `#sendVerification`, a ścieżka konfliktu nie wysyła poczty. Dokument uczciwie opisuje już rozróżnienie `201`/`409`; nie należy przedstawiać go jako pełnej ochrony przed enumeracją. Uściślić zakres BR-16: brak bezpośredniego komunikatu o zajętym adresie, limit 5/h i jawne ryzyko resztkowe, bez zmieniania zaakceptowanej polityki rejestracji.
+
+**Co zrobić:** uzupełnić aktualny kontrakt o BR-35 i jego test negatywny; skorygować opis gwarancji czasowej. Pozostałe granice są określone testowalnie: unikalność normalizowanych danych, 8 znaków/72 bajty, CSRF, atomowe konto i sesja, token CSPRNG przechowywany jako hash, stała ważność sesji i wyjątek G5. To recenzja specyfikacji i lektury kodu, nie zatwierdzenie działania aplikacji; pełna bramka walidacyjna nie przeszła w tym worktree.
