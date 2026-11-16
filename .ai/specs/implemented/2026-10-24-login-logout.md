@@ -189,3 +189,16 @@ Odstępstwa od pierwotnej treści opisuje adnotacja „Zmienione przez `2026-10-
 | K3: po wylogowaniu strony wymagające logowania są niedostępne | `tests/integration/logout.test.ts` — „answers 200, clears the cookie and ends the session”, „revokes only the current session”; `account-page.test.ts` — „sends a guest to the login page, returns to /account after login and logs out”; `account/page.test.tsx`, `server/http/auth.test.ts` (strażnik `requireSession`) |
 
 Sprawdzenie 2026-10-31 na `origin/main` przez czytanie testów i kodu; testy nie były uruchamiane w ramach tego domknięcia (zmiana dokumentacyjna).
+
+## Recenzja innego modelu (2026-11-16)
+
+**Autor specyfikacji:** Claude Opus (Anthropic).
+**Recenzent:** gpt-6.1-sol (OpenAI) przez GitHub Copilot CLI.
+**Werdykt:** do poprawy.
+
+**Uwagi:**
+
+1. **[ważne] „API Contracts”, kolejność logowania (wiersz 93), plan Fazy 1 krok 4: brak rozstrzygnięcia wyścigu logowanie kontra reset/zmiana hasła.** `authenticate` i utworzenie sesji są osobnymi operacjami. W `api/auth/login/route.ts` pomiędzy nimi są jeszcze dwa `rateLimiter.reset`; `UserService.authenticate` zwraca tylko identyfikator i nazwę, a `SessionService.create` nie sprawdza wersji zweryfikowanego hasła. Z lektury wynika możliwa kolejność: sprawdzenie starego hasła → zmiana hasła i unieważnienie sesji → zapis nowej sesji na podstawie starego sprawdzenia. Dopisać inwariant wspólny z E01-S04/S05: taka sesja nie może pozostać ważna. Wymaga to atomowego powiązania kontroli aktualnych poświadczeń z zapisem sesji, zgodnego z blokadami operacji zmieniających hasło, oraz deterministycznego testu na PostgreSQL z zatrzymaniem logowania przed zapisem sesji. Scenariusza nie odtworzono wykonaniem w tej recenzji.
+2. **[drobne] „Decyzje”, Q3 (wiersz 23): nieścisły zakres unieważniania przy zmianie hasła.** Zdanie „unieważnienie wszystkich sesji robią zmiana hasła i reset” nie odpowiada E01-S05/Q4: zmiana zachowuje bieżącą sesję, reset usuwa wszystkie. `SessionService.revokeOthers` i `revokeAll` realizują to rozróżnienie. Wskazać je wprost, żeby odbiorca nie wprowadził wylogowania bieżącego urządzenia.
+
+**Co zrobić:** doprecyzować kontrakt współbieżności razem ze specyfikacjami resetu i zmiany hasła oraz dodać powyższy scenariusz do planu testów. Podstawowe kryteria E01-S02 są kompletne: ogólny `401` z atrapowym hashem, jawne limity z zaakceptowanym ryzykiem blokady globalnej, CSRF, nowy token przy logowaniu, idempotentne wylogowanie i strażnik `/account`. Awaria unieważnienia przy wylogowaniu jest jawnie opisana jako `500`, nie jako sukces. Pełna bramka walidacyjna nie przeszła w tym worktree; recenzja nie zatwierdza implementacji ani merge.

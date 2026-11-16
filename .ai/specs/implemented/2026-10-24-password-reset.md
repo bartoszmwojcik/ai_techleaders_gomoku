@@ -140,3 +140,17 @@ Odstępstwa od pierwotnej treści opisują dwie adnotacje na początku dokumentu
 | K5 (nowe, BR-27): konto niepotwierdzone: nic nie wysyłane, odpowiedź taka sama | `password-reset.test.ts` — „an unconfirmed or unknown address gets nothing…”; `password-reset-service.test.ts` — „never sets emailVerifiedAt”; `password-reset-api.test.ts` (pierwszy test) |
 
 Sprawdzenie 2026-10-31 na `origin/main` przez czytanie testów i kodu; testy nie były uruchamiane w ramach tego domknięcia (zmiana dokumentacyjna).
+
+## Recenzja innego modelu (2026-11-16)
+
+**Autor specyfikacji:** Claude Opus (Anthropic).
+**Recenzent:** gpt-6.1-sol (OpenAI) przez GitHub Copilot CLI.
+**Werdykt:** do poprawy.
+
+**Uwagi:**
+
+1. **[ważne] „Resolved assumptions”, Q6, „Architecture” i plan krok 4: „wszystkie sesje” nie ma kryterium dla równoległego logowania starym hasłem.** `PasswordResetService.confirm` atomowo zmienia hash, zużywa token i wywołuje `revokeAll`, ale zapis sesji w `api/auth/login/route.ts` następuje niezależnie od wcześniejszego `authenticate`. Samo usunięcie sesji istniejących w transakcji resetu nie zapobiega późniejszemu zapisowi sesji ze starej weryfikacji. Dopisać wspólne z E01-S02 kryterium i deterministyczny test: zatrzymać logowanie po sprawdzeniu starego hasła, wykonać reset, wznowić logowanie; nie może pozostać ważna sesja oparta na starym haśle. To wniosek z kolejności operacji, nie wykonany test regresji.
+2. **[drobne] Adnotacja początkowa i „Odstępstwa wdrożenia”, zapis „8–72 bajty”: błędna jednostka minimum.** BR-28 wymaga co najmniej 8 znaków i najwyżej 72 bajtów UTF-8. Osiem bajtów nie wystarcza dla hasła z czterech polskich liter. Ujednolicić zapis i wskazać test krótkiego hasła wielobajtowego, obok granic 7/8 znaków oraz 72/73 bajty.
+3. **[drobne] „Architecture”, `confirm`, i końcowe dowody: brak aktualizacji o oczekujące zmiany e-maila z E05-S01.** Wspólny `createInvalidateResetTokens` wywoływany przez reset unieważnia obecnie także `EmailChangeToken`; specyfikacja zmiany hasła już ma tę adnotację, reset jej nie ma. Dopisać zależność oraz scenariusz: link zmiany e-maila wydany przed resetem nie działa po jego zatwierdzeniu. Nie zmieniać polityki BR-27.
+
+**Co zrobić:** domknąć kontrakt sesji z E01-S02, poprawić jednostki i udokumentować istniejące powiązanie z E05-S01. Wszystkie podstawowe kryteria E01-S04 są opisane po uwzględnieniu adnotacji: reset tylko potwierdzonego adresu, identyczna odpowiedź niezależna od konta dzięki `after()` z własnym scope, limity, token CSPRNG z hashem, ważność 1 h, jednokrotne zużycie, atomowa zmiana i brak auto-logowania. Kod sprawdza stan potwierdzenia również przy zużyciu tokenu. Pełna bramka walidacyjna nie przeszła w tym worktree; nie jest to potwierdzenie działania ani zgoda na merge.

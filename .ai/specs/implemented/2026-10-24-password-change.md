@@ -101,3 +101,17 @@ Sprawdzenie 2026-10-31 na `origin/main` przez czytanie testów i kodu; testy nie
 
 
 > **Adnotacja (E05-S01, 2026-11-02):** zmiana hasła unieważnia także oczekujące linki zmiany adresu e-mail (`createInvalidateResetTokens`).
+
+## Recenzja innego modelu (2026-11-16)
+
+**Autor specyfikacji:** Claude Opus (Anthropic).
+**Recenzent:** gpt-6.1-sol (OpenAI) przez GitHub Copilot CLI.
+**Werdykt:** do poprawy.
+
+**Uwagi:**
+
+1. **[ważne] „Resolved assumptions”, Q4, oraz plan krok 3: brak kryterium unieważnienia wobec logowania w toku.** Test „druga sesja unieważniona, bieżąca działa” sprawdza sesje już zapisane. Nie obejmuje logowania, które zweryfikowało stare hasło przed zmianą, ale zapisze sesję po `revokeOthers`. `UserService.changePassword` chroni warunkowym UPDATE przed dwiema zmianami hasła, lecz nie synchronizuje z osobnymi `authenticate` i `SessionService.create` w route logowania. Dopisać wspólny inwariant i test E01-S02: po zmianie nie pozostaje żadna inna ważna sesja uzyskana na podstawie starego hasła, również z żądania w toku. Jest to luka kontraktu wynikająca z lektury kodu; scenariusza nie uruchomiono.
+2. **[drobne] Adnotacja początkowa i „Odstępstwa wdrożenia” (wiersze 4 i 91): „8–72 bajty” nie odpowiada BR-28.** Minimum to 8 znaków, maksimum to 72 bajty UTF-8. Ujednolicić zapis i wskazać przypadek kilku wielobajtowych znaków mających łącznie 8 bajtów, ale mniej niż 8 znaków.
+3. **[drobne] „Resolved assumptions”, Q3 (wiersz 19): błędny klucz `fieldErrors.password`.** Tabela API słusznie wymaga `fieldErrors.newPassword`; formularz wysyła `newPassword`. Ujednolicić Q3 z kontraktem i testem błędu równości przy właściwym polu.
+
+**Co zrobić:** uzupełnić granicę współbieżności z logowaniem oraz poprawić dwie nieścisłości kontraktu. Kryteria E01-S05 są poza tym kompletne i testowalne: ponowne sprawdzenie aktualnego hasła, limit 10/15 min, CAS na poprzednim hashu, jedna transakcja dla hasła i unieważnienia sesji/tokenów, zachowanie bieżącej sesji i ostrzeżenie o innych urządzeniach w partii. Pełna bramka walidacyjna nie przeszła w tym worktree; recenzja specyfikacji nie zatwierdza implementacji ani merge.
