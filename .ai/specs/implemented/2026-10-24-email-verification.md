@@ -211,3 +211,17 @@ Sprawdzenie 2026-10-31 na `origin/main` przez czytanie testów i kodu; testy nie
 
 
 > **Adnotacja (E05-S01, 2026-11-02):** potwierdzenie zmiany adresu e-mail unieważnia niewykorzystane tokeny potwierdzenia i ustawia nowy adres jako potwierdzony.
+
+## Recenzja innego modelu (2026-11-16)
+
+**Autor specyfikacji:** Claude Opus (Anthropic).
+**Recenzent:** gpt-6.1-sol (OpenAI) przez GitHub Copilot CLI.
+**Werdykt:** zatwierdzona z uwagami.
+
+**Uwagi:**
+
+1. **[drobne] „Resolved assumptions”, Q9 (wiersz 28), oraz „Edge Cases”, „Konto założone na cudzy adres”: pozostawiona nieaktualna obietnica odzyskania konta resetem.** BR-27/D-26 świadomie wycofały reset niepotwierdzonego adresu, a `PasswordResetService.request` dla takiego konta nic nie wysyła. Adnotacja początkowa wycofuje bramkę gry i Q14, ale nie wymienia Q9. Oznaczyć Q9 i ten przypadek jako zastąpione; opisać ryzyko zajęcia adresu jako zaakceptowane w D-26, nie jako działającą ścieżkę odzyskania. Nie przywracać starej polityki resetu.
+2. **[drobne] „Odstępstwa wdrożenia i dowody” oraz końcowe „Nie wdrożone”: nieaktualny stan reguły 14 dni.** `packages/db/src/cleanup/rules.ts` zawiera już `unverifiedUsers` z warunkiem braku partii, okresem 14 dni i ochroną administratora. To nie jest brak implementacji E01-S03; zaktualizować w przyszłości odsyłacz do dowodów E01-S06 zamiast utrzymywać informację „nie wdrożona”.
+3. **[drobne] „Resolved assumptions”, Q7, oraz plan Fazy 1 krok 4: doprecyzować znaczenie „najnowszego” linku.** Kod `EmailVerificationService.issue` rozstrzyga równoległe wysyłki kolejnością `(createdAt, id)`, nie chwilą dostarczenia wiadomości. Włączyć tę regułę i test odwróconej kolejności zakończenia wysyłek do wymagań; nie obiecywać, że ostatni e-mail odebrany przez użytkownika zawsze zawiera ważny link.
+
+**Co zrobić:** poprawić odsyłacze i oznaczenia historycznych ustaleń oraz uściślić współbieżne wysyłki. Kryteria E01-S03 po BR-26 są kompletne: potwierdzenie nie blokuje gry, samo GET nie zużywa tokenu, POST jest chroniony CSRF, token ma 32 losowe bajty i hash w bazie, ważność wynosi 24 h, zużycie i zapis potwierdzenia są atomowe. Limity i zaakceptowane ryzyko wyczerpania puli poczty są jawne. Werdykt dotyczy projektu, nie merge kodu: pełna bramka walidacyjna nie przeszła w tym worktree.
