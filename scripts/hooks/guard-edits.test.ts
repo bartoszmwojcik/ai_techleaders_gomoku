@@ -46,9 +46,24 @@ describe("ignore comments", () => {
     expect(checkEdit({ toolName: "MultiEdit", toolInput: { file_path }, fileExists: exists, cwd })).toBeNull();
   });
 
-  it("names the generic target when there is no path, and defaults the input and cwd", () => {
-    expect(checkEdit({ toolName: "Edit", toolInput: { new_string: ignoreComment }, fileExists: exists })).toMatch(/in code/);
+  it("blocks c8 too, like the CI step", () => {
+    const toolInput = { file_path: "/repo/packages/ui/src/game/b.tsx", new_string: "/* c8 ignore next */" };
+    expect(checkEdit({ toolName: "Edit", toolInput, fileExists: exists, cwd })).toMatch(/b\.tsx/);
+  });
+
+  it("checks only packages/, as CI does, so docs, skills and scripts may name the comments", () => {
+    for (const file_path of ["/repo/AGENTS.md", "/repo/.ai/skills/x/SKILL.md", "/repo/scripts/hooks/guard-edits.test.ts"]) {
+      expect(checkEdit({ toolName: "Write", toolInput: { file_path, content: ignoreComment }, fileExists: exists, cwd })).toBeNull();
+    }
+  });
+
+  it("lets a call without a path through, and defaults the input and cwd", () => {
+    expect(checkEdit({ toolName: "Edit", toolInput: { new_string: ignoreComment }, fileExists: exists })).toBeNull();
     expect(checkEdit({ toolName: "Write", fileExists: missing })).toBeNull();
+    const file_path = `${process.cwd()}/packages/core/src/a.ts`;
+    expect(checkEdit({ toolName: "Edit", toolInput: { file_path, new_string: ignoreComment }, fileExists: exists })).toMatch(/packages\/core\/src\/a\.ts/);
+    expect(checkEdit({ toolName: "Edit", toolInput: { file_path }, fileExists: exists })).toBeNull();
+    expect(checkEdit({ toolName: "MultiEdit", toolInput: { file_path }, fileExists: exists })).toBeNull();
   });
 });
 

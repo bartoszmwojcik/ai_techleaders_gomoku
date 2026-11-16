@@ -355,7 +355,7 @@ Interfejs gracza mówi po polsku (domyślnie), angielsku i francusku; niemiecki 
 
 ### Narzędzia agentów (hook `PreToolUse`)
 
-`.claude/settings.json` rejestruje hook Claude Code dla narzędzi `Edit`, `Write` i `MultiEdit` (`scripts/hooks/cli.mjs`, logika w `guard-edits.mjs`, wzorzec jak w `scripts/ci`). Hook czyta JSON ze stdin i kończy się kodem 2 (z powodem na stderr), gdy agent próbuje zmienić istniejący plik `packages/db/src/migrations/Migration*.ts` (nowy plik przez `Write` jest dozwolony) albo wprowadzić komentarz `v8 ignore`/`istanbul ignore`. To te same zasady, które opisuje `AGENTS.md` („MikroORM”, „Testy”); hook tylko je egzekwuje przed zapisem, a nie zastępuje CI.
+`.claude/settings.json` rejestruje hook Claude Code dla narzędzi `Edit`, `Write` i `MultiEdit` (`scripts/hooks/cli.mjs`, logika w `guard-edits.mjs`, wzorzec jak w `scripts/ci`). Hook czyta JSON ze stdin i kończy się kodem 2 (z powodem na stderr), gdy agent próbuje zmienić istniejący plik `packages/db/src/migrations/Migration*.ts` (nowy plik przez `Write` jest dozwolony) albo wprowadzić komentarz wyłączający pokrycie (`v8`, `c8`, `istanbul`) w pliku pod `packages/` — ten sam zakres co krok CI „No coverage ignore comments”, więc dokumentacja i skille mogą te komentarze nazywać. To te same zasady, które opisuje `AGENTS.md` („MikroORM”, „Testy”); hook tylko je egzekwuje przed zapisem, a nie zastępuje CI.
 
 ### `@gomoku/core` — części wielokrotnego użytku
 
