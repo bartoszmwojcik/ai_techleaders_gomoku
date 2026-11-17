@@ -1,6 +1,6 @@
 # Notatki bezpieczeństwa: praca z agentami AI
 
-Stan na 2026-11-16. Dokument opisuje, co mogą agenci AI pracujący nad tym repozytorium (Claude Code lokalnie i w sesjach headless Cezara, Codex jako recenzent), gdzie leżą sekrety i jak wypadła próba prompt injection. Bezpieczeństwo samej aplikacji (sesje, CSRF, limity) opisują specyfikacje w `.ai/specs/implemented/` i `docs/architektura.md`.
+Stan na 2026-11-17. Dokument opisuje, co mogą agenci AI pracujący nad tym repozytorium (Claude Code lokalnie i w sesjach headless Cezara, Codex jako recenzent), gdzie leżą sekrety i jak wypadła próba prompt injection. Bezpieczeństwo samej aplikacji (sesje, CSRF, limity) opisują specyfikacje w `.ai/specs/implemented/` i `docs/architektura.md`.
 
 ## 1. Uprawnienia agenta
 
@@ -24,7 +24,7 @@ Stan na 2026-11-16. Dokument opisuje, co mogą agenci AI pracujący nad tym repo
 ### Strażnicy, którzy działają bez względu na model
 
 - **Hook `PreToolUse`** (`.claude/settings.json` → `scripts/hooks/cli.mjs`): blokuje (kod 2) edycję istniejących migracji `packages/db/src/migrations/Migration*.ts` i dodanie komentarzy wyłączających pokrycie w `packages/`. Hook zadziałał na samym autorze tego dokumentu: zablokował edycję, w której nowy tekst zawierał zakazaną frazę.
-- **CI**: lint, typecheck, 100% pokrycia per plik, zakaz komentarzy ignore, `check:tokens`, hashe skilli (`skills-lock.json`) — agent nie scali PR-a z czerwonym CI.
+- **CI**: lint, typecheck, 100% pokrycia per plik, zakaz komentarzy ignore, `check:tokens`, hashe skilli (`skills-lock.json`), skanowanie sekretów (job `secrets`, sekcja 2) — agent nie scali PR-a z czerwonym CI.
 - **Testy strażnicze w kodzie**: `admin-gate.guard.test.ts`, `show-routes.guard.test.ts` (każda trasa administratora ma bramkę), `no-ui-literals.test.ts`.
 
 ## 2. Sekrety
@@ -40,6 +40,16 @@ Stan na 2026-11-16. Dokument opisuje, co mogą agenci AI pracujący nad tym repo
 | CI | brak sekretów aplikacji: testy integracyjne startują własny PostgreSQL w Testcontainers | `permissions: contents: read` |
 
 Testy używają `vi.stubEnv`, nie prawdziwych wartości. Wyciek sekretu = rotacja u dostawcy (Brevo, hasło PostgreSQL na VPS) i nowy `.env.production`; historii gita nie trzeba czyścić, bo `.env*` nigdy nie był commitowany.
+
+### Skanowanie sekretów w CI (od 2026-11-17)
+
+Job `secrets` w `ci.yml` uruchamia gitleaks 8.30.1 na **całej historii gita** przy każdym PR (także z samą dokumentacją), pushu na `main` i ręcznym przebiegu. Binarka pochodzi z wydania GitHub, przypięta wersją i sumą SHA-256 w workflow (Dependabot jej nie aktualizuje, wersję podbija się ręcznie razem z sumą), a `--redact` sprawia, że log nie pokazuje znalezionej wartości.
+
+- Pierwszy skan (539 commitów) znalazł 14 trafień reguły `generic-api-key`. Wszystkie to fikcyjne hasła w testach, stories i prototypach (np. `password = "…"`), prawdziwego sekretu nie było. Ich odciski są w `.gitleaksignore`.
+- Nową fikcyjną wartość, którą gitleaks uzna za sekret, oznacza się komentarzem `gitleaks:allow` w tej samej linii. Odcisku do `.gitleaksignore` się nie dopisuje, bo squash merge zmienia SHA commita i odcisk z PR-a nie pasowałby na `main`.
+- Prawdziwy sekret w PR-ze: job jest czerwony, PR nie zostanie scalony. Sekret trzeba **zrotować** u dostawcy (usunięcie commita nie wystarczy, bo gałąź była już na GitHubie), a commit usunąć z gałęzi PR-a przed scaleniem.
+- Sprawdzone lokalnie: skan czystej historii kończy się kodem 0, a podrzucony token w formacie `ghp_…` zostaje wykryty. Linia z `gitleaks:allow` jest pomijana, a ta sama wartość bez komentarza zostaje wykryta.
+- Do zrobienia przez właściciela: dopisać `Skanowanie sekretów (gitleaks)` do wymaganych checków w ochronie gałęzi `main` (ustawienie GitHuba, poza repo).
 
 ## 3. Próba prompt injection (2026-11-16)
 
