@@ -1,28 +1,40 @@
 // Verifies skills-lock.json against the installed skills in .agents/skills (T-10). The hash is the one the
-// `skills` CLI writes as `computedHash`: SHA-256 over, for every file of the skill folder sorted by relative
-// path (`localeCompare`), the relative path followed by the file content; `.git` and `node_modules` are skipped.
+// `skills` CLI (lock version 2) writes as `computedHash`: SHA-256 over, for every file of the skill folder sorted
+// bytewise by relative path, the path, a NUL, the content length, a NUL and the content (CRLF normalized to LF for
+// text files). `metadata.json` files and the `.git`, `__pycache__` and `__pypackages__` folders are skipped.
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
+
+const EXCLUDED_FILES = new Set(["metadata.json"]);
+const EXCLUDED_DIRS = new Set([".git", "__pycache__", "__pypackages__"]);
 
 function collect(base, dir, out) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (entry.name !== ".git" && entry.name !== "node_modules") collect(base, path, out);
-    } else {
-      out.push({ path: relative(base, path).split("\\").join("/"), content: readFileSync(path) });
+      if (!EXCLUDED_DIRS.has(entry.name)) collect(base, path, out);
+    } else if (!EXCLUDED_FILES.has(entry.name)) {
+      out.push({ path: Buffer.from(relative(base, path).split("\\").join("/")), content: normalizeLineEndings(readFileSync(path)) });
     }
   }
+}
+
+function normalizeLineEndings(content) {
+  if (content.includes(0) || !content.includes("\r\n")) return content;
+  return Buffer.from(content.toString("latin1").replaceAll("\r\n", "\n"), "latin1");
 }
 
 export function computeSkillHash(skillDir) {
   const files = [];
   collect(skillDir, skillDir, files);
-  files.sort((a, b) => a.path.localeCompare(b.path));
+  files.sort((a, b) => Buffer.compare(a.path, b.path));
   const hash = createHash("sha256");
   for (const file of files) {
     hash.update(file.path);
+    hash.update("\0");
+    hash.update(String(file.content.length));
+    hash.update("\0");
     hash.update(file.content);
   }
   return hash.digest("hex");

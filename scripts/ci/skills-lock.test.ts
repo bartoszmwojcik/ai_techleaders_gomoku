@@ -13,11 +13,13 @@ beforeEach(() => {
 });
 afterEach(() => rmSync(root, { recursive: true, force: true }));
 
-const sha = (...parts: string[]) => {
+const sha = (...parts: (string | number)[]) => {
   const hash = createHash("sha256");
-  for (const part of parts) hash.update(part);
+  for (const part of parts) hash.update(String(part));
   return hash.digest("hex");
 };
+/** Hash entry of one file in the format of the `skills` CLI (lock version 2): path, NUL, length, NUL, content. */
+const entry = (path: string, content: string) => [path, "\0", Buffer.byteLength(content), "\0", content];
 function skill(name: string, files: Record<string, string>) {
   for (const [path, content] of Object.entries(files)) {
     const file = join(root, ".agents", "skills", name, path);
@@ -28,20 +30,32 @@ function skill(name: string, files: Record<string, string>) {
 const lock = (skills: Record<string, string>) =>
   writeFileSync(
     join(root, "skills-lock.json"),
-    JSON.stringify({ version: 1, skills: Object.fromEntries(Object.entries(skills).map(([n, h]) => [n, { computedHash: h }])) }),
+    JSON.stringify({ version: 2, skills: Object.fromEntries(Object.entries(skills).map(([n, h]) => [n, { computedHash: h }])) }),
   );
 
 describe("computeSkillHash", () => {
-  it("hashes relative path and content of every file in locale path order (references before SKILL.md), skipping .git and node_modules", () => {
-    skill("a", { "SKILL.md": "x", "references/b.md": "y", ".git/HEAD": "z", "node_modules/m/i.js": "q" });
-    expect(computeSkillHash(join(root, ".agents", "skills", "a"))).toBe(sha("references/b.md", "y", "SKILL.md", "x"));
+  it("hashes path, length and content of every file in bytewise path order (SKILL.md before references), skipping excluded entries", () => {
+    skill("a", {
+      "SKILL.md": "x",
+      "references/b.md": "y",
+      "metadata.json": "{}",
+      ".git/HEAD": "z",
+      "__pycache__/m.pyc": "q",
+      "__pypackages__/p.py": "r",
+    });
+    expect(computeSkillHash(join(root, ".agents", "skills", "a"))).toBe(sha(...entry("SKILL.md", "x"), ...entry("references/b.md", "y")));
+  });
+
+  it("normalizes CRLF in text files but leaves binary files untouched", () => {
+    skill("a", { "SKILL.md": "x\r\ny", "bin.dat": "a\0\r\nb" });
+    expect(computeSkillHash(join(root, ".agents", "skills", "a"))).toBe(sha(...entry("SKILL.md", "x\ny"), ...entry("bin.dat", "a\0\r\nb")));
   });
 });
 
 describe("verifySkillsLock", () => {
   it("reports nothing when every hash matches", () => {
     skill("a", { "SKILL.md": "x" });
-    lock({ a: sha("SKILL.md", "x") });
+    lock({ a: sha(...entry("SKILL.md", "x")) });
     expect(verifySkillsLock(root)).toEqual([]);
   });
 
