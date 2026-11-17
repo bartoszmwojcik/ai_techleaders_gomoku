@@ -17,7 +17,7 @@ Stan na 2026-11-16. Dokument opisuje, co mogą agenci AI pracujący nad tym repo
 ### Czego agent nie może (sprawdzone w praktyce)
 
 - **Pliki `.env*`** — odczyt i zapis odrzucane w sesjach headless; właściciel dostaje gotowy fragment do wklejenia.
-- **`.claude/**` w sesji headless** — narzędzia `Write`/`Edit` na `.claude/` są odrzucane (tryb „don't ask”); 2026-11-16 odrzucono zapis `.claude/skills/gomoku-player-screen/SKILL.md`, dlatego skill leży w `.ai/skills/`. Zmianę `.claude/settings.json` (hook) zrobiło zadanie uruchomione z uprawnieniem do tej ścieżki, a przegląd jest w PR.
+- **`.claude/**` w sesji headless** — narzędzia `Write`/`Edit` na `.claude/` są odrzucane (tryb „don't ask”); 2026-11-16 odrzucono zapis `.claude/skills/gomoku-player-screen/SKILL.md`. Skill leży w `.agents/skills/gomoku-player-screen/` (jak pozostałe skille), a link `.claude/skills/gomoku-player-screen` dodano w #325. Zmianę `.claude/settings.json` (hook) zrobiło zadanie uruchomione z uprawnieniem do tej ścieżki, a przegląd jest w PR.
 - **Produkcja** — `mcp__mikrus__exec` jest odrzucany w sesji headless; wdrożenie wymaga sesji interaktywnej z akceptacją właściciela.
 - **Obchodzenie blokad** — reguła w instrukcjach agenta: odmowa narzędzia oznacza „stop i zgłoś”, nie „spróbuj przez `sed`/`cat >`”.
 
