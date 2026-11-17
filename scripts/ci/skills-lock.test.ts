@@ -59,6 +59,16 @@ describe("verifySkillsLock", () => {
     expect(verifySkillsLock(root)).toEqual([]);
   });
 
+  it("checks only that a local skill is installed, not its hash", () => {
+    skill("mine", { "SKILL.md": "edited later" });
+    skill("gone", { "SKILL.md": "x" });
+    writeFileSync(
+      join(root, "skills-lock.json"),
+      JSON.stringify({ version: 2, skills: { mine: { sourceType: "local" }, missing: { sourceType: "local" }, gone: { sourceType: "local" } } }),
+    );
+    expect(verifySkillsLock(root)).toEqual(["missing: locked but not installed"]);
+  });
+
   it("reports a changed skill, a missing one and an unlocked one", () => {
     skill("changed", { "SKILL.md": "x" });
     skill("extra", { "SKILL.md": "x" });

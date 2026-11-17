@@ -7,6 +7,10 @@
       "skillPath": "skills/eliminate-no-op/SKILL.md",
       "computedHash": "a56bd11b54ad82ea0714e08543887859252aa61bd6a22f3162c2a729f6c8aeff"
     },
+    "gomoku-player-screen": {
+      "source": ".agents/skills/gomoku-player-screen",
+      "sourceType": "local"
+    },
     "grill-me": {
       "source": "mattpocock/skills",
       "sourceType": "github",

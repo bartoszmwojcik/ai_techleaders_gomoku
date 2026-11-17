@@ -40,7 +40,10 @@ export function computeSkillHash(skillDir) {
   return hash.digest("hex");
 }
 
-/** Problems found: a hash that differs, a locked skill that is missing, an installed skill that is not locked. */
+/**
+ * Problems found: a hash that differs, a locked skill that is missing, an installed skill that is not locked.
+ * Skills with `sourceType: "local"` are the project's own (edited in place), so only their presence is checked.
+ */
 export function verifySkillsLock(root) {
   const lock = JSON.parse(readFileSync(join(root, "skills-lock.json"), "utf8"));
   const skillsDir = join(root, ".agents", "skills");
@@ -50,7 +53,7 @@ export function verifySkillsLock(root) {
   const problems = [];
   for (const [name, entry] of Object.entries(lock.skills)) {
     if (!installed.includes(name)) problems.push(`${name}: locked but not installed`);
-    else if (computeSkillHash(join(skillsDir, name)) !== entry.computedHash) problems.push(`${name}: hash differs from skills-lock.json`);
+    else if (entry.sourceType !== "local" && computeSkillHash(join(skillsDir, name)) !== entry.computedHash) problems.push(`${name}: hash differs from skills-lock.json`);
   }
   for (const name of installed) {
     if (!(name in lock.skills)) problems.push(`${name}: installed but not in skills-lock.json`);
