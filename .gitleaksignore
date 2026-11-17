@@ -1,0 +1,18 @@
+# Gitleaks findings in already merged history, reviewed as false positives (fake passwords in tests, stories
+# and prototypes). One fingerprint per line: <commit>:<file>:<rule>:<line>. Commits on main are immutable, so these
+# stay valid. A NEW false positive is marked inline with a 'gitleaks:allow' comment on its line instead: squash merge
+# rewrites commit ids, so a fingerprint taken on a pull request would not match on main (security-notes.md, section 2).
+0506069e03b89cd8bf79b2467d22b44d36bc9597:prototypes/konta-i-role/src/sim.ts:generic-api-key:6
+1d260076879ea0ff78dc73b459702334b7cbfb58:packages/ui/docs/patterns/form.stories.tsx:generic-api-key:27
+2dcac0ab1808597ff60c7865e7c4f35bb1d27564:prototypes/konta-i-role/tests/usuniecie-konta.test.tsx:generic-api-key:10
+33a1d91f8964395a530165cd5bb555e284f41b4c:packages/ui/docs/patterns/form.stories.tsx:generic-api-key:27
+40e7c70ab9cafc0dcbf0af00ac991d2e1e990b4a:tests/integration/admin-account.test.ts:generic-api-key:153
+69d4ebca1c7d6201f30a336f18784ec2b0d51ce6:prototypes/partia-z-zaproszenia/src/sim.ts:generic-api-key:12
+88e9b2f79266e8be3b3e4235ebc5d5442a1c58f4:prototypes/konta-i-role/tests/usuniecie-konta.test.tsx:generic-api-key:10
+8d2ee9b96632eb6769a053410f7af275cb38c0a8:prototypes/konta-i-role/src/sim.ts:generic-api-key:6
+a40d1ee37130a08fc9e06b5cd09eef620935a9eb:prototypes/partia-z-zaproszenia/src/sim.ts:generic-api-key:8
+a8b96881c48526e1cf449fc80eb2d5c20b36fc81:tests/integration/security-log.test.ts:generic-api-key:45
+a8b96881c48526e1cf449fc80eb2d5c20b36fc81:tests/integration/security-log.test.ts:generic-api-key:78
+eac85e3543e929552f8d2f6fe27300954e304fe3:packages/app/src/app/(frontend)/reset-password/reset-password-form.test.tsx:generic-api-key:18
+eac85e3543e929552f8d2f6fe27300954e304fe3:packages/app/src/app/(frontend)/reset-password/reset-password-form.test.tsx:generic-api-key:60
+f2670615d3cc72000bdd5641baec032f767c0a21:tests/integration/chat-db.test.ts:generic-api-key:413
