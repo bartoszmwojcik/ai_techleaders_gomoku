@@ -1,5 +1,7 @@
 # Klikalny prototyp: Epik 01, konta (rejestracja, logowanie, potwierdzenie e-maila, wejście z zaproszenia)
 
+> Uwaga: katalog `lekcja-07/` (mapy ekranów; silnik przeglądu nie był śledzony w gitcie) został usunięty z repozytorium; mapy ekranów są w commicie `b9d59a9` (np. `git show b9d59a9:lekcja-07/mapa-ekranow.md`). Odwołania do `lekcja-07/` poniżej wskazują na ten commit.
+
 Prototyp pokazuje, jak będą wyglądać i działać ekrany z zatwierdzonej mapy (`lekcja-07/mapa-ekranow.md`), zanim powstanie kod produkcyjny. Korzysta z niego gracz, który klika i komentuje, oraz developer, który buduje z niego prawdziwe ekrany. Nic tu nie jest prawdziwą usługą: konta, sesja, poczta i limity istnieją tylko w pamięci strony, a dane są fikcyjne.
 
 **Zmiana 2026-10-26 (D-24…D-26, BR-26…BR-28):** hasło co najmniej 8 znaków, konto aktywne od razu, potwierdzenie e-maila asynchroniczne i nieblokujące (zamykalny baner z powodem), nowy ekran s07 (wejście z zaproszenia), niepotwierdzone konta bez partii znikają po 14 dniach. Osąd właściciela, nie wynik badania.

@@ -1,6 +1,6 @@
 # Postęp: design system Gomoku
 
-Prompt źródłowy: `lekcja-06/prompt-story-book.txt` (README lekcji mówi o `prompt-storybook.md`, taki plik nie istnieje). Język dokumentacji: polski. Język interfejsu produktu: polski i angielski z opcją dodawania kolejnych (patrz „Otwarte pytania”, Q3).
+Prompt źródłowy: dawny `lekcja-06/prompt-story-book.txt` (usunięte z repozytorium, ostatnia wersja w commicie `b9d59a9`). Język dokumentacji: polski. Język interfejsu produktu: polski i angielski z opcją dodawania kolejnych (patrz „Otwarte pytania”, Q3).
 
 ## Etapy
 
@@ -16,7 +16,7 @@ Prompt źródłowy: `lekcja-06/prompt-story-book.txt` (README lekcji mówi o `pr
 
 ## Materiały przeczytane
 
-`lekcja-06/referencje.md`, `lekcja-06/tokeny.md`, `lekcja-06/audyt.md`, `lekcja-06/przyklad-tokeny.html` (zatwierdzony: „bardzo się podoba”), `.ai/specs/product-brief.md`, `.ai/specs/backlog.md` i specyfikacje `.ai/specs/2026-10-24-*.md`, `2026-10-25-game-moves-win-detection.md`, `.ai/docs/2026-09-01-engineering-standards.md`, `AGENTS.md`.
+dawne `lekcja-06/{referencje.md,tokeny.md,audyt.md,przyklad-tokeny.html}` (usunięte z repozytorium, ostatnia wersja w commicie `b9d59a9`; `przyklad-tokeny.html` zatwierdzony: „bardzo się podoba”), `.ai/specs/product-brief.md`, `.ai/specs/backlog.md` i specyfikacje `.ai/specs/2026-10-24-*.md`, `2026-10-25-game-moves-win-detection.md`, `.ai/docs/2026-09-01-engineering-standards.md`, `AGENTS.md`.
 
 ## Stan repozytorium (sprawdzony)
 

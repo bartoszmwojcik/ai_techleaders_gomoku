@@ -62,3 +62,7 @@ packages/ui/.storybook/public/prototypes/
 # migration snapshots left by tests on temporary databases (only the tracked one stays)
 packages/db/src/migrations/.snapshot-*.json
 !packages/db/src/migrations/.snapshot-gomoku.json
+
+# Local tools kept outside version control
+/cezar/
+/.deepsec/

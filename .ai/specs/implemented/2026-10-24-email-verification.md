@@ -195,7 +195,7 @@ Potwierdzone przez właściciela — Bartosza Wójcika.
 
 ## 📝 Odstępstwa wdrożenia i dowody (2026-10-31)
 
-Odstępstwa od pierwotnej treści opisuje adnotacja „Zmienione przez `2026-10-26-account-onboarding-simplification.md`” na początku dokumentu. **Zastąpione kryteria:** w #34/K2 „gra odblokowana” odpada (BR-26: konto gra od rejestracji, potwierdzenie umożliwia tylko reset hasła, BR-27); Q14 (7 dni i baner „zostanie usunięte”) zastąpione przez BR-28 (14 dni, tylko konta bez partii), a **sama reguła kasowania nie jest wdrożona** (zob. `2026-10-24-expired-records-cleanup.md`, krok 9.4 w `track.md`); baner jest zamykalny i wraca po 7 dniach (pamięć w `localStorage`). Odstępstwa wdrożenia z 2026-10-28 (wysyłka w żądaniu rejestracji z limitem 5 s, pule `EMAIL_DAILY_LIMIT`) opisują ustalenia z przesłuchania poniżej oraz `2026-10-24-email-provider.md`.
+Odstępstwa od pierwotnej treści opisuje adnotacja „Zmienione przez `2026-10-26-account-onboarding-simplification.md`” na początku dokumentu. **Zastąpione kryteria:** w #34/K2 „gra odblokowana” odpada (BR-26: konto gra od rejestracji, potwierdzenie umożliwia tylko reset hasła, BR-27); Q14 (7 dni i baner „zostanie usunięte”) zastąpione przez BR-28 (14 dni, tylko konta bez partii), a **sama reguła kasowania nie jest wdrożona** (zob. `2026-10-24-expired-records-cleanup.md`, krok 9.4 w `.ai/runs/2026-10-27-e01-tracking.md`); baner jest zamykalny i wraca po 7 dniach (pamięć w `localStorage`). Odstępstwa wdrożenia z 2026-10-28 (wysyłka w żądaniu rejestracji z limitem 5 s, pule `EMAIL_DAILY_LIMIT`) opisują ustalenia z przesłuchania poniżej oraz `2026-10-24-email-provider.md`.
 
 | Kryterium | Dowód |
 | --- | --- |

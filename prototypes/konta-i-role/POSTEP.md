@@ -1,5 +1,7 @@
 # Postęp: klikalny prototyp Epiku 01 (konta)
 
+> Uwaga: katalog `lekcja-07/` (mapy ekranów; silnik przeglądu nie był śledzony w gitcie) został usunięty z repozytorium; mapy ekranów są w commicie `b9d59a9` (np. `git show b9d59a9:lekcja-07/mapa-ekranow.md`). Odwołania do `lekcja-07/` poniżej wskazują na ten commit.
+
 Stan: **etapy 0–3 gotowe; zmiana z 2026-10-26 (PR 3 z 3) wprowadzona.**
 
 ## Źródła

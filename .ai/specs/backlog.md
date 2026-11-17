@@ -84,7 +84,7 @@ Uwagi 2026-10-31: E02-S05…S08 (#87, #88, #94, #95) założono poza `om-backlog
 
 ## Stan wdrożenia E06 (2026-10-31)
 
-Źródło: `track-e06.md`. Specyfikacje S01 i decyzja D-29 leżą w `.ai/specs/implemented/`.
+Źródło: `.ai/runs/2026-10-31-e06-tracking.md`. Specyfikacje S01 i decyzja D-29 leżą w `.ai/specs/implemented/`.
 
 | Id | Issue | Stan | Dowód |
 |---|---|---|---|

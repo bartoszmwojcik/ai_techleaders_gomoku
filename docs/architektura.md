@@ -209,7 +209,7 @@ Zalogowany gracz tworzy partię na `/` (przycisk „Utwórz zaproszenie”), dos
   curl -s -b a.jar localhost:3000/api/games/<gameId>                   # status active, seen obu graczy
   ```
 
-  Gość: `-c g.jar` na `accept` z `{"as":"guest","acknowledgedGuestWarning":true}` i świeżym kodzie (bez `acknowledgedGuestWarning` to `400`), potem `curl -b g.jar …/api/games/<gameId>`. Strony: patrz lista kroków w `track-e02.md` (po fazie 2).
+  Gość: `-c g.jar` na `accept` z `{"as":"guest","acknowledgedGuestWarning":true}` i świeżym kodzie (bez `acknowledgedGuestWarning` to `400`), potem `curl -b g.jar …/api/games/<gameId>`. Strony: patrz lista kroków w `.ai/runs/2026-10-29-e02-tracking.md` (po fazie 2).
 - **Testy:** jednostkowe obok kodu (serwisy, route'y, strony, komponenty), integracyjne `tests/integration/game-invitations-api.test.ts` (API, wyścigi) i `tests/integration/game-invitation-pages.test.ts` (przeglądarka: tworzenie, `/join`, gość, konto, anulowanie, BR-13, 404, limit).
 
 Specyfikacja: [`.ai/specs/implemented/2026-10-24-game-invitations.md`](../.ai/specs/implemented/2026-10-24-game-invitations.md).

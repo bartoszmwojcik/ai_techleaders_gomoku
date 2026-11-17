@@ -149,7 +149,7 @@ Założenia Q1–Q10 zastosowane bez zmian, poza punktami 1–2 poniżej. Pozost
 4. **SQL wstawiania partii nie został wydzielony** do wspólnego modułu: lobby wstawia tylko dwa wiersze kont (stała liczba kolumn) i duplikacja z `RematchService` nie przekracza progu ~15 linii z planu, więc rewanż pozostał nietknięty.
 5. **Stały układ miejsc:** wybierający ma miejsce 1, wybrany 2; losowany jest tylko kolor (`black_seat`) przez `ColorDraw`.
 6. **Przekierowanie wybranego** wykonuje `LobbyPanel`, gdy odczyt zwraca `currentGame`, którego strona wcześniej nie znała (`knowsGame`); kto otworzył `/lobby` z już trwającą partią, nadal widzi „Masz już partię” z linkiem zamiast przekierowania.
-7. **Brak wpisu w `.ai/specs/backlog.md`:** tabela backlogu nie ma kolumny statusu, więc plan z kroku 8 ograniczył się do `track-e03.md` (Faza 2 odhaczona).
+7. **Brak wpisu w `.ai/specs/backlog.md`:** tabela backlogu nie ma kolumny statusu, więc plan z kroku 8 ograniczył się do `.ai/runs/2026-10-31-e03-tracking.md` (Faza 2 odhaczona).
 
 ### Dowody
 

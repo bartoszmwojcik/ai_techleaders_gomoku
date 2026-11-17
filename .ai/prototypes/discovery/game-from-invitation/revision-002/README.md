@@ -1,5 +1,7 @@
 # Prototyp discovery: partia z zaproszenia, etapy A i B (revision-002)
 
+> Uwaga: katalog `lekcja-07/` (mapy ekranów; silnik przeglądu nie był śledzony w gitcie) został usunięty z repozytorium; mapy ekranów są w commicie `b9d59a9` (np. `git show b9d59a9:lekcja-07/mapa-ekranow.md`). Odwołania do `lekcja-07/` poniżej wskazują na ten commit.
+
 - Brief: `.ai/specs/product-brief.md` (po zmianie 2026-10-26: D-24…D-26, BR-26…BR-28). Przepływ: Key flow „zaproszenie znajomego do partii”, od utworzenia zaproszenia po koniec partii i rewanż. Etap A (zaproszenie i oczekiwanie) działa jak w rewizji 001; etap B (plansza, ruchy, zegary, wynik, poddanie, rewanż, powrót po rozłączeniu) jest nowy.
 - Data: 2026-10-29. Rewizja druga slugu `game-from-invitation`. **Poprzednia rewizja:** `.ai/prototypes/discovery/game-from-invitation/revision-001` (etap A, zatwierdzona przez właściciela bez uwag, `previousRevision` w `prototype.json`). Rewizja 001 pozostaje bez zmian. Zakres etapu B zatwierdzony przez właściciela 2026-10-29.
 - Mapa ekranów: `lekcja-07/mapa-ekranow-partia.md` (ID p01–p07 i s07 z mapy; sekcje 0a, 0b, 1, 1a, 2, 3). Specyfikacje: `.ai/specs/implemented/2026-10-24-game-invitations.md` (#21), `.ai/specs/implemented/2026-10-25-game-moves-win-detection.md` (#22: UI/UX, Q7, Q8), `.ai/specs/implemented/2026-10-26-game-clock.md` (#23: UI/UX, Q1), `.ai/specs/implemented/2026-10-29-game-reconnection.md` (#24: Q1–Q5), `.ai/specs/implemented/2026-10-29-game-resignation.md` (Q1–Q6), `.ai/specs/implemented/2026-10-29-game-rematch.md` (Q1–Q8).

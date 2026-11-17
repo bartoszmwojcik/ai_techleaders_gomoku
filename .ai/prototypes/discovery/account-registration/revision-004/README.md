@@ -1,5 +1,7 @@
 # Prototyp discovery: rejestracja konta i wejście z zaproszenia (revision-004)
 
+> Uwaga: katalog `lekcja-07/` (mapy ekranów; silnik przeglądu nie był śledzony w gitcie) został usunięty z repozytorium; mapy ekranów są w commicie `b9d59a9` (np. `git show b9d59a9:lekcja-07/mapa-ekranow.md`). Odwołania do `lekcja-07/` poniżej wskazują na ten commit.
+
 - Brief: `.ai/specs/product-brief.md` (po zmianie 2026-10-26: D-24…D-26, BR-26…BR-28). Przepływ: „account registration” (Key flow, krok 1) rozszerzony o wejście z zaproszenia.
 - Data: 2026-10-26. **Poprzednia wersja:** `../revision-003/` (bez zmian); `../revision-002/` i `../revision-001/` także bez zmian (001 pokazuje model sprzed zmiany: potwierdzenie przed grą, hasło 16 znaków). Rewizja 004 to rewizja 003 z dwiema kolejnymi uwagami z przeglądu.
 - Mapa ekranów: `lekcja-07/mapa-ekranow.md` (ID s01, s03, s04, s06, s07 z mapy; s01.12 wycofany).

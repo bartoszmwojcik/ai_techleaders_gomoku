@@ -10,8 +10,9 @@
  * The `@theme` blocks below reset Tailwind's default colour, text-size, radius, shadow, font and
  * font-weight scales, so a class such as bg-zinc-900 or rounded-xl does not exist: only tokens do.
  *
- * Source references: R01.x / R02.x / A0x are rows in lekcja-06/referencje.md, Z1-Z9 are rules and
- * "tokeny.md" is lekcja-06/tokeny.md (approved 2026-10-25). "propozycja" marks a value chosen by the
+ * Source references: R01.x / R02.x / A0x are rows in the former lesson file lekcja-06/referencje.md, Z1-Z9 are rules and
+ * "tokeny.md" is the former lekcja-06/tokeny.md (approved 2026-10-25). Both were removed from the repo
+ * (last version: commit b9d59a9); this file is now the source of truth. "propozycja" marks a value chosen by the
  * agent that the owner has not yet approved one by one.
  *
  * Themes: dark is the default (R01.1). The light theme is selected with data-theme="light" on the
@@ -89,7 +90,7 @@
   /* R01.7: sans-serif, narrow to medium width, the current look (tokens.md font-family-base). */
   --font-family-base: ui-sans-serif, system-ui, sans-serif;
 
-  /* Line heights from the approved example lekcja-06/przyklad-tokeny.html (body, title);
+  /* Line heights from the approved example (former lekcja-06/przyklad-tokeny.html) (body, title);
      the heading value is propozycja. */
   --line-height-body: 1.5;
   --line-height-heading: 1.25;
