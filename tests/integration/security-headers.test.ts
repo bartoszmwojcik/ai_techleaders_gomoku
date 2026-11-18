@@ -2,6 +2,8 @@
 // it (token pages: no-referrer), and the QR image, whose own CSP the API policy replaces. Completed after the Qualys scan
 // of 2026-11-10 (`.ai/docs/2026-11-15-security-scan-triage.md`): HSTS, COOP, CORP, no X-Powered-By, and a CSP on
 // every page (nonce from `src/proxy.ts`) and on the API and Next's assets (fixed, from next.config.ts).
+import { resolve } from "node:path";
+
 import { afterAll, describe, expect, inject, it } from "vitest";
 
 import { Browser } from "./browser";
@@ -136,6 +138,21 @@ describe("Content Security Policy in the browser", () => {
     })()`);
     await expect.poll(() => browser.evaluate<string[]>("window.__cspViolations")).toContain("script-src-attr");
     expect(await browser.evaluate<boolean | null>("window.__injected ?? null")).toBeNull();
+  });
+});
+
+describe("Content Security Policy on a page load", () => {
+  // The listener is installed before the page's scripts, so a violation by our own bundle (e.g. zod 4 probing
+  // `new Function` without 'unsafe-eval', fixed in `src/instrumentation-client.ts`) is caught too.
+  const browser = new Browser(`${inject("browserSession")}-csp-load`, {
+    initScript: resolve(import.meta.dirname, "fixtures/record-csp-violations.js"),
+  });
+  afterAll(() => browser.close());
+
+  it.each(["/", "/login", "/join"])("logs no violation on %s", async (path) => {
+    await browser.open(`${baseUrl}${path}`);
+    expect(await browser.count('[data-testid="theme-switch"]')).toBe(1);
+    expect(await browser.evaluate<string[]>("window.__loadCspViolations")).toEqual([]);
   });
 });
 

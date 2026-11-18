@@ -128,6 +128,7 @@ Verification on the local production build:
 
 - `security-headers.test.ts` loads `/`, `/login`, `/register`, `/forgot-password`, `/play`, `/join` and `/lobby`. Every `<script>` must carry the nonce from the response header, and two requests must get different nonces. `/backend` must have the policy, and the API (also a `404` route) and `/_next` the resource policy.
 - In a real browser (same test file), `/login` hydrates (its client components run), and an injected `<img onerror=…>` is blocked with a `securitypolicyviolation` (`script-src-attr`).
+- A page load logs no violation at all: an init script installs the `securitypolicyviolation` listener before the page's own scripts, on `/`, `/login` and `/join`. Browser QA of PR #319 found one: zod 4 probes `new Function("")` on its first parse to choose its JIT parser, and the policy has no `'unsafe-eval'`, so every hard load logged `script-src eval`. Nothing broke (zod falls back to the interpreted parser), but `src/instrumentation-client.ts` now sets `config({ jitless: true })` before hydration, so the probe never runs. Without it the test fails.
 - `theme-switch.test.ts` checks that the nonce-carrying inline theme script still runs before the first paint (light system preference → light page).
 - The whole integration suite runs under the CSP (validation gate below).
 
