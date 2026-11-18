@@ -1,3 +1,4 @@
+import { CSP_NONCE_REQUEST_HEADER } from "@gomoku/core/http/content-security-policy";
 import {
   THEME_COOKIE,
   parseTheme,
@@ -5,7 +6,7 @@ import {
 } from "@gomoku/core/theme/theme";
 import { TextLink } from "@gomoku/ui/game/text-link";
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import type { ReactNode } from "react";
 
 import { SessionMenu } from "@/components/auth/session-menu";
@@ -24,6 +25,8 @@ export default async function FrontendLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
+  // The proxy's per-request nonce (the page's Content Security Policy runs no inline script without it).
+  const nonce = (await headers()).get(CSP_NONCE_REQUEST_HEADER) ?? undefined;
   const header = await getI18n("header");
   const texts = clientI18n(header);
 
@@ -32,7 +35,7 @@ export default async function FrontendLayout({
     <html lang={header.locale} data-theme={theme ?? undefined} suppressHydrationWarning>
       <head>
         {theme === null && (
-          <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+          <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         )}
       </head>
       <body className="group/body flex min-h-svh flex-col bg-surface-page text-text-primary antialiased">

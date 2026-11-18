@@ -28,10 +28,13 @@ export const COARSE_POINTER_ARG = "--blink-settings=primaryPointerType=2";
 export const POLISH_LANGUAGE_ARGS = ["--lang=pl", "--accept-lang=pl"] as const;
 
 export class Browser {
-  /** `touch`: the session launches with a coarse pointer; the flag applies when its browser starts (first command). */
+  /**
+   * `touch`: the session launches with a coarse pointer. `initScript`: a script file run in every page before its
+   * own scripts. Both apply when the session's browser starts (first command).
+   */
   constructor(
     readonly session: string,
-    readonly options: { touch?: boolean } = {},
+    readonly options: { touch?: boolean; initScript?: string } = {},
   ) {}
 
   async run<T = Record<string, unknown>>(...args: string[]): Promise<T> {
@@ -42,6 +45,7 @@ export class Browser {
           this.session,
           "--args",
           [...POLISH_LANGUAGE_ARGS, ...(this.options.touch ? [COARSE_POINTER_ARG] : [])].join("\n"),
+          ...(this.options.initScript ? ["--init-script", this.options.initScript] : []),
           "--json",
           ...args,
         ]));

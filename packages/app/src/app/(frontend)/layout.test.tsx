@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 const cookieStore = vi.hoisted(() => ({
   value: undefined as string | undefined,
+  nonce: undefined as string | undefined,
 }));
 
 vi.mock("next/headers", () => ({
@@ -13,7 +14,7 @@ vi.mock("next/headers", () => ({
         ? { name, value: cookieStore.value }
         : undefined,
   }),
-  headers: async () => new Headers(),
+  headers: async () => new Headers(cookieStore.nonce === undefined ? {} : { "x-nonce": cookieStore.nonce }),
 }));
 
 vi.mock("@/components/auth/session-menu", () => ({
@@ -22,8 +23,9 @@ vi.mock("@/components/auth/session-menu", () => ({
 
 import FrontendLayout, { generateMetadata } from "./layout";
 
-async function render(cookie: string | undefined) {
+async function render(cookie: string | undefined, nonce?: string) {
   cookieStore.value = cookie;
+  cookieStore.nonce = nonce;
   return renderToStaticMarkup(
     await FrontendLayout({ children: <p>page content</p> }),
   );
@@ -58,6 +60,12 @@ describe("FrontendLayout", () => {
       expect(html).toContain(`<script>${themeInitScript}</script>`);
     },
   );
+
+  it("gives the init script the proxy's CSP nonce", async () => {
+    const html = await render(undefined, "abc123==");
+
+    expect(html).toContain(`<script nonce="abc123==">${themeInitScript}</script>`);
+  });
 
   it("puts the home link and the theme switch on the left, with the cookie theme as the switch's server state", async () => {
     const light = await render("light");
