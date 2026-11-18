@@ -61,6 +61,30 @@ jobs:
       - name: Hashes of .agents/skills match skills-lock.json
         run: node scripts/ci/cli.mjs skills-lock
 
+  # Secret scanning of the whole git history, also on documentation-only pull requests (a secret can leak in
+  # Markdown too). Gitleaks is a release binary pinned by version and SHA-256 (Dependabot does not bump it);
+  # false positives already on main are fingerprinted in .gitleaksignore, new ones get an inline `gitleaks:allow`
+  # comment (squash merge changes commit ids). --redact keeps found values out of the log.
+  secrets:
+    name: Skanowanie sekretów (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GITLEAKS_VERSION: 8.30.1
+      GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks (checksum verified)
+        run: |
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfL -o "$RUNNER_TEMP/$archive" "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/$archive"
+          echo "$GITLEAKS_SHA256  $RUNNER_TEMP/$archive" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" gitleaks
+      - name: Scan git history
+        run: '"$RUNNER_TEMP/gitleaks" git --redact --no-banner --exit-code 1 .'
+
   # Informational (A03:2025, T-10): known vulnerabilities in the production dependencies. Never blocks a
   # merge (`continue-on-error`) and is not a required check; the result is read in the job log.
   audit:
