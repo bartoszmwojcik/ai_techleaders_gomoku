@@ -42,6 +42,10 @@ PR: #326
 - [x] 2.2 Job secrets w ci.yml — 52cbc3f
 - [x] 2.3 Dokumentacja w AGENTS.md i security-notes.md — 7d97370
 
+### Review (om-auto-review-pr --autofix)
+
+- [x] R.1 Zakres skanu: `--log-opts=HEAD` zamiast domyślnego `--all` (gitleaks skanował wszystkie gałęzie zdalne, 5 z 14 odcisków dotyczyło commitów spoza `main`); `.gitleaksignore` ograniczony do 9 odcisków z `main`; opis przypadku wcześniejszego commita PR-a bez `gitleaks:allow`
+
 ## Walidacja
 
 - `npm run lint`, `npm run typecheck`, `npm test` (100% pokrycia) — zielone lokalnie.
