@@ -43,10 +43,11 @@ Testy używają `vi.stubEnv`, nie prawdziwych wartości. Wyciek sekretu = rotacj
 
 ### Skanowanie sekretów w CI (od 2026-11-17)
 
-Job `secrets` w `ci.yml` uruchamia gitleaks 8.30.1 na **całej historii gita** przy każdym PR (także z samą dokumentacją), pushu na `main` i ręcznym przebiegu. Binarka pochodzi z wydania GitHub, przypięta wersją i sumą SHA-256 w workflow (Dependabot jej nie aktualizuje, wersję podbija się ręcznie razem z sumą), a `--redact` sprawia, że log nie pokazuje znalezionej wartości.
+Job `secrets` w `ci.yml` uruchamia gitleaks 8.30.1 na **całej historii `main` i wszystkich commitach PR-a** (`--log-opts=HEAD`; w PR-ze HEAD to commit scalający, inne gałęzie nie są skanowane) przy każdym PR (także z samą dokumentacją), pushu na `main` i ręcznym przebiegu. Binarka pochodzi z wydania GitHub, przypięta wersją i sumą SHA-256 w workflow (Dependabot jej nie aktualizuje, wersję podbija się ręcznie razem z sumą), a `--redact` sprawia, że log nie pokazuje znalezionej wartości.
 
-- Pierwszy skan (539 commitów) znalazł 14 trafień reguły `generic-api-key`. Wszystkie to fikcyjne hasła w testach, stories i prototypach (np. `password = "…"`), prawdziwego sekretu nie było. Ich odciski są w `.gitleaksignore`.
+- Pierwszy skan historii `main` (196 commitów) znalazł 9 trafień reguły `generic-api-key`. Wszystkie to fikcyjne hasła w testach, stories i prototypach (np. `password = "…"`), prawdziwego sekretu nie było. Ich odciski są w `.gitleaksignore`.
 - Nową fikcyjną wartość, którą gitleaks uzna za sekret, oznacza się komentarzem `gitleaks:allow` w tej samej linii. Odcisku do `.gitleaksignore` się nie dopisuje, bo squash merge zmienia SHA commita i odcisk z PR-a nie pasowałby na `main`.
+- Jeśli wcześniejszy commit PR-a dodał tę wartość bez komentarza, job zostaje czerwony mimo poprawki w ostatnim commicie (skan obejmuje wszystkie commity PR-a). Wtedy przepisz gałąź PR-a albo dopisz do `.gitleaksignore` odcisk tego commita (po squashu nie trafi on na `main`, więc odcisk jest nieszkodliwy). Linia scalana na `main` i tak musi mieć `gitleaks:allow`.
 - Prawdziwy sekret w PR-ze: job jest czerwony, PR nie zostanie scalony. Sekret trzeba **zrotować** u dostawcy (usunięcie commita nie wystarczy, bo gałąź była już na GitHubie), a commit usunąć z gałęzi PR-a przed scaleniem.
 - Sprawdzone lokalnie: skan czystej historii kończy się kodem 0, a podrzucony token w formacie `ghp_…` zostaje wykryty. Linia z `gitleaks:allow` jest pomijana, a ta sama wartość bez komentarza zostaje wykryta.
 - Do zrobienia przez właściciela: dopisać `Skanowanie sekretów (gitleaks)` do wymaganych checków w ochronie gałęzi `main` (ustawienie GitHuba, poza repo).

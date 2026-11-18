@@ -61,8 +61,9 @@ jobs:
       - name: Hashes of .agents/skills match skills-lock.json
         run: node scripts/ci/cli.mjs skills-lock
 
-  # Secret scanning of the whole git history, also on documentation-only pull requests (a secret can leak in
-  # Markdown too). Gitleaks is a release binary pinned by version and SHA-256 (Dependabot does not bump it);
+  # Secret scanning of the history reachable from HEAD (on a pull request: main plus every PR commit, via the merge
+  # commit), also on documentation-only pull requests (a secret can leak in Markdown too). `--log-opts=HEAD` keeps
+  # other branches out: without it gitleaks scans `--all` refs and an unrelated branch could turn every PR red. Gitleaks is a release binary pinned by version and SHA-256 (Dependabot does not bump it);
   # false positives already on main are fingerprinted in .gitleaksignore, new ones get an inline `gitleaks:allow`
   # comment (squash merge changes commit ids). --redact keeps found values out of the log.
   secrets:
@@ -83,7 +84,7 @@ jobs:
           echo "$GITLEAKS_SHA256  $RUNNER_TEMP/$archive" | sha256sum -c -
           tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" gitleaks
       - name: Scan git history
-        run: '"$RUNNER_TEMP/gitleaks" git --redact --no-banner --exit-code 1 .'
+        run: '"$RUNNER_TEMP/gitleaks" git --redact --no-banner --exit-code 1 --log-opts=HEAD .'
 
   # Informational (A03:2025, T-10): known vulnerabilities in the production dependencies. Never blocks a
   # merge (`continue-on-error`) and is not a required check; the result is read in the job log.
