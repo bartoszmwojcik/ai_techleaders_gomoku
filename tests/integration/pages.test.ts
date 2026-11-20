@@ -19,8 +19,9 @@ describe("player pages", () => {
     const response = await fetch(`${baseUrl}/this-route-does-not-exist`);
     expect(response.status).toBe(404);
 
+    // Our localized global 404 (issue 328), not Next's default page.
     await browser.open(`${baseUrl}/this-route-does-not-exist`);
-    expect(await browser.text("body")).toContain("404");
+    expect(await browser.text("h1")).toBe("Nie ma takiej strony");
   });
 });
 
