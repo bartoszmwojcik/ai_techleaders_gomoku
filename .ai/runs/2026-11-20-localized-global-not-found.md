@@ -33,15 +33,15 @@ Adres, który nie pasuje do żadnej trasy, dostaje własną, zlokalizowaną stro
 
 ### Phase 1: Strona 404
 
-- [ ] 1.1 Przeczytać przewodnik Next 16 o global-not-found i włączyć flagę
-- [ ] 1.2 Teksty 404 w katalogach PL/EN/FR
-- [ ] 1.3 Komponent global-not-found z nonce i motywem
-- [ ] 1.4 Testy jednostkowe strony i konfiguracji
+- [x] 1.1 Przeczytać przewodnik Next 16 o global-not-found i włączyć flagę — fee340f
+- [x] 1.2 Teksty 404 w katalogach PL/EN/FR — fee340f
+- [x] 1.3 Komponent global-not-found z nonce i motywem — fee340f
+- [x] 1.4 Testy jednostkowe strony i konfiguracji — fee340f
 
 ### Phase 2: Weryfikacja i dokumentacja
 
-- [ ] 2.1 Scenariusz integracyjny 404 z CSP
-- [ ] 2.2 Aktualizacja triage bezpieczeństwa
+- [x] 2.1 Scenariusz integracyjny 404 z CSP — b3a9a58
+- [x] 2.2 Aktualizacja triage bezpieczeństwa — f68ba0f
 - [ ] 2.3 Pełna bramka walidacyjna
 - [ ] 2.4 Review om-auto-review-pr
 - [ ] 2.5 Podsumowanie na PR
