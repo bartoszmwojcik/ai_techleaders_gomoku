@@ -29,6 +29,8 @@ Adres, który nie pasuje do żadnej trasy, dostaje własną, zlokalizowaną stro
 
 ## Progress
 
+PR: #332
+
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles.
 
 ### Phase 1: Strona 404
@@ -43,5 +45,10 @@ Adres, który nie pasuje do żadnej trasy, dostaje własną, zlokalizowaną stro
 - [x] 2.1 Scenariusz integracyjny 404 z CSP — b3a9a58
 - [x] 2.2 Aktualizacja triage bezpieczeństwa — f68ba0f
 - [x] 2.3 Pełna bramka walidacyjna — 37770f3
-- [ ] 2.4 Review om-auto-review-pr
-- [ ] 2.5 Podsumowanie na PR
+- [x] 2.4 Review om-auto-review-pr — 6279a37
+- [x] 2.5 Podsumowanie na PR
+
+## Rezultat
+
+- Bramka: lint, typecheck, test (4695/4695, próg 100%), build (`ƒ /_not-found`) — zielone. Integracja: 1068/1070 w pełnym przebiegu; `pages.test.ts` poprawiony pod nową stronę (37770f3), `show-pages.test.ts` (limit czasu ruchu bota 250 ms, 267 ms pod obciążeniem) niezwiązany — oba pliki zielone po ponownym uruchomieniu.
+- Status: complete. Ręczne QA (`needs-qa`) — do zrobienia przez właściciela.
