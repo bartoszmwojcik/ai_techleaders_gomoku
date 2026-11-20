@@ -78,7 +78,7 @@ describe("loadModel", () => {
 
   it("disposes the workspace even when the model cannot be computed", async () => {
     const dispose = vi.fn(async () => {});
-    const module = {
+    const likec4Module = {
       LikeC4: {
         fromWorkspace: async () => ({
           getErrors: () => [],
@@ -89,7 +89,7 @@ describe("loadModel", () => {
         }),
       },
     };
-    await expect(loadModel({ workspace: "/w", importLikeC4: async () => module })).rejects.toThrow("boom");
+    await expect(loadModel({ workspace: "/w", importLikeC4: async () => likec4Module })).rejects.toThrow("boom");
     expect(dispose).toHaveBeenCalledOnce();
   });
 
