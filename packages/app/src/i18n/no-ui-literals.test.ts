@@ -17,6 +17,8 @@ export const ENFORCED_GROUPS: readonly string[] = [
   "app/(frontend)/**/*.{ts,tsx}",
   "components/**/*.{ts,tsx}",
   "lib/**/*.{ts,tsx}",
+  // The app-wide 404 (issue 328), outside the route groups.
+  "app/global-not-found.tsx",
 ];
 
 const isTest = (file: string) => /\.test\.tsx?$/.test(file);

@@ -44,7 +44,12 @@ const RESOURCE_CSP = [{ key: "Content-Security-Policy", value: RESOURCE_CONTENT_
 const nextConfig: NextConfig = {
   // No `X-Powered-By: Next.js` (Qualys 150210): the framework name helps nobody but an attacker.
   poweredByHeader: false,
-  experimental: Number.isInteger(buildCpus) && buildCpus > 0 ? { cpus: buildCpus } : undefined,
+  experimental: {
+    // `src/app/global-not-found.tsx`: an address that matches no route gets our localized 404, rendered per request so
+    // its scripts carry the CSP nonce (Next's default 404 is prerendered without one; issue 328).
+    globalNotFound: true,
+    ...(Number.isInteger(buildCpus) && buildCpus > 0 ? { cpus: buildCpus } : {}),
+  },
   typescript: { ignoreBuildErrors: process.env.NEXT_SKIP_TYPECHECK === "1" },
   // MikroORM v7 is not on Next.js' built-in external list (only the v6 packages are),
   // so keep it out of the server bundle and load it with Node.js `require`.

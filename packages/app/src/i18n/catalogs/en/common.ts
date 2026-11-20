@@ -32,6 +32,12 @@ const common: Translation<"common"> = {
     retry: "Try again",
     backHome: "Back to the home page",
   },
+  notFound: {
+    metaTitle: "Page not found · Gomoku",
+    heading: "Page not found",
+    body: "This address does not lead to any Gomoku page. Check that the link is complete, or start from the home page.",
+    backHome: "Back to the home page",
+  },
 };
 
 export default common;

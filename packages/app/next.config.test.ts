@@ -41,7 +41,8 @@ describe("next.config", () => {
   it("builds with Next's defaults unless a low-memory build asks for less", async () => {
     const { default: config } = await import("./next.config");
 
-    expect(config.experimental).toBeUndefined();
+    // Only the app-wide localized 404 (issue 328) is switched on.
+    expect(config.experimental).toEqual({ globalNotFound: true });
     expect(config.typescript).toEqual({ ignoreBuildErrors: false });
   });
 
@@ -50,7 +51,7 @@ describe("next.config", () => {
     vi.stubEnv("NEXT_SKIP_TYPECHECK", "1");
     const { default: config } = await import("./next.config");
 
-    expect(config.experimental).toEqual({ cpus: 1 });
+    expect(config.experimental).toEqual({ globalNotFound: true, cpus: 1 });
     expect(config.typescript).toEqual({ ignoreBuildErrors: true });
   });
 
@@ -58,7 +59,7 @@ describe("next.config", () => {
     vi.stubEnv("NEXT_BUILD_CPUS", "many");
     const { default: config } = await import("./next.config");
 
-    expect(config.experimental).toBeUndefined();
+    expect(config.experimental).toEqual({ globalNotFound: true });
   });
 
   it("sends the baseline security headers on every path", async () => {

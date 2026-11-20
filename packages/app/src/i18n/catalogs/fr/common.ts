@@ -32,6 +32,12 @@ const common: Translation<"common"> = {
     retry: "Réessayer",
     backHome: "Retour à l’accueil",
   },
+  notFound: {
+    metaTitle: "Page introuvable · Gomoku",
+    heading: "Page introuvable",
+    body: "Cette adresse ne mène à aucune page de Gomoku. Vérifiez que le lien est complet ou repartez de l’accueil.",
+    backHome: "Retour à l’accueil",
+  },
 };
 
 export default common;
