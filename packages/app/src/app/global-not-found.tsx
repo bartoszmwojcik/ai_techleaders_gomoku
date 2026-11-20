@@ -19,7 +19,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function GlobalNotFound() {
   const { t } = await getI18n("common");
-  // Called, not rendered as an element: the layout is an async server component, and the result is the same document.
+  // Called as a function, not rendered as `<FrontendLayout>`: this page returns the whole document itself (Next adds no
+  // layout around it), and awaiting the async layout here keeps it testable with `renderToStaticMarkup`.
   return FrontendLayout({
     children: (
       <main
