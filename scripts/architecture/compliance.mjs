@@ -28,7 +28,7 @@ function checkRule(rule, elements, facts) {
     if (declared.length > 0 && !rule.kinds.includes(element.kind)) {
       problems.push(`model: element "${element.id}" (rodzaj ${element.kind}) ma metadata.${rule.key} — dozwolone tylko dla: ${rule.kinds.join(", ")}.`);
     }
-    for (const name of declared) owners.set(name, [...(owners.get(name) ?? []), element.id]);
+    for (const name of new Set(declared)) owners.set(name, [...(owners.get(name) ?? []), element.id]);
   }
   for (const element of elements) {
     if (element.kind === rule.required && names(element.metadata?.[rule.key]).length === 0) {

@@ -277,7 +277,7 @@ jobs:
             docs/architektura/package-lock.json
       - name: likec4 nie trafia do package-lock.json w roocie
         run: |
-          if grep -q '"node_modules/likec4"' package-lock.json; then
+          if grep -qE '"(packages/[^"]+/)?node_modules/likec4"' package-lock.json; then
             echo "likec4 jest w package-lock.json w roocie — należy tylko do docs/architektura/package.json"; exit 1
           fi
       - run: npm ci
@@ -287,16 +287,17 @@ jobs:
       - name: Statyczna strona (ścieżka bazowa GitHub Pages)
         run: npm run docs:arch:build -- --base /ai_techleaders_gomoku/
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.PAGES_ENABLED == 'true'
         with:
           path: docs/architektura/dist
 
-  # Publishes the architecture site from main. Not a required check: until the owner sets Settings → Pages → Source:
-  # GitHub Actions it fails here, on main only, and blocks nothing. The Pages permissions exist only in this job.
+  # Publishes the architecture site from main. Gated on the repository variable PAGES_ENABLED (set to `true` by the
+  # owner after Settings → Pages → Source: GitHub Actions): until then the job is skipped, so it can never turn main red
+  # (release.yml accepts only success/skipped check runs on HEAD of main). The Pages permissions exist only in this job.
   pages-deploy:
     name: Publikacja strony architektury (GitHub Pages)
     needs: architecture
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.architecture.result == 'success' }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.PAGES_ENABLED == 'true' && needs.architecture.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:

@@ -49,9 +49,10 @@ views {
     gomoku.app.api -> gomoku.app.http 'apiHandler (CSRF), resolveParticipant — miejsce z sesji albo tokenu gościa'
     gomoku.app.http -> gomoku.app.di 'withRequestScope: scope z em.fork()'
     gomoku.app.http -> gomoku.app.games.gameCore 'gameMoveService.play()'
-    gomoku.app.games.gameCore -> gomoku.app.games.timeout 'settleGame: najpierw rozlicza czas'
+    gomoku.app.games.gameCore -> gomoku.app.db 'em.transactional: blokada wiersza partii (for no key update)'
+    gomoku.app.games.gameCore -> gomoku.app.games.timeout 'w transakcji, pod blokadą: najpierw settleGame'
     gomoku.app.games.gameCore -> gomoku.app.core 'applyMove, spend (zasady i zegar)'
-    gomoku.app.games.gameCore -> gomoku.app.db 'em.transactional: blokada partii, warunkowy UPDATE ruchu'
+    gomoku.app.games.gameCore -> gomoku.app.db 'warunkowy UPDATE ruchu, commit'
     gomoku.app.db -> gomoku.postgres 'UPDATE game (moves, bitboardy, zegar)'
     gomoku.app.games.gameCore -> gomoku.app.http 'stan partii; bot na ruchu → scheduleBotTurn (przepływ 3)'
     gomoku.app.web -> gomoku.app.api 'przeciwnik: GET /api/games/[id]?after=… co 2 s'
@@ -69,6 +70,7 @@ views {
     agent -> gomoku.app.mcpEndpoint 'get_state(token, waitSeconds) — long polling'
     gomoku.app.mcp -> gomoku.app.games.agentSeat 'agentGameService.getState(): token → miejsce'
     agent -> gomoku.app.mcpEndpoint 'play_move(token, x, y, moveNumber)'
+    gomoku.app.mcp -> gomoku.app.games.agentSeat 'agentGameService.playMove()'
     gomoku.app.games.agentSeat -> gomoku.app.games.gameCore 'gameMoveService.play() — jak ruch człowieka'
   }
 

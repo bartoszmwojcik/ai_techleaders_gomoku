@@ -1,7 +1,7 @@
 // Facts from the code that the architecture model must cover: workspace packages, DI registrations in
 // container.ts and the entity registry. Sources are parsed with the TypeScript compiler (no regular expressions on
 // source, no importing application modules); a shape the parser does not recognize is a problem, never skipped.
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import ts from "typescript";
@@ -9,10 +9,10 @@ import ts from "typescript";
 export const CONTAINER_FILE = "packages/app/src/server/container.ts";
 export const ENTITIES_FILE = "packages/db/src/entities/index.ts";
 
-/** `{ dir, name }` of every `packages/<dir>` with a package.json. */
+/** `{ dir, name }` of every `packages/<dir>` with a package.json (a leftover directory without one is not a package). */
 export function readPackages(root) {
   return readdirSync(join(root, "packages"), { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
+    .filter((entry) => entry.isDirectory() && existsSync(join(root, "packages", entry.name, "package.json")))
     .map((entry) => ({ dir: entry.name, name: JSON.parse(readFileSync(join(root, "packages", entry.name, "package.json"), "utf8")).name }));
 }
 

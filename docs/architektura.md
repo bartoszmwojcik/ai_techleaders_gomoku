@@ -24,7 +24,7 @@ Kliknięcie elementu otwiera widok niższego poziomu (Gomoku → kontenery → a
 
 **Zgodność z kodem** (`scripts/architecture`, job `architecture` w CI): każdy pakiet z `packages/`, każda rejestracja z `register({...})` w `container.ts` i każda encja z `entities/index.ts` musi mieć dokładnie jeden element modelu z metadanymi `package` / `di` / `entity`, a model nie może wskazywać nieistniejących. Kroków przepływów test nie sprawdza: przy zmianie serwisu z przepływu zaktualizuj jego widok w `views.c4`.
 
-**Publikacja (jednorazowy krok właściciela):** Settings → Pages → Source: **GitHub Actions**. Do tego czasu `pages-deploy` kończy się błędem na `main`. Nie jest wymaganym checkiem i nie blokuje PR-ów.
+**Publikacja (jednorazowy krok właściciela):** Settings → Pages → Source: **GitHub Actions**, potem Settings → Secrets and variables → Actions → Variables: `PAGES_ENABLED` = `true`. Bez tej zmiennej `pages-deploy` jest pomijany (nie czerwony), więc nie blokuje PR-ów ani wydań (`release.yml` wymaga zielonego CI na `main`).
 
 ## Stack
 

@@ -63,6 +63,11 @@ describe("checkCompliance", () => {
     ]);
   });
 
+  it("accepts a name repeated within one element", () => {
+    const elements = compliant.map((element) => (element.id === "gomoku.app.di" ? { ...element, metadata: { di: "orm, em, orm" } } : element));
+    expect(checkCompliance({ elements, ...facts })).toEqual([]);
+  });
+
   it("rejects a fact assigned to several elements", () => {
     const problems = checkCompliance({
       elements: [...compliant, { id: "gomoku.app.other", kind: "component", metadata: { di: "orm" } }],

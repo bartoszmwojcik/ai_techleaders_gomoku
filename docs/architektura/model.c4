@@ -282,8 +282,7 @@ model {
   gomoku.app.http -> gomoku.app.chat 'czat'
   gomoku.app.http -> gomoku.app.rateLimit 'limity'
   gomoku.app.http -> gomoku.app.health 'sonda'
-  gomoku.app.mcp -> gomoku.app.games.agentSeat 'join, get_state, play_move'
-  gomoku.app.mcp -> gomoku.app.chat 'send_message'
+  gomoku.app.mcp -> gomoku.app.games.agentSeat 'join, get_state, play_move, send_message'
   gomoku.app.mcp -> gomoku.app.rateLimit 'limity'
 
   gomoku.app.auth -> gomoku.app.email 'wysyła wiadomości'
@@ -291,6 +290,8 @@ model {
     technology 'HTTPS'
   }
   gomoku.app.games.agentSeat -> gomoku.app.games.gameCore 'ruch agenta'
+  gomoku.app.games.agentSeat -> gomoku.app.chat 'send_message, czat w get_state'
+  gomoku.app.games.agentSeat -> gomoku.app.games.bot 'pokaz: ruch bota po ruchu agenta'
   gomoku.app.games.gameCore -> gomoku.app.games.timeout 'rozlicza czas przed ruchem'
   gomoku.app.games.bot -> gomoku.app.games.gameCore 'zapisuje ruch bota'
   gomoku.app.games.bot -> gomoku.app.games.botWorker 'liczy ruch (ComputeGate)'

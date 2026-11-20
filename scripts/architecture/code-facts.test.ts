@@ -88,6 +88,7 @@ describe("readCodeFacts", () => {
       "packages/core/package.json": JSON.stringify({ name: "@gomoku/core" }),
       "packages/db/package.json": JSON.stringify({ name: "@gomoku/db" }),
       "packages/README.md": "not a package",
+      "packages/leftover/.gitkeep": "",
       [CONTAINER_FILE]: "container.register({ orm: asValue(orm), spread: x, ...rest });",
       [ENTITIES_FILE]: "export const entities = [User] as const;",
     });
