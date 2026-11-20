@@ -29,6 +29,9 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "smoke": "node scripts/smoke.mjs",
     "prototypes": "node scripts/syncPrototypes.mjs",
+    "docs:arch": "node scripts/architecture/cli.mjs ensure && npm run serve --prefix docs/architektura",
+    "docs:arch:build": "node scripts/architecture/cli.mjs ensure && npm run build --prefix docs/architektura --",
+    "docs:arch:check": "node scripts/architecture/cli.mjs check",
     "check": "npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration",
     "bot:arena": "npm run bot:arena -w @gomoku/core --silent",
     "bot:bench": "npm run bot:bench -w @gomoku/app --silent --"

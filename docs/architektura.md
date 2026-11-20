@@ -2,6 +2,30 @@
 
 Przeniesione z README. Stack, pakiety i szczegóły działania aplikacji.
 
+## Interaktywny model (LikeC4)
+
+Mapa systemu od ogółu do szczegółu jest modelem [LikeC4](https://likec4.dev) w `docs/architektura/*.c4`. Strona: **https://bartoszmwojcik.github.io/ai_techleaders_gomoku/**. Publikuje ją job `pages-deploy` z `main`.
+
+| Widok | Co pokazuje |
+| --- | --- |
+| L1 · Kontekst (`index`) | Gracz, administrator, agent AI (MCP), system Gomoku, Brevo, hosting (VPS, Docker). |
+| L2 · Kontenery (`containers`) | Aplikacja Next.js z czterema powierzchniami (strony, panel `/backend`, `/api/*`, `/api/mcp`), PostgreSQL, cron `db:cleanup`. |
+| L3 · Komponenty (`app`, `games`) | Domeny serwisów z `server/services`, warstwy HTTP i MCP, kontener DI, pakiety `@gomoku/*`. |
+| Model danych (`data`) | 15 encji MikroORM i relacje (klucze obce). |
+| Przepływy (`flowMove`, `flowAgent`, `flowBot`, `flowRegistration`) | Ruch w partii, agent przez MCP, tura bota, rejestracja z potwierdzeniem e-maila. |
+
+Kliknięcie elementu otwiera widok niższego poziomu (Gomoku → kontenery → aplikacja → Partie; PostgreSQL → model danych).
+
+**Lokalnie:** jednorazowo `npm ci --prefix docs/architektura` (osobny pakiet narzędziowy poza workspaces, `likec4` nie trafia do `package-lock.json` w roocie ani do obrazu Dockera), potem:
+
+- `npm run docs:arch` — podgląd z hot reloadem,
+- `npm run docs:arch:build` — statyczna strona w `docs/architektura/dist`,
+- `npm run docs:arch:check` — walidacja modelu i test zgodności z kodem.
+
+**Zgodność z kodem** (`scripts/architecture`, job `architecture` w CI): każdy pakiet z `packages/`, każda rejestracja z `register({...})` w `container.ts` i każda encja z `entities/index.ts` musi mieć dokładnie jeden element modelu z metadanymi `package` / `di` / `entity`, a model nie może wskazywać nieistniejących. Kroków przepływów test nie sprawdza: przy zmianie serwisu z przepływu zaktualizuj jego widok w `views.c4`.
+
+**Publikacja (jednorazowy krok właściciela):** Settings → Pages → Source: **GitHub Actions**, potem Settings → Secrets and variables → Actions → Variables: `PAGES_ENABLED` = `true`. Bez tej zmiennej `pages-deploy` jest pomijany (nie czerwony), więc nie blokuje PR-ów ani wydań (`release.yml` wymaga zielonego CI na `main`).
+
 ## Stack
 
 | Obszar | Technologia |

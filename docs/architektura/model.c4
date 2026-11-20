@@ -1,0 +1,310 @@
+// L1 (kontekst), L2 (kontenery) i L3 (komponenty aplikacji).
+// Każda rejestracja z container.ts należy do dokładnie jednego komponentu (metadata.di);
+// pilnuje tego `npm run docs:arch:check`.
+model {
+
+  // ── L1: aktorzy i systemy zewnętrzne ─────────────────────────────────────
+
+  player = actor 'Gracz' {
+    description 'Gra w przeglądarce: z kontem (e-mail i hasło) albo jako gość z linku zaproszenia. Może też oglądać partie jako widz.'
+  }
+
+  admin = actor 'Administrator instancji' {
+    description 'Konto z ADMIN_EMAIL. Czyta panel /backend (tylko odczyt), prowadzi pokaz pod /show.'
+  }
+
+  agent = actor 'Agent AI (klient MCP)' {
+    description 'Program z modelem językowym, który przez MCP zajmuje drugie miejsce w partii i gra narzędziami get_state / play_move.'
+  }
+
+  brevo = external 'Brevo' {
+    description 'Wysyłka e-maili transakcyjnych (potwierdzenie adresu, reset hasła, zmiana e-maila) przez HTTPS API.'
+    link https://developers.brevo.com/ 'Dokumentacja API Brevo'
+  }
+
+  hosting = external 'Hosting (VPS, Docker)' {
+    description 'VPS z Docker Compose (compose.prod.yaml): obraz aplikacji z Dockerfile i PostgreSQL. Cron na hoście uruchamia db:cleanup.'
+    link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/compose.prod.yaml 'compose.prod.yaml'
+  }
+
+  gomoku = system 'Gomoku' {
+    description 'Gra 1:1 online: partie między graczami, z agentem AI przez MCP albo z botem hostowanym.'
+    link https://github.com/bartoszmwojcik/ai_techleaders_gomoku 'Repozytorium'
+
+    // ── L2: kontenery ──────────────────────────────────────────────────────
+
+    app = container 'Aplikacja Next.js' {
+      description 'Jeden proces Next.js 16 (App Router): strony, panel, route handlery i endpoint MCP. Bot liczy w worker_threads tego samego procesu.'
+      technology 'Next.js 16, React 19, TypeScript'
+      link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/tree/main/packages/app 'packages/app'
+      metadata {
+        package '@gomoku/app'
+      }
+
+      web = container 'Strony dla graczy' {
+        #surface
+        description 'Route group (frontend): lobby, partia, historia, konto, widz, pokaz (/show, tylko administrator). DS graczy z @gomoku/ui/game.'
+        technology 'React Server Components, Tailwind CSS 4'
+        link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/tree/main/packages/app/src/app/(frontend) 'app/(frontend)'
+      }
+
+      panel = container 'Panel /backend' {
+        #surface
+        description 'Route group (backend): panel administratora tylko do odczytu (liczniki, konta). shadcn/ui.'
+        technology 'React Server Components, shadcn/ui'
+        link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/tree/main/packages/app/src/app/(backend) 'app/(backend)'
+      }
+
+      api = container 'Route handlery /api/*' {
+        #surface
+        description 'JSON API dla stron: konta, partie i ruchy, czat, lobby, zaproszenia, widz, pokaz, /api/health.'
+        technology 'Next.js route handlers'
+        link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/tree/main/packages/app/src/app/api 'app/api'
+      }
+
+      mcpEndpoint = container 'Endpoint MCP /api/mcp' {
+        #surface
+        description 'Serwer MCP (Streamable HTTP) dla agentów AI: join, get_state, play_move, send_message.'
+        technology 'Model Context Protocol'
+        link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/app/src/app/api/mcp/route.ts 'app/api/mcp/route.ts'
+      }
+
+      // ── L3: komponenty aplikacji ─────────────────────────────────────────
+
+      http = component 'Warstwa HTTP' {
+        description 'Wspólne helpery route handlerów: apiHandler, uwierzytelnianie z ciasteczka sesji, ciasteczka gościa i widza, widoki partii, planowanie tury bota.'
+        link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/tree/main/packages/app/src/server/http 'server/http'
+      }
+
+      mcp = component 'Warstwa MCP' {
+        description 'Definicje narzędzi MCP, strażnicy (token miejsca agenta) i mapowanie błędów.'
+        link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/tree/main/packages/app/src/server/mcp 'server/mcp'
+      }
+
+      di = component 'Kontener DI i konfiguracja' {
+        description 'Awilix (PROXY, strict) w container.ts. withRequestScope tworzy scope z własnym em (fork EntityManagera) na każde żądanie. Konfiguracja z env (readServerConfig).'
+        technology 'Awilix'
+        link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/app/src/server/container.ts 'server/container.ts'
+        metadata {
+          di 'orm, em, serverConfig, passwordHashCost, clock, random'
+        }
+      }
+
+      auth = component 'Konta i sesje' {
+        description 'Rejestracja, logowanie, sesje, potwierdzenie e-maila, reset i zmiana hasła, zmiana e-maila, usunięcie konta.'
+        link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/tree/main/packages/app/src/server/services/auth 'services/auth'
+        metadata {
+          di 'passwordHasher, sessionService, gameParticipation, hasActiveGame, invalidateResetTokens, emailVerificationService, userService, accountService, passwordResetService, emailChangeService'
+        }
+      }
+
+      games = component 'Partie' {
+        description 'Domena gry: rdzeń partii i ruchy, lobby i zaproszenia, agent przez MCP, bot, widz, pokaz, papier i ołówek, rozliczanie czasu.'
+        link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/tree/main/packages/app/src/server/services/games 'services/games'
+
+        gameCore = component 'Rdzeń partii' {
+          description 'Tworzenie partii, ruchy w transakcji (GameMoveService), rewanż, losowanie kolorów, historia i przegląd zakończonych partii, statystyki.'
+          link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/app/src/server/services/games/game-move-service.ts 'game-move-service.ts'
+          metadata {
+            di 'gameService, gameMoveService, rematchService, colorDraw, gameHistoryService, gameReviewService, finishedGameStatsService'
+          }
+        }
+
+        lobby = component 'Lobby i zaproszenia' {
+          description 'Status „szukam gry”, lista lobby, kody i linki zaproszeń, kod QR zaproszenia.'
+          link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/app/src/server/services/games/lobby-service.ts 'lobby-service.ts'
+          metadata {
+            di 'lobbyService, invitationCodes, invitationService, inviteQrService'
+          }
+        }
+
+        agentSeat = component 'Agent w partii' {
+          description 'Agent zajmuje drugie miejsce (AgentSeatService) i gra narzędziami get_state / play_move (AgentGameService).'
+          link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/app/src/server/services/games/agent-seat-service.ts 'agent-seat-service.ts'
+          metadata {
+            di 'agentSeatService, agentGameService'
+          }
+        }
+
+        bot = component 'Bot hostowany' {
+          description 'Dopuszczenie partii z botem (BotAdmission), silnik w worker_threads za ComputeGate (BotEngine), tura bota planowana przez after() (BotTurnService).'
+          link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/app/src/server/services/games/bot-turn-service.ts 'bot-turn-service.ts'
+          metadata {
+            di 'botEngine, botEngineStatus, resourceProbe, botAdmission, botTurnService'
+          }
+        }
+
+        botWorker = component 'Wątek roboczy bota' {
+          #worker
+          description 'worker_threads uruchamiany per ruch (bot-worker-spawn.ts) z limitem czasu i pamięci; liczy ruch silnikiem z @gomoku/core.'
+          technology 'node:worker_threads'
+          link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/app/src/server/services/games/bot-worker.ts 'bot-worker.ts'
+        }
+
+        spectator = component 'Widz' {
+          description 'Oglądanie partii z linku widza i czat widzów.'
+          link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/app/src/server/services/games/spectator-service.ts 'spectator-service.ts'
+          metadata {
+            di 'spectatorService'
+          }
+        }
+
+        show = component 'Pokaz' {
+          description 'Pokaz administratora bez miejsca dla człowieka (np. agent kontra bot): tworzenie, odczyt, zakończenie.'
+          link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/app/src/server/services/games/show-service.ts 'show-service.ts'
+          metadata {
+            di 'showService'
+          }
+        }
+
+        paper = component 'Papier i ołówek' {
+          description 'Wariant partii z leniwą osią czasu: koniec czasu i automat (PaperSettler, PaperMoveService).'
+          link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/app/src/server/services/games/paper-move-service.ts 'paper-move-service.ts'
+          metadata {
+            di 'paperSettler, paperMoveService'
+          }
+        }
+
+        timeout = component 'Rozliczanie czasu' {
+          description 'Leniwe rozliczanie partii, którym skończył się czas (SqlTimeoutSettler).'
+          link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/app/src/server/services/games/timeout-settler.ts 'timeout-settler.ts'
+          metadata {
+            di 'timeoutSettler'
+          }
+        }
+      }
+
+      chat = component 'Czat partii' {
+        description 'Wiadomości graczy (przeglądarka i narzędzie MCP send_message) z limitami z konfiguracji.'
+        link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/tree/main/packages/app/src/server/services/chat 'services/chat'
+        metadata {
+          di 'chatConfig, chatService'
+        }
+      }
+
+      email = component 'Wysyłka e-maili' {
+        description 'EmailSender wybierany przez EMAIL_TRANSPORT: Brevo (HTTPS API), plik (dev/testy) albo brak konfiguracji (błąd przy wysyłce).'
+        link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/tree/main/packages/app/src/server/services/email 'services/email'
+        metadata {
+          di 'emailSender'
+        }
+      }
+
+      rateLimit = component 'Limity żądań' {
+        description 'Kubełki limitów w PostgreSQL (logowanie, rejestracja, e-maile, MCP).'
+        link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/tree/main/packages/app/src/server/services/rate-limit 'services/rate-limit'
+        metadata {
+          di 'rateLimiter'
+        }
+      }
+
+      adminDomain = component 'Panel administratora' {
+        description 'Model odczytu panelu /backend: liczniki i lista kont; ADMIN_EMAIL wyznacza administratora.'
+        link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/tree/main/packages/app/src/server/services/admin 'services/admin'
+        metadata {
+          di 'adminOverviewService, adminEmail'
+        }
+      }
+
+      health = component 'Zdrowie' {
+        description '/api/health: zapytanie do bazy (sonda w Dockerze i w CI).'
+        link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/app/src/server/services/health-service.ts 'health-service.ts'
+        metadata {
+          di 'healthService'
+        }
+      }
+
+      core = package '@gomoku/core' {
+        description 'Logika bez Next.js, Reacta i ORM: zasady gry (plansza, wygrana), silnik bota, helpery DI (createAppContainer).'
+        link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/tree/main/packages/core 'packages/core'
+        metadata {
+          package '@gomoku/core'
+        }
+      }
+
+      db = package '@gomoku/db' {
+        description 'MikroORM 7: konfiguracja, encje (defineEntity), migracje, CLI (migracje, status, cleanup), fabryka createOrm.'
+        technology 'MikroORM 7'
+        link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/tree/main/packages/db 'packages/db'
+        metadata {
+          package '@gomoku/db'
+        }
+      }
+
+      ui = package '@gomoku/ui' {
+        description 'Design system graczy (Radix + game-tokens.css) i shadcn/ui dla panelu; Storybook.'
+        link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/tree/main/packages/ui 'packages/ui'
+        metadata {
+          package '@gomoku/ui'
+        }
+      }
+    }
+
+    postgres = container 'PostgreSQL' {
+      #database
+      description 'Jedyna baza danych: konta, sesje, partie, czat, limity. Schemat tylko przez migracje MikroORM.'
+      technology 'PostgreSQL'
+      style {
+        shape cylinder
+      }
+    }
+
+    cleanup = container 'Cron db:cleanup' {
+      description 'CLI @gomoku/db uruchamiane z crona na VPS (docker exec): usuwa wygasłe sesje, tokeny, kubełki limitów i porzucone partie.'
+      technology 'Node.js CLI (MikroORM)'
+      link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/tree/main/packages/db/src/cli 'packages/db/src/cli'
+    }
+  }
+
+  // ── Relacje ──────────────────────────────────────────────────────────────
+
+  player -> gomoku.app.web 'gra w przeglądarce' {
+    technology 'HTTPS'
+  }
+  admin -> gomoku.app.panel 'czyta panel'
+  admin -> gomoku.app.web 'prowadzi pokaz (/show)'
+  agent -> gomoku.app.mcpEndpoint 'gra narzędziami MCP' {
+    technology 'MCP, Streamable HTTP'
+  }
+  brevo -> player 'e-mail z linkiem'
+  hosting -> gomoku 'uruchamia (Docker Compose)'
+
+  gomoku.app.web -> gomoku.app.api 'fetch /api/*'
+  gomoku.app.web -> gomoku.app.http 'server components: sesja z ciasteczka'
+  gomoku.app.panel -> gomoku.app.adminDomain 'liczniki i konta'
+  gomoku.app.api -> gomoku.app.http 'apiHandler, uwierzytelnianie'
+  gomoku.app.mcpEndpoint -> gomoku.app.mcp 'obsługa żądania MCP'
+
+  gomoku.app.http -> gomoku.app.di 'withRequestScope'
+  gomoku.app.mcp -> gomoku.app.di 'withRequestScope'
+  gomoku.app.http -> gomoku.app.auth 'sesja, konto'
+  gomoku.app.http -> gomoku.app.games 'partie, lobby, widz, pokaz'
+  gomoku.app.http -> gomoku.app.chat 'czat'
+  gomoku.app.http -> gomoku.app.rateLimit 'limity'
+  gomoku.app.http -> gomoku.app.health 'sonda'
+  gomoku.app.mcp -> gomoku.app.games.agentSeat 'join, get_state, play_move, send_message'
+  gomoku.app.mcp -> gomoku.app.rateLimit 'limity'
+
+  gomoku.app.auth -> gomoku.app.email 'wysyła wiadomości'
+  gomoku.app.email -> brevo 'POST /v3/smtp/email' {
+    technology 'HTTPS'
+  }
+  gomoku.app.games.agentSeat -> gomoku.app.games.gameCore 'ruch agenta'
+  gomoku.app.games.agentSeat -> gomoku.app.chat 'send_message, czat w get_state'
+  gomoku.app.games.agentSeat -> gomoku.app.games.bot 'pokaz: ruch bota po ruchu agenta'
+  gomoku.app.games.gameCore -> gomoku.app.games.timeout 'rozlicza czas przed ruchem'
+  gomoku.app.games.bot -> gomoku.app.games.gameCore 'zapisuje ruch bota'
+  gomoku.app.games.bot -> gomoku.app.games.botWorker 'liczy ruch (ComputeGate)'
+  gomoku.app.games.show -> gomoku.app.games.bot 'pokaz z botem'
+  gomoku.app.games.botWorker -> gomoku.app.core 'silnik bota'
+  gomoku.app.games.gameCore -> gomoku.app.core 'zasady gry'
+  gomoku.app.di -> gomoku.app.db 'createOrm, em.fork()'
+  gomoku.app.di -> gomoku.app.core 'createAppContainer'
+  gomoku.app.web -> gomoku.app.ui 'DS graczy'
+  gomoku.app.panel -> gomoku.app.ui 'shadcn/ui'
+  gomoku.app.db -> gomoku.app.core 'typy domeny'
+  gomoku.app.db -> gomoku.postgres 'SQL (pula połączeń)' {
+    technology 'pg'
+  }
+  gomoku.cleanup -> gomoku.postgres 'usuwa wygasłe rekordy'
+}

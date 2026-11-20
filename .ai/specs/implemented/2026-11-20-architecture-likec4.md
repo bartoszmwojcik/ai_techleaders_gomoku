@@ -5,7 +5,7 @@ Extends: .ai/specs/implemented/2026-10-19-ci-and-testing.md
 Brief: .ai/specs/briefs/2026-11-20-architecture-likec4.md
 
 - Data: 2026-11-20
-- Status: proponowana (spec do zatwierdzenia przez właściciela; implementacja w osobnym PR)
+- Status: wdrożona (PR #330; publikacja na Pages czeka na jednorazowy krok właściciela: Settings → Pages → Source: GitHub Actions i zmienna `PAGES_ENABLED=true`)
 - Kategoria: documentation · priorytet: medium · ryzyko: low
 
 ## 📝 TLDR
@@ -208,11 +208,22 @@ Fazy idą w jednym PR implementacji (decyzja z briefu), commitowane po krokach.
 
 ## Kryteria akceptacji
 
-- [ ] `npm run docs:arch` lokalnie pokazuje model. Z L1 można kliknięciami dojść do L3 i do modelu danych.
-- [ ] Cztery widoki dynamiczne istnieją, a ich kroki zgadzają się z kodem (review).
-- [ ] `npm run docs:arch:check` jest zielony. Usunięcie dowolnej rejestracji DI, encji lub pakietu z modelu (albo dodanie nieistniejącej) daje czerwony wynik z czytelnym komunikatem.
-- [ ] PR zmieniający tylko `.c4` uruchamia `architecture`, ale nie `build`/`integration`/`docker`.
-- [ ] `package-lock.json` w roocie nie zawiera `likec4` (sprawdza job `architecture`), więc `npm ci` w `Dockerfile` go nie instaluje.
-- [ ] Nowy kod w `scripts/` ma 100% pokrycia bez nowych wyjątków.
-- [ ] Po merge i włączeniu Pages strona jest dostępna pod `https://bartoszmwojcik.github.io/ai_techleaders_gomoku/`.
-- [ ] `docs/architektura.md` ma wstęp z linkiem, a `AGENTS.md` regułę aktualizacji modelu.
+- [x] `npm run docs:arch` lokalnie pokazuje model. Z L1 można kliknięciami dojść do L3 i do modelu danych.
+- [x] Cztery widoki dynamiczne istnieją, a ich kroki zgadzają się z kodem (review).
+- [x] `npm run docs:arch:check` jest zielony. Usunięcie dowolnej rejestracji DI, encji lub pakietu z modelu (albo dodanie nieistniejącej) daje czerwony wynik z czytelnym komunikatem.
+- [x] PR zmieniający tylko `.c4` uruchamia `architecture`, ale nie `build`/`integration`/`docker`.
+- [x] `package-lock.json` w roocie nie zawiera `likec4` (sprawdza job `architecture`), więc `npm ci` w `Dockerfile` go nie instaluje.
+- [x] Nowy kod w `scripts/` ma 100% pokrycia bez nowych wyjątków.
+- [ ] Po merge i włączeniu Pages strona jest dostępna pod `https://bartoszmwojcik.github.io/ai_techleaders_gomoku/`. *(po merge; build z bazą `/ai_techleaders_gomoku/` i nawigacja sprawdzone lokalnie)*
+- [x] `docs/architektura.md` ma wstęp z linkiem, a `AGENTS.md` regułę aktualizacji modelu.
+
+## Notatki z implementacji (PR #330)
+
+- **Metadane `package` na kontenerze:** `@gomoku/app` to kontener „Aplikacja Next.js” (rodzaj `container`) z `metadata { package '@gomoku/app' }`, a nie osobny element rodzaju `package`. Reguła 1 dopuszcza `package` na rodzajach `package` i `container`; element rodzaju `package` bez tych metadanych jest błędem.
+- **`em` jest rejestracją DI:** `withRequestScope` wywołuje `scope.register({ em })`, więc test zgodności (wszystkie wywołania `register({...})`) liczy 46 rejestracji; `em` należy do „Kontener DI i konfiguracja”.
+- **Relacja `Game.rematchGame → Game`** jest w opisie encji: LikeC4 nie pozwala na relację elementu do samego siebie.
+- **Przepływ 4:** po rejestracji użytkownik jest od razu zalogowany; potwierdzenie (przycisk na `/verify-email`) ustawia tylko `emailVerifiedAt`. **Przepływ 3:** `BotAdmission` działa przy tworzeniu partii, a na każdą turę — `ComputeGate`.
+- **Plik capability** ma nazwę `.ai/specs/capabilities/2026-11-20-architecture-docs.md` (konwencja nazw `.ai/` z `AGENTS.md`).
+- **Q4 zmienione w review:** `release.yml` wymaga, by każdy check na HEAD `main` był `success` albo `skipped`, więc czerwony `pages-deploy` blokowałby wydania. Job (i upload artefaktu) działa tylko przy zmiennej repozytorium `PAGES_ENABLED=true`; bez niej jest pominięty. Krok właściciela: włączyć Pages i ustawić zmienną.
+- **Skrypty `docs:arch` / `docs:arch:build`** najpierw wywołują `cli.mjs ensure` — przy braku pakietu narzędziowego wypisują `npm ci --prefix docs/architektura`.
+

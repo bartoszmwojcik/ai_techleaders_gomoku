@@ -1,0 +1,106 @@
+// Widoki: L1 → L2 → L3 (kliknięcie elementu otwiera widok „of” tego elementu), model danych i cztery przepływy.
+// Przy zmianie serwisu z przepływu zaktualizuj jego kroki (reguła w AGENTS.md).
+views {
+
+  view index {
+    title 'L1 · Kontekst systemu Gomoku'
+    description 'Kto korzysta z Gomoku i z jakimi systemami zewnętrznymi współpracuje. Kliknij Gomoku, żeby zobaczyć kontenery.'
+    include player, admin, agent, gomoku, brevo, hosting
+  }
+
+  view containers of gomoku {
+    title 'L2 · Kontenery'
+    description 'Aplikacja Next.js z czterema powierzchniami, PostgreSQL i cron db:cleanup. Bot nie jest kontenerem: liczy w worker_threads procesu Next.js. Kliknij aplikację (L3) albo PostgreSQL (model danych).'
+    include
+      *,
+      gomoku.app.* where tag is #surface,
+      // Wyjścia aplikacji na zewnątrz kontenera: baza (przez @gomoku/db) i e-maile (przez Brevo).
+      gomoku.app.db,
+      gomoku.app.email,
+      player, admin, agent, brevo
+  }
+
+  view app of gomoku.app {
+    title 'L3 · Komponenty aplikacji'
+    description 'Powierzchnie, domeny serwisów (packages/app/src/server/services), warstwy HTTP i MCP, kontener DI oraz pakiety workspace. Kliknij Partie, żeby zobaczyć poddomeny gry.'
+    include *
+    include gomoku.postgres, brevo
+  }
+
+  view games of gomoku.app.games {
+    title 'L3 · Partie (poddomeny)'
+    description 'Rdzeń partii, lobby i zaproszenia, agent przez MCP, bot hostowany z wątkiem roboczym, widz, pokaz, papier i ołówek, rozliczanie czasu.'
+    include *
+  }
+
+  view data of gomoku.postgres {
+    title 'Model danych (PostgreSQL)'
+    description 'Encje MikroORM z packages/db/src/entities i relacje (klucze obce). Bez pól. Ruchy partii klasycznej są w kolumnie Game.moves (bytea), nie w osobnej tabeli.'
+    include *
+  }
+
+  // ── Przepływy ────────────────────────────────────────────────────────────
+
+  dynamic view flowMove {
+    title 'Przepływ 1 · Ruch w partii'
+    description 'POST /api/games/[id]/moves → GameMoveService.play w em.transactional (blokada wiersza partii). Przeciwnik dowiaduje się o ruchu przez odpytywanie GET /api/games/[id] co 2 s — nie ma kanału push.'
+    player -> gomoku.app.web 'stawia kamień (PlayField)'
+    gomoku.app.web -> gomoku.app.api 'POST /api/games/[id]/moves'
+    gomoku.app.api -> gomoku.app.http 'apiHandler (CSRF), resolveParticipant — miejsce z sesji albo tokenu gościa'
+    gomoku.app.http -> gomoku.app.di 'withRequestScope: scope z em.fork()'
+    gomoku.app.http -> gomoku.app.games.gameCore 'gameMoveService.play()'
+    gomoku.app.games.gameCore -> gomoku.app.db 'em.transactional: blokada wiersza partii (for no key update)'
+    gomoku.app.games.gameCore -> gomoku.app.games.timeout 'w transakcji, pod blokadą: najpierw settleGame'
+    gomoku.app.games.gameCore -> gomoku.app.core 'applyMove, spend (zasady i zegar)'
+    gomoku.app.games.gameCore -> gomoku.app.db 'warunkowy UPDATE ruchu, commit'
+    gomoku.app.db -> gomoku.postgres 'UPDATE game (moves, bitboardy, zegar)'
+    gomoku.app.games.gameCore -> gomoku.app.http 'stan partii; bot na ruchu → scheduleBotTurn (przepływ 3)'
+    gomoku.app.web -> gomoku.app.api 'przeciwnik: GET /api/games/[id]?after=… co 2 s'
+  }
+
+  dynamic view flowAgent {
+    title 'Przepływ 2 · Agent dołącza przez MCP'
+    description 'Kod zaproszenia służy tylko do join; potem agent podaje w argumentach narzędzi jednorazowo wydany token miejsca (w bazie tylko SHA-256). Ruch agenta idzie tym samym GameMoveService.play co ruch człowieka.'
+    agent -> gomoku.app.mcpEndpoint 'POST /api/mcp (narzędzie join: kod zaproszenia)'
+    gomoku.app.mcpEndpoint -> gomoku.app.mcp 'withRequestScope → handleMcpPost: Origin, limit na IP'
+    gomoku.app.mcp -> gomoku.app.rateLimit 'limit żądań'
+    gomoku.app.mcp -> gomoku.app.games.agentSeat 'agentSeatService.join()'
+    gomoku.app.games.agentSeat -> gomoku.app.db 'em.transactional: drugie miejsce kind=agent, agent_token_hash'
+    gomoku.app.games.agentSeat -> agent 'token miejsca (pokazany raz)'
+    agent -> gomoku.app.mcpEndpoint 'get_state(token, waitSeconds) — long polling'
+    gomoku.app.mcp -> gomoku.app.games.agentSeat 'agentGameService.getState(): token → miejsce'
+    agent -> gomoku.app.mcpEndpoint 'play_move(token, x, y, moveNumber)'
+    gomoku.app.mcp -> gomoku.app.games.agentSeat 'agentGameService.playMove()'
+    gomoku.app.games.agentSeat -> gomoku.app.games.gameCore 'gameMoveService.play() — jak ruch człowieka'
+  }
+
+  dynamic view flowBot {
+    title 'Przepływ 3 · Tura bota'
+    description 'BotAdmission działa tylko przy tworzeniu partii (poziom, pamięć, zajętość). Każdą turę liczy wątek roboczy za ComputeGate (jedno przeszukiwanie naraz w procesie), uruchomiony przez after() po wysłaniu odpowiedzi.'
+    player -> gomoku.app.api 'POST /api/games (przeciwnik: bot)'
+    gomoku.app.api -> gomoku.app.games.gameCore 'gameService.create()'
+    gomoku.app.games.gameCore -> gomoku.app.games.bot 'botAdmission.admit(level): zamraża siłę bota'
+    player -> gomoku.app.api 'ruch gracza (przepływ 1)'
+    gomoku.app.api -> gomoku.app.http 'botOnTurn → scheduleBotTurn: after() + nowy withRequestScope'
+    gomoku.app.http -> gomoku.app.games.bot 'botTurnService.playDueMove(): odczyt bez blokady, isDue'
+    gomoku.app.games.bot -> gomoku.app.games.botWorker 'botEngine.choose(): ComputeGate → new Worker (limity czasu i pamięci)'
+    gomoku.app.games.botWorker -> gomoku.app.core 'chooseMove (silnik bota)'
+    gomoku.app.games.bot -> gomoku.app.games.gameCore 'gameMoveService.play() — ta sama transakcja co ruch człowieka'
+    player -> gomoku.app.api 'GET /api/games/[id] co 750 ms, czeka na ruch bota'
+  }
+
+  dynamic view flowRegistration {
+    title 'Przepływ 4 · Rejestracja z potwierdzeniem e-maila'
+    description 'Po rejestracji użytkownik jest od razu zalogowany; potwierdzenie ustawia tylko emailVerifiedAt. Błąd wysyłki nie przerywa rejestracji (jest logowany, token usuwany).'
+    player -> gomoku.app.api 'POST /api/auth/register'
+    gomoku.app.api -> gomoku.app.rateLimit 'limit: 5 na godzinę na IP'
+    gomoku.app.api -> gomoku.app.auth 'userService.register(): hash hasła, User + Session w em.transactional'
+    gomoku.app.auth -> gomoku.app.auth 'emailVerificationService.issue(): hash tokenu, link /verify-email?token=…'
+    gomoku.app.auth -> gomoku.app.email 'emailSender.send()'
+    gomoku.app.email -> brevo 'POST /v3/smtp/email (EMAIL_TRANSPORT=brevo)'
+    brevo -> player 'e-mail z linkiem'
+    player -> gomoku.app.web 'otwiera /verify-email, klika „Potwierdź”'
+    gomoku.app.web -> gomoku.app.api 'POST /api/auth/email-verification/confirm'
+    gomoku.app.api -> gomoku.app.auth 'confirm(): zużywa token, ustawia emailVerifiedAt'
+  }
+}

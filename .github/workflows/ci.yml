@@ -28,6 +28,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       code: ${{ steps.scope.outputs.code }}
+      arch: ${{ steps.scope.outputs.arch }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -41,6 +42,7 @@ jobs:
         run: |
           if [ "$EVENT" != "pull_request" ]; then
             echo "code=true" >> "$GITHUB_OUTPUT"
+            echo "arch=true" >> "$GITHUB_OUTPUT"
             echo "Not a pull request: full pipeline."
             exit 0
           fi
@@ -48,7 +50,8 @@ jobs:
           files=$(git diff --no-renames --name-only "$BASE_SHA...$HEAD_SHA")
           echo "Changed files:"; echo "$files"
           # Documentation only: Markdown, .ai/, docs/, LICENSE. Skills, agent settings, workflows and the
-          # skills lock are code even when Markdown (rule and tests: scripts/ci/scope.mjs).
+          # skills lock are code even when Markdown (rule and tests: scripts/ci/scope.mjs). `arch=true` when the
+          # LikeC4 model (docs/architektura) or its check (scripts/architecture) changed: runs job `architecture`.
           printf '%s\n' "$files" | node scripts/ci/cli.mjs scope >> "$GITHUB_OUTPUT"
           grep -q '^code=false$' "$GITHUB_OUTPUT" && echo "Documentation-only pull request: heavy jobs are skipped." || echo "Code changes: full pipeline."
 
@@ -252,6 +255,63 @@ jobs:
           grep -rnE '#[0-9a-fA-F]{3,8}\b|(rgba?|hsla?|oklch)\(|-\[[0-9.]+(px|rem)\]|(^|[^-[:alnum:]_])(bg|text|border|ring|fill|stroke|from|via|to)-(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-[0-9]{2,3}\b|(^|[^-[:alnum:]_])(bg|text|border)-(white|black)\b' packages/app/src packages/ui/src/game --include='*.tsx' --include='*.css' || status=$?
           if [ "$status" -eq 0 ]; then echo "Znaleziono wartości spoza tokenów"; exit 1; fi
           if [ "$status" -ne 1 ]; then echo "grep nie zadziałał, sprawdź ścieżki"; exit 1; fi
+
+  # LikeC4 architecture model (docs/architektura): validation, compliance with the code (packages, DI registrations,
+  # entities) and the static site build. Runs on code changes and on model-only changes (`arch`, scripts/ci/scope.mjs),
+  # fail-safe like the others. likec4 lives in its own tooling package outside the workspaces, never in the root
+  # lockfile, so `npm ci` in the Dockerfile does not install it. The site is uploaded only on a push to main.
+  architecture:
+    name: Model architektury (LikeC4)
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code == 'true' || needs.changes.outputs.arch == 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            docs/architektura/package-lock.json
+      - name: likec4 nie trafia do package-lock.json w roocie
+        run: |
+          if grep -qE '"(packages/[^"]+/)?node_modules/likec4"' package-lock.json; then
+            echo "likec4 jest w package-lock.json w roocie — należy tylko do docs/architektura/package.json"; exit 1
+          fi
+      - run: npm ci
+      - run: npm ci --prefix docs/architektura
+      - name: Walidacja modelu i zgodność z kodem
+        run: npm run docs:arch:check
+      - name: Statyczna strona (ścieżka bazowa GitHub Pages)
+        run: npm run docs:arch:build -- --base /ai_techleaders_gomoku/
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.PAGES_ENABLED == 'true'
+        with:
+          path: docs/architektura/dist
+
+  # Publishes the architecture site from main. Gated on the repository variable PAGES_ENABLED (set to `true` by the
+  # owner after Settings → Pages → Source: GitHub Actions): until then the job is skipped, so it can never turn main red
+  # (release.yml accepts only success/skipped check runs on HEAD of main). The Pages permissions exist only in this job.
+  pages-deploy:
+    name: Publikacja strony architektury (GitHub Pages)
+    needs: architecture
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.PAGES_ENABLED == 'true' && needs.architecture.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
 
   docker:
     name: Obraz Docker (build + start stosu produkcyjnego)

@@ -66,3 +66,7 @@ packages/db/src/migrations/.snapshot-*.json
 # Local tools kept outside version control
 /cezar/
 /.deepsec/
+
+# LikeC4 architecture model: tooling package (outside the workspaces) and its static build
+docs/architektura/node_modules/
+docs/architektura/dist/
