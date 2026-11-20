@@ -42,6 +42,6 @@ Adres, który nie pasuje do żadnej trasy, dostaje własną, zlokalizowaną stro
 
 - [x] 2.1 Scenariusz integracyjny 404 z CSP — b3a9a58
 - [x] 2.2 Aktualizacja triage bezpieczeństwa — f68ba0f
-- [ ] 2.3 Pełna bramka walidacyjna
+- [x] 2.3 Pełna bramka walidacyjna — 37770f3
 - [ ] 2.4 Review om-auto-review-pr
 - [ ] 2.5 Podsumowanie na PR
