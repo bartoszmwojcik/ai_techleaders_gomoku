@@ -16,6 +16,15 @@ updates:
       - dependency-name: typescript
         versions: [">=7"]
     labels: [dependencies]
+  # The LikeC4 tooling package of the architecture model (outside the workspaces, own lockfile, likec4 pinned exactly).
+  # An update must pass job `architecture` (model validation and site build).
+  - package-ecosystem: npm
+    directory: /docs/architektura
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 1
+    labels: [dependencies]
   - package-ecosystem: github-actions
     directory: /
     schedule:
