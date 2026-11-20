@@ -30,6 +30,8 @@ const eslintConfig = defineConfig([
     "packages/ui/.storybook/public/prototypes/**",
     // Source of the clickable prototypes (built into the Storybook static folder), not product code.
     "prototypes/**",
+    // Static build of the LikeC4 architecture model (`npm run docs:arch:build`).
+    "docs/architektura/dist/**",
   ]),
 ]);
 

@@ -1,0 +1,14 @@
+{
+  "name": "gomoku-architecture-docs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "LikeC4 model of the Gomoku architecture. Kept outside the npm workspaces so likec4 never reaches the root lockfile or the Docker image.",
+  "scripts": {
+    "serve": "likec4 serve",
+    "build": "likec4 build -o dist"
+  },
+  "devDependencies": {
+    "likec4": "1.61.0"
+  }
+}
