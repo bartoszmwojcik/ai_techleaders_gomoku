@@ -14,6 +14,9 @@ views {
     include
       *,
       gomoku.app.* where tag is #surface,
+      // Wyjścia aplikacji na zewnątrz kontenera: baza (przez @gomoku/db) i e-maile (przez Brevo).
+      gomoku.app.db,
+      gomoku.app.email,
       player, admin, agent, brevo
   }
 
