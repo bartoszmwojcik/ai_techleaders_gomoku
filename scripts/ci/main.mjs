@@ -1,4 +1,4 @@
-// `node scripts/ci/cli.mjs scope` reads the changed files (one per line) from stdin and prints `code=true|false`;
+// `node scripts/ci/cli.mjs scope` reads the changed files (one per line) from stdin and prints `code=true|false` and `arch=true|false`;
 // `node scripts/ci/cli.mjs skills-lock` checks skills-lock.json against .agents/skills. Exit code 0 = ok.
 import { classify } from "./scope.mjs";
 import { verifySkillsLock } from "./skills-lock.mjs";
@@ -6,8 +6,9 @@ import { verifySkillsLock } from "./skills-lock.mjs";
 export async function main(argv, { readStdin, root, log }) {
   const [command] = argv;
   if (command === "scope") {
-    const { code, codeFiles } = classify((await readStdin()).split("\n"));
+    const { code, arch, codeFiles } = classify((await readStdin()).split("\n"));
     log(`code=${code}`);
+    log(`arch=${arch}`);
     for (const file of codeFiles) console.error(`code: ${file}`);
     return 0;
   }

@@ -28,14 +28,31 @@ describe("isDocsOnly", () => {
 
 describe("classify", () => {
   it("is not code for documentation only, ignoring empty lines", () => {
-    expect(classify(["docs/a.md", "", "README.md"])).toEqual({ code: false, codeFiles: [] });
-    expect(classify([""])).toEqual({ code: false, codeFiles: [] });
+    expect(classify(["docs/a.md", "", "README.md"])).toEqual({ code: false, arch: false, codeFiles: [] });
+    expect(classify([""])).toEqual({ code: false, arch: false, codeFiles: [] });
   });
 
   it("is code, and lists the files, when anything else changed", () => {
     expect(classify(["docs/a.md", ".agents/skills/x/SKILL.md", "src/a.ts"])).toEqual({
       code: true,
+      arch: false,
       codeFiles: [".agents/skills/x/SKILL.md", "src/a.ts"],
     });
+  });
+});
+
+describe("classify: architecture model (arch)", () => {
+  it.each(["docs/architektura/model.c4", "docs/architektura/package-lock.json", "docs/architektura/package.json"])(
+    "%s runs the architecture check but stays documentation",
+    (file) => expect(classify([file, "docs/a.md"])).toEqual({ code: false, arch: true, codeFiles: [] }),
+  );
+
+  it("scripts/architecture is code and runs the architecture check", () => {
+    expect(classify(["scripts/architecture/compliance.mjs"])).toEqual({ code: true, arch: true, codeFiles: ["scripts/architecture/compliance.mjs"] });
+  });
+
+  it("other documentation, and code elsewhere, do not run it by themselves", () => {
+    expect(classify(["docs/architektura.md", "docs/a.md"]).arch).toBe(false);
+    expect(classify(["packages/app/src/server/container.ts"])).toEqual({ code: true, arch: false, codeFiles: ["packages/app/src/server/container.ts"] });
   });
 });

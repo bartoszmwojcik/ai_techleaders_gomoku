@@ -17,7 +17,7 @@ describe("scope", () => {
   it("prints code=false for documentation only", async () => {
     const { code, log, error } = await run(["scope"], "docs/a.md\nREADME.md\n");
     expect(code).toBe(0);
-    expect(log.mock.calls).toEqual([["code=false"]]);
+    expect(log.mock.calls).toEqual([["code=false"], ["arch=false"]]);
     expect(error).not.toHaveBeenCalled();
   });
 
@@ -26,6 +26,11 @@ describe("scope", () => {
     expect(code).toBe(0);
     expect(log).toHaveBeenCalledWith("code=true");
     expect(error).toHaveBeenCalledWith("code: .agents/skills/x/SKILL.md");
+  });
+
+  it("prints arch=true when the architecture model changed", async () => {
+    const { log } = await run(["scope"], "docs/architektura/model.c4\n");
+    expect(log.mock.calls).toEqual([["code=false"], ["arch=true"]]);
   });
 });
 
