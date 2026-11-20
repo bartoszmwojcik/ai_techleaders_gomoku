@@ -1,0 +1,130 @@
+// Model danych: encje z packages/db/src/entities/index.ts (metadata.entity) i relacje
+// odpowiadające relacjom ORM (manyToOne / oneToOne). Bez pól.
+model {
+  extend gomoku.postgres {
+
+    user = entity 'User' {
+      description 'Konto: e-mail, nazwa wyświetlana, hash hasła, data potwierdzenia e-maila.'
+      link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/db/src/entities/auth/user.ts 'auth/user.ts'
+      metadata {
+        entity 'User'
+      }
+    }
+    session = entity 'Session' {
+      description 'Sesja logowania (hash tokenu z ciasteczka).'
+      link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/db/src/entities/auth/session.ts 'auth/session.ts'
+      metadata {
+        entity 'Session'
+      }
+    }
+    emailVerificationToken = entity 'EmailVerificationToken' {
+      description 'Jednorazowy token potwierdzenia adresu e-mail (tylko hash).'
+      link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/db/src/entities/auth/email-verification-token.ts 'auth/email-verification-token.ts'
+      metadata {
+        entity 'EmailVerificationToken'
+      }
+    }
+    passwordResetToken = entity 'PasswordResetToken' {
+      description 'Jednorazowy token resetu hasła (tylko hash).'
+      link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/db/src/entities/auth/password-reset-token.ts 'auth/password-reset-token.ts'
+      metadata {
+        entity 'PasswordResetToken'
+      }
+    }
+    emailChangeToken = entity 'EmailChangeToken' {
+      description 'Token potwierdzenia nowego adresu e-mail (tylko hash).'
+      link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/db/src/entities/auth/email-change-token.ts 'auth/email-change-token.ts'
+      metadata {
+        entity 'EmailChangeToken'
+      }
+    }
+    rateLimitBucket = entity 'RateLimitBucket' {
+      description 'Kubełek limitu żądań; klucz to prefiks z IP albo hashem tokenu.'
+      link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/db/src/entities/rate-limit/rate-limit-bucket.ts 'rate-limit/rate-limit-bucket.ts'
+      metadata {
+        entity 'RateLimitBucket'
+      }
+    }
+    game = entity 'Game' {
+      description 'Partia: status, ruchy (bytea) i bitboardy, zegar, wynik, poziom bota, pochodzenie (np. pokaz). Rewanż wskazuje poprzednią partię (rematchGame → Game; LikeC4 nie rysuje relacji elementu do samego siebie).'
+      link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/db/src/entities/games/game.ts 'games/game.ts'
+      metadata {
+        entity 'Game'
+      }
+    }
+    gamePlayer = entity 'GamePlayer' {
+      description 'Miejsce w partii: konto, gość (hash tokenu), agent (hash tokenu MCP) albo bot; kolor.'
+      link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/db/src/entities/games/game-player.ts 'games/game-player.ts'
+      metadata {
+        entity 'GamePlayer'
+      }
+    }
+    invitation = entity 'Invitation' {
+      description 'Kod zaproszenia do partii; zapamiętuje, kto go wykorzystał.'
+      link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/db/src/entities/games/invitation.ts 'games/invitation.ts'
+      metadata {
+        entity 'Invitation'
+      }
+    }
+    lobbySeeker = entity 'LobbySeeker' {
+      description 'Status „szukam gry” konta (jeden na konto).'
+      link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/db/src/entities/games/lobby-seeker.ts 'games/lobby-seeker.ts'
+      metadata {
+        entity 'LobbySeeker'
+      }
+    }
+    gamePairCounter = entity 'GamePairCounter' {
+      description 'Licznik zakończonych partii na dzień i parę rodzajów uczestników (statystyki).'
+      link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/db/src/entities/games/game-pair-counter.ts 'games/game-pair-counter.ts'
+      metadata {
+        entity 'GamePairCounter'
+      }
+    }
+    chatMessage = entity 'ChatMessage' {
+      description 'Wiadomość czatu partii albo czatu widzów.'
+      link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/db/src/entities/chat/chat-message.ts 'chat/chat-message.ts'
+      metadata {
+        entity 'ChatMessage'
+      }
+    }
+    gameSpectator = entity 'GameSpectator' {
+      description 'Widz partii (konto albo hash tokenu widza).'
+      link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/db/src/entities/games/game-spectator.ts 'games/game-spectator.ts'
+      metadata {
+        entity 'GameSpectator'
+      }
+    }
+    paperGameState = entity 'PaperGameState' {
+      description 'Stan partii papier i ołówek (klucz główny = partia).'
+      link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/db/src/entities/games/paper-game-state.ts 'games/paper-game-state.ts'
+      metadata {
+        entity 'PaperGameState'
+      }
+    }
+    paperMove = entity 'PaperMove' {
+      description 'Ruch partii papier i ołówek (klucz główny zawiera partię).'
+      link https://github.com/bartoszmwojcik/ai_techleaders_gomoku/blob/main/packages/db/src/entities/games/paper-move.ts 'games/paper-move.ts'
+      metadata {
+        entity 'PaperMove'
+      }
+    }
+  }
+
+  // Relacje ORM (kierunek: encja z kluczem obcym → encja wskazywana).
+  gomoku.postgres.session -> gomoku.postgres.user 'user'
+  gomoku.postgres.emailVerificationToken -> gomoku.postgres.user 'user'
+  gomoku.postgres.passwordResetToken -> gomoku.postgres.user 'user'
+  gomoku.postgres.emailChangeToken -> gomoku.postgres.user 'user'
+  gomoku.postgres.gamePlayer -> gomoku.postgres.game 'game'
+  gomoku.postgres.gamePlayer -> gomoku.postgres.user 'user (opcjonalnie)'
+  gomoku.postgres.invitation -> gomoku.postgres.game 'game (1:1)'
+  gomoku.postgres.invitation -> gomoku.postgres.gamePlayer 'consumedBy (opcjonalnie)'
+  gomoku.postgres.lobbySeeker -> gomoku.postgres.user 'user (unikalny)'
+  gomoku.postgres.chatMessage -> gomoku.postgres.game 'game'
+  gomoku.postgres.chatMessage -> gomoku.postgres.gamePlayer 'sender (opcjonalnie)'
+  gomoku.postgres.chatMessage -> gomoku.postgres.gameSpectator 'spectator (opcjonalnie)'
+  gomoku.postgres.gameSpectator -> gomoku.postgres.game 'game'
+  gomoku.postgres.gameSpectator -> gomoku.postgres.user 'user (opcjonalnie)'
+  gomoku.postgres.paperGameState -> gomoku.postgres.game 'game (1:1, klucz główny)'
+  gomoku.postgres.paperMove -> gomoku.postgres.game 'game (część klucza głównego)'
+}

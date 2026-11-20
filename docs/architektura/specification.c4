@@ -1,0 +1,57 @@
+// Rodzaje elementów i tagi modelu architektury Gomoku.
+// Identyfikatory, rodzaje i klucze metadanych po angielsku; etykiety i opisy po polsku.
+// Metadane sprawdzane przez `npm run docs:arch:check` (scripts/architecture):
+//   package '@gomoku/<x>' — pakiet z packages/<x> (rodzaj package albo container)
+//   di 'a, b'             — rejestracje z packages/app/src/server/container.ts (rodzaj component)
+//   entity '<Nazwa>'      — encja z packages/db/src/entities/index.ts (rodzaj entity)
+specification {
+  element actor {
+    notation "Osoba"
+    style {
+      shape person
+      color green
+    }
+  }
+  element system {
+    notation "System"
+    style {
+      color primary
+    }
+  }
+  element external {
+    notation "System zewnętrzny"
+    style {
+      color muted
+    }
+  }
+  element container {
+    notation "Kontener"
+    style {
+      color blue
+    }
+  }
+  element component {
+    notation "Komponent"
+    style {
+      color sky
+    }
+  }
+  element package {
+    notation "Pakiet workspace"
+    style {
+      shape component
+      color indigo
+    }
+  }
+  element entity {
+    notation "Encja (tabela)"
+    style {
+      shape storage
+      color slate
+    }
+  }
+
+  tag surface
+  tag database
+  tag worker
+}
