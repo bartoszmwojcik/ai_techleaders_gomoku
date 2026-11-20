@@ -38,6 +38,13 @@ const common = {
     retry: "Spróbuj ponownie",
     backHome: "Wróć na stronę główną",
   },
+  /** The app-wide 404 (`app/global-not-found.tsx`): an address that matches no page. */
+  notFound: {
+    metaTitle: "Nie ma takiej strony · Gomoku",
+    heading: "Nie ma takiej strony",
+    body: "Ten adres nie prowadzi do żadnej strony Gomoku. Sprawdź, czy link jest pełny, albo zacznij od strony głównej.",
+    backHome: "Wróć na stronę główną",
+  },
 } satisfies Dict;
 
 export default common;
