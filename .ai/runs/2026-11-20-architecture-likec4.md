@@ -37,7 +37,7 @@ Zgodnie z sekcją „Implementation Plan” specyfikacji (kroki 1–15). Krok 5 
 
 - `likec4 build` może wymagać przeglądarki lub przekroczyć 10 min w CI → kryterium porzucenia (krok 4).
 - `likec4` wymaga Node ≥ 22.23.3; CI używa najnowszego 22.
-- Pages niewłączone → `pages-deploy` czerwony tylko na `main` (niewymagany).
+- Pages niewłączone → `pages-deploy` pominięty do czasu `PAGES_ENABLED=true` (zmiana z review; czerwony job blokowałby `release.yml`). Właściciel włączył Pages i zmienną 2026-11-20; ponowiony job `architecture` na 72da900 opublikował stronę.
 
 ## Progress
 
@@ -66,5 +66,5 @@ PR: #330
 
 - [x] 3.1 upload-pages-artifact i job pages-deploy ze ścieżką bazową — 5658b5b
 - [x] 3.2 Dependabot dla docs/architektura i instrukcja kroku właściciela — 5658b5b
-- [ ] 3.3 Pełna weryfikacja (npm run check, docs:arch:check, docs:arch:build)
+- [x] 3.3 Pełna weryfikacja (npm run check, docs:arch:check, docs:arch:build) — 8218797
 - [x] 3.4 Archiwizacja delty i specyfikacji — 2f41f16

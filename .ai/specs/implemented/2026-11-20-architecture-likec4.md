@@ -5,7 +5,7 @@ Extends: .ai/specs/implemented/2026-10-19-ci-and-testing.md
 Brief: .ai/specs/briefs/2026-11-20-architecture-likec4.md
 
 - Data: 2026-11-20
-- Status: wdrożona (PR #330; publikacja na Pages czeka na jednorazowy krok właściciela: Settings → Pages → Source: GitHub Actions i zmienna `PAGES_ENABLED=true`)
+- Status: wdrożona (PR #330); strona opublikowana na GitHub Pages 2026-11-20
 - Kategoria: documentation · priorytet: medium · ryzyko: low
 
 ## 📝 TLDR
@@ -214,7 +214,7 @@ Fazy idą w jednym PR implementacji (decyzja z briefu), commitowane po krokach.
 - [x] PR zmieniający tylko `.c4` uruchamia `architecture`, ale nie `build`/`integration`/`docker`.
 - [x] `package-lock.json` w roocie nie zawiera `likec4` (sprawdza job `architecture`), więc `npm ci` w `Dockerfile` go nie instaluje.
 - [x] Nowy kod w `scripts/` ma 100% pokrycia bez nowych wyjątków.
-- [ ] Po merge i włączeniu Pages strona jest dostępna pod `https://bartoszmwojcik.github.io/ai_techleaders_gomoku/`. *(po merge; build z bazą `/ai_techleaders_gomoku/` i nawigacja sprawdzone lokalnie)*
+- [x] Po merge i włączeniu Pages strona jest dostępna pod `https://bartoszmwojcik.github.io/ai_techleaders_gomoku/`. *(2026-11-20: Pages + `PAGES_ENABLED=true`, `pages-deploy` zielony; deep linki i przejście L1 → L2 sprawdzone w przeglądarce)*
 - [x] `docs/architektura.md` ma wstęp z linkiem, a `AGENTS.md` regułę aktualizacji modelu.
 
 ## Notatki z implementacji (PR #330)
