@@ -24,13 +24,13 @@
   },
   "dependencies": {
     "@gomoku/core": "*",
-    "@mikro-orm/core": "^7.2.7",
-    "@mikro-orm/migrations": "^7.2.7",
-    "@mikro-orm/postgresql": "^7.2.7"
+    "@mikro-orm/core": "^7.2.11",
+    "@mikro-orm/migrations": "^7.2.11",
+    "@mikro-orm/postgresql": "^7.2.11"
   },
   "devDependencies": {
-    "@mikro-orm/cli": "^7.2.7",
-    "@next/env": "16.4.5",
+    "@mikro-orm/cli": "^7.2.11",
+    "@next/env": "16.4.6",
     "tsx": "^4.23.15"
   }
 }
